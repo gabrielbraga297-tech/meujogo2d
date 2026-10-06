@@ -18,7 +18,7 @@ Na Fase 1 há um único veterinário: ele é lento, patrulha o mapa e quase não
 
 ## Estrutura
 ```
-index.html      canvas e telas (menu e vitória)
+index.html      canvas e telas (menu, vitória e derrota)
 css/style.css   visual das telas
 js/game.js      mapa, cachorro, rações, veterinário (IA), HUD, estados e loop
 tests/e2e.js    teste automatizado no navegador (veja abaixo)
@@ -31,7 +31,8 @@ Em *Settings → Pages → Build and deployment → Source*, escolha **GitHub Ac
 ## Testes
 ```
 npm i playwright
-node tests/e2e.js          # use CHROMIUM_PATH=/caminho/do/chromium se necessário
+npx playwright install chromium   # ou use CHROMIUM_PATH=/caminho/do/chromium
+node tests/e2e.js
 ```
 
 ## Notas

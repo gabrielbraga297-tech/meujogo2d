@@ -42,7 +42,7 @@ const PAGE_HELPERS = () => {
         for (let i = 0; i < 600; i++) {
           if (__game.state !== "playing") return;
           const p = __game.player, dx = tx - (p.x + 12), dy = ty - (p.y + 12);
-          if (Math.abs(dx) < 3 && Math.abs(dy) < 3) break;
+          if (Math.abs(dx) <= 3 && Math.abs(dy) <= 3) break;
           press("d", dx > 3); press("a", dx < -3); press("s", dy > 3); press("w", dy < -3);
           __game.tick(1 / 60);
         }
@@ -65,6 +65,9 @@ const PAGE_HELPERS = () => {
 
   const dogStart = find("P")[0], items = find("I"), exit = find("E")[0], vetStarts = find("V");
   ok(await ev(() => __game.state) === "menu", "começa no menu");
+  ok(await ev(() => document.activeElement.id) === "btn-play", "botão Jogar já vem focado");
+  await page.keyboard.press("Enter");
+  ok(await ev(() => __game.state) === "playing", "Enter no menu inicia a partida");
   ok(items.length === 5, "5 rações no mapa");
   ok(vetStarts.length === 1, "Fase 1 tem exatamente 1 veterinário");
   ok(items.every((i) => bfs(dogStart, i)) && bfs(dogStart, exit), "rações e saída alcançáveis");
@@ -95,7 +98,9 @@ const PAGE_HELPERS = () => {
   }
   await ev((p) => __t.walk(p), bfs(await cur(), exit));
   ok(await ev(() => __game.state) === "won" && await page.isVisible("#win"), "vitória ao chegar na saída com 5 rações");
-  ok(await ev(() => __game.score) >= 500, "pontuação final inclui as 5 rações (500) mais o bônus de tempo");
+  const winInfo = await ev(() => ({ score: __game.score, text: document.getElementById("win-text").textContent }));
+  const bonus = Number((winInfo.text.match(/bônus de tempo: (\d+)/) || [])[1]);
+  ok(bonus > 0 && winInfo.score === 500 + bonus, `pontuação final = 500 (5 rações) + bônus de tempo (${bonus})`);
   await page.click("#btn-again");
   ok(await ev(() => __game.state) === "playing" && await ev(() => __game.collected) === 0 && await ev(() => __game.items.every((i) => !i.taken)), "reinício zera a partida");
 
@@ -133,30 +138,37 @@ const PAGE_HELPERS = () => {
   }, MAP);
   ok(wallHits === 0, "veterinário nunca atravessa paredes nem caixas");
 
-  // --- perseguição só acontece raramente e é curta ---
+  // --- perseguição: rara, curta e seguida de descanso ---
+  // Cada cenário roda dentro de UM evaluate para o loop real (rAF) não intercalar frames.
+  const scenario = (rnd, dog, vet, seconds, setup) => ev(([rnd, dog, vet, seconds]) => {
+    __game.setRand(rnd === "low" ? () => 0 : () => 0.99);
+    __game.noCatch = true; // aqui só observamos o comportamento, sem encerrar a partida
+    const v = __game.vets[0], p = __game.player;
+    p.x = dog[0] * 32 + 4; p.y = dog[1] * 32 + 4;
+    v.cx = vet[0] * 32 + 16; v.cy = vet[1] * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0;
+    const dist0 = Math.hypot(v.cx - (p.x + 12), v.cy - (p.y + 12));
+    let t = 0, startedAt = null, endedAt = null, restartAt = null;
+    for (let i = 0; i < seconds / 0.05; i++) {
+      __game.tick(0.05); t += 0.05;
+      if (v.mode === "chase" && startedAt === null) startedAt = t;
+      if (v.mode === "patrol" && startedAt !== null && endedAt === null) endedAt = t;
+      if (endedAt !== null && v.mode === "chase" && restartAt === null) restartAt = t;
+    }
+    return { dist0, startedAt, endedAt, restartAt, cool: v.cool, chaseTime: v.cfg.chaseTime, restTime: v.cfg.restTime, sight: v.cfg.sight };
+  }, [rnd, dog, vet, seconds]);
+
   await start();
-  const place = (dogTile, vetTile) => ev(([d, v]) => {
-    __game.player.x = d[0] * 32 + 4; __game.player.y = d[1] * 32 + 4;
-    const vet = __game.vets[0]; vet.cx = v[0] * 32 + 16; vet.cy = v[1] * 32 + 16; vet.leg = null; vet.route = []; vet.mode = "patrol"; vet.cool = 0; vet.think = 0;
-  }, [dogTile, vetTile]);
-  await place([20, 4], [22, 4]); // 2 tiles de distância, corredor aberto
-  await ev(() => __game.setRand(() => 0.99)); // nunca decide perseguir
-  let chasedCount = await ev(() => { let n = 0; for (let i = 0; i < 20; i++) { __game.vets[0].cool = 0; __game.tick(0.6); if (__game.vets[0].mode === "chase") n++; if (__game.state !== "playing") break; } return n; });
-  ok(chasedCount === 0, "com sorte baixa o veterinário vê o cachorro e não persegue");
-  await start(); await place([20, 4], [22, 4]);
-  await ev(() => __game.setRand(() => 0)); // sempre decide perseguir
-  const chase = await ev(() => {
-    const v = __game.vets[0]; v.cfg.chaseTime = 1.8; let started = false, maxChase = 0, t = 0, endedAt = null;
-    __game.player.x = 20 * 32 + 4; __game.player.y = 4 * 32 + 4;
-    __game.tick(0.7);
-    started = v.mode === "chase";
-    const dist0 = Math.hypot(v.cx - (__game.player.x + 12), v.cy - (__game.player.y + 12));
-    __game.setRand(() => 0.99);
-    for (let i = 0; i < 400 && __game.state === "playing"; i++) { __game.tick(0.05); t += 0.05; if (v.mode === "chase") maxChase = t; }
-    return { started, dist0, maxChase, coolAfter: v.cool };
-  });
-  ok(chase.started, "com sorte alta e cachorro à vista, o veterinário inicia a perseguição");
-  ok(chase.maxChase <= 1.8 + 0.2 || chase.maxChase === 0, "perseguição dura no máximo ~1,8 s");
+  const noChase = await scenario("high", [20, 4], [22, 4], 20);
+  ok(noChase.dist0 < noChase.sight && noChase.startedAt === null, "vê o cachorro mas, com o sorteio alto, não persegue");
+  await start();
+  const farAway = await scenario("low", [1, 1], [22, 15], 10);
+  ok(farAway.startedAt === null, "fora do alcance de visão não persegue, mesmo com sorteio favorável");
+  await start();
+  const chase = await scenario("low", [20, 4], [22, 4], 25);
+  ok(chase.startedAt !== null && chase.startedAt <= 1.0, "com sorteio favorável e cachorro à vista, inicia a perseguição");
+  const dur = chase.endedAt - chase.startedAt;
+  ok(chase.endedAt !== null && Math.abs(dur - chase.chaseTime) <= 0.3, `perseguição dura ~${chase.chaseTime}s (medido ${dur.toFixed(2)}s)`);
+  ok(chase.restartAt === null || chase.restartAt - chase.endedAt >= chase.restTime - 0.1, `depois de perseguir descansa ${chase.restTime}s antes de tentar de novo`);
 
   // --- derrota e reinício ---
   await start(); await ev(() => { __game.freezeVets = false; });
@@ -165,8 +177,9 @@ const PAGE_HELPERS = () => {
   const xl = await ev(() => __game.player.x);
   await page.keyboard.down("d"); await page.waitForTimeout(250); await page.keyboard.up("d");
   ok(await ev(() => __game.player.x) === xl, "movimento interrompido na derrota");
-  await page.click("#btn-retry");
-  ok(await ev(() => __game.state) === "playing" && !(await page.isVisible("#lose")) && await ev(() => __game.collected) === 0, "Tentar novamente reinicia a partida");
+  ok(await ev(() => document.activeElement.id) === "btn-retry", "botão Tentar novamente vem focado");
+  await page.keyboard.press("Space");
+  ok(await ev(() => __game.state) === "playing" && !(await page.isVisible("#lose")) && await ev(() => __game.collected) === 0, "barra de espaço aciona Tentar novamente e reinicia a partida");
   const sp = await ev(() => ({ dx: __game.player.x, vx: __game.vets[0].cx }));
   ok(sp.dx === dogStart[0] * 32 + 4 && Math.abs(sp.vx - (vetStarts[0][0] * 32 + 16)) < 40, "posições iniciais restauradas");
 

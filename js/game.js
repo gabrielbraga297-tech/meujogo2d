@@ -53,6 +53,7 @@
   let solids, items, vets, exitRect, player, walk, collected, score, time, hint, hintTimer;
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
+  let noCatch = false;    // usado apenas em testes
 
   const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   const tileOf = (cx, cy) => [Math.floor(cx / TILE), Math.floor(cy / TILE)];
@@ -184,7 +185,7 @@
 
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
-    if (vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { lose(); return; }
+    if (!noCatch && vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { lose(); return; }
 
     if (overlap(player, exitRect)) {
       if (collected >= TOTAL_ITEMS) win();
@@ -307,13 +308,13 @@
         ctx.strokeStyle = "#5e3b17"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
       }
     }
-    for (const it of items) if (!it.taken) drawKibble(it);
-    for (const v of vets) drawVet(v);
-    drawDog(player);
     // HUD
     ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(TILE, 2, 300, 28);
     ctx.fillStyle = "#fff"; ctx.font = "bold 18px system-ui"; ctx.textAlign = "left";
     ctx.fillText(`RAÇÕES: ${collected}/${TOTAL_ITEMS}   PONTOS: ${score}`, TILE + 8, 22);
+    for (const it of items) if (!it.taken) drawKibble(it);
+    for (const v of vets) drawVet(v);
+    drawDog(player);
     if (hintTimer > 0) {
       ctx.textAlign = "center"; ctx.fillStyle = "#ffd54a"; ctx.font = "bold 20px system-ui";
       ctx.fillText(hint, canvas.width / 2, canvas.height - 45);
@@ -322,7 +323,7 @@
 
   let last = performance.now();
   function loop(now) {
-    const dt = (now - last) / 1000; last = now;
+    const dt = Math.min((now - last) / 1000, 0.05); last = now; // aba parada não gasta o bônus de tempo
     if (state === "playing") update(dt);
     draw();
     requestAnimationFrame(loop);
@@ -332,7 +333,7 @@
   window.addEventListener("keydown", (e) => {
     const k = normKey(e.key);
     keys[k] = true;
-    if (k.startsWith("Arrow") || k === " ") e.preventDefault();
+    if (k.startsWith("Arrow") || (k === " " && state === "playing")) e.preventDefault();
   });
   window.addEventListener("keyup", (e) => { keys[normKey(e.key)] = false; });
   window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
@@ -344,9 +345,10 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    set freezeVets(v) { freezeVets = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
+    set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
   };
 
   reset();
+  document.getElementById("btn-play").focus();
   requestAnimationFrame(loop);
 })();
