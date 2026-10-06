@@ -1,9 +1,9 @@
 * { box-sizing: border-box; }
 body {
-  margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  margin: 0; min-height: 100vh; padding: 16px; display: flex; align-items: center; justify-content: center;
   background: #0f1117; font-family: system-ui, sans-serif; color: #fff;
 }
-#wrap { position: relative; width: 800px; height: 576px; max-width: 100vw; }
+#wrap { position: relative; width: 100%; max-width: 800px; aspect-ratio: 25 / 18; }
 canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-radius: 6px; }
 .screen {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
@@ -18,3 +18,9 @@ button {
 }
 button:hover, button:focus-visible { background: #6df0a5; outline: none; }
 .hidden { display: none; }
+
+@media (max-width: 560px) {
+  .screen h1 { font-size: 28px; }
+  .screen p { font-size: 15px; }
+  button { padding: 10px 24px; font-size: 17px; }
+}
