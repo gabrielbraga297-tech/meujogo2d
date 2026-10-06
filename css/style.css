@@ -11,6 +11,7 @@ canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-
 }
 .screen h1 { margin: 0 0 8px; font-size: 42px; color: #ffd54a; }
 .screen p { margin: 0; font-size: 18px; }
+.screen h1.bad { color: #ff7a6b; }
 .hint { opacity: .7; font-size: 15px !important; }
 button {
   margin-top: 16px; padding: 12px 32px; font-size: 20px; font-weight: 700; cursor: pointer;

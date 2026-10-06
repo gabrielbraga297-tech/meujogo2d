@@ -12,18 +12,27 @@ Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de
 WASD ou setas movem o personagem.
 
 ## Objetivo
-Colete os 5 itens espalhados pela arena e chegue à área de saída. A saída só libera com os 5 itens.
+Você é um cachorrinho. Colete as 5 rações espalhadas pela arena (100 pontos cada) e chegue à saída, que só libera com as 5 rações. Fuja do veterinário: se ele encostar no cachorrinho, a partida acaba.
+
+Na Fase 1 há um único veterinário: ele é lento, patrulha o mapa e quase não persegue. Ao ganhar, um bônus de tempo é somado à pontuação.
 
 ## Estrutura
 ```
 index.html      canvas e telas (menu e vitória)
 css/style.css   visual das telas
-js/game.js      mapa, colisão, coleta, HUD, estados e loop
+js/game.js      mapa, cachorro, rações, veterinário (IA), HUD, estados e loop
+tests/e2e.js    teste automatizado no navegador (veja abaixo)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
 
 ## Publicar no GitHub Pages
 Em *Settings → Pages → Build and deployment → Source*, escolha **GitHub Actions**. A cada push na `main`, o workflow publica o jogo.
+
+## Testes
+```
+npm i playwright
+node tests/e2e.js          # use CHROMIUM_PATH=/caminho/do/chromium se necessário
+```
 
 ## Notas
 - Ainda não há som.
