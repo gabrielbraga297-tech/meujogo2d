@@ -531,8 +531,9 @@ const PAGE_HELPERS = () => {
   await section("veterinário: patrulha, paredes e perseguição forte", async () => {
     await play(page);
     const cfg = await ev(page, () => __game.vets[0].cfg);
-    ok(cfg.speed === 50 && cfg.chaseSpeed === 60, `Fase 1: sem o "!" o veterinário anda a 50 px/s e com o "!" a 50 + 20% = 60 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
-    ok(cfg.chaseSpeed < 180 * 0.5 && cfg.speed < cfg.chaseSpeed, "o veterinário é bem mais lento que o cachorro (180 px/s) nos dois modos, e com o \"!\" fica mais rápido");
+    ok(cfg.speed === 50 && cfg.chaseSpeed === 100, `Fase 1: sem o "!" o veterinário anda a 50 px/s e com o "!" a 100 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
+    ok(cfg.chaseSpeed < 180 * 0.6 && cfg.speed < cfg.chaseSpeed, "o veterinário é mais lento que o cachorro (180 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
+    ok(cfg.chaseSpeed >= cfg.speed * 1.8, `com o "!" ele fica bem mais rápido (${cfg.speed} → ${cfg.chaseSpeed} px/s)`);
     ok(cfg.chaseTime >= 3 && cfg.chaseMax > cfg.chaseTime && cfg.sight <= 4 * 32 && cfg.chaseChance <= 0.3, "persegue com mais empenho, mas só enxerga perto e decide perseguir raramente");
 
     const patrol = await ev(page, () => {
@@ -592,7 +593,7 @@ const PAGE_HELPERS = () => {
     await play(page);
     const stay = await scenario("low", [20, 4], [22, 4], 30);
     ok(stay.startedAt !== null && stay.startedAt <= 1.0, "com sorteio favorável e cachorro à vista, inicia a perseguição");
-    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.15 && Math.abs(stay.chaseSpeedMax - 60) <= 1, `durante a perseguição o veterinário anda a 60 px/s, 20% mais rápido que patrulhando (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
+    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 100) <= 1, `durante a perseguição o veterinário anda a 100 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
     const dur = stay.endedAt - stay.startedAt;
     ok(Math.abs(dur - stay.cfg.chaseMax) <= 0.3, `enquanto vê o cachorro ele insiste até o limite (${dur.toFixed(1)}s de ${stay.cfg.chaseMax}s)`);
     ok(stay.restartAt === null || stay.restartAt - stay.endedAt >= stay.cfg.restTime - 0.1, `depois de perseguir descansa ${stay.cfg.restTime}s antes de tentar de novo`);
@@ -775,8 +776,8 @@ const PAGE_HELPERS = () => {
     ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade, visão, chance e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
     ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
     ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 180 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (180 px/s) continua mais rápido que eles");
-    ok(cfgs.f1.speed === 50 && cfgs.f1.chaseSpeed === 60 && cfgs.f2a.speed === 55 && cfgs.f2a.chaseSpeed === 66, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
-    ok(close(cfgs.f1.chaseSpeed / cfgs.f1.speed, 1.2) && close(cfgs.f2a.chaseSpeed / cfgs.f2a.speed, 1.2), "em cada fase, perseguindo ele anda 20% mais rápido do que patrulhando");
+    ok(cfgs.f1.speed === 50 && cfgs.f1.chaseSpeed === 100 && cfgs.f2a.speed === 55 && cfgs.f2a.chaseSpeed === 110, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
+    ok(close(cfgs.f1.chaseSpeed / cfgs.f1.speed, 2) && close(cfgs.f2a.chaseSpeed / cfgs.f2a.speed, 2), "em cada fase, perseguindo ele anda o dobro da velocidade de quando patrulha");
 
     // jogo real na Fase 2: patrulha sem atravessar paredes
     await ev(page, () => __game.start(2));

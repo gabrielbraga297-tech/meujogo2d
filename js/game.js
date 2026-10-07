@@ -16,11 +16,11 @@
   // ---------- Fases ----------
   // Veterinário da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
   // ele acelera e persegue com mais empenho.
-  // Velocidades do veterinário da Fase 1 (px/s). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 55 e 66.
-  const VET_SPEED = 50, VET_CHASE_SPEED = VET_SPEED * 1.2;
+  // Velocidades do veterinário da Fase 1 (px/s). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 55 e 110.
+  const VET_SPEED = 50, VET_CHASE_SPEED = 100;
   const BASE_VET = {
     speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 50 px/s
-    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 50 + 20% = 60 px/s (o cachorro anda a 180)
+    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 100 px/s (o cachorro, a 180, ainda é bem mais rápido)
     sight: 112,       // distância máxima para notar o cachorro (px)
     chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
     thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
