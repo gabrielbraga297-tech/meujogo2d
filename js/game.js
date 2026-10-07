@@ -6,7 +6,8 @@
   const VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE;
   // Tamanho do mapa da fase em jogo (cada fase tem o seu: veja `cols`/`rows` em buildLevel); mudam em reset().
   let COLS = VIEW_COLS, ROWS = VIEW_ROWS, WORLD_W = VIEW_W, WORLD_H = VIEW_H;
-  const SPEED = 180;        // cachorro, pixels do mundo por segundo (a Fase 3 usa 90% disso: veja `dogSpeed` em LEVELS)
+  const SPEED = 360;        // cachorro, pixels do mundo por segundo (o dobro do que era; as Fases 3 a 5 usam uma fração disso: veja `dogSpeed` em LEVELS)
+  const BONE_SPEED_BONUS = 0.1; // cada osso pego deixa o cachorro 10% mais rápido até o fim da fase (soma: 2 ossos = +20%)
   const START_LIVES = 3;    // vidas ao começar uma fase do zero
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
   const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
@@ -43,6 +44,11 @@
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
   // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (66,55 e 133,1 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (170,1 px/s).
   const PHASE4_VET = { ...PHASE3_VET, speed: Math.round(PHASE3_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE3_VET.chaseSpeed * 1.1 * 100) / 100 };
+  const POSTMAN_SLOW = 0.5;  // carteiro atingido pelo cachorro com poder: volta ao centro e anda só 50% da velocidade que a fase dá a ele (até o poder acabar)
+  const POSTMAN_STUN = 2;    // s em que o carteiro atingido não pode ser atingido de novo (e não pontua de novo)
+  const VET_NEAR = 3;        // tiles: ao escolher o caminho de patrulha, o veterinário evita passar a menos disso de outro veterinário
+  const VET_TANDEM = 96, TANDEM_AFTER = 3, TANDEM_PAUSE = 1.5; // px, s, s: se um veterinário de número maior patrulha há 3 s a menos de 96 px de outro, ele para 1,5 s e fica para trás
+  const VET_GAP = 40;        // px: um veterinário que vai atrás de outro não chega mais perto que isso (eles não andam colados nem se sobrepõem)
   const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser veterinários, talvez bem do lado do cachorro)
   // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6 (e, quando existirem, Fase 4 = 8 e Fase 5 = 10).
@@ -190,22 +196,22 @@
     // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
-    // dogSpeed = fração da velocidade do cachorrinho (1 = 180 px/s; a Fase 3 usa 0,9 = 162 px/s)
+    // dogSpeed = fração da velocidade do cachorrinho (1 = 360 px/s; a Fase 3 usa 0,9 = 324 px/s e as Fases 4 e 5 usam 0,945 = 340,2 px/s)
     // alertTiles = a que distância (em quadrados) o veterinário liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
     // lifePenalty = pontos perdidos por vida perdida (padrão 50); minPoints = pontos mínimos na fase para passar (padrão 0); bonePower = segundos do poder do osso (0 = sem poder);
     // crush = os blocos esmagam o cachorro (sem o poder do osso); note = frase curta na escolha de fase
     { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(1), blocks: [] },
-    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), blocks: [] },
+    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, note: "ossos e blocos móveis",
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e na primeira mudança se recolhe ao nicho de cima
         { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e na primeira mudança fecha o corredor
       ],
     },
     {
-      id: 4, title: "Fase 4", map: MAP_4, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 10, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
-      alertTiles: alertTilesFor(4), lifePenalty: 200, minPoints: 800, bonePower: 30, crush: true, blockEvery: BLOCK_EVERY,
+      id: 4, title: "Fase 4", map: MAP_4, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 15, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
+      alertTiles: alertTilesFor(4), lifePenalty: 200, minPoints: 800, bonePower: 30, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3] },
       note: "labirinto grande, poder dos ossos e blocos que esmagam",
       blocks: [
         { from: [32, 4], to: [32, 3], phase: 0 },   // porta 1: começa aberta (bloco no nicho de baixo) e depois fecha a passagem
@@ -214,8 +220,8 @@
       ],
     },
     {
-      id: 5, title: "Fase 5", map: MAP_5, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 10, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
-      alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY,
+      id: 5, title: "Fase 5", map: MAP_5, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 20, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
+      alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3], wall: [1, 3] },
       note: "paredes que se movem, poder do osso de 35 s e 1000 pontos",
       blocks: [
         { from: [34, 7], to: [34, 9], size: [1, 3], wall: true, every: 10, phase: 0 }, // parede 1: desliza a cada 10 s
@@ -286,16 +292,23 @@
       }
       const speed = b.speed ?? BLOCK_SPEED, slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / speed, every = b.every ?? def.blockEvery ?? BLOCK_EVERY;
       if (!(speed >= 30 && speed <= 600) || !(every >= slide + 0.5 && every <= 60)) throw new Error(`Intervalo dos blocos inválido: ${def.title}`);
-      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, w: bw * TILE, h: bh * TILE, kind: b.wall ? "W" : "M", slide, every, warn: Math.max(BLOCK_WARN, Math.min(2, every * 0.2)), period: 2 * every, phase: b.phase, track };
+      return { group: b.wall ? "wall" : "door", ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, w: bw * TILE, h: bh * TILE, kind: b.wall ? "W" : "M", slide, every, warn: Math.max(BLOCK_WARN, Math.min(2, every * 0.2)), period: 2 * every, phase: b.phase, track };
     });
     if (blockDefs.length > 8) throw new Error(`Blocos demais: ${def.title}`);
+    // quantas peças móveis de cada tipo ("door" = blocos 1 × 1, "wall" = paredes) entram em cada jogo: sorteado entre mínimo e máximo (padrão: todas)
+    const blockRange = {};
+    for (const g of ["door", "wall"]) {
+      const n = blockDefs.filter((d) => d.group === g).length, [mn, mx] = (def.blockRange && def.blockRange[g]) || [n, n];
+      if (!Number.isInteger(mn) || !Number.isInteger(mx) || mn < Math.min(1, n) || mx < mn || mx > n) throw new Error(`Quantidade de blocos inválida: ${def.title}`);
+      blockRange[g] = [mn, mx];
+    }
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, note: def.note || "",
-      blockDefs, trackTiles,
+      blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
     };
@@ -320,6 +333,8 @@
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
+  let goalReached = false;     // (fases com pontos mínimos) já avisou que a meta foi atingida e a saída abriu
+  let postmen = 0;             // carteiros que o cachorro já atingiu nesta fase (cada um vale 100 pontos)
   let crushed = false;         // um bloco acabou de alcançar o cachorro (nas fases em que ele esmaga): perde uma vida no fim do quadro
   let puffs = [];              // carteiros derrotados: nuvenzinhas que só enfeitam
   let blocks = [];             // blocos que se movem na fase atual: { d: definição, bt: relógio do ciclo, rect: posição (também em `solids`) }
@@ -362,20 +377,35 @@
 
   const tileItem = ([c, r], life, bone = false) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life, bone });
 
+  // Quais das peças móveis da fase entram neste jogo: a QUANTIDADE de cada tipo é sorteada (`blockRange`) e quais são também. `given` = escolha já feita (jogo salvo).
+  let allBlocks = false; // só para testes: liga todas as peças
+  function pickActiveBlocks(given) {
+    if (given) return given.slice();
+    if (allBlocks) return lv.blockDefs.map((_, i) => i);
+    const out = [];
+    for (const g of ["door", "wall"]) {
+      const idxs = lv.blockDefs.map((d, i) => (d.group === g ? i : -1)).filter((i) => i >= 0);
+      if (!idxs.length) continue;
+      const [mn, mx] = lv.blockRange[g], n = mn + Math.floor(rand() * (mx - mn + 1));
+      out.push(...shuffle(idxs).slice(0, n));
+    }
+    return out.sort((a, b) => a - b);
+  }
+
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
     levelId = id; lv = BUILT[id]; COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
-    blocks = lv.blockDefs.map((d) => ({ d, bt: d.phase, rect: blockRectAt(d, d.phase) }));
+    blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; crushed = false; puffs = [];
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; crushed = false; puffs = [];
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
-      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, down: false };
+      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stuck: 0, from: null, slow: false, hitCool: 0 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
@@ -426,18 +456,18 @@
   }
   function shoveVets(rect) {
     for (const v of vets) {
-      if (v.down || !overlap({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }, rect)) continue;
+      if (!overlap({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }, rect)) continue;
       const [vc, vr] = tileOf(v.cx, v.cy);
       let best = null;
       for (let r = vr - 3; r <= vr + 3; r++) for (let c = vc - 3; c <= vc + 3; c++) {
         if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
         const [cx, cy] = centerOf(c, r), box = { x: cx - 12, y: cy - 12, w: 24, h: 24 };
-        if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && !o.down && Math.hypot(o.cx - cx, o.cy - cy) < 20)) continue;
+        if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < 20)) continue;
         const d = Math.hypot(cx - v.cx, cy - v.cy);
         if (!best || d < best.d) best = { cx, cy, d };
       }
       if (!best) return false;
-      Object.assign(v, { cx: best.cx, cy: best.cy, leg: null, route: [], idle: Math.max(v.idle, 0.3) });
+      Object.assign(v, { cx: best.cx, cy: best.cy, leg: null, route: [], goal: null, idle: Math.max(v.idle, 0.3) });
     }
     return true;
   }
@@ -463,6 +493,7 @@
   }
 
   // ---------- Cachorro ----------
+  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot); // px/s: a da fase, mais 10% por osso pego
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
     for (const s of solids) {
@@ -475,7 +506,7 @@
   }
 
   // ---------- Veterinário (caminha pelo centro dos tiles, sem atravessar paredes) ----------
-  function bfs(from, ignoreBlocks = false) {
+  function bfs(from, ignoreBlocks = false, avoid = null) { // `avoid`: tiles (chaves) que não podem ser usados (por ex. onde há outro veterinário)
     const prev = new Map(), dist = new Map();
     const key = (c, r) => r * COLS + c;
     const q = [from]; dist.set(key(...from), 0); prev.set(key(...from), null);
@@ -483,7 +514,7 @@
       const [c, r] = q[i], d = dist.get(key(c, r));
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nc = c + dc, nr = r + dr;
-        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !walk[nr][nc] || dist.has(key(nc, nr)) || (!ignoreBlocks && dynBlocked.has(key(nc, nr)))) continue;
+        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !walk[nr][nc] || dist.has(key(nc, nr)) || (!ignoreBlocks && dynBlocked.has(key(nc, nr))) || (avoid && avoid.has(key(nc, nr)))) continue;
         dist.set(key(nc, nr), d + 1); prev.set(key(nc, nr), [c, r]); q.push([nc, nr]);
       }
     }
@@ -507,9 +538,47 @@
     return true;
   }
 
+  // Destino da próxima patrulha: entre os tiles bem longe de onde o veterinário está (de preferência na faixa do mapa dele), os 40% mais afastados dos outros veterinários (e dos destinos deles), sorteado.
+  // Assim os veterinários ocupam lugares diferentes do mapa em vez de andar juntos.
+  // tiles (chaves) por onde o caminho de patrulha de `v` não deve passar: os que ficam a menos de VET_NEAR tiles de outro veterinário E mais perto dele do que `from`
+  // (assim ninguém é obrigado a atravessar o outro, mas dois veterinários lado a lado ainda podem se afastar um do outro)
+  function tilesNearOthers(v, from) {
+    const out = new Set();
+    for (const o of vets) {
+      if (o === v) continue;
+      const [oc, or] = tileOf(o.cx, o.cy), d0 = Math.hypot(from[0] - oc, from[1] - or);
+      for (let r = or - VET_NEAR; r <= or + VET_NEAR; r++) for (let c = oc - VET_NEAR; c <= oc + VET_NEAR; c++) {
+        const d = Math.hypot(c - oc, r - or);
+        if (c >= 0 && r >= 0 && c < COLS && r < ROWS && d <= VET_NEAR && d < d0) out.add(r * COLS + c);
+      }
+    }
+    return out;
+  }
+  function pickPatrolGoal(v, g) {
+    let far = g.q.filter(([c, r]) => g.dist.get(g.key(c, r)) >= 5);
+    if (!far.length) return null;
+    const others = vets.filter((o) => o !== v);
+    if (!others.length) return far[Math.floor(rand() * far.length)];
+    // cada veterinário tem a sua "faixa" do mapa (por colunas: o 1º à esquerda, o último à direita) e patrulha nela na maior parte das vezes
+    const mine = far.filter(([c]) => Math.min(vets.length - 1, Math.floor((c * vets.length) / COLS)) === v.idx);
+    if (mine.length >= 8 && rand() < 0.75) far = mine;
+    const away = ([c, r]) => {
+      const [x, y] = centerOf(c, r);
+      return Math.min(...others.map((o) => Math.min(Math.hypot(x - o.cx, y - o.cy), o.goal ? Math.hypot(x - o.goal[0], y - o.goal[1]) : Infinity)));
+    };
+    const ranked = far.map((t) => [t, away(t)]).sort((a, b) => b[1] - a[1]);
+    const top = ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.4)));
+    return top[Math.floor(rand() * top.length)][0];
+  }
+
+  // `v` vem atrás de `o`: o próximo passo de `v` o aproxima de `o`, e o de `o` o afasta de `v`
+  function followsAhead(v, o) {
+    const [vx, vy] = centerOf(...v.leg), [ox, oy] = centerOf(...o.leg);
+    return Math.hypot(o.cx - vx, o.cy - vy) < Math.hypot(o.cx - v.cx, o.cy - v.cy) && Math.hypot(ox - v.cx, oy - v.cy) >= Math.hypot(o.cx - v.cx, o.cy - v.cy);
+  }
   function updateVet(v, dt) {
-    if (v.down) return; // carteiro derrotado: fora de cena até o poder acabar
     const cfg = v.cfg;
+    if (v.hitCool > 0) v.hitCool -= dt;
     v.cool -= dt; v.think -= dt; v.modeT -= dt;
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
@@ -521,42 +590,82 @@
     }
     if (v.mode === "chase" && (v.modeT <= 0 || v.chaseAge >= cfg.chaseMax)) { v.mode = "patrol"; v.cool = cfg.restTime; v.route = []; v.idle = 0.5; }
 
-    if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
-      if (v.mode === "chase") {
-        const g = bfs(tileOf(v.cx, v.cy));
-        const p = pathTo(g, tileOf(player.x + player.w / 2, player.y + player.h / 2));
-        v.leg = p[0] || null;
-      } else if (v.idle > 0) {
-        v.idle -= dt;
-      } else {
-        if (!v.route.length) {
-          const g = bfs(tileOf(v.cx, v.cy));
-          const far = g.q.filter(([c, r]) => g.dist.get(g.key(c, r)) >= 5);
-          if (far.length) v.route = pathTo(g, far[Math.floor(rand() * far.length)]);
-        }
-        v.leg = v.route.shift() || null;
-        if (!v.leg) v.idle = cfg.idleMin;
-      }
-    }
+    // andando em fila atrás de outro veterinário (mesmo corredor, quase colados) por mais de TANDEM_AFTER s (um quarto disso se estiver a menos de VET_GAP): quem vem atrás descansa um pouco e fica para trás
+    const ahead = v.mode === "patrol" && v.leg ? vets.find((o) => o !== v && o.mode === "patrol" && o.leg && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_TANDEM && followsAhead(v, o)) : null;
+    if (ahead) {
+      v.tandem += Math.hypot(ahead.cx - v.cx, ahead.cy - v.cy) < VET_GAP ? dt * 4 : dt;
+      if (v.tandem > TANDEM_AFTER) { v.tandem = 0; v.idle = Math.max(v.idle, TANDEM_PAUSE); }
+    } else v.tandem = 0;
 
-    if (v.leg) {
+    // Anda `budget` pixels neste quadro; ao chegar ao centro de um tile, decide o próximo passo e continua com o que sobrou
+    // (assim a velocidade real é a da fase, e não depende da taxa de quadros).
+    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * dt, idled = false;
+    for (let n = 0; n < 4 && budget > 1e-9; n++) {
+      if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
+        if (v.mode === "chase") {
+          // vai atrás do cachorro por um caminho que não passa pelo tile dos outros veterinários (se houver outro caminho): eles se espalham em vez de andar em fila
+          const from = tileOf(v.cx, v.cy), dogTile = tileOf(player.x + player.w / 2, player.y + player.h / 2);
+          const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
+          let p = pathTo(bfs(from, false, taken), dogTile);
+          if (!p.length) p = pathTo(bfs(from), dogTile);
+          v.leg = p[0] || null;
+        } else if (v.idle > 0) {
+          if (!idled) v.idle -= dt;
+          return;
+        } else {
+          if (!v.route.length) {
+            // escolhe um destino por um caminho que não passa perto dos outros veterinários (para não andarem em fila); se só houver esse corredor, espera até 2 s que o outro saia da frente
+            const from = tileOf(v.cx, v.cy), near = tilesNearOthers(v, from);
+            let g = bfs(from, false, near), goal = pickPatrolGoal(v, g);
+            if (!goal && near.size && v.crowd < 2) { v.crowd += dt; return; }
+            if (!goal) { g = bfs(from); goal = pickPatrolGoal(v, g); }
+            v.crowd = 0;
+            if (goal) { v.route = pathTo(g, goal); v.goal = centerOf(...goal); }
+          }
+          v.leg = v.route.shift() || null;
+          if (!v.leg) v.idle = cfg.idleMin;
+        }
+        if (!v.leg) return;
+        v.from = tileOf(v.cx, v.cy); // o tile de onde está saindo (para voltar, se ficar de frente com outro veterinário)
+      }
       const [tx, ty] = centerOf(...v.leg);
-      const dx = tx - v.cx, dy = ty - v.cy, dist = Math.hypot(dx, dy);
-      const step = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * dt;
-      if (blocks.length && blocks.some((b) => overlap({ x: v.cx + (dx / dist) * Math.min(step, dist) - 12, y: v.cy + (dy / dist) * Math.min(step, dist) - 12, w: 24, h: 24 }, b.rect))) return; // bloco no caminho: espera
-      if (dx) v.dir = Math.sign(dx);
-      if (dist <= step) {
-        v.cx = tx; v.cy = ty; v.leg = null;
-        if (v.mode === "patrol" && !v.route.length) v.idle = cfg.idleMin + rand() * (cfg.idleMax - cfg.idleMin);
-      } else { v.cx += (dx / dist) * step; v.cy += (dy / dist) * step; }
+      const dx = tx - v.cx, dy = ty - v.cy, dist = Math.hypot(dx, dy), move = Math.min(budget, dist);
+      if (dist > 0) {
+        const mx = v.cx + (dx / dist) * move, my = v.cy + (dy / dist) * move;
+        // não anda colado em outro veterinário: se o próximo passo o deixaria a menos de VET_GAP de um veterinário de número menor (e mais perto do que está), espera;
+        // se a espera passa de 0,5 s numa patrulha (cara a cara num corredor), o de número maior volta ao tile de onde veio e escolhe outro destino.
+        // Um veterinário parado de número maior (descansando ou esperando) só o faz esperar 1 s: depois disso ele passa (assim ninguém fica travado para sempre).
+        const closer = (o) => Math.hypot(o.cx - mx, o.cy - my) < VET_GAP && Math.hypot(o.cx - mx, o.cy - my) < Math.hypot(o.cx - v.cx, o.cy - v.cy);
+        const lower = vets.find((o) => o !== v && o.idx < v.idx && closer(o));
+        const still = lower ? null : vets.find((o) => o !== v && (o.hold > 0 || o.stuck > 0 || !o.leg) && closer(o));
+        if (lower || (still && v.wait < 1)) {
+          v.hold += dt; if (!lower) v.wait += dt;
+          if (lower && v.hold > 0.5 && v.mode === "patrol" && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
+          return;
+        }
+        if (!still) v.wait = 0;
+        v.hold = 0;
+        if (blocks.length && blocks.some((b) => overlap({ x: mx - 12, y: my - 12, w: 24, h: 24 }, b.rect))) { // bloco no caminho: espera; se demorar, volta ao tile de onde veio e escolhe outro caminho
+          if ((v.stuck += dt) > 0.6) { v.stuck = 0; if (v.from) { v.leg = v.from; v.from = null; } v.route = []; v.goal = null; }
+          return;
+        }
+        v.stuck = 0;
+        if (dx) v.dir = Math.sign(dx);
+      }
+      if (dist <= budget) {
+        v.cx = tx; v.cy = ty; v.leg = null; budget -= dist;
+        if (v.mode === "patrol" && !v.route.length) { v.idle = cfg.idleMin + rand() * (cfg.idleMax - cfg.idleMin); v.goal = null; idled = true; }
+      } else { v.cx += (dx / dist) * budget; v.cy += (dy / dist) * budget; budget = 0; }
     }
   }
 
   // ---------- Pontuação e vidas ----------
   // Pontuação corrente: 100 por ração − 50 por vida perdida − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
-  const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
+  const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
+  // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 e 5) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
+  const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected());
 
   function giveLife(it) {
     if (lives < MAX_LIVES) { lives++; toast("Vida extra! +1 vida", 2.2); }
@@ -568,7 +677,7 @@
   function respawn() {
     Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = INVULN;
   }
@@ -576,7 +685,7 @@
   function loseLife(why) {
     lives--; livesLost++;
     score = runningScore();
-    if (lives <= 0) { gameOver(); return; }
+    if (lives <= 0) { gameOver(why); return; }
     respawn();
     relocateItems();
     toast(`${why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!"} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
@@ -591,12 +700,16 @@
     for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.leg = null; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; }
     toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6);
   }
+  function defeatPostman(v) {
+    puffs.push({ x: v.cx, y: v.cy, t: 0 });
+    Object.assign(v, { cx: v.sx, cy: v.sy, leg: null, route: [], goal: null, hold: 0, mode: "patrol", idle: 1.5, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN });
+    postmen++; score = runningScore();
+    toast(`Você ganhou do carteiro! +${Records.POSTMAN_POINTS} pontos`, 1.6);
+    saveNow();
+  }
   function endPower() {
     power = 0;
-    for (const v of vets) {
-      if (v.down) Object.assign(v, { cx: v.sx, cy: v.sy, down: false, mode: "patrol", leg: null, route: [], idle: 1, cool: 3, modeT: 0, chaseAge: 0 }); // o derrotado volta ao seu posto
-      else v.cool = Math.max(v.cool, 2);
-    }
+    for (const v of vets) { v.slow = false; v.hitCool = 0; v.cool = Math.max(v.cool, 2); } // os carteiros lentos voltam à velocidade normal
     invuln = Math.max(invuln, POWER_END_GRACE);
     toast("O poder acabou: os carteiros voltaram a ser veterinários!", 2.4);
   }
@@ -617,7 +730,7 @@
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
-    const step = Math.min(dt, 0.05) * SPEED * lv.dogSpeed;
+    const step = Math.min(dt, 0.05) * dogSpeedNow();
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
 
@@ -632,19 +745,24 @@
       }
     }
 
+    if (lv.minPoints) { // meta de pontos: avisa quando a saída abre (e de novo se a pontuação cair abaixo e voltar)
+      const open = runningScore() >= lv.minPoints;
+      if (open && !goalReached) toast(`Meta de ${lv.minPoints} pontos atingida! A saída está aberta.`, 2.6);
+      goalReached = open;
+    }
     if (power > 0 && (power -= dt) <= 0) endPower();
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
-    const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => !v.down && Math.hypot(v.cx - px, v.cy - py) < 22;
+    const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < 22;
     const protectedNow = invuln > 0;
     if (invuln > 0) invuln -= dt;
-    if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele: o carteiro sai de cena até o poder acabar
-      for (const v of vets) if (touching(v)) { v.down = true; v.leg = null; v.route = []; puffs.push({ x: v.cx, y: v.cy, t: 0 }); toast("Você ganhou do carteiro!", 1.4); }
+    if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
+      for (const v of vets) if (v.hitCool <= 0 && touching(v)) defeatPostman(v);
     } else if (!protectedNow && !noCatch && vets.some(touching)) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
-      if (allCollected()) win();
-      else if (hintTimer <= 0) toast(lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
+      if (exitOpen()) win();
+      else if (hintTimer <= 0) toast(lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
     }
   }
 
@@ -721,7 +839,8 @@
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
       bl: blocks.map((b) => r2(b.bt)), // ponto do ciclo de cada bloco que se move
-      pw: r2(power), vd: vets.map((v) => (v.down ? 1 : 0)), // poder do osso que falta e carteiros derrotados
+      ba: blocks.map((b) => b.i),      // quais peças móveis da fase entraram neste jogo (a quantidade é sorteada)
+      pw: power > 0 ? Math.max(0.01, r2(power)) : 0, vd: vets.map((v) => (v.slow ? 1 : 0)), pk: postmen, // poder do osso que falta, carteiros lentos (já atingidos) e quantos já foram atingidos
     };
   }
 
@@ -754,11 +873,14 @@
       if (items4.filter((it) => it[3] === 1 && it[4] === 1).length > 1) return null; // no máximo 1 osso traz vida
       const pw = sv.pw === undefined ? 0 : sv.pw, vd = sv.vd === undefined ? L.vetSpawns.map(() => 0) : sv.vd;
       if (!num(pw, 0, 120) || pw > L.bonePower || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
-      let bl = [];
+      let bl = [], ba = [];
       if (L.blockDefs.length) {
-        if (!Array.isArray(sv.bl) || sv.bl.length !== L.blockDefs.length || !sv.bl.every((x) => num(x, 0, 1e5))) return null;
+        ba = sv.ba === undefined ? L.blockDefs.map((_, i) => i) : sv.ba; // (saves antigos: todas as peças)
+        if (!Array.isArray(ba) || new Set(ba).size !== ba.length || !ba.every((i, k) => Number.isInteger(i) && i >= 0 && i < L.blockDefs.length && (k === 0 || ba[k - 1] < i))) return null;
+        for (const g of ["door", "wall"]) { const n = ba.filter((i) => L.blockDefs[i].group === g).length; if (n < L.blockRange[g][0] || n > L.blockRange[g][1]) return null; }
+        if (!Array.isArray(sv.bl) || sv.bl.length !== ba.length || !sv.bl.every((x) => num(x, 0, 1e5))) return null;
         bl = sv.bl;
-      } else if (sv.bl !== undefined && !(Array.isArray(sv.bl) && sv.bl.length === 0)) return null;
+      } else if ((sv.bl !== undefined && !(Array.isArray(sv.bl) && sv.bl.length === 0)) || (sv.ba !== undefined && !(Array.isArray(sv.ba) && sv.ba.length === 0))) return null;
       const p = sv.p;
       if (!p || !num(p.x, 0, L.worldW - 24) || !num(p.y, 0, L.worldH - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
       if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null; // (quem estiver no lugar de um bloco é empurrado para o lado ao carregar)
@@ -768,7 +890,9 @@
         const [c, r] = tileOf(v[0], v[1]);
         if (!L.walk[r][c]) return null;
       }
-      return { ...sv, v: 4, items: items4, bl, pw, vd };
+      const pk = sv.pk === undefined ? 0 : sv.pk;
+      if (!Number.isInteger(pk) || pk < 0 || pk > 999 || (pk > 0 && !L.bonePower)) return null;
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk };
     } catch { return null; }
   }
 
@@ -783,7 +907,7 @@
   }
 
   function applySnapshot(sv) {
-    reset(sv.l, { lives: sv.lives, retries: sv.rs });
+    reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba });
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
     blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
@@ -793,10 +917,9 @@
     vets.forEach((v, i) => {
       const [c, r] = tileOf(sv.vets[i][0], sv.vets[i][1]);
       [v.cx, v.cy] = centerOf(c, r); // o veterinário volta ao centro do tile mais próximo
-      Object.assign(v, { mode: "patrol", leg: null, route: [], idle: 1, cool: 2, modeT: 0, chaseAge: 0, down: sv.vd[i] === 1 });
-      if (v.down) { v.cx = v.sx; v.cy = v.sy; }
+      Object.assign(v, { mode: "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
     });
-    power = sv.pw;
+    power = sv.pw; postmen = sv.pk; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     invuln = Math.max(sv.invuln, RESUME_GRACE);
   }
@@ -842,22 +965,30 @@
     showScreen("confirm");
   }
 
+  // "play" = Iniciar jogo (escolhe entre as fases liberadas); "replay" = Jogar fases anteriores (só as já concluídas, para melhorar o recorde de cada uma)
+  let levelsMode = "play";
   function chooseLevel() {
     const unlocked = store.progress(store.player()).unlocked;
-    if (LEVELS.filter((l) => l.id <= unlocked).length <= 1) { begin(LEVELS[0].id); return; }
+    if (levelsMode === "play" && LEVELS.filter((l) => l.id <= unlocked).length <= 1) { begin(LEVELS[0].id); return; }
     renderLevels();
     showScreen("levels");
   }
 
   function renderLevels() {
-    const me = store.player(), unlocked = store.progress(me).unlocked, list = $("levels-list");
+    const me = store.player(), prog = store.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay";
+    $("levels-title").textContent = replay ? "Jogar fases anteriores" : "Escolher a fase";
+    $("levels-help").textContent = replay
+      ? "Escolha uma fase que você já concluiu para tentar melhorar o seu recorde. Só a maior pontuação de cada fase vale (a pontuação total é a soma do melhor de cada fase) e você começa a fase com 3 vidas."
+      : "Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.";
     list.replaceChildren();
-    for (const l of LEVELS) {
+    const shown = replay ? LEVELS.filter((l) => prog.completed.includes(l.id)) : LEVELS;
+    if (replay && !shown.length) list.append(el("p", "muted", "Você ainda não concluiu nenhuma fase."));
+    for (const l of shown) {
       const open = l.id <= unlocked, best = store.personalBest(me, l.id);
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, l.title), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts` : "ainda não jogada"}`
+        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
         b.dataset.autofocus = "";
@@ -869,6 +1000,7 @@
       list.append(b);
     }
   }
+
 
   function pauseGame() {
     if (state !== "playing") return;
@@ -885,15 +1017,14 @@
   function win() {
     const timeMs = officialTimeMs();
     const bonus = Records.timeBonus(timeMs, lv.bonusStep);
-    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty }); // rações + ossos + bônus − vidas perdidas − tentativas extras
+    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
-    if (lv.minPoints && points < lv.minPoints) { gameOver(true); return; } // chegou à saída, mas sem os pontos mínimos da fase: não passa
     setState("won");
     carriedLives = lives;
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
+    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + carteiros: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
@@ -928,13 +1059,11 @@
   }
 
   // Sem vidas: até 3 novas tentativas da mesma fase (do zero), cada uma custa 100 pontos.
-  // `short` = chegou à saída com tudo, mas com menos pontos do que a fase pede (nas Fases 4 e 5): também recomeça do zero, como quem ficou sem vidas.
-  function gameOver(short = false) {
+  function gameOver(why) {
     setState("lost");
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-title").textContent = short ? "Faltaram pontos para passar!" : "O veterinário pegou o cachorrinho!";
-    $("lose-lead").textContent = short ? `Você pegou tudo, mas fez só ${score} pontos: a ${lv.title} pede pelo menos ${lv.minPoints}.` : "Acabaram as suas vidas.";
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : "O veterinário pegou o cachorrinho!";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -974,6 +1103,7 @@
     const g = savedGame();
     $("btn-continue").classList.toggle("hidden", !g);
     $("btn-start").classList.toggle("primary", !g);
+    $("btn-replay").classList.toggle("hidden", !(me && done >= 1)); // só depois de concluir alguma fase
     $("menu-save").classList.toggle("hidden", !g);
     if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
   }
@@ -1256,8 +1386,8 @@
     for (const b of blocks) {
       const x1 = b.d.ax + b.d.w / 2, y1 = b.d.ay + b.d.h / 2, x2 = b.d.bx + b.d.w / 2, y2 = b.d.by + b.d.h / 2;
       ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      const warn = calm ? 0 : blockWarn(b.d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado
-      ctx.strokeStyle = warn ? `rgba(242,194,48,${(0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
+      const warn = blockWarn(b.d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado (com "reduzir movimento": amarelo fixo, sem piscar)
+      ctx.strokeStyle = warn ? `rgba(242,194,48,${(calm ? 0.8 : 0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
       ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
   }
@@ -1334,9 +1464,12 @@
     ctx.fillRect(x - 8, y - 13.5, 16, 2.5);
     ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18, 3, 3);                                     // distintivo
     ellipse(x - 2.2 + v.dir, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + v.dir, y - 11, 1, 1, "#222");
+    if (v.hitCool > 0) { // tonto: estrelinhas girando em volta da cabeça
+      ctx.fillStyle = "#ffe066";
+      for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y - 22 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
+    }
   }
   function drawVet(v) {
-    if (v.down) return;
     if (power > 0) { drawPostman(v); return; }
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
@@ -1375,9 +1508,9 @@
       ctx.fillStyle = (r + c) % 2 ? "#232a3a" : "#262e40";
       rect(c * TILE, r * TILE, TILE, TILE);
     }
-    ctx.fillStyle = allCollected() ? "#3ddc84" : "#7a4b4b";
+    ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = allCollected() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
+    ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
     drawBlocks();
     for (const s of solids) {
@@ -1613,7 +1746,8 @@
 
   // ---------- Botões e formulário ----------
   const on = (id, fn) => $(id).addEventListener("click", fn);
-  on("btn-start", requestNewGame);
+  on("btn-start", () => { levelsMode = "play"; requestNewGame(); });
+  on("btn-replay", () => { levelsMode = "replay"; requestNewGame(); });
   on("btn-continue", continueGame);
   on("btn-confirm-keep", continueGame);
   on("btn-confirm-new", chooseLevel);
@@ -1658,7 +1792,7 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return SPEED * lv.dogSpeed; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
+    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },

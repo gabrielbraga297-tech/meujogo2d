@@ -403,21 +403,23 @@ test("timeBonus com 20 pontos por degrau de 10 s: de 0 a 200", () => {
   for (const bad of [0, -5, 1.5, NaN, "20", null, 5000]) assert.strictEqual(R.timeBonus(25000, bad), 90, `degrau inválido (${bad}) cai no padrão`);
 });
 
-test("levelPoints com ossos (50 pontos cada) e bônus de 20 por degrau", () => {
-  assert.strictEqual(R.BONE_POINTS, 50);
-  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: 2, bonusStep: 20 }), 700 + 100 + 180);
-  assert.strictEqual(R.levelPoints(7, 25000, 2, 1, { bones: 2, bonusStep: 20 }), 700 + 100 + 180 - 100 - 100);
+test("levelPoints com ossos (150 pontos cada: 50 + 100 de bônus), carteiros (100 cada) e bônus de 20 por degrau", () => {
+  assert.strictEqual(R.BONE_POINTS, 150);
+  assert.strictEqual(R.POSTMAN_POINTS, 100);
+  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: 2, bonusStep: 20 }), 700 + 300 + 180);
+  assert.strictEqual(R.levelPoints(7, 25000, 2, 1, { bones: 2, bonusStep: 20 }), 700 + 300 + 180 - 100 - 100);
+  assert.strictEqual(R.levelPoints(7, 25000, 2, 1, { bones: 2, postmen: 3, bonusStep: 20, lifePenalty: 200 }), 700 + 300 + 300 + 180 - 400 - 100, "cada carteiro vale 100 e a vida perdida pode custar 200");
   assert.strictEqual(R.levelPoints(5, 25000, 0, 0), 500 + 90, "fases sem ossos e sem parâmetros seguem como antes");
-  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: -3, bonusStep: 20 }), 700 + 180, "ossos inválidos valem 0");
-  assert.strictEqual(R.levelPoints(7, 500000, 0, 0, { bones: 2, bonusStep: 20 }), 800, "sem bônus de tempo");
+  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: -3, postmen: -1, bonusStep: 20 }), 700 + 180, "ossos e carteiros inválidos valem 0");
+  assert.strictEqual(R.levelPoints(7, 500000, 0, 0, { bones: 2, bonusStep: 20 }), 1000, "sem bônus de tempo");
 });
 
 test("a Fase 3 pode guardar e somar pontuação como as outras fases", () => {
   const s = R.createStore(null);
   s.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
   s.addRun({ level: 3, timeMs: 30000, points: R.levelPoints(7, 30000, 0, 0, { bones: 2, bonusStep: 20 }), name: "Ana" });
-  assert.strictEqual(s.personalBest("Ana", 3).p, 700 + 100 + 180);
-  assert.strictEqual(s.totalScore("Ana", [1, 2, 3]), 600 + 980);
+  assert.strictEqual(s.personalBest("Ana", 3).p, 700 + 300 + 180);
+  assert.strictEqual(s.totalScore("Ana", [1, 2, 3]), 600 + 1180);
   s.completeLevel("Ana", 2); s.completeLevel("Ana", 3);
   assert.deepStrictEqual(s.progress("Ana").completed, [2, 3]);
   assert.strictEqual(s.progress("Ana").unlocked, 4);

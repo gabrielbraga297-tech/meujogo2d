@@ -63,6 +63,7 @@
       <nav class="menu-list" aria-label="Menu principal">
         <button id="btn-continue" class="primary hidden" type="button" data-autofocus>Continuar jogo</button>
         <button id="btn-start" class="primary" type="button" data-autofocus>Iniciar jogo</button>
+        <button id="btn-replay" type="button" class="hidden">Jogar fases anteriores</button>
         <button id="btn-howto" type="button">Como jogar</button>
         <button id="btn-scores" type="button">Pontuações</button>
         <button id="btn-name" type="button">Escolher nome de usuário</button>
@@ -79,7 +80,7 @@
   <section id="levels" class="screen page hidden" aria-labelledby="levels-title">
     <div class="panel">
       <h1 id="levels-title">Escolher a fase</h1>
-      <p class="muted">Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.</p>
+      <p id="levels-help" class="muted">Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.</p>
       <div id="levels-list" class="level-list"></div>
       <div class="menu-list"><button id="btn-levels-back" type="button">Voltar</button></div>
     </div>
@@ -95,7 +96,7 @@
         <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica bem mais rápido e vai atrás do cachorrinho. Se ele encostar no cachorrinho, você perde 1 vida e o cachorrinho volta ao início da fase (o tempo continua contando). As rações que ainda não foram pegas <strong>mudam de lugar</strong>, e elas também ficam em lugares novos a cada jogo.</li>
         <li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Alguns itens escondem uma <strong>vida extra</strong> (eles têm um coração em cima): cada uma dá +1 vida, até o máximo de 5. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>
         <li><strong>Sem vidas?</strong> Você tem até <strong>3 novas tentativas</strong> da fase em que está: ela recomeça do zero, com 3 vidas. Cada nova tentativa custa <strong>100 pontos</strong>.</li>
-        <li><strong>Pontuação:</strong> cada ração vale 100 pontos e cada osso vale 50. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam.</li>
+        <li><strong>Pontuação:</strong> cada ração vale 100 pontos e cada osso vale 50. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam. Para melhorar o recorde de uma fase, use <strong>Jogar fases anteriores</strong> no menu.</li>
         <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou <kbd>P</kbd>, o botão <strong>Start</strong> do controle, ou toque no botão de pausa no topo do jogo.</li>
         <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>

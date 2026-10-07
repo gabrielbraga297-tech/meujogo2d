@@ -12,41 +12,53 @@ A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exe
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
 
 ## Objetivo
-Você é um cachorrinho. Pegue **todas** as tigelas de ração (e, a partir da Fase 3, também os **ossos**) e chegue à saída, que só abre quando você pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (têm um coração em cima).
+Você é um cachorrinho. Pegue as tigelas de ração (e, a partir da Fase 2, os **ossos**) e chegue à saída. Nas Fases 1 a 3 a saída só abre quando você pegar **tudo**; nas **Fases 4 e 5** ela abre assim que a sua pontuação na fase chega aos **pontos mínimos** (800 e 1000), sem precisar pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (têm um coração em cima).
 
-Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho ainda é mais veloz).
+Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho é bem mais veloz). Os veterinários **não andam juntos**: cada um escolhe a patrulha longe dos outros, não ficam colados nem um em cima do outro, e, perseguindo, tentam caminhos diferentes até o cachorrinho.
+
+## Tabela das fases
+Esta tabela é conferida por um teste automático com os dados do jogo (`node tests/e2e.js "tabela das fases"`) e deve ser entregue de novo **sempre que uma fase nova for criada**.
+
+| Fase | Condição para avançar | Veterinários | Rações | Ossos | Velocidade dos veterinários (sem ! / com !) | Velocidade do cachorrinho |
+|---|---|---|---|---|---|---|
+| 1 | pegar as 5 rações e chegar à saída | 1 | 5 | 0 | 50 / 100 px/s | 360 px/s |
+| 2 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 55 / 110 px/s | 360 px/s |
+| 3 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 60,5 / 121 px/s | 324 px/s |
+| 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 66,55 / 133,1 px/s | 340,2 px/s |
+| 5 | chegar a 1000 pontos na fase (a saída abre) e sair | 3 | 20 | 2 | 66,55 / 133,1 px/s | 340,2 px/s |
+
+- A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (o dobro do que era: 180 → 360 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%).
+- Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
+- As fases são liberadas em ordem: cada uma abre ao terminar a anterior.
 
 ## Fases
 | | Fase 1 | Fase 2 | Fase 3 | Fase 4 | Fase 5 |
 |---|---|---|---|---|---|
 | Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) | **armazém** com corredores, nichos e portas de bloco | **labirinto grande** (41 × 29 tiles; a câmera segue o cachorrinho) | **outro labirinto grande**, com salas de paredes que se movem |
-| Rações | 5 | **7** | **7** | **10** | **10** |
-| Ossos (50 pontos cada) | — | — | **2** (é preciso pegar todos para sair) | **2**, e agora dão **poder** (30 s) | **2**, poder de **35 s** |
-| Vida extra escondida | 1 ração | **1 ou 2** rações (sorteado a cada jogo) | **1**, numa ração **ou** num osso | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
+| Rações | 5 | **7** | **7** | **15** | **20** |
+| Ossos | — | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de **35 s**) |
+| Vida extra escondida | 1 ração | **1 ou 2** itens (sorteado a cada jogo) | **1**, numa ração **ou** num osso | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
 | Veterinários | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa | **3**, no **centro** do mapa | **3**, no **centro** do mapa |
 | Dificuldade dos veterinários | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 | igual à Fase 4 |
-| Cachorrinho | 180 px/s | 180 px/s | 162 px/s (−10%) | **170,1 px/s** (+5% sobre a Fase 3) | 170,1 px/s |
-| Blocos que se movem | — | — | **2** (portas que abrem e fecham) | **3**, e agora **esmagam** | **3 portas** que esmagam **+ 3 paredes** que se movem a cada 10 s |
-| Pontos | 100 por ração; −50 por vida | idem | idem (+50 por osso) | idem, **−200 por vida** e é preciso **fazer 800 pontos na fase** para passar | −200 por vida e **1000 pontos na fase** para passar |
+| Blocos que se movem | — | — | de **1 a 2** portas (sorteado a cada jogo) | de **1 a 3** portas, e agora **esmagam** | de **1 a 3** portas que esmagam **+ de 1 a 3 paredes** que se movem a cada 10 s |
+| Pontos | 100 por ração; −50 por vida | idem, **+150 por osso** e **+100 por carteiro** | idem | idem, **−200 por vida** e **800 pontos** para passar | −200 por vida e **1000 pontos** para passar |
 | Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** | 0 a 200 (20 a cada 10 s) | 0 a 200 (20 a cada 10 s) |
 
-Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**.
+Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**. No menu, **Jogar fases anteriores** (aparece depois de concluir alguma fase) leva às fases já concluídas para **melhorar o recorde** de cada uma: só a maior pontuação de cada fase vale, e a pontuação total é a soma do melhor de cada fase (jogar uma fase de novo ou pular para outra não soma partidas, só pode subir o recorde daquela fase).
 
-**Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima. Eles **mudam de lado a cada 3 segundos** (`blockEvery` da fase, em `js/game.js`), sem esperar ninguém chegar perto, e deslizam a 120 px/s (cerca de 0,27 s por mudança). Nos 0,6 s antes de cada mudança o **trilho pisca em amarelo**. Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco vai, ele é **empurrado para o lado** livre mais perto (só se não houvesse mesmo onde pô-lo o bloco ficaria parado). Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Um bloco fechado tapa a visão dos veterinários e eles esperam diante dele.
+**O osso (a partir da Fase 2):** cada osso vale **150 pontos** (50 do osso + 100 de bônus), deixa o cachorrinho **10% mais rápido** (soma, até o fim da fase) e liga o **poder** por **30 segundos** (**35 s na Fase 5**; o placar mostra *PODER* contando): os veterinários viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho, e quem **encosta num carteiro ganha dele** e **+100 pontos**: o carteiro volta ao **centro do mapa**, tonto por 2 s (não pontua de novo nesse tempo) e **50% mais lento** até o poder acabar. Pegar o outro osso com o poder ligado **recomeça** a contagem (não soma). Quando o poder acaba, os carteiros voltam a ser veterinários e o cachorrinho ganha **1 s de proteção**. Com o poder o cachorrinho também **não é esmagado** pelos blocos. O tempo do poder é `bonePower` da fase.
 
-**Fases 4 e 5, o poder do osso:** pegar um osso liga o **poder** por **30 segundos** (**35 s na Fase 5**) (o placar mostra *PODER* contando): os veterinários viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho, e quem **encosta num carteiro ganha dele**: o carteiro sai de cena até o poder acabar e volta ao seu posto como veterinário. Pegar o outro osso com o poder ligado **recomeça** os 30 s (não soma). Quando o poder acaba, o cachorrinho ganha **1 s de proteção** (um veterinário que volte em cima dele não o pega na hora). Com o poder o cachorrinho também **não é esmagado** pelos blocos. Na Fase 3 os ossos só valem 50 pontos (sem poder). O tempo do poder é `bonePower` da fase.
+**Os blocos (a partir da Fase 3):** deslizam por trilhos curtos e abrem e fecham as portas dos corredores. Eles **mudam de lado a cada 3 segundos** (`blockEvery` da fase, em `js/game.js`), sem esperar ninguém chegar perto, e deslizam a 120 px/s (cerca de 0,27 s por mudança). **A quantidade de blocos é sorteada a cada jogo** (`blockRange`: Fase 3 de 1 a 2 portas; Fase 4 de 1 a 3; Fase 5 de 1 a 3 portas e de 1 a 3 paredes), e também quais. Nos 0,6 s antes de cada mudança o **trilho pisca em amarelo**. Nas Fases 1 a 3 eles **nunca esmagam**: quem estiver no lugar para onde o bloco vai é **empurrado para o lado**. Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos).
 
-**Fases 4 e 5, os blocos que esmagam:** os 3 blocos mudam de lado a cada 3 s como na Fase 3, mas agora, se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e 200 pontos. O trilho pisca antes de cada mudança. Os veterinários continuam sendo empurrados, não esmagados. É `crush: true` da fase.
+**Fases 4 e 5, os blocos que esmagam:** se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e 200 pontos. Os veterinários continuam sendo empurrados, não esmagados. É `crush: true` da fase.
 
-**Fases 4 e 5, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e, para passar da fase, é preciso chegar à saída com **pelo menos 800 pontos nessa fase** (**1000 na Fase 5**) (`minPoints`; vale a pontuação da fase, não o total). O placar mostra *PONTOS 450 / 800*. Se você pega tudo mas chega à saída com menos de 800, a fase **não é concluída** (nada é guardado) e aparece *Faltaram pontos para passar!*, com o botão *Tentar novamente* (do zero, −100 pontos, até 3 vezes).
+**Fases 4 e 5, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo.
 
-**Fase 4, o mapa:** um labirinto de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho), com corredores de 1 tile, algumas salas e o salão central dos 3 veterinários. As 3 portas de bloco ficam em passagens que têm caminho alternativo: o teste confere que, com os blocos em qualquer posição (8 combinações), todo o chão continua ligado.
+**Fase 4, o mapa:** um labirinto de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho), com corredores de 1 tile, algumas salas e o salão central dos 3 veterinários. As portas de bloco ficam em passagens que têm caminho alternativo: o teste confere que, com os blocos em qualquer posição, todo o chão continua ligado.
 
-**Fase 5, as paredes que se movem:** além das 3 portas de bloco (que mudam de lado a cada 3 s), há **3 salas com uma parede de 3 tiles que desliza a cada 10 segundos**: a parede vai de uma parede fixa à outra da sala e a abertura de 2 tiles que sobra **muda de lugar**, formando um caminho novo. O trilho pisca em amarelo nos **2 s** antes de cada mudança. As paredes que se movem **esmagam** como os blocos (sem o poder do osso, quem estiver no lugar para onde a parede vai perde uma vida), e os veterinários são empurrados. Cada parede começa o ciclo num ponto diferente (aos 10 s, 7 s e 4 s), então elas não mudam todas juntas. O mapa foi feito para que, com as 6 peças em qualquer posição, todo o chão continue ligado.
+**Fase 5, as paredes que se movem:** além das portas de bloco, há **3 salas com uma parede de 3 tiles que desliza a cada 10 segundos** (cada parede começa o ciclo num ponto diferente: aos 10 s, 7 s e 4 s): a parede vai de uma parede fixa à outra da sala e a abertura de 2 tiles que sobra **muda de lugar**, formando um caminho novo. O trilho pisca em amarelo nos **2 s** antes de cada mudança. As paredes que se movem **esmagam** como os blocos (sem o poder do osso, quem estiver no lugar para onde a parede vai perde uma vida), e os veterinários são empurrados.
 
-**Fase 5, regras:** mesmas velocidades da Fase 4, 10 rações e 2 ossos, **4 vidas escondidas** (1 a mais que na Fase 4), poder do osso de **35 s**, o "!" liga a **10 quadrados**, −200 por vida perdida e **1000 pontos na fase** para passar (com 1 vida perdida só dá para passar terminando em até ~70 s; com 2 vidas perdidas nem o bônus máximo basta).
-
-**Velocidade do cachorrinho:** 180 px/s nas Fases 1 e 2, **162 px/s na Fase 3** (10% mais lento) e **170,1 px/s nas Fases 4 e 5** (5% mais rápido que na Fase 3).
+**Velocidade do cachorrinho:** veja a tabela acima (360 px/s na base, 324 na Fase 3, 340,2 nas Fases 4 e 5, e +10% por osso).
 
 **Velocidade dos veterinários:**
 
