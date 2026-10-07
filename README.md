@@ -55,16 +55,19 @@ O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 1
 
 ## Pontuações e rankings
 - **Suas pontuações** (só você vê): sua pontuação total e a melhor de cada fase.
-- **Ranking do jogo** (todos veem): ranking geral (pontuação total) e ranking de cada fase, com **apenas a melhor pontuação de cada jogador**.
-- Jogadores de **aparelhos e logins diferentes** só veem o mesmo ranking se o jogo estiver ligado a um servidor de ranking (próxima seção). Sem servidor, o ranking mostra só os jogadores que jogaram **neste aparelho** (a tela avisa).
+- **Ranking do jogo** (todos os jogadores do aparelho veem): ranking geral (pontuação total) e ranking de cada fase, com **apenas a melhor pontuação de cada jogador**.
+- **Por enquanto o ranking é por aparelho** (é o que está ativo): aparecem os jogadores que jogaram **neste navegador/aparelho**, e a tela avisa. Não há banco de dados nem servidor, e nenhum dado sai do aparelho.
+- Um **ranking compartilhado entre aparelhos** já está programado, mas **em stand by (desligado)**: veja a próxima seção.
 
-## Ranking compartilhado entre aparelhos
-O GitHub Pages só serve arquivos: ele **não guarda dados**. Por isso, para vários aparelhos verem o mesmo ranking, o jogo precisa falar com um servidor de ranking. Existem dois jeitos:
+## Ranking compartilhado (em stand by)
+**Está desligado por padrão.** O código existe (`js/board.js`, testado), mas só é usado se você ligar de propósito em `js/config.js` com `sharedRanking: true`. Enquanto estiver `false`, o jogo **não faz nenhum pedido de rede** e usa só o ranking do aparelho.
+
+O GitHub Pages só serve arquivos: ele **não guarda dados**. Por isso, para vários aparelhos verem o mesmo ranking, o jogo precisaria falar com um servidor de ranking. Existem dois jeitos:
 
 ### 1. Servidor REST no estilo Firebase Realtime Database (qualquer pessoa que abrir o jogo)
-Em `js/config.js`, coloque o endereço do seu banco:
+Em `js/config.js`, ligue e coloque o endereço do seu banco:
 ```js
-window.GAME_CONFIG = Object.assign({ rankingUrl: "https://SEU-PROJETO-default-rtdb.firebaseio.com/cachorrinho" }, window.GAME_CONFIG);
+window.GAME_CONFIG = Object.assign({ sharedRanking: true, rankingUrl: "https://SEU-PROJETO-default-rtdb.firebaseio.com/cachorrinho" }, window.GAME_CONFIG);
 ```
 O jogo lê `…/scores.json` e grava a melhor pontuação de cada jogador em `…/scores/<fase>/<jogador>.json` (só se for melhor que a que já está lá). Ao abrir **Pontuações**, ele também envia as melhores pontuações deste aparelho que o servidor ainda não tem.
 
@@ -94,7 +97,7 @@ O jogo lê `…/scores.json` e grava a melhor pontuação de cada jogador em `�
 3. Copie o endereço do banco (`https://….firebaseio.com`), acrescente `/cachorrinho` e coloque em `rankingUrl` no `js/config.js`. Faça commit; o GitHub Pages publica de novo.
 
 ### 2. Banco compartilhado do Claude
-Se o jogo for publicado como página (artifact) no Claude, ele também usa o banco compartilhado da página, com **um documento por visitante** (`scores/<id>`). Só quem tem permissão de escrita (entrou no Claude e tem acesso de Contribuidor ou mais) consegue gravar; quem não tem só vê o ranking que já existe.
+Se o jogo for publicado como página (artifact) no Claude **e** `sharedRanking` estiver `true`, ele também usa o banco compartilhado da página, com **um documento por visitante** (`scores/<id>`). Só quem tem permissão de escrita (entrou no Claude e tem acesso de Contribuidor ou mais) consegue gravar; quem não tem só vê o ranking que já existe.
 
 ### Limites honestos
 - É um jogo no navegador: **não existe como impedir trapaça** de quem sabe mexer nas ferramentas do navegador. As regras acima só garantem formato e que uma nota nunca piora, mas qualquer pessoa pode enviar uma nota falsa boa. Para ranking à prova de trapaça seria preciso um servidor que valide as partidas.
@@ -148,8 +151,8 @@ index.html            canvas, placar (HTML) e todas as telas (menu, fases, como 
 css/style.css         visual, tamanho proporcional e controle de toque
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
-js/config.js          configuração (endereço do servidor de ranking)
-js/board.js           ranking do jogo compartilhado entre aparelhos (REST / banco do Claude), com validação (testável sozinho)
+js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
+js/board.js           ranking compartilhado entre aparelhos (REST / banco do Claude), em stand by, com validação (testável sozinho)
 js/game.js            fases e mapas, cachorro, rações, veterinários (IA), vidas, tentativas, telas, salvamento, toque e desenho
 tests/auth.test.js    testes unitários das senhas (Node)
 tests/records.test.js testes unitários das pontuações e melhores pontuações (Node)

@@ -3,7 +3,7 @@
 // e logins diferentes verem a mesma tabela. Servidores aceitos:
 //   1. REST no estilo Firebase Realtime Database (config.rankingUrl): GET .../scores.json e PUT .../scores/<fase>/<jogador>.json
 //   2. Banco compartilhado do Claude (só dentro de uma página publicada no Claude, para quem tem permissão de escrita)
-// Sem nenhum dos dois, o ranking mostra só os jogadores deste aparelho.
+// EM STAND BY: só funciona com `sharedRanking: true` em js/config.js. Sem isso (o padrão), o ranking mostra só os jogadores deste aparelho.
 // Sem dependências do jogo: funciona no navegador (window.Board) e no Node (testes).
 (function (root, factory) {
   const api = factory(root);
@@ -155,7 +155,7 @@
     };
   }
 
-  // `opts`: { store, levels: [ids], config: { rankingUrl }, fetch, claude } (fetch/claude: só para testes)
+  // `opts`: { store, levels: [ids], config: { sharedRanking, rankingUrl }, fetch, claude } (fetch/claude: só para testes)
   function create(opts) {
     const { store } = opts;
     const levels = opts.levels.slice();
@@ -164,13 +164,16 @@
     const fetchFn = opts.fetch || (typeof fetch === "function" ? fetch.bind(root) : null);
     const claude = opts.claude !== undefined ? opts.claude : root.claude;
 
+    // Stand by: sem `sharedRanking: true` na configuração, nenhum servidor é consultado (nem pedido de rede, nem banco do Claude).
+    const enabled = cfg.sharedRanking === true;
     const backends = [];
-    if (typeof cfg.rankingUrl === "string" && /^https?:\/\//i.test(cfg.rankingUrl.trim()) && fetchFn) backends.push(restBackend(cfg.rankingUrl, fetchFn, levelSet));
-    if (claude && typeof claude.use === "function") backends.push(claudeBackend(claude, levelSet));
+    if (enabled && typeof cfg.rankingUrl === "string" && /^https?:\/\//i.test(cfg.rankingUrl.trim()) && fetchFn) backends.push(restBackend(cfg.rankingUrl, fetchFn, levelSet));
+    if (enabled && claude && typeof claude.use === "function") backends.push(claudeBackend(claude, levelSet));
 
     const localRows = () => levels.flatMap((l) => store.ranking(l, Infinity));
 
     return {
+      get enabled() { return enabled; },
       get hasServer() { return backends.length > 0; },
 
       // O que há neste aparelho (na hora).

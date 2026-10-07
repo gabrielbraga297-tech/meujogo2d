@@ -629,12 +629,14 @@
   let scoresToken = 0;
   const isMe = (n) => { const me = store.player(); return !!me && Records.nameKey(n) === Records.nameKey(me); };
 
-  function renderPublicRanking(data) {
+  function renderPublicRanking(data, loading = false) {
     const box = $("scores-public");
     box.replaceChildren();
     $("scores-source").textContent = data.shared
       ? `Ranking compartilhado: jogadores de vários aparelhos (${data.label}).`
-      : "Ranking deste aparelho: só aparecem os jogadores que jogaram aqui. Para ver jogadores de outros aparelhos, o jogo precisa estar ligado a um servidor de ranking (veja o README).";
+      : board.hasServer
+        ? (loading ? "Buscando o ranking compartilhado… (por enquanto, só os jogadores deste aparelho)" : "Não foi possível falar com o servidor de ranking agora: mostrando só os jogadores deste aparelho.")
+        : "Ranking deste aparelho: aparecem todos os jogadores que jogaram aqui, só com a melhor pontuação de cada um.";
 
     const tot = el("section", "score-level");
     tot.append(el("h3", null, "Ranking geral (pontuação total)"));
@@ -678,8 +680,8 @@
     $("scores-note").classList.toggle("hidden", store.persistent);
 
     const token = ++scoresToken;
-    renderPublicRanking(board.localAll()); // mostra já o que há neste aparelho
-    board.fetchAll().then((data) => { if (token === scoresToken && document.body.dataset.screen === "scores") renderPublicRanking(data); }).catch(() => {});
+    renderPublicRanking(board.localAll(), true); // mostra já o que há neste aparelho
+    if (board.hasServer) board.fetchAll().then((data) => { if (token === scoresToken && document.body.dataset.screen === "scores") renderPublicRanking(data); }).catch(() => {});
   }
 
   let nameThenStart = false;

@@ -915,6 +915,7 @@ const PAGE_HELPERS = () => {
     });
     await new Promise((r) => srv.listen(0, "127.0.0.1", r));
     const rankingUrl = `http://127.0.0.1:${srv.address().port}/rank`;
+    let hits = 0; srv.on("request", () => { hits++; });
     const waitFor = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond()) { if (Date.now() - t0 > ms) throw new Error("tempo esgotado"); await new Promise((r) => setTimeout(r, 25)); } };
     const device = async (name, init) => { // um aparelho = um contexto com armazenamento próprio
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -923,11 +924,29 @@ const PAGE_HELPERS = () => {
       await fresh(pg, { name });
       return pg;
     };
-    const withUrl = (pg) => pg.addInitScript((u) => { window.GAME_CONFIG = { rankingUrl: u }; }, rankingUrl);
+    const withUrl = (pg) => pg.addInitScript((u) => { window.GAME_CONFIG = { sharedRanking: true, rankingUrl: u }; }, rankingUrl);
     const openScores = async (pg) => { await pg.click("#btn-scores"); await pg.waitForFunction(() => /compartilhado|deste aparelho/.test(document.getElementById("scores-source").textContent)); };
     const shared = (pg) => pg.waitForFunction(() => /compartilhado/.test(document.getElementById("scores-source").textContent), null, { timeout: 5000 }).then(() => true, () => false);
     const levelRows = (pg, n) => pg.$$eval(`#scores-public section:nth-of-type(${n + 1}) li`, (ls) => ls.map((l) => l.textContent));
     try {
+      // --- stand by (padrão): endereço configurado e banco do Claude disponível, mas SEM sharedRanking:true → nada é usado ---
+      const S0 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const P0 = await S0.newPage(); watch(P0);
+      let dbCalls = 0;
+      await P0.exposeFunction("__dbCall", () => { dbCalls++; });
+      await P0.addInitScript((u) => {
+        window.GAME_CONFIG = { rankingUrl: u }; // sem sharedRanking: stand by
+        window.claude = { use: async (n) => { window.__dbCall(); return null; } };
+      }, rankingUrl);
+      await fresh(P0, { name: "Zeca" });
+      await P0.click("#btn-start"); await finishNow(P0, 8);
+      await P0.click("#btn-win-scores");
+      await P0.waitForFunction(() => /deste aparelho/.test(document.getElementById("scores-source").textContent));
+      await P0.waitForTimeout(500);
+      ok(hits === 0 && dbCalls === 0 && !db.scores, "stand by: com endereço configurado e banco do Claude disponível, mas sem ligar o ranking compartilhado, nada é enviado nem consultado");
+      ok(/Zeca — \d+ pts/.test(await P0.textContent("#scores-public")) && !/compartilhado/.test(await P0.textContent("#scores-source")), "e o ranking por aparelho funciona normalmente (o Zeca aparece)");
+      await S0.close();
+
       // --- aparelho A: a Ana termina a Fase 1 ---
       const A = await device("Ana", withUrl);
       await A.click("#btn-start"); await finishNow(A, 12);
@@ -1004,7 +1023,7 @@ const PAGE_HELPERS = () => {
       const url2 = rankingUrl; await new Promise((r) => srv.close(r)); // (fecha o servidor)
       const ctxD = await browser.newContext({ viewport: { width: 1280, height: 720 } });
       const D = await ctxD.newPage(); // (sem o observador de erros: o navegador registra a conexão recusada no console)
-      await D.addInitScript((u) => { window.GAME_CONFIG = { rankingUrl: u }; }, url2);
+      await D.addInitScript((u) => { window.GAME_CONFIG = { sharedRanking: true, rankingUrl: u }; }, url2);
       await fresh(D, { name: "Dino", runs: [{ name: "Dino", timeMs: 20000 }] });
       await D.click("#btn-scores");
       await D.waitForFunction(() => /deste aparelho/.test(document.getElementById("scores-source").textContent));
@@ -1029,6 +1048,7 @@ const PAGE_HELPERS = () => {
           doc: (p) => ({ get: async () => snap(p.split("/")[1], await window.__dbGet(p)), set: (d) => window.__dbSet(p, d) }),
         };
         window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? { id: async () => uid } : null) };
+        window.GAME_CONFIG = { sharedRanking: true };
       }, uid);
       return pg;
     };
@@ -1159,7 +1179,7 @@ const PAGE_HELPERS = () => {
     ok(rank[0].join("|") === "Mel — 600 pontos|Rex — 600 pontos|Totó — 590 pontos", "ranking geral do jogo por pontuação total, com todos os jogadores");
     ok(rank[1].join("|") === "Mel — 600 pts (18,0 s)|Rex — 600 pts (20,0 s)|Totó — 590 pts (22,0 s)", "ranking da fase: só a melhor pontuação de cada jogador (Totó aparece uma vez, apesar de 2 partidas), tempo desempata");
     ok(rank.length === 2 && /Ninguém terminou esta fase/.test(await page.textContent("#scores-public")), "a Fase 2 sem ninguém mostra mensagem amigável");
-    ok(/deste aparelho/.test(await page.textContent("#scores-source")) && /README/.test(await page.textContent("#scores-source")), "sem servidor, avisa que o ranking é só deste aparelho e como compartilhar");
+    ok(/deste aparelho/.test(await page.textContent("#scores-source")) && !/servidor|compartilhado/.test(await page.textContent("#scores-source")), "o ranking ativo é o do aparelho e a tela avisa isso (sem falar de servidor, que está em stand by)");
     ok(await page.$("#scores-public li.me") !== null && /Totó/.test(await page.textContent("#scores-public li.me")), "o próprio jogador aparece destacado no ranking");
     ok(!/histórico/i.test(await page.textContent("#scores")) && await page.$("#scores ul") === null, "não existe histórico de partidas");
     ok(/Em cada fase vale a sua maior pontuação/.test(await page.textContent("#scores")), "explica que vale a maior pontuação e que fases diferentes somam");

@@ -111,11 +111,37 @@ test("sem servidor: localAll mostra só o aparelho e submit/fetchAll não fazem 
   assert.strictEqual(f.levels[1].length, 1);
 });
 
+// ---------- stand by (desligado por padrão) ----------
+test("stand by: sem sharedRanking:true nada é consultado, mesmo com endereço e banco do Claude disponíveis", async () => {
+  const S = await startServer();
+  try {
+    S.db.scores = { 1: { rex: { n: "Rex", p: 700, t: 20000, w: 1 } } };
+    const c = fakeClaude({ uid: "u1", docs: { "scores/u2": { entries: { "1|bia": { n: "Bia", l: 1, p: 650, t: 15000, w: 1 } } } } });
+    const st = mkStore();
+    addRun(st, "Totó", 1, 590, 22000);
+    for (const config of [{ rankingUrl: S.url }, { sharedRanking: false, rankingUrl: S.url }, { sharedRanking: "true", rankingUrl: S.url }, { sharedRanking: 1, rankingUrl: S.url }, undefined]) {
+      const b = Board.create({ store: st, levels: LEVELS, config, claude: c });
+      assert.strictEqual(b.enabled, false);
+      assert.strictEqual(b.hasServer, false);
+      assert.strictEqual(await b.submit({ name: "Totó", level: 1, points: 590, timeMs: 22000 }), false);
+      const f = await b.fetchAll();
+      assert.strictEqual(f.shared, false);
+      assert.deepStrictEqual(f.levels[1].map((r) => r.n), ["Totó"], "só o aparelho");
+    }
+    assert.strictEqual(S.log.length, 0, "nenhum pedido chegou ao servidor");
+    assert.strictEqual(c.state.sets.length, 0, "nada foi gravado no banco do Claude");
+    // ligado de propósito, funciona
+    const on = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null });
+    assert.strictEqual(on.enabled, true);
+    assert.deepStrictEqual((await on.fetchAll()).levels[1].map((r) => r.n), ["Rex", "Totó"]);
+  } finally { await S.close(); }
+});
+
 // ---------- servidor REST ----------
 test("REST: submit grava só se for melhor (nunca piora a melhor do servidor)", async () => {
   const S = await startServer();
   try {
-    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { rankingUrl: S.url }, claude: null });
+    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null });
     assert.strictEqual(b.hasServer, true);
     assert.strictEqual(await b.submit({ name: "Ana", level: 1, points: 590, timeMs: 25000 }), true);
     assert.strictEqual(S.db.scores[1].ana.p, 590);
@@ -138,7 +164,7 @@ test("REST: submit grava só se for melhor (nunca piora a melhor do servidor)", 
 test("REST: jogadores de aparelhos diferentes veem o mesmo ranking (só a melhor de cada um)", async () => {
   const S = await startServer();
   try {
-    const cfg = { rankingUrl: S.url };
+    const cfg = { sharedRanking: true, rankingUrl: S.url };
     const stA = mkStore(), stB = mkStore();
     addRun(stA, "Ana", 1, 590, 25000);
     const A = Board.create({ store: stA, levels: LEVELS, config: cfg, claude: null });
@@ -164,7 +190,7 @@ test("REST: fetchAll envia ao servidor as melhores pontuações locais que ele a
     const st = mkStore();
     addRun(st, "Rex", 1, 500, 40000); addRun(st, "Mel", 2, 610, 30000);
     S.db.scores = { 1: { rex: { n: "Rex", p: 700, t: 20000, w: 1 } } }; // o servidor já tem uma pontuação melhor do Rex
-    const b = Board.create({ store: st, levels: LEVELS, config: { rankingUrl: S.url }, claude: null });
+    const b = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null });
     const f = await b.fetchAll();
     assert.strictEqual(f.levels[1][0].p, 700, "vale a melhor (a do servidor)");
     await until(() => S.db.scores[2] && S.db.scores[2].mel);
@@ -181,7 +207,7 @@ test("REST: linhas inválidas do servidor são ignoradas", async () => {
       9: { z: { n: "FaseFalsa", p: 100, t: 1000, w: 1 } },
       abc: "lixo",
     };
-    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { rankingUrl: S.url }, claude: null });
+    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null });
     const f = await b.fetchAll();
     assert.deepStrictEqual(f.levels[1].map((r) => r.n), ["Boa"]);
     assert.deepStrictEqual(f.totals.map((r) => r.n), ["Boa"]);
@@ -192,20 +218,20 @@ test("REST: servidor com erro ou fora do ar → volta ao ranking do aparelho, se
   const st = mkStore();
   addRun(st, "Totó", 1, 590, 22000);
   const S = await startServer({ fail: true });
-  const b = Board.create({ store: st, levels: LEVELS, config: { rankingUrl: S.url }, claude: null });
+  const b = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null });
   let f = await b.fetchAll();
   assert.strictEqual(f.shared, false);
   assert.strictEqual(f.levels[1][0].n, "Totó");
   assert.strictEqual(await b.submit({ name: "Totó", level: 1, points: 590, timeMs: 22000 }), false);
   await S.close();
-  f = await Board.create({ store: st, levels: LEVELS, config: { rankingUrl: S.url }, claude: null }).fetchAll(); // porta fechada
+  f = await Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: null }).fetchAll(); // porta fechada
   assert.strictEqual(f.shared, false);
   assert.strictEqual(f.levels[1].length, 1);
 });
 
 test("REST: endereço inválido na configuração é ignorado", () => {
   for (const url of ["", "javascript:alert(1)", "ftp://x", "  ", null, 5]) {
-    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { rankingUrl: url }, claude: null });
+    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true, rankingUrl: url }, claude: null });
     assert.strictEqual(b.hasServer, false, String(url));
   }
 });
@@ -213,7 +239,7 @@ test("REST: endereço inválido na configuração é ignorado", () => {
 test("REST: nome com espaço/apóstrofo/acento vira um caminho seguro", async () => {
   const S = await startServer();
   try {
-    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { rankingUrl: S.url + "/" }, claude: null });
+    const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url + "/" }, claude: null });
     await b.submit({ name: "D'Ávila Júnior", level: 1, points: 300, timeMs: 5000 });
     assert.deepStrictEqual(Object.keys(S.db.scores[1]), ["d'avila junior"]);
     assert.strictEqual(S.db.scores[1]["d'avila junior"].n, "D'Ávila Júnior");
@@ -223,7 +249,7 @@ test("REST: nome com espaço/apóstrofo/acento vira um caminho seguro", async ()
 // ---------- banco compartilhado do Claude ----------
 test("Claude db: submit grava um documento por visitante, só com a melhor de cada fase", async () => {
   const c = fakeClaude({ uid: "u1" });
-  const b = Board.create({ store: mkStore(), levels: LEVELS, config: {}, claude: c });
+  const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true }, claude: c });
   assert.strictEqual(b.hasServer, true);
   assert.strictEqual(await b.submit({ name: "Ana", level: 1, points: 590, timeMs: 25000 }), true);
   assert.deepStrictEqual(Object.keys(c.state.docs), ["scores/u1"]);
@@ -247,7 +273,7 @@ test("Claude db: fetchAll junta os documentos de todos os visitantes e ignora li
   });
   const st = mkStore();
   addRun(st, "Ana", 1, 590, 25000);
-  const b = Board.create({ store: st, levels: LEVELS, config: {}, claude: c });
+  const b = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true }, claude: c });
   const f = await b.fetchAll();
   assert.strictEqual(f.shared, true);
   assert.deepStrictEqual(f.levels[1].map((r) => r.n), ["Bia", "Ana"]);
@@ -257,7 +283,7 @@ test("Claude db: fetchAll junta os documentos de todos os visitantes e ignora li
 
 test("Claude db: gravações do mesmo documento não se sobrepõem", async () => {
   const c = fakeClaude({ uid: "u1", delay: 20 });
-  const b = Board.create({ store: mkStore(), levels: LEVELS, config: {}, claude: c });
+  const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true }, claude: c });
   await Promise.all([1, 2, 3, 4].map((i) => b.submit({ name: "Ana", level: 1, points: 100 * i, timeMs: 1000 * i })));
   assert.strictEqual(c.state.maxBusy, 1);
   assert.strictEqual(c.state.docs["scores/u1"].entries["1|ana"].p, 400);
@@ -265,13 +291,13 @@ test("Claude db: gravações do mesmo documento não se sobrepõem", async () =>
 
 test("Claude db: sem id de visitante só lê; sem banco volta ao aparelho", async () => {
   const c = fakeClaude({ uid: "", docs: { "scores/u2": { entries: { "1|bia": { n: "Bia", l: 1, p: 650, t: 15000, w: 1 } } } } });
-  const b = Board.create({ store: mkStore(), levels: LEVELS, config: {}, claude: c });
+  const b = Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true }, claude: c });
   assert.deepStrictEqual((await b.fetchAll()).levels[1].map((r) => r.n), ["Bia"]);
   await b.submit({ name: "Ana", level: 1, points: 590, timeMs: 25000 });
   assert.strictEqual(c.state.sets.length, 0);
 
   const st = mkStore(); addRun(st, "Totó", 1, 590, 22000);
-  const nb = Board.create({ store: st, levels: LEVELS, config: {}, claude: fakeClaude({ dbNull: true }) });
+  const nb = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true }, claude: fakeClaude({ dbNull: true }) });
   const f = await nb.fetchAll();
   assert.strictEqual(f.shared, false);
   assert.strictEqual(f.levels[1][0].n, "Totó");
@@ -283,7 +309,7 @@ test("REST + Claude juntos: os dois são consultados", async () => {
   try {
     S.db.scores = { 1: { rex: { n: "Rex", p: 400, t: 9000, w: 1 } } };
     const c = fakeClaude({ uid: "u1", docs: { "scores/u2": { entries: { "1|bia": { n: "Bia", l: 1, p: 650, t: 15000, w: 1 } } } } });
-    const f = await Board.create({ store: mkStore(), levels: LEVELS, config: { rankingUrl: S.url }, claude: c }).fetchAll();
+    const f = await Board.create({ store: mkStore(), levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url }, claude: c }).fetchAll();
     assert.deepStrictEqual(f.levels[1].map((r) => r.n), ["Bia", "Rex"]);
     assert.ok(/127\.0\.0\.1/.test(f.label) && /Claude/.test(f.label));
   } finally { await S.close(); }
