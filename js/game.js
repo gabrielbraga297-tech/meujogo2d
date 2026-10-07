@@ -321,10 +321,11 @@
     if (keys.ArrowRight || keys.d || touch.right) ix += 1;
     if (keys.ArrowUp || keys.w || touch.up) iy -= 1;
     if (keys.ArrowDown || keys.s || touch.down) iy += 1;
-    player.moving = !!(ix || iy);
-    if (ix) player.facing = ix > 0 ? "right" : "left";
-    else if (iy) player.facing = iy > 0 ? "down" : "up";
     if (ix && iy) { ix *= Math.SQRT1_2; iy *= Math.SQRT1_2; }
+    if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; } // sem teclado/toque: usa o controle (analógico ou direcional)
+    player.moving = !!(ix || iy);
+    if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
+    else if (iy) player.facing = iy > 0 ? "down" : "up";
     const step = Math.min(dt, 0.05) * SPEED;
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
@@ -994,6 +995,7 @@
   function loop(now) {
     requestAnimationFrame(loop); // reagenda primeiro: um erro isolado não congela o jogo
     const dt = Math.min((now - last) / 1000, 0.05); last = now; // aba parada não gasta o tempo do recorde
+    pollGamepad(dt); // botões do controle (menus, pausa, salvar); o movimento é lido em update()
     if (state === "playing") {
       update(dt);
       if (state === "playing" && (autosaveT += dt) >= AUTOSAVE_EVERY) { autosaveT = 0; saveNow(); }
@@ -1001,6 +1003,80 @@
     draw();
     updateHud();
   }
+
+  // Salvar pelo botão, por Ctrl+S ou pelo controle: avisa na pausa (mensagem da tela) ou no jogo (aviso sobre o mapa).
+  function manualSave() {
+    const msg = saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar.";
+    if (state === "paused") $("pause-msg").textContent = msg; else toast(msg, 1.8);
+  }
+
+  // ---------- Entrada: controle (gamepad) ----------
+  // Controle "standard" (Xbox, PlayStation, Switch Pro e a maioria dos outros): analógico esquerdo ou direcional move o cachorrinho;
+  // Start pausa/continua; A escolhe; B volta; Y salva; nos menus, direcional/analógico mudam de botão.
+  // (Em controles fora do padrão só o analógico esquerdo, eixos 0 e 1, e os botões A, B e Start funcionam.)
+  const GP_DEAD = 0.3, GP_FULL = 0.9; // zona morta e inclinação que vale velocidade máxima
+  const gpPrev = Object.create(null); // botões apertados no quadro anterior (para pegar só o "apertar")
+  let gpNavDir = 0, gpNavT = 0;
+  let gpWasThere = false;
+
+  function activePad() {
+    if (typeof navigator.getGamepads !== "function") return null;
+    let list;
+    try { list = navigator.getGamepads(); } catch { return null; }
+    for (const g of list || []) if (g && g.connected !== false) return g;
+    return null;
+  }
+  // Controle padrão: todos os botões; fora do padrão só valem A (0), B (1) e Start (9), que quase sempre coincidem.
+  const padBtn = (g, i) => !!((g.mapping === "standard" || i === 0 || i === 1 || i === 9) && g.buttons && g.buttons[i] && g.buttons[i].pressed);
+
+  // Direção do controle para o movimento: { x, y } de -1 a 1 (o tamanho vale a velocidade).
+  function gamepadMove() {
+    const g = activePad();
+    if (!g) return { x: 0, y: 0 };
+    let x = (padBtn(g, 15) ? 1 : 0) - (padBtn(g, 14) ? 1 : 0), y = (padBtn(g, 13) ? 1 : 0) - (padBtn(g, 12) ? 1 : 0);
+    if (x || y) { if (x && y) { x *= Math.SQRT1_2; y *= Math.SQRT1_2; } return { x, y }; }
+    let ax = Number(g.axes && g.axes[0]) || 0, ay = Number(g.axes && g.axes[1]) || 0;
+    const m = Math.hypot(ax, ay);
+    if (m < GP_DEAD) return { x: 0, y: 0 };
+    const k = Math.min(1, (m - GP_DEAD) / (GP_FULL - GP_DEAD)) / m; // zona morta radial; o resto vai de 0 a 1
+    ax *= k; ay *= k;
+    if (Math.abs(ay) < 0.3 * Math.abs(ax)) ay = 0; else if (Math.abs(ax) < 0.3 * Math.abs(ay)) ax = 0; // quase reto = reto (corredores de 1 tile)
+    return { x: ax, y: ay };
+  }
+
+  // Botões e navegação (uma vez por quadro). Nos menus o direcional/analógico mudam o foco; A "clica" no botão focado.
+  function pollGamepad(dt) {
+    const g = activePad();
+    if (!g) { gpWasThere = false; for (const k in gpPrev) gpPrev[k] = false; gpNavDir = 0; return; }
+    if (!gpWasThere) {
+      gpWasThere = true;
+      if (state === "playing" || state === "paused") toast("Controle conectado", 1.8);
+    }
+    const hit = (name, i) => { const now = padBtn(g, i), was = gpPrev[name]; gpPrev[name] = now; return now && !was; };
+    const A = hit("a", 0), B = hit("b", 1), Y = hit("y", 3), SELECT = hit("select", 8), START = hit("start", 9);
+    const screen = document.body.dataset.screen;
+
+    if (state === "playing" || state === "paused") {
+      if (START) { if (state === "playing") pauseGame(); else resumeGame(); return; }
+      if (Y) manualSave();
+    }
+    if (!screen) { gpNavDir = 0; return; } // jogando: o movimento é lido em update()
+
+    if (B || SELECT) { onEscape(); return; }
+    if (A || START) {
+      const el = document.activeElement;
+      if (el && el.closest && el.closest(".screen:not(.hidden)") && (el.tagName === "BUTTON" || (el.tagName === "INPUT" && el.type === "checkbox"))) el.click();
+      else moveFocus(1); // em um campo de texto: segue para o próximo botão/campo
+      return;
+    }
+    // navegação: direcional ou analógico (↑ ← = anterior; ↓ → = próximo), com repetição se ficar segurado
+    const ax = Number(g.axes && g.axes[0]) || 0, ay = Number(g.axes && g.axes[1]) || 0;
+    const prev = padBtn(g, 12) || padBtn(g, 14) || ay < -0.6 || ax < -0.6, next = padBtn(g, 13) || padBtn(g, 15) || ay > 0.6 || ax > 0.6;
+    const dir = prev && !next ? -1 : next && !prev ? 1 : 0;
+    if (dir !== gpNavDir) { gpNavDir = dir; gpNavT = 0.4; if (dir) moveFocus(dir); }
+    else if (dir && (gpNavT -= dt) <= 0) { gpNavT = 0.12; moveFocus(dir); }
+  }
+  window.addEventListener("gamepaddisconnected", () => { if (!activePad()) { gpWasThere = false; } });
 
   // ---------- Entrada: teclado ----------
   const CODE_KEYS = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" }; // posição física: vale em qualquer layout
@@ -1023,12 +1099,16 @@
   }
 
   window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "s" && (state === "playing" || state === "paused")) {
+      e.preventDefault(); manualSave(); return; // Ctrl+S (ou Cmd+S) salva o jogo em vez de abrir "Salvar página"
+    }
     if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
     const k = keyName(e);
     if (k === "Escape") { onEscape(); return; }
+    if (k === "p" && !e.repeat && state === "paused") { resumeGame(); return; }
     if (state === "playing") {
       keys[k] = true;
-      if (k === "p") { pauseGame(); return; }
+      if (k === "p") { if (!e.repeat) pauseGame(); return; }
       if (k.startsWith("Arrow") || k === " ") e.preventDefault(); // não rola a página
     } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen) {
       e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
@@ -1078,8 +1158,8 @@
   on("btn-confirm-new", () => { store.clearGame(store.player()); chooseLevel(); });
   on("btn-confirm-back", goMenu);
   on("btn-levels-back", goMenu);
-  on("btn-save", () => { $("pause-msg").textContent = saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar."; });
-  on("btn-save-hud", () => { toast(saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar.", 1.8); });
+  on("btn-save", manualSave);
+  on("btn-save-hud", manualSave);
   on("btn-howto", () => showScreen("howto"));
   on("btn-howto-back", goMenu);
   on("btn-scores", () => { renderScores(); showScreen("scores"); });
@@ -1114,7 +1194,7 @@
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
-    start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
+    padPoll(dt = 1 / 60) { pollGamepad(dt); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
 
   reset();

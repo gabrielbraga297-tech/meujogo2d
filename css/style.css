@@ -134,6 +134,7 @@ label.check { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; co
 .hint { margin: 2px 0 8px; font-size: 14px !important; color: var(--muted); line-height: 1.35 !important; text-align: left; }
 .count { display: inline-block; margin-left: 4px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
 .count.over { color: #ff9d90; }
+.controls-help { text-align: center !important; margin: 0 !important; }
 .note-soft { font-size: 14px !important; color: var(--muted); line-height: 1.4 !important; }
 .account-box { padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); display: flex; flex-direction: column; gap: 8px; }
 button.linky { background: transparent; color: var(--gold); text-decoration: underline; min-height: 40px; padding: 6px 10px; font-size: 16px; font-weight: 600; }

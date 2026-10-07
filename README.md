@@ -126,12 +126,16 @@ Além do nome simples, dá para criar uma **conta**: nome de usuário + senha.
 **Limites honestos:** é um cadastro **local**, só neste navegador e aparelho. Não dá para entrar em outro aparelho, e quem tem acesso ao navegador e sabe mexer nas ferramentas dele consegue editar os dados guardados. A conta serve para separar e proteger os jogadores de um mesmo aparelho (por exemplo, irmãos), não para segurança de verdade. Contas globais precisariam de um servidor.
 
 ## Controles
-| | |
-|---|---|
-| Mover | **W A S D** ou **setas** (tecla física, vale em qualquer layout de teclado) · no celular/tablet, o controle redondo na tela |
-| Pausar | **Esc**, **P** ou o botão de pausa no placar |
-| Salvar | botão de disquete no placar ou **Salvar jogo** na pausa |
-| Menus | setas ↑ ↓ para mudar de botão, **Enter**/**Espaço** para escolher, **Esc** para voltar |
+O jogo aceita **teclado**, **controle (gamepad)** e **toque**, e dá para misturar: vale o que estiver sendo usado.
+
+| | Teclado | Controle (gamepad) | Toque |
+|---|---|---|---|
+| Mover | **W A S D** ou **setas** (tecla física, vale em qualquer layout de teclado) | **analógico esquerdo** (quanto mais inclinado, mais rápido) ou **direcional** | controle redondo na tela |
+| Pausar / continuar | **Esc** ou **P** | **Start** | botão de pausa no placar |
+| Salvar | **Ctrl+S** (ou **Cmd+S**) | **Y** | botão de disquete no placar ou **Salvar jogo** na pausa |
+| Menus | **↑ ↓** (ou **Tab**) escolhem, **Enter**/**Espaço** confirmam, **Esc** volta | direcional ou analógico escolhem, **A** confirma, **B** volta | tocar nos botões |
+
+**Controle:** funciona com a maioria dos controles (Xbox, PlayStation, Switch Pro, genéricos), por cabo ou Bluetooth, nos navegadores que têm a *Gamepad API* (Chrome e Edge; Firefox e Safari também a têm, mas **só testei com um controle simulado no Chromium**, não com um controle de verdade). Conecte o controle e **aperte um botão** (o navegador só o reconhece depois disso); o jogo avisa "Controle conectado". Controles fora do padrão usam só o analógico esquerdo e os botões A, B e Start. Campos de texto (nome, senha) ainda precisam do teclado.
 
 ## Salvar
 - **Salvamento automático:** a cada 5 segundos, ao pegar uma ração, ao perder uma vida, ao pausar e ao fechar a página.
@@ -179,4 +183,3 @@ Em *Settings → Pages → Build and deployment → Source*, escolha **GitHub Ac
 
 ## Notas
 - Ainda não há som.
-- Não há suporte a gamepad.

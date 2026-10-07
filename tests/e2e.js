@@ -1136,6 +1136,197 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
+  await section("teclado e controle (gamepad)", async () => {
+    // controle simulado: o teste move os eixos/botões e liga/desliga a presença dele
+    const MOCK_PAD = () => {
+      const pad = { id: "Controle de teste", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
+      let present = false;
+      window.__pad = pad;
+      navigator.getGamepads = () => [present ? pad : null, null, null, null];
+      window.__padOn = (on) => { present = on; window.dispatchEvent(new Event(on ? "gamepadconnected" : "gamepaddisconnected")); };
+      window.__padSet = ({ axes, press = [], release = [], mapping }) => {
+        if (axes) pad.axes = axes;
+        if (mapping !== undefined) pad.mapping = mapping;
+        for (const i of press) pad.buttons[i] = { pressed: true, touched: true, value: 1 };
+        for (const i of release) pad.buttons[i] = { pressed: false, touched: false, value: 0 };
+      };
+    };
+    const g = await newPage();
+    await g.addInitScript(MOCK_PAD);
+    const padHit = async (i) => { await ev(g, (i) => { __padSet({ press: [i] }); __game.padPoll(); __padSet({ release: [i] }); __game.padPoll(); }, i); }; // aperta e solta um botão
+    const pos = () => ev(g, () => [__game.player.x, __game.player.y]);
+    const state = () => ev(g, () => __game.state);
+    const focusId = () => ev(g, () => document.activeElement.id);
+
+    await fresh(g);
+    ok(await ev(g, () => typeof navigator.getGamepads === "function"), "(teste) o controle simulado está instalado");
+    await g.click("#btn-start");
+    await ev(g, () => { __game.freezeVets = true; });
+
+    // sem controle conectado, nada muda
+    const a0 = await pos(); await ev(g, () => { __padSet({ axes: [1, 0, 0, 0] }); __game.tick(0.2); __padSet({ axes: [0, 0, 0, 0] }); });
+    ok((await pos())[0] === a0[0], "sem controle conectado, o analógico simulado não faz nada");
+
+    // conectar
+    await ev(g, () => __padOn(true)); await ev(g, () => __game.padPoll());
+    ok(/Controle conectado/.test(await g.textContent("#toast")), "avisa quando o controle é reconhecido");
+
+    // analógico: direções, velocidade proporcional e zona morta (sempre em pontos livres do mapa, na área aberta de baixo)
+    const move = async (axes, frames = 20) => { await ev(g, ([axes, n]) => { __padSet({ axes }); for (let i = 0; i < n; i++) __game.tick(1 / 60); __padSet({ axes: [0, 0, 0, 0] }); }, [axes, frames]); };
+    const at = (x, y) => ev(g, ([x, y]) => { __game.player.x = x; __game.player.y = y; }, [x, y]);
+    await at(500, 440);
+    let a = await pos(); await move([1, 0, 0, 0]); let b = await pos();
+    ok(b[0] > a[0] + 40 && Math.abs(b[1] - a[1]) < 1, "analógico para a direita move o cachorrinho para a direita");
+    const fullDx = b[0] - a[0];
+    await at(560, 440); a = await pos(); await move([-1, 0, 0, 0]); b = await pos();
+    ok(b[0] < a[0] - 40, "analógico para a esquerda");
+    await at(560, 420); a = await pos(); await move([0, 1, 0, 0]); b = await pos();
+    ok(b[1] > a[1] + 40 && Math.abs(b[0] - a[0]) < 1, "analógico para baixo");
+    await at(560, 476); a = await pos(); await move([0, -1, 0, 0]); b = await pos();
+    ok(b[1] < a[1] - 40, "analógico para cima");
+    ok(await ev(g, () => __game.player.facing) === "up", "o cachorrinho olha para onde o analógico aponta");
+    await at(500, 440); a = await pos(); await move([0.6, 0, 0, 0]); b = await pos();
+    ok(b[0] - a[0] > 8 && b[0] - a[0] < fullDx * 0.8, `inclinar pouco anda mais devagar (${(b[0] - a[0]).toFixed(0)} px contra ${fullDx.toFixed(0)} px com tudo inclinado)`);
+    await at(500, 440); a = await pos(); await move([0.2, 0.2, 0, 0]); b = await pos();
+    ok(b[0] === a[0] && b[1] === a[1], "dentro da zona morta (inclinação pequena) o cachorrinho fica parado");
+    await at(560, 450); a = await pos(); await move([0.7, 0.7, 0, 0], 12); b = await pos();
+    const diag = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    await at(500, 440); a = await pos(); await move([1, 0, 0, 0], 12); b = await pos();
+    const straight = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    ok(diag > 20 && diag <= straight * 1.05, `na diagonal ele não anda mais rápido que em linha reta (${diag.toFixed(0)} px contra ${straight.toFixed(0)} px)`);
+    await at(500, 440); a = await pos(); await move([1, 0.15, 0, 0]); b = await pos();
+    ok(b[1] === a[1] && b[0] > a[0], "quase reto vale como reto (ajuda nos corredores de 1 tile)");
+    // direcional (botões 12 a 15)
+    await at(500, 440); a = await pos(); await ev(g, () => { __padSet({ press: [15] }); for (let i = 0; i < 15; i++) __game.tick(1 / 60); __padSet({ release: [15] }); }); b = await pos();
+    ok(b[0] > a[0] + 30, "direcional (para a direita) move");
+    await at(560, 470); a = await pos(); await ev(g, () => { __padSet({ press: [12, 14] }); for (let i = 0; i < 15; i++) __game.tick(1 / 60); __padSet({ release: [12, 14] }); }); b = await pos();
+    ok(b[0] < a[0] - 10 && b[1] < a[1] - 10, "direcional na diagonal (cima + esquerda)");
+    // teclado continua valendo e tem prioridade sobre o controle parado
+    a = await pos(); await ev(g, () => __t.hold("d", 12)); b = await pos();
+    ok(b[0] > a[0] + 20, "o teclado continua funcionando com o controle conectado");
+    // coleta e vitória com o controle
+    await ev(g, () => { __game.freezeVets = true; const it = __game.items[0]; __game.player.x = it.x - 20; __game.player.y = it.y - 4; __padSet({ axes: [1, 0, 0, 0] }); for (let i = 0; i < 12; i++) __game.tick(1 / 60); __padSet({ axes: [0, 0, 0, 0] }); });
+
+    // Start pausa e continua; Y salva; B/A nos menus
+    ok(await state() === "playing", "(antes) jogando");
+    await padHit(9);
+    ok(await state() === "paused" && await g.isVisible("#pause"), "Start pausa o jogo");
+    ok(await focusId() === "btn-resume", "na pausa, o botão Continuar já vem escolhido");
+    await padHit(13); ok(await focusId() === "btn-save", "direcional para baixo escolhe o botão seguinte (Salvar jogo)");
+    await padHit(0);
+    ok(/Jogo salvo/.test(await g.textContent("#pause-msg")) && await ev(g, () => Records.createStore(localStorage).hasGame("Totó")), "A no botão Salvar jogo salva");
+    await padHit(12); ok(await focusId() === "btn-resume", "direcional para cima volta");
+    await padHit(9); ok(await state() === "playing", "Start de novo continua o jogo");
+    await ev(g, () => localStorage.removeItem("cachorrinho.save.v1"));
+    await padHit(3);
+    ok(/Jogo salvo/.test(await g.textContent("#toast")) && await ev(g, () => Records.createStore(localStorage).hasGame("Totó")), "Y salva o jogo durante a partida (e avisa)");
+    await padHit(9); await padHit(1);
+    ok(await state() === "playing", "na pausa, B continua o jogo");
+    await padHit(9); await padHit(13); await padHit(13); await padHit(0);
+    ok(await state() === "menu" && await g.isVisible("#menu"), "na pausa, escolher Voltar ao menu com A funciona");
+
+    // menus só com o controle
+    ok(await focusId() === "btn-continue" || await focusId() === "btn-start", "no menu, o botão principal vem escolhido");
+    await ev(g, () => document.getElementById("btn-start").focus());
+    await padHit(13); ok(await focusId() === "btn-howto", "menu: direcional para baixo vai para Como jogar");
+    await padHit(0); ok(await g.isVisible("#howto"), "A abre Como jogar");
+    ok(/Controle \(gamepad\)/.test(await g.textContent("#howto")) && /Ctrl/.test(await g.textContent("#howto")), "Como jogar explica o controle e o teclado");
+    await padHit(1); ok(await g.isVisible("#menu"), "B volta ao menu");
+    await ev(g, () => document.getElementById("btn-start").focus());
+    await ev(g, () => { __padSet({ axes: [0, 1, 0, 0] }); __game.padPoll(); __padSet({ axes: [0, 0, 0, 0] }); __game.padPoll(); });
+    ok(await focusId() === "btn-howto", "menu: o analógico para baixo também escolhe o botão seguinte");
+    ok(await g.isVisible("#btn-continue"), "há um jogo salvo: o menu oferece Continuar jogo");
+    await ev(g, () => document.getElementById("btn-start").focus());
+    await padHit(0);
+    ok(await g.isVisible("#confirm") && await focusId() === "btn-confirm-keep", "A em Iniciar jogo, com jogo salvo, pede confirmação (Continuar o jogo salvo já vem escolhido)");
+    await padHit(0);
+    ok(await state() === "playing", "A em Continuar o jogo salvo retoma a partida");
+    await ev(g, () => { __game.freezeVets = true; });
+
+    // vitória e Próxima fase só com o controle
+    await finishNow(g, 10);
+    ok(await state() === "won" && await focusId() === "btn-next", "vitória: o botão Próxima fase já vem escolhido");
+    await padHit(0);
+    ok(await state() === "playing" && await ev(g, () => __game.level) === 2, "A em Próxima fase começa a Fase 2");
+
+    // segurar o direcional repete a navegação nos menus
+    await padHit(9); // pausa
+    await ev(g, () => { document.getElementById("btn-resume").focus(); __padSet({ press: [13] }); __game.padPoll(0.016); });
+    ok(await focusId() === "btn-save", "(repetição) primeiro passo");
+    await ev(g, () => { for (let i = 0; i < 40; i++) __game.padPoll(0.016); __padSet({ release: [13] }); __game.padPoll(0.016); });
+    ok(["btn-resume", "btn-save", "btn-pause-menu"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
+    await padHit(9);
+
+    // controle desconectado no meio do jogo: nada quebra e o teclado segue valendo
+    await ev(g, () => { __game.freezeVets = true; __padOn(false); __game.padPoll(); });
+    a = await pos(); await ev(g, () => __t.hold("d", 12)); b = await pos();
+    ok(await state() === "playing" && b[0] > a[0], "desconectar o controle no meio do jogo não atrapalha (teclado segue)");
+    a = await pos(); await ev(g, () => { __padSet({ axes: [1, 0, 0, 0] }); __game.tick(0.2); __padSet({ axes: [0, 0, 0, 0] }); }); b = await pos();
+    ok(b[0] === a[0], "e o controle desconectado não move mais nada");
+
+    // controle fora do padrão: só eixos 0/1 e botões A, B e Start
+    await ev(g, () => { __padSet({ mapping: "" }); __padOn(true); __game.padPoll(); });
+    await ev(g, () => { __game.player.x = 400; __game.player.y = 260; });
+    a = await pos(); await move([1, 0, 0, 0], 15); b = await pos();
+    ok(b[0] > a[0] + 20, "controle fora do padrão: o analógico esquerdo move");
+    a = await pos(); await ev(g, () => { __padSet({ press: [15] }); for (let i = 0; i < 15; i++) __game.tick(1 / 60); __padSet({ release: [15] }); }); b = await pos();
+    ok(b[0] === a[0], "controle fora do padrão: botões do direcional não são lidos (os números variam de controle para controle)");
+    await padHit(9); ok(await state() === "paused", "controle fora do padrão: Start (botão 9) pausa");
+    await padHit(9);
+    await ev(g, () => __padSet({ mapping: "standard" }));
+
+    // dados estranhos do navegador não derrubam o jogo
+    await ev(g, () => { __pad.axes = [NaN, undefined, null, "x"]; __pad.buttons = []; __game.tick(0.1); __game.padPoll(); __pad.axes = [0, 0, 0, 0]; __pad.buttons = Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })); });
+    ok(await state() === "playing", "eixos inválidos (NaN) e lista de botões vazia são ignorados sem erro");
+    await g.context().close();
+
+    // ---- só com o teclado: do menu à vitória e ao Continuar jogo ----
+    const k = await newPage();
+    await fresh(k, { name: "" });
+    const kf = () => ev(k, () => document.activeElement.id);
+    ok(await kf() === "btn-start", "teclado: Iniciar jogo já vem escolhido");
+    await k.keyboard.press("Enter");
+    ok(await k.isVisible("#name") && await ev(k, () => document.activeElement.id) === "name-input", "teclado: Enter em Iniciar jogo sem nome abre o nome, com o cursor no campo");
+    await k.keyboard.type("Totó"); await k.keyboard.press("Enter");
+    ok(await ev(k, () => __game.state) === "playing", "teclado: digitar o nome e Enter começa o jogo");
+    await ev(k, () => { __game.freezeVets = true; });
+    await k.keyboard.press("p");
+    ok(await ev(k, () => __game.state) === "paused", "teclado: P pausa");
+    await k.keyboard.press("p");
+    ok(await ev(k, () => __game.state) === "playing", "teclado: P de novo continua");
+    await k.keyboard.press("Escape"); ok(await ev(k, () => __game.state) === "paused", "teclado: Esc pausa");
+    await k.keyboard.press("ArrowDown"); await k.keyboard.press("Enter");
+    ok(/Jogo salvo/.test(await k.textContent("#pause-msg")), "teclado: ↓ e Enter em Salvar jogo salvam");
+    await k.keyboard.press("Escape"); ok(await ev(k, () => __game.state) === "playing", "teclado: Esc continua");
+    await ev(k, () => localStorage.removeItem("cachorrinho.save.v1"));
+    await k.keyboard.press("Control+s");
+    ok(/Jogo salvo/.test(await k.textContent("#toast")) && await ev(k, () => Records.createStore(localStorage).hasGame("Totó")), "teclado: Ctrl+S salva durante o jogo (sem abrir 'Salvar página')");
+    await k.keyboard.press("Escape");
+    await ev(k, () => localStorage.removeItem("cachorrinho.save.v1"));
+    await k.keyboard.press("Control+s");
+    ok(/Jogo salvo/.test(await k.textContent("#pause-msg")) && await ev(k, () => Records.createStore(localStorage).hasGame("Totó")), "teclado: Ctrl+S também salva na pausa");
+    await k.keyboard.press("Escape");
+    const kx = await ev(k, () => __game.player.x);
+    await k.keyboard.down("d"); await k.waitForTimeout(250); await k.keyboard.up("d");
+    ok(await ev(k, () => __game.player.x) > kx + 10, "teclado: D move o cachorrinho");
+    await k.keyboard.down("ArrowDown"); await k.waitForTimeout(200); await k.keyboard.up("ArrowDown");
+    ok(await ev(k, () => __game.player.y) > 40, "teclado: seta para baixo move");
+    await finishNow(k, 10);
+    ok(await ev(k, () => __game.state) === "won" && await kf() === "btn-next", "teclado: na vitória o botão Próxima fase já vem escolhido");
+    await k.keyboard.press("Enter");
+    ok(await ev(k, () => __game.state) === "playing" && await ev(k, () => __game.level) === 2, "teclado: Enter em Próxima fase começa a Fase 2");
+    await k.keyboard.press("Escape"); await k.keyboard.press("ArrowDown"); await k.keyboard.press("ArrowDown"); await k.keyboard.press("Enter");
+    ok(await ev(k, () => __game.state) === "menu", "teclado: pausa → ↓ ↓ → Enter volta ao menu");
+    ok(await k.isVisible("#btn-continue") && await kf() === "btn-continue", "teclado: o menu oferece Continuar jogo, já escolhido");
+    await k.keyboard.press("Enter");
+    ok(await ev(k, () => __game.state) === "playing" && await ev(k, () => __game.level) === 2, "teclado: Enter em Continuar jogo retoma a Fase 2");
+    await ev(k, () => document.getElementById("btn-pause").focus());
+    await k.keyboard.press("Space");
+    ok(await ev(k, () => __game.state) === "playing", "teclado: a barra de espaço com um botão do placar em foco não pausa nem rola sem querer");
+    await k.context().close();
+  });
+
+  // =====================================================================
   await section("tamanho proporcional em cada tela", async () => {
     const sizes = [[1920, 1080, 1], [1366, 768, 1], [2560, 1440, 1], [1280, 720, 2]];
     for (const [w, h, dpr] of sizes) {
