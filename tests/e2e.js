@@ -750,11 +750,29 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-continue");
     ok(Math.abs(await ev(page, () => __game.player.x) - px) < 1, "volta exatamente à posição em que o cachorro estava");
 
-    // save adulterado (ração dentro de uma parede) é ignorado
-    await fresh(page, { keepSave: true });
+    // saves adulterados (feitos a partir de um save real, trocando só uma coisa) são ignorados
+    await playLevel(page, 1, { keepSave: true });
+    await ev(page, () => { __game.freezeVets = true; __game.save(); });
+    const realSave = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.save.v1")));
+    const tampers = {
+      "ração dentro de uma parede": (s) => { s.items[0][0] = 0; s.items[0][1] = 0; },
+      "cachorro dentro de uma parede": (s) => { s.p.x = 0; s.p.y = 0; },
+      "veterinário dentro de uma parede": (s) => { s.vets[0] = [10, 10]; },
+      "tempo negativo": (s) => { s.time = -5; },
+      "vidas demais": (s) => { s.lives = 9; },
+      "formato antigo sem a versão certa": (s) => { s.v = 1; },
+    };
+    const outcomes = [];
+    for (const [what, fn] of Object.entries(tampers)) {
+      const sv = JSON.parse(JSON.stringify(realSave)); fn(sv.saves.toto.snap);
+      await page.reload(); await ev(page, (sv) => localStorage.setItem("cachorrinho.save.v1", JSON.stringify(sv)), sv); await page.reload();
+      outcomes.push([what, await page.isHidden("#btn-continue")]);
+    }
+    await page.reload(); await ev(page, (sv) => localStorage.setItem("cachorrinho.save.v1", JSON.stringify(sv)), realSave); await page.reload();
+    ok(outcomes.every(([, hidden]) => hidden) && await page.isVisible("#btn-continue") && await ev(page, () => document.activeElement.id) !== "", `save adulterado é ignorado sem quebrar (${outcomes.map(([w, h]) => w + ": " + (h ? "recusado" : "ACEITO")).join("; ")}) e o save real continua valendo`);
     await ev(page, () => localStorage.setItem("cachorrinho.save.v1", JSON.stringify({ v: 1, saves: { toto: { t: Date.now(), snap: { v: 1, l: 1, time: 5, lives: 3, invuln: 0, items: [[0, 0, 0], [1, 1, 0], [2, 2, 0], [3, 3, 0], [4, 4, 0]], p: { x: 36, y: 36, f: "right" }, vets: [[80, 432]] } } } })));
     await page.reload();
-    ok(await page.isHidden("#btn-continue") && await ev(page, () => document.activeElement.id) === "btn-start", "save adulterado/inválido é ignorado sem quebrar");
+    ok(await page.isHidden("#btn-continue") && await ev(page, () => document.activeElement.id) === "btn-start", "save no formato antigo/inválido é ignorado sem quebrar");
     await ev(page, () => localStorage.setItem("cachorrinho.save.v1", "{lixo"));
     await page.reload();
     ok(await page.isHidden("#btn-continue") && await ev(page, () => __game.state) === "menu", "save corrompido é ignorado");
@@ -958,6 +976,33 @@ const PAGE_HELPERS = () => {
     ok(lay.some((items) => items.some((i) => i[3] && i[2])) && lay.some((items) => items.some((i) => i[3] && !i[2])), "a vida escondida cai às vezes num osso e às vezes numa ração");
     ok(lay.every((items) => items.filter((i) => i[3]).length === 1), "e nunca nos dois ao mesmo tempo (sempre exatamente 1 vida escondida)");
     ok(new Set(lay.map((items) => items.map((i) => i.slice(0, 2).join()).sort().join("|"))).size >= 140, "os lugares mudam a cada jogo");
+    // a vida escondida num OSSO sobe de verdade a contagem de vidas (e a de uma ração também)
+    const lifeBone = await ev(page, () => {
+      __game.start(3); __game.freezeVets = true; __game.noCatch = true; __game.setLives(2);
+      __game.items.forEach((i) => { i.life = false; });
+      const bone = __game.items.find((i) => i.bone); bone.life = true; __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
+      const afterBone = __game.lives, toast1 = document.getElementById("toast").textContent;
+      const ration = __game.items.find((i) => !i.bone); ration.life = true; __game.player.x = ration.x - 4; __game.player.y = ration.y - 4; __game.tick(0.01);
+      return { afterBone, afterRation: __game.lives, toast1 };
+    });
+    ok(lifeBone.afterBone === 3 && lifeBone.afterRation === 4 && /Vida extra/.test(lifeBone.toast1), `pegar um osso com a vida escondida dá +1 vida (2 → ${lifeBone.afterBone}) e pegar uma ração com vida também (→ ${lifeBone.afterRation})`);
+    // ao perder vidas, os itens que faltam mudam de lugar, mas nunca caem no trilho de um bloco nem em cima de um item já pego
+    const reloc = await ev(page, () => {
+      __game.start(3); __game.noCatch = false; __game.setRand(() => Math.random());
+      const track = new Set(); for (const b of __game.levels[2].blocks) for (const [c, r] of [b.from, b.to]) track.add(c + "," + r);
+      let bad = 0, n = 0;
+      const first = __game.items[0]; __game.freezeVets = true; __game.player.x = first.x - 4; __game.player.y = first.y - 4; __game.tick(0.01); // um item já pego
+      for (let k = 0; k < 150; k++) {
+        __game.freezeVets = false; for (const v of __game.vets) v.cool = 99; __game.setLives(5);
+        for (let i = 0; i < 45; i++) __game.tick(0.05); // passa a proteção
+        const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); n++;
+        const tiles = __game.items.map((it) => (it.x - 8) / 32 + "," + (it.y - 8) / 32);
+        if (new Set(tiles).size !== tiles.length) bad++;
+        if (__game.items.some((it) => !it.taken && track.has((it.x - 8) / 32 + "," + (it.y - 8) / 32))) bad++;
+      }
+      __game.setRand(null); return { bad, n };
+    });
+    ok(reloc.bad === 0, `em ${reloc.n} trocas de lugar na Fase 3 nenhum item caiu no trilho de um bloco nem em cima de outro item (${reloc.bad})`);
 
     // ---- veterinários: +10% de velocidade sobre a Fase 2 ----
     const cf = await ev(page, () => { __game.start(2); const f2 = { ...__game.vets[0].cfg }; __game.start(3); return { f2, f3a: { ...__game.vets[0].cfg }, f3b: { ...__game.vets[1].cfg } }; });
@@ -1110,19 +1155,35 @@ const PAGE_HELPERS = () => {
     });
     ok(!vetDoor.closedWall.chased && vetDoor.closedWall.x < 7 * 32, "o bloco fechado tapa a visão: o veterinário não vê o cachorro do outro lado da porta nem passa");
     ok(vetDoor.chasedAfter, "com a porta aberta ele vê o cachorro e passa a perseguir");
+    // um veterinário que vai passar pela porta fechada ESPERA diante dela (sem entrar no bloco)
+    const vetWait = await ev(page, () => {
+      __game.start(3); __game.noCatch = true; __game.freezeVets = false; __game.setRand(() => 0.99);
+      for (const x of __game.vets) { x.cool = 999; x.idle = 99; x.leg = null; x.route = []; }
+      const v = __game.vets[0]; __game.player.x = 3 * 32 + 4; __game.player.y = 3 * 32 + 4;
+      v.cx = 6 * 32 + 16; v.cy = 3 * 32 + 16; v.idle = 0; v.leg = [7, 3]; v.route = []; // já indo para o tile da porta 1 (fechada no começo)
+      let minGap = 99, overlap = 0; const b = () => __game.blocks[0];
+      for (let i = 0; i < 100; i++) { __game.tick(0.01); if (v.cx + 12 > b().x + 0.01 && v.cx - 12 < b().x + 32) overlap++; minGap = Math.min(minGap, b().x - (v.cx + 12)); }
+      __game.setRand(null);
+      return { x: v.cx, overlap, minGap, closed: b().y === 96 };
+    });
+    ok(vetWait.closed && vetWait.overlap === 0 && vetWait.minGap >= -0.01 && vetWait.x > 6 * 32 + 16 && vetWait.x <= 7 * 32 - 12 + 0.01, `o veterinário que vai para a porta fechada anda até encostar e ESPERA diante dela (parou em x=${vetWait.x.toFixed(1)}, sem entrar no bloco que começa em x=224)`);
     const vetsWalk = await ev(page, () => {
       __game.start(3); __game.noCatch = true; __game.freezeVets = false;
-      const crossed = new Set(); let blockedMoves = 0, wallHits = 0;
+      const crossed = new Set(); let overlaps = 0, waits = 0; const prev = __game.vets.map((v) => [v.cx, v.cy]);
+      const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
       for (let i = 0; i < 60 * 600; i++) {
         __game.tick(1 / 30);
-        for (const v of __game.vets) {
+        __game.vets.forEach((v, k) => {
           const [c, r] = [Math.floor(v.cx / 32), Math.floor(v.cy / 32)];
           if ((c === 7 && r === 3) || (c === 17 && r === 3)) crossed.add(c + "," + r);
-        }
+          for (const b of __game.blocks) if (hit({ x: b.x, y: b.y, w: 32, h: 32 }, { x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 })) overlaps++;
+          if (v.leg && v.idle <= 0 && v.cx === prev[k][0] && v.cy === prev[k][1]) waits++; // com um destino e parado: esperando um bloco
+          prev[k] = [v.cx, v.cy];
+        });
       }
-      return { crossed: [...crossed] };
+      return { crossed: [...crossed], overlaps, waits };
     });
-    ok(vetsWalk.crossed.length >= 1, `em 10 minutos de patrulha os veterinários atravessam os corredores das portas (${vetsWalk.crossed.join(" e ") || "nenhum"}), esperando os blocos quando preciso, sem travar`);
+    ok(vetsWalk.crossed.length >= 1 && vetsWalk.overlaps === 0 && vetsWalk.waits >= 1, `em 20 minutos simulados de patrulha os veterinários atravessam os corredores das portas (${vetsWalk.crossed.join(" e ") || "nenhum"}), esperaram diante de bloco fechado ${vetsWalk.waits} vezes e nunca sobrepuseram um bloco (${vetsWalk.overlaps})`);
 
     // ---- pontuação: osso vale 50; bônus de 20 por degrau; todos os itens para sair ----
     await playLevel(page, 3, { done: [1, 2] });
@@ -1171,9 +1232,10 @@ const PAGE_HELPERS = () => {
     await page.click("#levels-list button:nth-child(3)");
     ok(await ev(page, () => __game.level) === 3 && /Fase 3: 2 veterinários/.test(await page.textContent("#toast")), "escolher a Fase 3 começa a Fase 3");
     await playLevel(page, 2, { done: [1] }); await ev(page, () => { __game.freezeVets = true; __game.setLives(2); });
+    const f2extra = await ev(page, () => __game.items.filter((i) => i.life).length);
     await finishNow(page, 10);
     await page.click("#btn-next");
-    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.lives) >= 2 && await ev(page, () => __game.items.length) === 9, "Próxima fase depois da Fase 2 leva à Fase 3 com as vidas acumuladas");
+    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.lives) === 2 + f2extra && await ev(page, () => __game.items.length) === 9, `Próxima fase depois da Fase 2 leva à Fase 3 com as vidas acumuladas (2 + ${f2extra} da Fase 2 = ${2 + f2extra})`);
     ok(await page.isHidden("#hud-retry-item"), "(sem tentativas extras no início da fase)");
 
     // ---- tentativas na Fase 3 recomeçam a Fase 3 do zero (blocos incluídos) ----
@@ -1217,9 +1279,12 @@ const PAGE_HELPERS = () => {
     const t9 = cl(snap3); t9.v = 3; t9.items = t9.items.map((i) => i.slice(0, 4)); delete t9.bl;
     const t10 = cl(snap3); t10.bl = [-1, 0];
     const t11 = cl(snap3); t11.items = t11.items.slice(0, 8);
+    const t13 = cl(snap3); t13.items[0][0] = 0; t13.items[0][1] = 0;                 // item dentro de uma parede
+    const t14 = cl(snap3); t14.vets[0] = [10, 10];                                  // veterinário dentro de uma parede
+    const t15 = cl(snap3); t15.time = -5;                                           // tempo negativo
     const rs = [];
-    for (const t of [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]) rs.push(await parse(t));
-    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 2 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
+    for (const t of [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t13, t14, t15]) rs.push(await parse(t));
+    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 2 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos, item na parede, veterinário na parede, tempo negativo): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
     // um jogo salvo com o cachorro no lugar de um bloco (os blocos agora andam num ciclo novo) é aceito: ao carregar, ele é empurrado para fora
     const t12 = cl(snap3); t12.p = { x: 7 * 32 + 2, y: 3 * 32 + 4, f: "right" }; t12.bl = [0, 0];
     ok(await parse(t12), "um jogo salvo com o cachorro no lugar de um bloco é aceito (ele é empurrado para o lado ao carregar)");
@@ -1822,8 +1887,8 @@ const PAGE_HELPERS = () => {
       return pg;
     };
     const withUrl = (pg) => pg.addInitScript((u) => { window.GAME_CONFIG = { sharedRanking: true, rankingUrl: u }; }, rankingUrl);
-    const openScores = async (pg) => { await pg.click("#btn-scores"); await pg.waitForFunction(() => /compartilhado|deste aparelho/.test(document.getElementById("scores-source").textContent)); };
-    const shared = (pg) => pg.waitForFunction(() => /compartilhado/.test(document.getElementById("scores-source").textContent), null, { timeout: 5000 }).then(() => true, () => false);
+    const openScores = async (pg) => { await pg.click("#btn-scores"); await pg.waitForFunction(() => { const s = document.getElementById("scores-source").textContent; return /compartilhado|deste aparelho/.test(s) && !/Buscando/.test(s); }); }; // espera a resposta (não o aviso de "buscando")
+    const shared = (pg) => pg.waitForFunction(() => /vários aparelhos/.test(document.getElementById("scores-source").textContent), null, { timeout: 5000 }).then(() => true, () => false);
     const levelRows = (pg, n) => pg.$$eval(`#scores-public section:nth-of-type(${n + 1}) li`, (ls) => ls.map((l) => l.textContent));
     try {
       // --- stand by (padrão): endereço configurado e banco do Claude disponível, mas SEM sharedRanking:true → nada é usado ---
@@ -2041,7 +2106,7 @@ const PAGE_HELPERS = () => {
     const held = await ev(page, () => {
       const kd = (repeat) => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", repeat }));
       kd(false); const afterFirst = __game.state;
-      for (let i = 0; i < 6; i++) kd(true);
+      for (let i = 0; i < 5; i++) kd(true); // (número ÍMPAR: sem a proteção, cada repetição alternaria a pausa e o estado final seria "playing")
       return [afterFirst, __game.state];
     });
     ok(held.join() === "paused,paused", "I: segurar o Esc pausa uma vez e não fica pausando e continuando");
@@ -2057,7 +2122,7 @@ const PAGE_HELPERS = () => {
     const exitPixels = (open) => ev(page, (open) => {
       __game.start(1); __game.freezeVets = true;
       if (open) for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } // pega todas: a saída abre
-      __game.player.x = __game.spawn?.x ?? 36; __game.player.y = __game.spawn?.y ?? 36;
+      __game.player.x = 36; __game.player.y = 36; // o início da Fase 1
       return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
         const cv = document.getElementById("game"), c = cv.getContext("2d"), k = __game.view.k, e = __game.exit;
         const d = c.getImageData(Math.round(e.x * k), Math.round(e.y * k), Math.round(e.w * k), Math.round(e.h * k)).data;
