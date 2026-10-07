@@ -101,8 +101,10 @@ kbd { padding: 1px 7px; border-radius: 5px; background: var(--panel-2); border: 
 .error { min-height: 1.4em; color: #ff9d90; font-weight: 700; }
 
 /* Créditos: canto inferior direito do menu inicial */
+.menu-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; margin-top: 16px; }
+.version { margin: 0; font-size: clamp(13px, 1.8vw, 15px) !important; color: var(--muted); font-variant-numeric: tabular-nums; }
 .credit {
-  align-self: flex-end; margin: 16px 0 0; max-width: min(100%, 460px); text-align: right; display: flex; flex-direction: column; gap: 2px;
+  align-self: flex-end; margin: 0 0 0 auto; max-width: min(100%, 460px); text-align: right; display: flex; flex-direction: column; gap: 2px;
   font-size: clamp(14px, 1.9vw, 17px) !important; line-height: 1.3 !important; color: #cfd6e6;
 }
 .credit span { font-size: .85em; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }

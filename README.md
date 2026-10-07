@@ -4,6 +4,9 @@ Versão atual: **Fase 1 e Fase 2**.
 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
+## Versão
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.3.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
@@ -153,6 +156,7 @@ O jogo ocupa o máximo da tela mantendo a proporção 25:18 e fica nítido em te
 ```
 index.html            canvas, placar (HTML) e todas as telas (menu, fases, como jogar, pontuações, nome, pausa, vitória, derrota)
 css/style.css         visual, tamanho proporcional e controle de toque
+js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
@@ -162,6 +166,7 @@ tests/auth.test.js    testes unitários das senhas (Node)
 tests/records.test.js testes unitários das pontuações e melhores pontuações (Node)
 tests/accounts.test.js testes unitários do cadastro e da entrada (Node)
 tests/board.test.js   testes unitários do ranking compartilhado, com servidor de mentira (Node)
+tests/version.test.js confere a versão (js/version.js) com o CHANGELOG.md e o workflow
 tests/e2e.js          testes no navegador (Playwright)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
@@ -172,6 +177,7 @@ node tests/auth.test.js        # unitários, só precisam do Node
 node tests/records.test.js
 node tests/accounts.test.js
 node tests/board.test.js
+node tests/version.test.js
 npm i playwright
 npx playwright install chromium   # ou use CHROMIUM_PATH=/caminho/do/chromium
 node tests/e2e.js              # opcional: node tests/e2e.js "toque" roda só as seções com esse texto

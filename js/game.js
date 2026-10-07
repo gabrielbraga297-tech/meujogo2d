@@ -610,7 +610,16 @@
     return e;
   }
 
+  // "Versão 0.3.0 · 07/10/2026" (e "· build abc1234" quando publicado no GitHub Pages): para saber qual versão está aberta.
+  function versionText() {
+    const v = window.GAME_VERSION;
+    if (!v || typeof v.number !== "string") return "Versão desconhecida";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.date || "");
+    return `Versão ${v.number}${m ? ` · ${m[3]}/${m[2]}/${m[1]}` : ""}${v.build && v.build !== "dev" ? ` · build ${v.build}` : ""}`;
+  }
+
   function renderMenu() {
+    $("menu-version").textContent = versionText();
     const me = store.player();
     $("menu-player").textContent = me ? me + (store.hasAccount(me) ? " (conta com senha)" : "") : "ainda não escolhido";
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
