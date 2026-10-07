@@ -11,6 +11,7 @@
   --pad: 16px;
   --touch-h: 0px;  /* altura reservada para o controle de toque */
   --hud-h: 48px;   /* altura reservada para o placar (barra + espaço abaixo) */
+  color-scheme: dark;
 }
 body.touch { --touch-h: 192px; --hud-h: 56px; }
 
@@ -77,6 +78,7 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 /* ---------- Telas (menu, como jogar, pontuações, nome, pausa, vitória, derrota) ---------- */
 .screen {
   position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: var(--pad);
+  padding-top: calc(var(--pad) + env(safe-area-inset-top, 0px)); padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
   background: rgba(10, 12, 18, .88);
 }
 .screen.page { background: radial-gradient(ellipse at 50% 20%, #1d2436 0%, var(--bg) 70%); }
