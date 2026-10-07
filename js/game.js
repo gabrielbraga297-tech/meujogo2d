@@ -24,7 +24,7 @@
   const VET_SPEED = 50, VET_CHASE_SPEED = 100;
   const BASE_VET = {
     speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 50 px/s
-    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 100 px/s (o cachorro, a 180, ainda é bem mais rápido)
+    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 100 px/s (o cachorro, a 360, ainda é bem mais rápido)
     // O alcance para notar o cachorro ("sight", px) vem da fase: veja `alertTiles` em LEVELS.
     chaseChance: 1,   // chance de decidir perseguir a cada "olhada": 1 = o "!" liga na hora que o cachorro entra no alcance
     thinkEvery: 0.1,  // intervalo entre "olhadas" (s)
@@ -42,12 +42,13 @@
   const PHASE2_VET = harder(BASE_VET, 1.1);
   // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 60,5 e 121 px/s. O resto fica como na Fase 2.
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
-  // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (66,55 e 133,1 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (170,1 px/s).
+  // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (66,55 e 133,1 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (340,2 px/s).
   const PHASE4_VET = { ...PHASE3_VET, speed: Math.round(PHASE3_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE3_VET.chaseSpeed * 1.1 * 100) / 100 };
   const POSTMAN_SLOW = 0.5;  // carteiro atingido pelo cachorro com poder: volta ao centro e anda só 50% da velocidade que a fase dá a ele (até o poder acabar)
   const POSTMAN_STUN = 2;    // s em que o carteiro atingido não pode ser atingido de novo (e não pontua de novo)
   const VET_NEAR = 3;        // tiles: ao escolher o caminho de patrulha, o veterinário evita passar a menos disso de outro veterinário
   const VET_TANDEM = 96, TANDEM_AFTER = 3, TANDEM_PAUSE = 1.5; // px, s, s: se um veterinário de número maior patrulha há 3 s a menos de 96 px de outro, ele para 1,5 s e fica para trás
+  const VET_STACK = 24, STACK_AFTER = 0.4, STACK_PAUSE = 1.2; // px, s, s: dois veterinários em patrulha a menos de 24 px por 0,4 s: o de número maior descansa 1,2 s e eles se separam
   const VET_GAP = 40;        // px: um veterinário que vai atrás de outro não chega mais perto que isso (eles não andam colados nem se sobrepõem)
   const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser veterinários, talvez bem do lado do cachorro)
   // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
@@ -192,7 +193,7 @@
   ];
 
   const LEVELS = [
-    // rations = quantas rações há na fase; bones = quantos ossos (50 pontos cada; é preciso pegar todos para sair);
+    // rations = quantas rações há na fase; bones = quantos ossos (150 pontos cada; nas Fases 1 a 3 é preciso pegar todos para sair);
     // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
@@ -405,7 +406,7 @@
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
-      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stuck: 0, from: null, slow: false, hitCool: 0 };
+      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, from: null, slow: false, hitCool: 0 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
@@ -590,6 +591,11 @@
     }
     if (v.mode === "chase" && (v.modeT <= 0 || v.chaseAge >= cfg.chaseMax)) { v.mode = "patrol"; v.cool = cfg.restTime; v.route = []; v.idle = 0.5; }
 
+    // andando colado em cima de outro veterinário (de número menor, também andando) em patrulha: depois de STACK_AFTER s, descansa STACK_PAUSE s e fica para trás
+    // (se o outro está parado, quem anda é quem sai de cima dele: não precisa descansar)
+    if (v.mode === "patrol" && v.leg && vets.some((o) => o.idx < v.idx && o.mode === "patrol" && o.leg && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_STACK)) {
+      if ((v.stack += dt) > STACK_AFTER) { v.stack = 0; v.idle = Math.max(v.idle, STACK_PAUSE); }
+    } else v.stack = 0;
     // andando em fila atrás de outro veterinário (mesmo corredor, quase colados) por mais de TANDEM_AFTER s (um quarto disso se estiver a menos de VET_GAP): quem vem atrás descansa um pouco e fica para trás
     const ahead = v.mode === "patrol" && v.leg ? vets.find((o) => o !== v && o.mode === "patrol" && o.leg && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_TANDEM && followsAhead(v, o)) : null;
     if (ahead) {
@@ -640,6 +646,7 @@
         const still = lower ? null : vets.find((o) => o !== v && (o.hold > 0 || o.stuck > 0 || !o.leg) && closer(o));
         if (lower || (still && v.wait < 1)) {
           v.hold += dt; if (!lower) v.wait += dt;
+          if (still && v.wait > 0.5 && still.idle > 0.2) still.idle = 0.2; // o que está parado na frente descansa menos se há outro esperando atrás dele
           if (lower && v.hold > 0.5 && v.mode === "patrol" && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
           return;
         }
@@ -667,9 +674,9 @@
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 e 5) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected());
 
-  function giveLife(it) {
-    if (lives < MAX_LIVES) { lives++; toast("Vida extra! +1 vida", 2.2); }
-    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).`, 2.8);
+  function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
+    if (lives < MAX_LIVES) { lives++; toast(`Vida extra! +1 vida${extra}`, 2.6); }
+    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).${extra}`, 2.8);
   }
 
   // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
@@ -677,7 +684,7 @@
   function respawn() {
     Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = INVULN;
   }
@@ -697,6 +704,7 @@
   // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser veterinários.
   function startPower() {
     power = lv.bonePower;
+    for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
     for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.leg = null; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; }
     toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6);
   }
@@ -740,7 +748,7 @@
       if (!it.taken && overlap(player, it)) {
         it.taken = true;
         if (it.bone) { bonesGot++; if (lv.bonePower) startPower(); } else collected++;
-        if (it.life) giveLife(it);
+        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` Poder do osso por ${lv.bonePower} s!` : "");
         score = runningScore(); saveNow();
       }
     }
@@ -751,13 +759,14 @@
       goalReached = open;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
+    if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < 22;
     const protectedNow = invuln > 0;
     if (invuln > 0) invuln -= dt;
     if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
-      for (const v of vets) if (v.hitCool <= 0 && touching(v)) defeatPostman(v);
+      for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
     } else if (!protectedNow && !noCatch && vets.some(touching)) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
@@ -1063,7 +1072,7 @@
     setState("lost");
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : "O veterinário pegou o cachorrinho!";
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "O veterinário pegou o cachorrinho!";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -1381,12 +1390,14 @@
     if (it.life) drawLifeHeart(cx, cy);
   }
 
-  function drawBlocks() { // trilhos (o caminho que cada bloco percorre) e os blocos que se movem
-    ctx.lineCap = "round";
+  function drawBlocks() { // trilhos (todo o caminho que cada bloco ou parede percorre, de ponta a ponta) e os blocos que se movem
+    ctx.lineCap = "butt";
     for (const b of blocks) {
-      const x1 = b.d.ax + b.d.w / 2, y1 = b.d.ay + b.d.h / 2, x2 = b.d.bx + b.d.w / 2, y2 = b.d.by + b.d.h / 2;
+      const d = b.d, vertical = d.ax === d.bx;
+      const x1 = vertical ? d.ax + d.w / 2 : Math.min(d.ax, d.bx), x2 = vertical ? x1 : Math.max(d.ax, d.bx) + d.w;
+      const y1 = vertical ? Math.min(d.ay, d.by) : d.ay + d.h / 2, y2 = vertical ? Math.max(d.ay, d.by) + d.h : y1;
       ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      const warn = blockWarn(b.d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado (com "reduzir movimento": amarelo fixo, sem piscar)
+      const warn = blockWarn(d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado (com "reduzir movimento": amarelo fixo, sem piscar)
       ctx.strokeStyle = warn ? `rgba(242,194,48,${(calm ? 0.8 : 0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
       ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }

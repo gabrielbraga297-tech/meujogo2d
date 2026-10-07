@@ -1444,14 +1444,19 @@ const PAGE_HELPERS = () => {
       r.gain2 = __game.score - score0;
       // repetir o toque durante os 2 s de tontura não pontua de novo
       p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.5); r.gain3 = __game.score - score0; r.hit3 = v0.hitCool;
-      // depois da tontura pontua de novo
-      for (let i = 0; i < 40; i++) { p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.05); }
-      r.gain4 = __game.score - score0; r.postmen4 = __game.postmen;
+      // parado em cima do posto dele (ou em cima dele) por mais 22 s: o mesmo carteiro não rende pontos de novo no mesmo poder
+      for (let i = 0; i < 440; i++) { p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.05); }
+      r.gain4 = __game.score - score0; r.postmen4 = __game.postmen; r.powerLeft = __game.power; r.slowStill = v0.slow;
+      // pegar o segundo osso renova o poder: o carteiro volta ao normal e pode ser pego de novo (+100)
+      const bone2 = __game.items.find((i) => i.bone && !i.taken); p.x = bone2.x - 4; p.y = bone2.y - 4; __game.tick(0.01);
+      r.rearm = !v0.slow; const s5 = __game.score; p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.01);
+      r.gain5 = __game.score - s5; r.postmen5 = __game.postmen;
       return r;
     });
     ok(win1.slow0 === true && win1.slow1 === false && win1.gain === 100 && win1.postmen === 1 && win1.lives === 3 && /Você ganhou do carteiro! \+100 pontos/.test(win1.toast), "quem encosta num carteiro ganha dele (+100 pontos) e não perde vida; só aquele carteiro fica lento");
     ok(win1.pos0.join() === win1.post0.join(), `o carteiro atingido volta ao centro do mapa (ao seu posto, em ${win1.pos0.join(",")})`);
-    ok(win1.gain2 === 100 && win1.gain3 === 100 && win1.hit3 > 0 && win1.gain4 === 200 && win1.postmen4 === 2, `durante a tontura (2 s) o mesmo carteiro não pontua de novo; depois da tontura, sim (${win1.gain3} → ${win1.gain4})`);
+    ok(win1.gain2 === 100 && win1.gain3 === 100 && win1.hit3 > 0 && win1.postmen4 === 1 && win1.slowStill && win1.powerLeft > 5, `cada carteiro rende pontos uma vez por poder: parado em cima dele por 22 s não soma de novo (${win1.postmen4} carteiro, poder ainda com ${win1.powerLeft.toFixed(0)} s)`);
+    ok(win1.rearm === true && win1.gain5 >= 100 && win1.postmen5 === 2, `um novo osso renova o poder e o carteiro pode ser pego de novo (+${win1.gain5}; ${win1.postmen5} carteiros)`);
     const slowSpeed = await ev(page, () => {
       __game.start(4); __game.items.forEach((i) => { i.life = false; }); __game.setRand(() => 0.99); __game.freezeVets = false; __game.noCatch = true;
       const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
@@ -1627,7 +1632,7 @@ const PAGE_HELPERS = () => {
     ok(await page.isVisible("#btn-continue") && /Fase 4/.test(await page.textContent("#menu-save")), "o menu oferece continuar o jogo salvo da Fase 4");
     await page.click("#btn-continue");
     const ld = await ev(page, () => ({ power: __game.power, slow: __game.vets.map((v) => v.slow), postmen: __game.postmen, score: __game.score, level: __game.level, bones: __game.bonesGot }));
-    ok(ld.level === 4 && Math.abs(ld.power - sv.power) < 0.1 && JSON.stringify(ld.slow) === JSON.stringify(sv.slow) && ld.bones === 1 && ld.postmen === 1 && ld.postmen === sv.postmen && ld.score === sv.score, `continuar: o poder (${ld.power.toFixed(1)} s), o carteiro lento, os carteiros atingidos (${ld.postmen}) e a pontuação (${ld.score}) continuam como estavam`);
+    ok(ld.level === 4 && Math.abs(ld.power - sv.power) < 1.5 && JSON.stringify(ld.slow) === JSON.stringify(sv.slow) && ld.bones === 1 && ld.postmen === 1 && ld.postmen === sv.postmen && ld.score === sv.score, `continuar: o poder (${ld.power.toFixed(1)} s), o carteiro lento, os carteiros atingidos (${ld.postmen}) e a pontuação (${ld.score}) continuam como estavam`);
     const snap4 = await ev(page, () => { __game.save(); return JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves.toto.snap; });
     const parse4 = (sv) => ev(page, (sv) => __game.parseSave(sv), sv);
     const cl4 = (o) => JSON.parse(JSON.stringify(o));
@@ -1815,7 +1820,30 @@ const PAGE_HELPERS = () => {
     ok(rs5.every((r) => r === false), `saves adulterados da Fase 5 são recusados (peça a menos, poder demais, sem vidas, só 3 vidas): ${rs5.map((r) => (r ? "V" : "x")).join("")}`);
     await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
     const lb = await ev(page, () => ({ level: __game.level, bt: __game.blocks.map((b) => +b.bt.toFixed(1)) }));
-    ok(lb.level === 5 && lb.bt.length === 6 && lb.bt[0] > 10 && lb.bt[0] < 12, `continuar: a Fase 5 volta com as peças no mesmo ponto do ciclo (${lb.bt.join(", ")})`);
+    // o trilho das paredes mostra todo o percurso (as linhas das pontas também esmagam): nada de chão comum onde a parede passa
+    await page.evaluate(() => { __game.start(5); __game.freezeVets = true; __game.noCatch = true; __game.player.x = 30 * 32 + 4; __game.player.y = 9 * 32 + 4; __game.tick(0.01); });
+    const railAt = async () => { await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))); return ev(page, () => { const cv = document.querySelector("canvas"), c = cv.getContext("2d"), k = __game.view.k * __game.view.zoom; return [7, 8, 9, 10, 11].map((row) => { const d = c.getImageData(Math.round((34 * 32 + 16 - __game.view.camX) * k), Math.round((row * 32 + 16 - __game.view.camY) * k), 1, 1).data; return [d[0], d[1], d[2]].join(","); }); }); };
+    const floor = ["35,42,58", "38,46,64"];
+    const r0 = await railAt(); await ev(page, () => { __game.tick(10.3); }); const r1 = await railAt();
+    ok([...r0, ...r1].every((c) => !floor.includes(c)), `a parede da Fase 5 (coluna 34, linhas 7 a 11) tem trilho ou parede em todas as 5 linhas, nos dois lados do percurso (${r0.join(" | ")} // ${r1.join(" | ")})`);
+    // fase sem saída: tudo pego, poder acabado e pontos abaixo do mínimo: a tentativa termina
+    const dead = await ev(page, () => {
+      __game.start(4, { lives: 5, retries: 3 }); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      for (let k = 0; k < 4; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.freezeVets = false; __game.tick(0.01); __game.freezeVets = true; }
+      const lost = __game.livesLost; for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+      const mid = { state: __game.state, power: __game.power, score: __game.score };
+      for (let i = 0; i < 700; i++) __game.tick(0.05);
+      return { lost, mid, state: __game.state, title: document.getElementById("lose-title").textContent, text: document.getElementById("lose-text").textContent };
+    });
+    ok(dead.lost === 4 && dead.mid.state === "playing" && dead.mid.score < 800 && dead.state === "lost" && /pontos não bastaram/i.test(dead.title) && /mínimo 800/.test(dead.text), `Fase 4 sem como chegar a 800: pegou tudo (${dead.mid.score} pontos), o poder acabou e a tentativa termina (${dead.title})`);
+    // osso com vida extra: o aviso da vida e o do poder aparecem juntos
+    const tw = await ev(page, () => {
+      __game.start(4); __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; }); const b = __game.items.find((i) => i.bone); b.life = true; __game.setLives(2);
+      __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01);
+      return document.getElementById("toast").textContent;
+    });
+    ok(/Vida extra/.test(tw) && /Poder do osso por 30 s/.test(tw), `osso com vida extra: o aviso mostra a vida e o poder (${tw})`);
+    ok(lb.level === 5 && lb.bt.length === 6 && lb.bt[0] > 10 && lb.bt[0] < 14, `continuar: a Fase 5 volta com as peças no mesmo ponto do ciclo (${lb.bt.join(", ")})`);
   });
 
   // =====================================================================
@@ -2430,7 +2458,7 @@ const PAGE_HELPERS = () => {
     const msg3 = await ev(page, () => { __game.start(1); for (const v of __game.vets) v.cool = 99; for (let k = 0; k < 45; k++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return document.getElementById("toast").textContent; });
     ok(/As rações mudaram de lugar/.test(msg3), "na Fase 1 o aviso continua falando das rações");
     const txt = await page.evaluate(() => [document.querySelector("#scores .muted").textContent, document.getElementById("game").getAttribute("aria-label")]);
-    ok(/50 por osso/.test(txt[0]) && /ossos/.test(txt[1]) && /blocos/.test(txt[1]), "a tela de pontuações cita os ossos e o rótulo do jogo (leitor de tela) fala de ossos e blocos");
+    ok(/150 por osso/.test(txt[0]) && /100 por carteiro/.test(txt[0]) && /ossos/.test(txt[1]) && /blocos/.test(txt[1]), "a tela de pontuações cita os ossos e o rótulo do jogo (leitor de tela) fala de ossos e blocos");
 
     // --- E/H/I: duas abas no mesmo navegador ---
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });

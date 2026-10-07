@@ -34,7 +34,7 @@
   // (reinício depois de perder todas as vidas). PODE FICAR NEGATIVA.
   const RATION_POINTS = 100, BONE_POINTS = 150 /* 50 do osso + 100 de bônus */, POSTMAN_POINTS = 100, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
   const count = (n) => (Number.isInteger(n) && n > 0 ? n : 0);
-  // `extra` (opcional): { bones: ossos pegos (50 pontos cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
+  // `extra` (opcional): { bones: ossos pegos (150 pontos cada), postmen: carteiros atingidos (100 cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
   // lifePenalty: pontos perdidos por vida perdida (padrão 50; a Fase 4 e a Fase 5 descontam 200) }
   function levelPoints(rations, timeMs, livesLost, retries, extra = {}) {
     const lifePenalty = Number.isInteger(extra.lifePenalty) && extra.lifePenalty >= 0 && extra.lifePenalty <= 10000 ? extra.lifePenalty : LIFE_PENALTY;
