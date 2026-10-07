@@ -36,6 +36,11 @@
     idleMin: c.idleMin / f, idleMax: c.idleMax / f,
   });
   const PHASE2_VET = harder(BASE_VET, 1.1);
+  // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 60,5 e 121 px/s. O resto fica como na Fase 2.
+  const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
+  // Blocos que se movem (Fase 3): deslizam entre dois tiles em linha reta, esperando BLOCK_DWELL s em cada ponta. Nunca esmagam ninguém:
+  // se o cachorro ou um veterinário estiver no caminho, o bloco espera.
+  const BLOCK_SPEED = 60, BLOCK_DWELL = 3;
 
   // # parede | X caixa | E saída | P início do cachorro | V início de um veterinário
   // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
@@ -80,12 +85,54 @@
     "#.......#########..X.EEE#",
     "#########################",
   ];
+  // Fase 3: armazém com três faixas (salas dos cantos, corredor de cima e de baixo, salão central dos veterinários). Os dois corredores
+  // de cima têm "portas": um bloco que se recolhe a um nicho (e fecha o corredor de novo). Cada porta tem um caminho alternativo.
+  const MAP_3 = [
+    "#########################",
+    "#P....###.......###.....#",
+    "#.....#.#.......###.....#",
+    "#.XX.......X.........X..#",
+    "#.....###.......#.#.....#",
+    "#.....###.......###.....#",
+    "###.########.########.###",
+    "###.##.............##.###",
+    "###.##...X.......X.##.###",
+    "###.##.....V.V.....##.###",
+    "###.##...X.......X.##.###",
+    "###.##.............##.###",
+    "###.########.########.###",
+    "#.....###.......###.....#",
+    "#.XX..###..X.X..###..X..#",
+    "#....................EEE#",
+    "#.....###.......###..EEE#",
+    "#########################",
+  ];
   const LEVELS = [
-    // rations = quantas rações há na fase; extraLives = [mín, máx] de rações que escondem uma vida extra (sorteado a cada jogo)
-    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, extraLives: [1, 1] },
-    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, extraLives: [1, 2] },
+    // rations = quantas rações há na fase; bones = quantos ossos (50 pontos cada; é preciso pegar todos para sair);
+    // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
+    // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
+    // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
+    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, blocks: [] },
+    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, blocks: [] },
+    {
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20,
+      blocks: [
+        { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e depois se recolhe ao nicho de cima
+        { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e depois fecha o corredor
+      ],
+    },
   ];
   const LEVEL_IDS = LEVELS.map((l) => l.id);
+
+  // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. O ciclo é: espera em `from`, desliza, espera em `to`, volta.
+  function blockFraction(d, bt) {
+    const u = ((bt % d.period) + d.period) % d.period;
+    if (u < BLOCK_DWELL) return 0;
+    if (u < BLOCK_DWELL + d.slide) return (u - BLOCK_DWELL) / d.slide;
+    if (u < 2 * BLOCK_DWELL + d.slide) return 1;
+    return 1 - (u - 2 * BLOCK_DWELL - d.slide) / d.slide;
+  }
+  const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: TILE, h: TILE, kind: "M" }; };
 
   // Converte um mapa em dados prontos para jogar (e para conferir jogos salvos), sem mexer no estado atual.
   function buildLevel(def) {
@@ -102,14 +149,30 @@
       else if (ch === "V") vetSpawns.push([c, r]);
     }
     if (!spawnTile || !exitTiles.length || vetSpawns.length !== def.vets.length) throw new Error(`Mapa incompleto: ${def.title}`);
-    const [lifeMin, lifeMax] = def.extraLives;
-    if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) || lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations) {
-      throw new Error(`Rações inválidas: ${def.title}`);
+    const [lifeMin, lifeMax] = def.extraLives, bones = def.bones || 0, bonusStep = def.bonusStep || 10;
+    if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(bones) || bones < 0 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) ||
+        lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations + bones || !Number.isInteger(bonusStep) || bonusStep < 1) {
+      throw new Error(`Itens inválidos: ${def.title}`);
     }
+    // blocos que se movem: dois tiles livres na mesma linha ou coluna; todo o trilho entre eles é chão livre e sem início/saída
+    const blockDefs = (def.blocks || []).map((b) => {
+      const [ac, ar] = b.from, [bc, br] = b.to;
+      if (![ac, ar, bc, br].every(Number.isInteger) || (ac !== bc && ar !== br) || (ac === bc && ar === br) || !(b.phase >= 0)) throw new Error(`Bloco inválido: ${def.title}`);
+      const track = [];
+      for (let c = Math.min(ac, bc); c <= Math.max(ac, bc); c++) for (let r = Math.min(ar, br); r <= Math.max(ar, br); r++) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS || map[r][c] !== ".") throw new Error(`Trilho de bloco inválido: ${def.title}`);
+        track.push([c, r]);
+      }
+      const slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / BLOCK_SPEED;
+      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, slide, period: 2 * (BLOCK_DWELL + slide), phase: b.phase, track };
+    });
+    if (blockDefs.length > 2) throw new Error(`Blocos demais: ${def.title}`);
+    const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
-      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, lifeMin, lifeMax,
+      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, bones, lifeMin, lifeMax, bonusStep,
+      blockDefs, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
     };
@@ -132,7 +195,9 @@
   let state = "menu"; // menu | playing | paused | won | lost
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
-  let collected, score, time, lives, livesLost, retries, invuln, hintTimer;
+  let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
+  let blocks = [];             // blocos que se movem na fase atual: { d: definição, bt: relógio do ciclo, rect: posição (também em `solids`) }
+  const dynBlocked = new Set(); // tiles ocupados agora pelos blocos que se movem (chave: linha * COLS + coluna): os veterinários os contornam
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let rand = Math.random;
@@ -154,7 +219,7 @@
   // e espalhadas pelo mapa (a distância mínima entre elas diminui só se for preciso).
   // `avoid`: tiles que já têm uma ração (as já pegas ficam no mapa até a fase acabar) e não podem receber outra.
   function placeItems(spawnTile, vetTiles, exitTiles, count, avoid = []) {
-    const g = bfs(spawnTile), key = (c, r) => r * COLS + c;
+    const g = bfs(spawnTile, true), key = (c, r) => r * COLS + c; // alcance sem contar os blocos: eles se movem
     const exitKeys = new Set([...exitTiles, ...avoid].map(([c, r]) => key(c, r)));
     const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     const cand = shuffle(g.q.filter((t) => !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= 4)));
@@ -168,13 +233,16 @@
     return cand.slice(0, count);
   }
 
-  const tileItem = ([c, r], life) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life });
+  const tileItem = ([c, r], life, bone = false) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life, bone });
 
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
     levelId = id; lv = BUILT[id]; gamePlayer = store.player();
-    solids = lv.solids; walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
-    collected = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0;
+    walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
+    blocks = lv.blockDefs.map((d) => ({ d, bt: d.phase, rect: blockRectAt(d, d.phase) }));
+    solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
+    refreshBlockTiles();
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -182,8 +250,10 @@
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
       return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 2, dir: 1 };
     });
-    items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations).map((t) => tileItem(t, false));
-    // Algumas rações trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fase 2: 1 ou 2).
+    // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
+    items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
+    shuffle(items.map((_, i) => i)).slice(0, lv.bones).forEach((i) => { items[i].bone = true; });
+    // Alguns itens (ração ou osso) trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fase 2: 1 ou 2; Fase 3: 1, em ração OU osso).
     const extra = lv.lifeMin + Math.floor(rand() * (lv.lifeMax - lv.lifeMin + 1));
     shuffle(items.map((_, i) => i)).slice(0, extra).forEach((i) => { items[i].life = true; });
     score = runningScore();
@@ -193,9 +263,32 @@
   function relocateItems() {
     const rest = items.filter((i) => !i.taken);
     if (!rest.length) return;
-    const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de uma ração já pega
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, taken);
-    rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life)); });
+    const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de um item já pego
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles]);
+    rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone)); });
+  }
+
+  // ---------- Blocos que se movem (Fase 3) ----------
+  function refreshBlockTiles() {
+    dynBlocked.clear();
+    for (const b of blocks) {
+      const c1 = Math.floor(b.rect.x / TILE), c2 = Math.floor((b.rect.x + b.rect.w - 0.01) / TILE), r1 = Math.floor(b.rect.y / TILE), r2 = Math.floor((b.rect.y + b.rect.h - 0.01) / TILE);
+      for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) dynBlocked.add(r * COLS + c);
+    }
+  }
+
+  // Cada bloco anda seu ciclo (espera, desliza, espera, volta). Se o cachorro ou um veterinário estiver no lugar para onde ele iria,
+  // ele espera: nunca esmaga ninguém, e quem fica encostado do lado não o impede de andar.
+  function updateBlocks(dt) {
+    if (!blocks.length) return;
+    const actors = [{ x: player.x, y: player.y, w: player.w, h: player.h }, ...vets.map((v) => ({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }))];
+    for (const b of blocks) {
+      const bt = b.bt + dt, r = blockRectAt(b.d, bt);
+      if (r.x === b.rect.x && r.y === b.rect.y) { b.bt = bt % b.d.period; continue; } // esperando numa das pontas: só o relógio anda
+      if (actors.some((a) => overlap(a, r))) continue;                                  // alguém no caminho: espera
+      b.bt = bt % b.d.period; b.rect.x = r.x; b.rect.y = r.y;
+    }
+    refreshBlockTiles();
   }
 
   // ---------- Cachorro ----------
@@ -211,7 +304,7 @@
   }
 
   // ---------- Veterinário (caminha pelo centro dos tiles, sem atravessar paredes) ----------
-  function bfs(from) {
+  function bfs(from, ignoreBlocks = false) {
     const prev = new Map(), dist = new Map();
     const key = (c, r) => r * COLS + c;
     const q = [from]; dist.set(key(...from), 0); prev.set(key(...from), null);
@@ -219,7 +312,7 @@
       const [c, r] = q[i], d = dist.get(key(c, r));
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nc = c + dc, nr = r + dr;
-        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !walk[nr][nc] || dist.has(key(nc, nr))) continue;
+        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !walk[nr][nc] || dist.has(key(nc, nr)) || (!ignoreBlocks && dynBlocked.has(key(nc, nr)))) continue;
         dist.set(key(nc, nr), d + 1); prev.set(key(nc, nr), [c, r]); q.push([nc, nr]);
       }
     }
@@ -238,7 +331,7 @@
     if (dist > v.cfg.sight) return false;
     for (let d = 0; d < dist; d += 8) {
       const [c, r] = tileOf(v.cx + (dx * d) / dist, v.cy + (dy * d) / dist);
-      if (!walk[r][c]) return false;
+      if (!walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
     }
     return true;
   }
@@ -278,6 +371,7 @@
       const [tx, ty] = centerOf(...v.leg);
       const dx = tx - v.cx, dy = ty - v.cy, dist = Math.hypot(dx, dy);
       const step = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * dt;
+      if (blocks.length && blocks.some((b) => overlap({ x: v.cx + (dx / dist) * Math.min(step, dist) - 12, y: v.cy + (dy / dist) * Math.min(step, dist) - 12, w: 24, h: 24 }, b.rect))) return; // bloco no caminho: espera
       if (dx) v.dir = Math.sign(dx);
       if (dist <= step) {
         v.cx = tx; v.cy = ty; v.leg = null;
@@ -289,7 +383,8 @@
   // ---------- Pontuação e vidas ----------
   // Pontuação corrente: 100 por ração − 50 por vida perdida − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
-  const runningScore = () => collected * Records.RATION_POINTS - livesLost * Records.LIFE_PENALTY - retries * Records.RETRY_PENALTY;
+  const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS - livesLost * Records.LIFE_PENALTY - retries * Records.RETRY_PENALTY;
+  const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
 
   function giveLife() {
     if (lives < MAX_LIVES) { lives++; toast("Vida extra! +1 vida", 2.2); }
@@ -336,8 +431,9 @@
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
 
+    updateBlocks(dt);
     for (const it of items) {
-      if (!it.taken && overlap(player, it)) { it.taken = true; collected++; if (it.life) giveLife(); score = runningScore(); saveNow(); }
+      if (!it.taken && overlap(player, it)) { it.taken = true; if (it.bone) bonesGot++; else collected++; if (it.life) giveLife(); score = runningScore(); saveNow(); }
     }
 
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
@@ -346,8 +442,8 @@
     else if (!noCatch && vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
-      if (collected >= lv.rations) win();
-      else if (hintTimer <= 0) toast("Colete todas as rações antes de sair!", 1.5);
+      if (allCollected()) win();
+      else if (hintTimer <= 0) toast(lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
     }
   }
 
@@ -418,45 +514,58 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 3, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, INVULN)),
-      items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0]),
+      v: 4, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, INVULN)),
+      items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 : 0]), // coluna, linha, pego, vida extra, osso
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
+      bl: blocks.map((b) => r2(b.bt)), // ponto do ciclo de cada bloco que se move
     };
   }
 
   // Confere um jogo salvo antes de usar (o armazenamento pode ter sido editado ou corrompido).
+  // Aceita o formato v4 e o v3 da 0.4.0 (itens de 4 posições, sem ossos nem blocos); devolve sempre no formato v4.
   function parseSnapshot(sv) {
     try {
       const num = (n, lo, hi) => Number.isFinite(n) && n >= lo && n <= hi;
-      if (!sv || sv.v !== 3 || !Number.isInteger(sv.l)) return null;
+      if (!sv || (sv.v !== 3 && sv.v !== 4) || !Number.isInteger(sv.l)) return null;
       const L = BUILT[sv.l];
       if (!L) return null;
+      if (sv.v === 3 && (L.bones || L.blockDefs.length)) return null; // o formato antigo não tem ossos nem blocos
       if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES || !num(sv.invuln, 0, INVULN)) return null;
       if (!Number.isInteger(sv.lost) || sv.lost < 0 || sv.lost > 999) return null;
       if (!Number.isInteger(sv.rs) || sv.rs < 0 || sv.rs > MAX_RETRIES) return null;
-      if (!Array.isArray(sv.items) || sv.items.length !== L.rations) return null;
-      const seen = new Set();
-      let lifeItems = 0;
+      if (!Array.isArray(sv.items) || sv.items.length !== L.rations + L.bones) return null;
+      const seen = new Set(), items4 = [];
+      let lifeItems = 0, boneItems = 0;
       for (const it of sv.items) {
-        if (!Array.isArray(it) || it.length !== 4) return null;
-        const [c, r, t, l] = it;
-        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1)) return null;
-        // duas rações que faltam pegar não podem ocupar o mesmo tile (uma já pega pode: jogos salvos da 0.4.0 tinham esse defeito)
+        if (!Array.isArray(it) || it.length !== (sv.v === 3 ? 4 : 5)) return null;
+        const [c, r, t, l] = it, b = sv.v === 3 ? 0 : it[4];
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || (b !== 0 && b !== 1)) return null;
+        // dois itens que faltam pegar não podem ocupar o mesmo tile (um já pego pode: jogos salvos da 0.4.0 tinham esse defeito)
         if (t === 0) { if (seen.has(r * COLS + c)) return null; seen.add(r * COLS + c); }
-        lifeItems += l;
+        if (L.trackTiles.some(([tc, tr]) => tc === c && tr === r)) return null; // nunca no trilho de um bloco
+        lifeItems += l; boneItems += b;
+        items4.push([c, r, t, l, b]);
       }
-      if (lifeItems < L.lifeMin || lifeItems > L.lifeMax) return null; // a fase tem de ter a quantidade prevista de rações com vida extra
+      if (lifeItems < L.lifeMin || lifeItems > L.lifeMax || boneItems !== L.bones) return null; // a fase tem de ter a quantidade prevista de vidas extras e de ossos
+      let bl = [];
+      if (L.blockDefs.length) {
+        if (!Array.isArray(sv.bl) || sv.bl.length !== L.blockDefs.length || !sv.bl.every((x) => num(x, 0, 1e5))) return null;
+        bl = sv.bl;
+      } else if (sv.bl !== undefined && !(Array.isArray(sv.bl) && sv.bl.length === 0)) return null;
       const p = sv.p;
       if (!p || !num(p.x, 0, WORLD_W - 24) || !num(p.y, 0, WORLD_H - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
-      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
+      const rects = bl.map((x, i) => blockRectAt(L.blockDefs[i], x)); // onde cada bloco está nesse ponto do ciclo
+      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o)) || rects.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
       if (!Array.isArray(sv.vets) || sv.vets.length !== L.vetSpawns.length) return null;
       for (const v of sv.vets) {
         if (!Array.isArray(v) || !num(v[0], 0, WORLD_W - 1) || !num(v[1], 0, WORLD_H - 1)) return null;
         const [c, r] = tileOf(v[0], v[1]);
         if (!L.walk[r][c]) return null;
+        const [cx, cy] = centerOf(c, r);
+        if (rects.some((o) => overlap({ x: cx - 12, y: cy - 12, w: 24, h: 24 }, o))) return null;
       }
-      return sv;
+      return { ...sv, v: 4, items: items4, bl };
     } catch { return null; }
   }
 
@@ -472,9 +581,11 @@
 
   function applySnapshot(sv) {
     reset(sv.l, { lives: sv.lives, retries: sv.rs });
-    items = sv.items.map(([c, r, t, l]) => Object.assign(tileItem([c, r], l === 1), { taken: t === 1 }));
+    items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
+    blocks.forEach((b, i) => { b.bt = sv.bl[i]; const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
+    refreshBlockTiles();
     time = sv.time; livesLost = sv.lost;
-    collected = items.filter((i) => i.taken).length; score = runningScore();
+    collected = items.filter((i) => i.taken && !i.bone).length; bonesGot = items.filter((i) => i.taken && i.bone).length; score = runningScore();
     Object.assign(player, { x: sv.p.x, y: sv.p.y, facing: sv.p.f, moving: false });
     vets.forEach((v, i) => {
       const [c, r] = tileOf(sv.vets[i][0], sv.vets[i][1]);
@@ -511,8 +622,8 @@
   const levelTitle = (id) => BUILT[id]?.title || `Fase ${id}`;
 
   function describeSave(sv) {
-    const got = sv.items.filter((i) => i[2] === 1).length;
-    return `${levelTitle(sv.l)} · ${fmt(sv.time * 1000)} · ${got}/${BUILT[sv.l].rations} rações · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
+    const L = BUILT[sv.l], gotR = sv.items.filter((i) => i[2] === 1 && i[4] !== 1).length, gotB = sv.items.filter((i) => i[2] === 1 && i[4] === 1).length;
+    return `${levelTitle(sv.l)} · ${fmt(sv.time * 1000)} · ${gotR}/${L.rations} rações${L.bones ? ` · ${gotB}/${L.bones} ossos` : ""} · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
   }
 
   // "Novo jogo": pede nome se ainda não há um, confirma antes de apagar um jogo salvo e deixa escolher a fase liberada.
@@ -539,7 +650,7 @@
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, l.title), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"} · ${best ? `sua melhor: ${best.p} pts` : "ainda não jogada"}`
+        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${l.bones ? " · ossos e blocos móveis" : ""} · ${best ? `sua melhor: ${best.p} pts` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) { b.dataset.autofocus = ""; b.addEventListener("click", () => begin(l.id)); }
       list.append(b);
@@ -561,14 +672,14 @@
   function win() {
     setState("won");
     const timeMs = officialTimeMs();
-    const bonus = Records.timeBonus(timeMs);
-    const points = Records.levelPoints(collected, timeMs, livesLost, retries); // rações + bônus − vidas perdidas − tentativas extras
+    const bonus = Records.timeBonus(timeMs, lv.bonusStep);
+    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, bonusStep: lv.bonusStep }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
     carriedLives = lives;
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS} + bônus de tempo: ${bonus}` +
+    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
       (livesLost ? ` − vidas perdidas: ${livesLost * Records.LIFE_PENALTY}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
@@ -606,7 +717,7 @@
     setState("lost");
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas: não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations} · Pontos: ${score}`;
+    $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
       : `Acabaram as suas chances nesta fase (as ${MAX_RETRIES} novas tentativas já foram usadas).`;
@@ -894,12 +1005,43 @@
     ctx.fillStyle = "#e5533d"; ctx.beginPath();
     ctx.moveTo(cx - 10, cy + 1); ctx.lineTo(cx + 10, cy + 1); ctx.lineTo(cx + 7, cy + 8); ctx.lineTo(cx - 7, cy + 8); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(cx - 8, cy + 3, 16, 1.5);
-    if (it.life) { // vida extra: coração vermelho em cima da tigela
-      const hy = cy - 12 - (calm ? 0 : Math.abs(Math.sin(time * 5)) * 2);
-      ctx.fillStyle = "#ff2d3d"; ctx.beginPath();
-      ctx.moveTo(cx, hy + 7); ctx.bezierCurveTo(cx - 9, hy + 1, cx - 5, hy - 5, cx, hy - 1); ctx.bezierCurveTo(cx + 5, hy - 5, cx + 9, hy + 1, cx, hy + 7); ctx.fill();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+    if (it.life) drawLifeHeart(cx, cy);
+  }
+
+  function drawLifeHeart(cx, cy) { // vida extra: coração vermelho em cima da ração ou do osso
+    const hy = cy - 12 - (calm ? 0 : Math.abs(Math.sin(time * 5)) * 2);
+    ctx.fillStyle = "#ff2d3d"; ctx.beginPath();
+    ctx.moveTo(cx, hy + 7); ctx.bezierCurveTo(cx - 9, hy + 1, cx - 5, hy - 5, cx, hy - 1); ctx.bezierCurveTo(cx + 5, hy - 5, cx + 9, hy + 1, cx, hy + 7); ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  function drawBone(it) { // osso: vale 50 pontos
+    const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
+    ellipse(cx, cy + 7, 11, 3.5, "rgba(0,0,0,.25)");
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.45);
+    ctx.fillStyle = "#f6f1e3"; ctx.strokeStyle = "#a99c7c"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.rect(-8, -2.4, 16, 4.8); ctx.fill(); ctx.stroke();
+    for (const [x, y] of [[-8.5, -3], [-8.5, 3], [8.5, -3], [8.5, 3]]) { ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    ctx.fillRect(-8, -2, 16, 4); // esconde o contorno entre a haste e as pontas
+    ctx.restore();
+    if (it.life) drawLifeHeart(cx, cy);
+  }
+
+  function drawBlocks() { // trilhos (o caminho que cada bloco percorre) e os blocos que se movem
+    ctx.lineCap = "round";
+    for (const b of blocks) {
+      const x1 = b.d.ax + TILE / 2, y1 = b.d.ay + TILE / 2, x2 = b.d.bx + TILE / 2, y2 = b.d.by + TILE / 2;
+      ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = "#10131c"; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
+  }
+
+  function drawMovingBlock(s) {
+    ctx.fillStyle = "#6b7794"; ctx.fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
+    ctx.fillStyle = "#aeb8d0"; ctx.fillRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
+    ctx.fillStyle = "#f2c230"; // faixas amarelas de aviso nos cantos
+    for (const [dx, dy] of [[4, 4], [s.w - 12, 4], [4, s.h - 12], [s.w - 12, s.h - 12]]) ctx.fillRect(s.x + dx, s.y + dy, 8, 8);
+    ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
   }
 
   function drawDog(p) {
@@ -977,12 +1119,14 @@
       ctx.fillStyle = (r + c) % 2 ? "#232a3a" : "#262e40";
       rect(c * TILE, r * TILE, TILE, TILE);
     }
-    ctx.fillStyle = collected >= lv.rations ? "#3ddc84" : "#7a4b4b";
+    ctx.fillStyle = allCollected() ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = collected >= lv.rations ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
+    ctx.fillStyle = allCollected() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
+    drawBlocks();
     for (const s of solids) {
-      if (s.kind === "#") {
+      if (s.kind === "M") drawMovingBlock(s);
+      else if (s.kind === "#") {
         ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
         ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);
       } else {
@@ -990,14 +1134,14 @@
         ctx.strokeStyle = "#5e3b17"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
       }
     }
-    for (const it of items) if (!it.taken) drawKibble(it);
+    for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
     for (const v of vets) drawVet(v);
     if (!(invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido
   }
 
   // ---------- Placar (HTML) ----------
   const hudEl = {
-    level: $("hud-level"), items: $("hud-items"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"),
+    level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
   };
   const hudCache = {};
@@ -1006,9 +1150,12 @@
     if (!solids) return;
     setHud("lv", hudEl.level, String(levelId));
     setHud("i", hudEl.items, `${collected}/${lv.rations}`);
+    if (hudCache.bn !== lv.bones) { hudCache.bn = lv.bones; hudEl.bonesItem.classList.toggle("hidden", !lv.bones); }
+    if (lv.bones) setHud("o", hudEl.bones, `${bonesGot}/${lv.bones}`);
+    if (hudCache.bs !== lv.bonusStep) { hudCache.bs = lv.bonusStep; hudEl.bonusItem.title = `Bônus de tempo: ${lv.bonusStep * 10} pontos até 20 s, menos ${lv.bonusStep} a cada 10 s (0 depois de 110 s)`; }
     setHud("p", hudEl.points, String(score));
     setHud("t", hudEl.time, fmt(time * 1000));
-    setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs())}`);
+    setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs(), lv.bonusStep)}`);
     if (hudCache.r !== retries) {
       hudCache.r = retries;
       hudEl.retryItem.classList.toggle("hidden", retries === 0);
@@ -1236,9 +1383,10 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
+    get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };

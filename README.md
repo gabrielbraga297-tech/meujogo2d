@@ -1,6 +1,6 @@
 # Jogo 2D top-down (sem nome ainda)
 
-Versão atual: **Fase 1 e Fase 2**.
+Versão atual: **Fase 1, Fase 2 e Fase 3**.
 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
@@ -12,20 +12,25 @@ A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exe
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
 
 ## Objetivo
-Você é um cachorrinho. Pegue **todas** as tigelas de ração e chegue à saída, que só abre quando você pegar todas. As rações aparecem em **lugares diferentes a cada jogo**, e **algumas trazem uma vida extra** (têm um coração em cima).
+Você é um cachorrinho. Pegue **todas** as tigelas de ração (e, na Fase 3, também os **ossos**) e chegue à saída, que só abre quando você pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (têm um coração em cima).
 
 Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho ainda é mais veloz).
 
 ## Fases
-| | Fase 1 | Fase 2 |
-|---|---|---|
-| Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) |
-| Rações | 5 | **7** |
-| Rações com vida extra | 1 | **1 ou 2** (sorteado a cada jogo: nem sempre 1, nem sempre 2) |
-| Veterinários | 1 | **2**, que começam no **centro do mapa** |
-| Dificuldade dos veterinários | base | **10% mais espertos** (veja abaixo) |
+| | Fase 1 | Fase 2 | Fase 3 |
+|---|---|---|---|
+| Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) | **armazém** com corredores, nichos e portas de bloco |
+| Rações | 5 | **7** | **7** |
+| Ossos (50 pontos cada) | — | — | **2** (é preciso pegar todos para sair) |
+| Vida extra escondida | 1 ração | **1 ou 2** rações (sorteado a cada jogo) | **1**, numa ração **ou** num osso (nunca nos dois) |
+| Veterinários | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa |
+| Dificuldade dos veterinários | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 |
+| Blocos que se movem | — | — | **2** (portas que abrem e fecham) |
+| Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** |
 
-A Fase 2 é liberada ao terminar a Fase 1. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer a Fase 1 há o botão **Próxima fase**.
+A Fase 2 é liberada ao terminar a Fase 1, e a Fase 3 ao terminar a Fase 2. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**.
+
+**Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima (esperam 3 s em cada ponta). Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco iria, ele espera. Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Os veterinários também esperam os blocos passarem, e um bloco fechado tapa a visão deles.
 
 **Velocidade dos veterinários** (o cachorrinho anda a 180 px/s):
 
@@ -33,8 +38,11 @@ A Fase 2 é liberada ao terminar a Fase 1. Em **Iniciar jogo** (depois que a Fas
 |---|---|---|
 | Fase 1 | **50** px/s | **100** px/s |
 | Fase 2 (+10% nos dois) | **55** px/s | **110** px/s |
+| Fase 3 (mais +10% sobre a Fase 2) | **60,5** px/s | **121** px/s |
 
 **Os veterinários da Fase 2 são 10% mais difíceis:** velocidade (patrulha e perseguição), distância de visão, chance de decidir perseguir, duração mínima e máxima da perseguição ×1,1; e o tempo entre "olhadas", o descanso depois de perseguir e as pausas ÷1,1.
+
+**Na Fase 3** só a **velocidade** de movimento ganha mais 10% (60,5 e 121 px/s); visão, chance de perseguir, duração das perseguições e descanso são os da Fase 2.
 
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5**; as vidas são **cumulativas**:
@@ -45,7 +53,7 @@ Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos p
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + bônus de tempo − 50 por vida perdida − 100 por nova tentativa**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 50 por osso (Fase 3) + bônus de tempo − 50 por vida perdida − 100 por nova tentativa**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 
@@ -58,6 +66,7 @@ O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 1
 | até 110 s | 10 |
 | mais de 110 s | 0 |
 
+- Na **Fase 3** o bônus de tempo é maior: **20 pontos a cada 10 s**, de 0 a 200 (até 20 s = 200, até 30 s = 180 … até 110 s = 20, depois 0).
 - **Na mesma fase vale só a MAIOR pontuação** (jogar de novo não soma). Em caso de empate, vale o menor tempo.
 - **Fases diferentes se somam:** a pontuação total é a soma da melhor pontuação de cada fase.
 - O tempo oficial é arredondado ao décimo de segundo.

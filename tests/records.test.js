@@ -384,6 +384,35 @@ test("limite de saves: guarda no máximo um por jogador lembrado", () => {
   assert.ok(s.hasGame("Cao19"));
 });
 
+// ---------- Fase 3: ossos e bônus de tempo de 20 pontos por degrau ----------
+test("timeBonus com 20 pontos por degrau de 10 s: de 0 a 200", () => {
+  const table = [5, 20, 20.1, 30, 30.1, 40, 60, 80, 100, 110, 110.1, 300].map((s) => R.timeBonus(s * 1000, 20));
+  assert.deepStrictEqual(table, [200, 200, 180, 180, 160, 160, 120, 80, 40, 20, 0, 0]);
+  assert.strictEqual(R.timeBonus(15000), 100, "sem o parâmetro vale o padrão (10 por degrau)");
+  assert.strictEqual(R.timeBonus(15000, 10), 100);
+  for (const bad of [0, -5, 1.5, NaN, "20", null, 5000]) assert.strictEqual(R.timeBonus(25000, bad), 90, `degrau inválido (${bad}) cai no padrão`);
+});
+
+test("levelPoints com ossos (50 pontos cada) e bônus de 20 por degrau", () => {
+  assert.strictEqual(R.BONE_POINTS, 50);
+  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: 2, bonusStep: 20 }), 700 + 100 + 180);
+  assert.strictEqual(R.levelPoints(7, 25000, 2, 1, { bones: 2, bonusStep: 20 }), 700 + 100 + 180 - 100 - 100);
+  assert.strictEqual(R.levelPoints(5, 25000, 0, 0), 500 + 90, "fases sem ossos e sem parâmetros seguem como antes");
+  assert.strictEqual(R.levelPoints(7, 25000, 0, 0, { bones: -3, bonusStep: 20 }), 700 + 180, "ossos inválidos valem 0");
+  assert.strictEqual(R.levelPoints(7, 500000, 0, 0, { bones: 2, bonusStep: 20 }), 800, "sem bônus de tempo");
+});
+
+test("a Fase 3 pode guardar e somar pontuação como as outras fases", () => {
+  const s = R.createStore(null);
+  s.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
+  s.addRun({ level: 3, timeMs: 30000, points: R.levelPoints(7, 30000, 0, 0, { bones: 2, bonusStep: 20 }), name: "Ana" });
+  assert.strictEqual(s.personalBest("Ana", 3).p, 700 + 100 + 180);
+  assert.strictEqual(s.totalScore("Ana", [1, 2, 3]), 600 + 980);
+  s.completeLevel("Ana", 2); s.completeLevel("Ana", 3);
+  assert.deepStrictEqual(s.progress("Ana").completed, [2, 3]);
+  assert.strictEqual(s.progress("Ana").unlocked, 4);
+});
+
 // ---------- duas abas no mesmo armazenamento ----------
 test("duas abas: o que uma grava a outra enxerga e nada se perde (pontuações, progresso e jogos salvos)", () => {
   const st = memStorage();

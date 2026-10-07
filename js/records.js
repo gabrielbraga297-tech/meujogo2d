@@ -18,21 +18,25 @@
 
   // Bônus de tempo (proporcional, de 0 a 100 pontos): quanto menos tempo, mais pontos. Cada 10 segundos valem 10 pontos.
   // Até 20 s = 100; até 30 s = 90; até 40 s = 80; ... até 110 s = 10; acima de 110 s = 0.
-  const BONUS_MAX = 100, BONUS_FULL_MS = 20000, BONUS_STEP_MS = 10000, BONUS_STEP_PTS = 10;
+  // Fases com bônus maior (Fase 3) valem 20 pontos por degrau de 10 s: de 0 a 200.
+  const BONUS_MAX = 100, BONUS_FULL_MS = 20000, BONUS_STEP_MS = 10000, BONUS_STEP_PTS = 10, BONUS_STEPS = 10;
   const LEGACY_RATION_POINTS = 500; // partidas antigas (só com tempo) valem 5 rações + bônus do tempo
-  function timeBonus(ms) {
+  // `stepPts` = pontos por degrau de 10 s (10 na maioria das fases, 20 na Fase 3).
+  function timeBonus(ms, stepPts = BONUS_STEP_PTS) {
+    const step = Number.isInteger(stepPts) && stepPts > 0 && stepPts <= 1000 ? stepPts : BONUS_STEP_PTS, max = step * BONUS_STEPS;
     if (!Number.isFinite(ms) || ms < 0) return 0;
     const over = Math.round(ms) - BONUS_FULL_MS;
-    if (over <= 0) return BONUS_MAX;
-    return Math.max(0, BONUS_MAX - BONUS_STEP_PTS * Math.ceil(over / BONUS_STEP_MS)); // cada bloco de 10 s (começado) a mais tira 10
+    if (over <= 0) return max;
+    return Math.max(0, max - step * Math.ceil(over / BONUS_STEP_MS)); // cada bloco de 10 s (começado) a mais tira um degrau
   }
 
   // Pontuação da fase = 100 por ração + bônus de tempo − 50 por vida perdida − 100 por cada nova tentativa
   // (reinício depois de perder todas as vidas). PODE FICAR NEGATIVA.
-  const RATION_POINTS = 100, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
+  const RATION_POINTS = 100, BONE_POINTS = 50, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
   const count = (n) => (Number.isInteger(n) && n > 0 ? n : 0);
-  function levelPoints(rations, timeMs, livesLost, retries) {
-    return count(rations) * RATION_POINTS + timeBonus(timeMs) - count(livesLost) * LIFE_PENALTY - count(retries) * RETRY_PENALTY;
+  // `extra` (opcional): { bones: ossos pegos (50 pontos cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10) }
+  function levelPoints(rations, timeMs, livesLost, retries, extra = {}) {
+    return count(rations) * RATION_POINTS + count(extra.bones) * BONE_POINTS + timeBonus(timeMs, extra.bonusStep) - count(livesLost) * LIFE_PENALTY - count(retries) * RETRY_PENALTY;
   }
 
   // Maior pontuação vence; em caso de empate, o menor tempo. (a e b: { p, t })
@@ -389,5 +393,5 @@
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,
-    BONUS_MAX, RATION_POINTS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
+    BONUS_MAX, RATION_POINTS, BONE_POINTS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
 });
