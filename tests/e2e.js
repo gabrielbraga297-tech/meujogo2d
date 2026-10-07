@@ -910,6 +910,12 @@ const PAGE_HELPERS = () => {
     ok(Math.abs(cf.f3a.speed / cf.f2.speed - 1.1) < 1e-9 && Math.abs(cf.f3a.chaseSpeed / cf.f2.chaseSpeed - 1.1) < 1e-9, "a velocidade de movimento da Fase 3 é exatamente 10% maior que a da Fase 2, nos dois modos");
     ok(["sight", "chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 180, "o resto do comportamento é o da Fase 2, os 2 veterinários são iguais e o cachorro (180 px/s) segue mais rápido");
 
+    // ---- cachorrinho 10% mais lento na Fase 3 ----
+    const run1s = (id, x, y) => ev(page, ([id, x, y]) => { __game.start(id); __game.freezeVets = true; __game.noCatch = true; __game.player.x = x; __game.player.y = y; const x0 = __game.player.x; __t.hold("d", 60); return [__game.dogSpeed, __game.player.x - x0]; }, [id, x, y]);
+    const sp1 = await run1s(1, 500, 440), sp2 = await run1s(2, 36, 14 * 32 + 4), sp3 = await run1s(3, 36, 15 * 32 + 4);
+    ok(sp1[0] === 180 && sp2[0] === 180 && Math.abs(sp3[0] - 162) < 1e-9, `velocidade do cachorrinho: ${sp1[0]} px/s nas Fases 1 e 2 e ${sp3[0]} px/s na Fase 3 (10% mais lento)`);
+    ok(Math.abs(sp1[1] - 180) < 1.5 && Math.abs(sp2[1] - 180) < 1.5 && Math.abs(sp3[1] - 162) < 1.5, `andando 1 s de verdade: ${sp1[1].toFixed(0)} px, ${sp2[1].toFixed(0)} px e ${sp3[1].toFixed(0)} px`);
+
     // ---- blocos: ciclo ----
     await ev(page, () => { __game.start(3); __game.freezeVets = true; __game.noCatch = true; });
     const at = (t) => ev(page, (t) => { __game.start(3); __game.freezeVets = true; __game.noCatch = true; const out = []; let now = 0; for (const target of t) { while (now < target - 1e-9) { const dt = Math.min(0.05, target - now); __game.tick(dt); now += dt; } out.push(__game.blocks.map((b) => [Math.round(b.x), Math.round(b.y)])); } return out; }, t);

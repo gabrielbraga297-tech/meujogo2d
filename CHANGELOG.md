@@ -6,6 +6,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 
 ## 0.5.0 — 07/10/2026 (em preparação)
 - **Fase 3:** 7 rações + **2 ossos** (50 pontos cada; é preciso pegar todos para sair), 2 veterinários, **2 blocos que deslizam** abrindo e fechando portas nos corredores (nunca esmagam, sempre sobra caminho) e **bônus de tempo de 20 pontos a cada 10 s** (de 0 a 200). Uma só vida escondida, numa ração **ou** num osso.
+- **Cachorrinho 10% mais lento na Fase 3** (162 px/s; nas Fases 1 e 2 segue 180 px/s).
 - **Veterinários:** 50 px/s patrulhando e 100 px/s perseguindo na Fase 1; Fase 2 com +10% (55 e 110); Fase 3 com mais +10% (60,5 e 121).
 - **Correções da auditoria:** a ração que muda de lugar não cai mais sobre uma já pega (o "Continuar jogo" sumia); o relógio nunca anda para trás; voltar das Pontuações na vitória mantém a Próxima fase; duas abas não se apagam; "Apagar e começar de novo" só descarta o jogo salvo quando o novo começa; avisos de salvar honestos; Esc segurado, nome da conta e cadastro lento; saída com contraste; telas e placar legíveis em celular deitado e pequeno; setas e Espaço rolam as telas longas.
 - Jogos salvos da 0.4.0 continuam valendo.

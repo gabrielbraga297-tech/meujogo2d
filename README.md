@@ -32,7 +32,9 @@ A Fase 2 é liberada ao terminar a Fase 1, e a Fase 3 ao terminar a Fase 2. Em *
 
 **Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima (esperam 3 s em cada ponta). Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco iria, ele espera. Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Os veterinários também esperam os blocos passarem, e um bloco fechado tapa a visão deles.
 
-**Velocidade dos veterinários** (o cachorrinho anda a 180 px/s):
+**Velocidade do cachorrinho:** 180 px/s nas Fases 1 e 2 e **162 px/s na Fase 3** (10% mais lento).
+
+**Velocidade dos veterinários:**
 
 | | sem o "!" (patrulhando) | com o "!" (perseguindo) |
 |---|---|---|

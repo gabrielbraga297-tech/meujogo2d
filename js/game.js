@@ -3,7 +3,7 @@
 
   const TILE = 32, COLS = 25, ROWS = 18;
   const WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE;
-  const SPEED = 180;        // cachorro, pixels do mundo por segundo
+  const SPEED = 180;        // cachorro, pixels do mundo por segundo (a Fase 3 usa 90% disso: veja `dogSpeed` em LEVELS)
   const START_LIVES = 3;    // vidas ao começar uma fase do zero
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
   const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
@@ -112,10 +112,11 @@
     // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
-    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, blocks: [] },
-    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, blocks: [] },
+    // dogSpeed = fração da velocidade do cachorrinho (1 = 180 px/s; a Fase 3 usa 0,9 = 162 px/s)
+    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, blocks: [] },
+    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20,
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9,
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e depois se recolhe ao nicho de cima
         { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e depois fecha o corredor
@@ -149,7 +150,8 @@
       else if (ch === "V") vetSpawns.push([c, r]);
     }
     if (!spawnTile || !exitTiles.length || vetSpawns.length !== def.vets.length) throw new Error(`Mapa incompleto: ${def.title}`);
-    const [lifeMin, lifeMax] = def.extraLives, bones = def.bones || 0, bonusStep = def.bonusStep || 10;
+    const [lifeMin, lifeMax] = def.extraLives, bones = def.bones || 0, bonusStep = def.bonusStep || 10, dogSpeed = def.dogSpeed ?? 1;
+    if (!(dogSpeed >= 0.3 && dogSpeed <= 1.5)) throw new Error(`Velocidade do cachorro inválida: ${def.title}`);
     if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(bones) || bones < 0 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) ||
         lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations + bones || !Number.isInteger(bonusStep) || bonusStep < 1) {
       throw new Error(`Itens inválidos: ${def.title}`);
@@ -171,7 +173,7 @@
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
-      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, bones, lifeMin, lifeMax, bonusStep,
+      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       blockDefs, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -427,7 +429,7 @@
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
-    const step = Math.min(dt, 0.05) * SPEED;
+    const step = Math.min(dt, 0.05) * SPEED * lv.dogSpeed;
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
 
@@ -1384,10 +1386,10 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
+    get dogSpeed() { return SPEED * lv.dogSpeed; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, blocks: l.blocks.map((b) => ({ ...b })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
