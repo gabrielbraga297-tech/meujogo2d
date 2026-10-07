@@ -41,9 +41,10 @@
   // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6 (e, quando existirem, Fase 4 = 8 e Fase 5 = 10).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
-  // Blocos que se movem (Fase 3): deslizam entre dois tiles em linha reta, esperando BLOCK_DWELL s em cada ponta. Nunca esmagam ninguém:
-  // se o cachorro ou um veterinário estiver no caminho, o bloco espera.
-  const BLOCK_SPEED = 60, BLOCK_DWELL = 3;
+  // Blocos que se movem (Fase 3): ficam parados num tile, e a cada BLOCK_EVERY segundos mudam de lado (deslizam até o outro tile da dupla), sem
+  // esperar ninguém chegar perto. Nunca esmagam: se o cachorro ou um veterinário estiver no lugar para onde o bloco vai, ele é empurrado para o lado.
+  // `blockEvery` de cada fase pode mudar esse intervalo. Nos últimos BLOCK_WARN s antes de cada mudança, o trilho pisca em amarelo.
+  const BLOCK_SPEED = 120, BLOCK_EVERY = 3, BLOCK_WARN = 0.6; // px/s ao deslizar (o dobro de antes), s entre as mudanças, s de aviso
 
   // # parede | X caixa | E saída | P início do cachorro | V início de um veterinário
   // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
@@ -116,27 +117,33 @@
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
     // dogSpeed = fração da velocidade do cachorrinho (1 = 180 px/s; a Fase 3 usa 0,9 = 162 px/s)
-    // alertTiles = a que distância (em quadrados) o veterinário liga o "!"
+    // alertTiles = a que distância (em quadrados) o veterinário liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
     { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(1), blocks: [] },
     { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3),
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY,
       blocks: [
-        { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e depois se recolhe ao nicho de cima
-        { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e depois fecha o corredor
+        { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e na primeira mudança se recolhe ao nicho de cima
+        { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e na primeira mudança fecha o corredor
       ],
     },
   ];
   const LEVEL_IDS = LEVELS.map((l) => l.id);
 
-  // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. O ciclo é: espera em `from`, desliza, espera em `to`, volta.
+  // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. `bt` = segundos de relógio do bloco. Ele fica parado em `from` até `every` s;
+  // a partir daí muda de lado a cada `every` s (começa a deslizar em every, 2·every, 3·every...) e leva `slide` s para chegar.
   function blockFraction(d, bt) {
-    const u = ((bt % d.period) + d.period) % d.period;
-    if (u < BLOCK_DWELL) return 0;
-    if (u < BLOCK_DWELL + d.slide) return (u - BLOCK_DWELL) / d.slide;
-    if (u < 2 * BLOCK_DWELL + d.slide) return 1;
-    return 1 - (u - 2 * BLOCK_DWELL - d.slide) / d.slide;
+    if (bt < d.every) return 0;
+    const u = (bt - d.every) % d.period;      // 0 = começa a ir para `to`; a cada `every` s ele muda de sentido
+    if (u < d.slide) return u / d.slide;
+    if (u < d.every) return 1;
+    if (u < d.every + d.slide) return 1 - (u - d.every) / d.slide;
+    return 0;
   }
+  // Mantém o relógio pequeno: a partir de `every` o movimento se repete a cada `period` s.
+  const normBt = (d, bt) => (bt < 3 * d.every ? bt : d.every + ((bt - d.every) % d.period));
+  // Quanto falta (0 a 1) para a próxima mudança de lado, só nos últimos BLOCK_WARN s: 1 = vai começar agora. 0 = sem aviso.
+  const blockWarn = (d, bt) => { const left = d.every - (bt % d.every); return left <= BLOCK_WARN ? 1 - left / BLOCK_WARN : 0; };
   const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: TILE, h: TILE, kind: "M" }; };
 
   // Converte um mapa em dados prontos para jogar (e para conferir jogos salvos), sem mexer no estado atual.
@@ -171,8 +178,9 @@
         if (c < 0 || r < 0 || c >= COLS || r >= ROWS || map[r][c] !== ".") throw new Error(`Trilho de bloco inválido: ${def.title}`);
         track.push([c, r]);
       }
-      const slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / BLOCK_SPEED;
-      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, slide, period: 2 * (BLOCK_DWELL + slide), phase: b.phase, track };
+      const slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / BLOCK_SPEED, every = def.blockEvery ?? BLOCK_EVERY;
+      if (!(every >= slide + 0.5 && every <= 60)) throw new Error(`Intervalo dos blocos inválido: ${def.title}`);
+      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, slide, every, period: 2 * every, phase: b.phase, track };
     });
     if (blockDefs.length > 2) throw new Error(`Blocos demais: ${def.title}`);
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
@@ -285,16 +293,46 @@
     }
   }
 
-  // Cada bloco anda seu ciclo (espera, desliza, espera, volta). Se o cachorro ou um veterinário estiver no lugar para onde ele iria,
-  // ele espera: nunca esmaga ninguém, e quem fica encostado do lado não o impede de andar.
+  // Tira da frente do bloco quem estiver no lugar dele: o cachorro vai para o lado livre mais próximo (encostado no bloco); um veterinário vai
+  // para o centro do tile livre mais próximo. Devolve false se não houver para onde empurrar (aí o bloco não anda, e nunca esmaga).
+  function shoveActors(rect) {
+    const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
+    if (overlap(pr, rect)) {
+      const E = 0.001, cands = [
+        { x: rect.x - pr.w - E, y: pr.y }, { x: rect.x + rect.w + E, y: pr.y }, { x: pr.x, y: rect.y - pr.h - E }, { x: pr.x, y: rect.y + rect.h + E },
+      ].sort((a, b) => Math.hypot(a.x - pr.x, a.y - pr.y) - Math.hypot(b.x - pr.x, b.y - pr.y));
+      const to = cands.find((c) => c.x >= 0 && c.y >= 0 && c.x + pr.w <= WORLD_W && c.y + pr.h <= WORLD_H && !solids.some((o) => o !== rect && overlap({ x: c.x, y: c.y, w: pr.w, h: pr.h }, o)));
+      if (!to) return false;
+      player.x = to.x; player.y = to.y;
+    }
+    for (const v of vets) {
+      if (!overlap({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }, rect)) continue;
+      const [vc, vr] = tileOf(v.cx, v.cy);
+      let best = null;
+      for (let r = vr - 3; r <= vr + 3; r++) for (let c = vc - 3; c <= vc + 3; c++) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
+        const [cx, cy] = centerOf(c, r), box = { x: cx - 12, y: cy - 12, w: 24, h: 24 };
+        if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < 20)) continue;
+        const d = Math.hypot(cx - v.cx, cy - v.cy);
+        if (!best || d < best.d) best = { cx, cy, d };
+      }
+      if (!best) return false;
+      Object.assign(v, { cx: best.cx, cy: best.cy, leg: null, route: [], idle: Math.max(v.idle, 0.3) });
+    }
+    return true;
+  }
+
+  // Cada bloco anda o seu ciclo no relógio, sem esperar ninguém: se o cachorro ou um veterinário estiver no lugar para onde ele desliza,
+  // é empurrado para o lado (só se não houver mesmo onde pô-lo é que o bloco fica parado, para nunca esmagar).
   function updateBlocks(dt) {
     if (!blocks.length) return;
-    const actors = [{ x: player.x, y: player.y, w: player.w, h: player.h }, ...vets.map((v) => ({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }))];
     for (const b of blocks) {
-      const bt = b.bt + dt, r = blockRectAt(b.d, bt);
-      if (r.x === b.rect.x && r.y === b.rect.y) { b.bt = bt % b.d.period; continue; } // esperando numa das pontas: só o relógio anda
-      if (actors.some((a) => overlap(a, r))) continue;                                  // alguém no caminho: espera
-      b.bt = bt % b.d.period; b.rect.x = r.x; b.rect.y = r.y;
+      const bt = normBt(b.d, b.bt + dt), r = blockRectAt(b.d, bt);
+      if (r.x === b.rect.x && r.y === b.rect.y) { b.bt = bt; continue; } // parado numa das pontas: só o relógio anda
+      const ox = b.rect.x, oy = b.rect.y;
+      b.rect.x = r.x; b.rect.y = r.y;
+      if (shoveActors(b.rect)) b.bt = bt;
+      else { b.rect.x = ox; b.rect.y = oy; }                            // sem como afastar quem está no caminho: o bloco não anda
     }
     refreshBlockTiles();
   }
@@ -563,15 +601,12 @@
       } else if (sv.bl !== undefined && !(Array.isArray(sv.bl) && sv.bl.length === 0)) return null;
       const p = sv.p;
       if (!p || !num(p.x, 0, WORLD_W - 24) || !num(p.y, 0, WORLD_H - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
-      const rects = bl.map((x, i) => blockRectAt(L.blockDefs[i], x)); // onde cada bloco está nesse ponto do ciclo
-      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o)) || rects.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
+      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null; // (quem estiver no lugar de um bloco é empurrado para o lado ao carregar)
       if (!Array.isArray(sv.vets) || sv.vets.length !== L.vetSpawns.length) return null;
       for (const v of sv.vets) {
         if (!Array.isArray(v) || !num(v[0], 0, WORLD_W - 1) || !num(v[1], 0, WORLD_H - 1)) return null;
         const [c, r] = tileOf(v[0], v[1]);
         if (!L.walk[r][c]) return null;
-        const [cx, cy] = centerOf(c, r);
-        if (rects.some((o) => overlap({ x: cx - 12, y: cy - 12, w: 24, h: 24 }, o))) return null;
       }
       return { ...sv, v: 4, items: items4, bl };
     } catch { return null; }
@@ -590,7 +625,7 @@
   function applySnapshot(sv) {
     reset(sv.l, { lives: sv.lives, retries: sv.rs });
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
-    blocks.forEach((b, i) => { b.bt = sv.bl[i]; const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
+    blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
     time = sv.time; livesLost = sv.lost;
     collected = items.filter((i) => i.taken && !i.bone).length; bonesGot = items.filter((i) => i.taken && i.bone).length; score = runningScore();
@@ -600,6 +635,7 @@
       [v.cx, v.cy] = centerOf(c, r); // o veterinário volta ao centro do tile mais próximo
       Object.assign(v, { mode: "patrol", leg: null, route: [], idle: 1, cool: 2, modeT: 0, chaseAge: 0 });
     });
+    for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     invuln = Math.max(sv.invuln, RESUME_GRACE);
   }
 
@@ -1041,7 +1077,9 @@
     for (const b of blocks) {
       const x1 = b.d.ax + TILE / 2, y1 = b.d.ay + TILE / 2, x2 = b.d.bx + TILE / 2, y2 = b.d.by + TILE / 2;
       ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      ctx.strokeStyle = "#10131c"; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      const warn = calm ? 0 : blockWarn(b.d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado
+      ctx.strokeStyle = warn ? `rgba(242,194,48,${(0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
+      ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
   }
 

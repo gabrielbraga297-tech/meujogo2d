@@ -30,7 +30,7 @@ Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica ma
 
 A Fase 2 é liberada ao terminar a Fase 1, e a Fase 3 ao terminar a Fase 2. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**.
 
-**Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima (esperam 3 s em cada ponta). Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco iria, ele espera. Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Os veterinários também esperam os blocos passarem, e um bloco fechado tapa a visão deles.
+**Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima. Eles **mudam de lado a cada 3 segundos** (`blockEvery` da fase, em `js/game.js`), sem esperar ninguém chegar perto, e deslizam a 120 px/s (cerca de 0,27 s por mudança). Nos 0,6 s antes de cada mudança o **trilho pisca em amarelo**. Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco vai, ele é **empurrado para o lado** livre mais perto (só se não houvesse mesmo onde pô-lo o bloco ficaria parado). Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Um bloco fechado tapa a visão dos veterinários e eles esperam diante dele.
 
 **Velocidade do cachorrinho:** 180 px/s nas Fases 1 e 2 e **162 px/s na Fase 3** (10% mais lento).
 
