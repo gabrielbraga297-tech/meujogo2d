@@ -11,7 +11,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 - **Blocos que esmagam (Fases 4 e 5):** sem o poder do osso, o bloco (ou a parede) que alcança o cachorrinho tira 1 vida.
 - **Pontos das Fases 4 e 5:** −200 por vida perdida e **mínimo de pontos na fase** para passar (800 na Fase 4, 1000 na Fase 5; o placar mostra *PONTOS n / 800*).
 
-## 0.5.0 — 07/10/2026 (em preparação)
+## 0.5.0 — 07/10/2026
 - **Fase 3:** 7 rações + **2 ossos** (50 pontos cada; é preciso pegar todos para sair), 2 veterinários, **2 blocos que deslizam** abrindo e fechando portas nos corredores (nunca esmagam, sempre sobra caminho) e **bônus de tempo de 20 pontos a cada 10 s** (de 0 a 200). Uma só vida escondida, numa ração **ou** num osso.
 - **Cachorrinho 10% mais lento na Fase 3** (162 px/s; nas Fases 1 e 2 segue 180 px/s).
 - **Veterinários:** 50 px/s patrulhando e 100 px/s perseguindo na Fase 1; Fase 2 com +10% (55 e 110); Fase 3 com mais +10% (60,5 e 121).
@@ -22,7 +22,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 - **Pausa automática** ao perder o foco da janela e jogo salvo/pontuação que seguem com **quem começou a partida** (mesmo que outra aba troque o jogador).
 - **2ª auditoria (correções):** o placar não faz mais o campo piscar em celulares em pé (laço de redimensionamento); entrar aceita espaços sobrando e o apóstrofo ’ como o cadastro; o jogo salvo não some quando um bloco está encostado no cachorrinho; *Próxima fase / Jogar novamente / Tentar novamente* seguem com quem jogou (não mexem no jogo salvo de outro jogador nem liberam fase bloqueada); conta apagada em outra aba não é recriada pela partida em andamento; o controle rola o *Como jogar* e as *Pontuações*; avisos e textos falam de ossos e blocos.
 - Jogos salvos da 0.4.0 continuam valendo.
-- **Entrega contínua:** a 0.5.0 vai ao ar por partes, à medida que cada item fica pronto e testado; enquanto não estiver 100% entregue o menu mostra "(em preparação)".
+- **Entrega contínua:** a 0.5.0 foi ao ar por partes, à medida que cada item ficou pronto e testado, e agora está 100% entregue.
 
 ## 0.4.0 — 07/10/2026
 - **Fase 2:** mapa novo, 7 rações, 2 veterinários no centro (10% mais espertos) e 1 ou 2 vidas extras sorteadas. Escolha de fase e botão *Próxima fase*.
