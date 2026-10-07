@@ -5,7 +5,7 @@ Versão atual: **Fase 1, Fase 2 e Fase 3**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.5.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
