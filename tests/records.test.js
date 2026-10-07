@@ -19,6 +19,16 @@ test("sanitizeName aceita nomes de cachorrinho (acentos, hífen, espaço)", () =
   assert.strictEqual(R.sanitizeName("  Mel   Bela "), "Mel Bela");
   assert.strictEqual(R.sanitizeName("Rex-2"), "Rex-2");
 });
+test("nomes: apóstrofo tipográfico, espaço não separável e acento decomposto são arrumados (não descartados)", () => {
+  assert.strictEqual(R.sanitizeName("D\u2019\u00c1vila"), "D'\u00c1vila");
+  assert.strictEqual(R.sanitizeName("Sant\u2019Anna"), "Sant'Anna");
+  assert.strictEqual(R.sanitizeName("Ana\u00a0Maria"), "Ana Maria");
+  assert.strictEqual(R.sanitizeName("Joa\u0303o"), "Jo\u00e3o", "o ã decomposto vira o composto");
+  assert.ok(R.isValidName("D\u2019\u00c1vila") && R.isValidName("Ana\u00a0Maria") && R.isValidName("Joa\u0303o"));
+  assert.strictEqual(R.nameKey("D\u2019Avila"), R.nameKey("d'avila"), "mesma chave com os dois apóstrofos");
+  assert.strictEqual(R.nameKey("Tot\u00f3 "), R.nameKey("toto"), "espaço no fim não muda a chave");
+  assert.ok(!R.isValidName("Rex!") && !R.isValidName("<b>"), "o que precisaria ser consertado de verdade continua recusado");
+});
 test("sanitizeName remove símbolos/HTML, limita a 16 e rejeita vazio", () => {
   assert.strictEqual(R.sanitizeName("<b>Rex</b>"), "bRexb");
   assert.strictEqual(R.sanitizeName("A".repeat(40)).length, 16);

@@ -43,22 +43,26 @@
   const isBetter = (a, b) => a.p > b.p || (a.p === b.p && a.t < b.t);
   const byBest = (a, b) => b.p - a.p || a.t - b.t || (a.w || 0) - (b.w || 0);
 
+  // Arruma o que foi digitado ou colado: letras acentuadas na forma composta, apóstrofos tipográficos (’ ‘ ʼ ´ `) viram o apóstrofo comum,
+  // qualquer espaço (inclusive o não separável) vira espaço comum, sem espaços sobrando no começo, no fim ou no meio.
+  const tidyName = (raw) => String(raw).normalize("NFC").replace(/[\u2018\u2019\u02BC\u00B4`]/g, "'").replace(/\s+/g, " ").trim();
+
   // Nome válido: letras, números, espaço, hífen e apóstrofo; até 16 caracteres.
   function sanitizeName(raw) {
     if (typeof raw !== "string") return "";
-    let s = raw.replace(/[^\p{L}\p{N} '\-]/gu, "").replace(/\s+/g, " ").trim();
+    let s = tidyName(raw).replace(/[^\p{L}\p{N} '\-]/gu, "").replace(/\s+/g, " ").trim();
     if (s.length > MAX_NAME) s = s.slice(0, MAX_NAME).trim();
     return /[\p{L}\p{N}]/u.test(s) ? s : "";
   }
 
   // Nome aceito como está (cadastro/entrada não "consertam" o que foi digitado em silêncio).
   function isValidName(raw) {
-    return typeof raw === "string" && sanitizeName(raw) !== "" && sanitizeName(raw) === raw.trim().replace(/\s+/g, " ");
+    return typeof raw === "string" && sanitizeName(raw) !== "" && sanitizeName(raw) === tidyName(raw);
   }
 
   // "Totó", "toto" e "TOTÓ" são o mesmo jogador.
   function nameKey(name) {
-    return String(name).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    return tidyName(name).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   }
 
   // 18432 -> "18,4 s" | 65300 -> "1:05,3"

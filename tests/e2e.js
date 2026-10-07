@@ -1250,6 +1250,23 @@ const PAGE_HELPERS = () => {
       ok(h.bones && h.label >= 10.5 && h.scroll <= 2 && h.hscroll <= 0, `Fase 3 em ${vp.width}x${vp.height}: o placar com OSSOS e TENTATIVAS continua legível (${h.label.toFixed(1)} px) e a página não rola`);
       await t.context().close();
     }
+    // o placar não entra em laço de redimensionamento (campo piscando) em celulares em pé, na Fase 3 com tentativa
+    for (const vp of [{ width: 360, height: 560 }, { width: 375, height: 562 }, { width: 375, height: 566 }, { width: 360, height: 568 }, { width: 414, height: 565 }, { width: 360, height: 556 }]) {
+      const t = await newPage({ viewport: vp, hasTouch: true, isMobile: true });
+      await fresh(t, { done: [1, 2] }); await t.evaluate(() => __game.start(3, { retries: 1, lives: 3 })); await t.waitForTimeout(500);
+      const r = await t.evaluate(() => new Promise((resolve) => {
+        const cv = document.getElementById("game"), st = document.getElementById("stage"); let last = st.getBoundingClientRect().width, changes = 0, blank = 0, frames = 0; const t0 = performance.now();
+        const step = () => {
+          const w = st.getBoundingClientRect().width; if (Math.abs(w - last) > 0.5) { changes++; last = w; }
+          const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let colors = new Set(); for (let i = 0; i < d.length && colors.size < 3; i += 4 * 97) colors.add(d[i] + "," + d[i + 1] + "," + d[i + 2]);
+          if (colors.size < 2) blank++; frames++;
+          if (performance.now() - t0 < 1500) requestAnimationFrame(step); else resolve({ changes, blank, frames, scroll: document.documentElement.scrollHeight - innerHeight });
+        };
+        requestAnimationFrame(step);
+      }));
+      ok(r.changes <= 3 && r.blank <= 2 && r.scroll <= 2, `Fase 3 com tentativa em ${vp.width}x${vp.height}: o jogo para de mudar de tamanho depressa (${r.changes} trocas em 1,5 s), o campo não pisca em branco (${r.blank} de ${r.frames} quadros) e a página não rola (${r.scroll} px)`);
+      await t.context().close();
+    }
     ok(draw.bone > 10, `o osso é desenhado (${draw.bone} pixels claros)`);
     ok(draw.block > 20, `o bloco que se move é desenhado com os cantos de aviso amarelos (${draw.block} pixels)`);
   });
@@ -1707,6 +1724,74 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
+  await section("correções da 2ª auditoria (0.5.0)", async () => {
+    // --- G: eventos de teclado sem "key" (autopreenchimento do navegador) não geram erro ---
+    await playLevel(page, 1);
+    const keyless = await ev(page, () => { let err = null; const h = (e) => { err = e.message; }; window.addEventListener("error", h); window.dispatchEvent(new Event("keydown")); window.dispatchEvent(new Event("keyup")); window.removeEventListener("error", h); return err; });
+    ok(keyless === null, "um keydown/keyup sem 'key' (autopreenchimento) não gera erro");
+
+    // --- K: a vida escondida num osso fala de osso, e perder vida na Fase 3 fala de itens ---
+    const msg = await ev(page, () => {
+      __game.start(3); __game.freezeVets = true; __game.noCatch = true; __game.setLives(5);
+      const it = __game.items[0]; it.bone = true; it.life = true; __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01);
+      return document.getElementById("toast").textContent;
+    });
+    ok(/Este osso tinha uma vida extra/.test(msg), `no máximo de vidas, a vida que estava num osso diz "osso" (${msg})`);
+    const msg2 = await ev(page, () => { __game.start(3); __game.noCatch = false; for (const v of __game.vets) v.cool = 99; for (let k = 0; k < 45; k++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return document.getElementById("toast").textContent; });
+    ok(/Os itens mudaram de lugar/.test(msg2), `na Fase 3, ao perder uma vida o aviso fala dos itens (${msg2})`);
+    const msg3 = await ev(page, () => { __game.start(1); for (const v of __game.vets) v.cool = 99; for (let k = 0; k < 45; k++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return document.getElementById("toast").textContent; });
+    ok(/As rações mudaram de lugar/.test(msg3), "na Fase 1 o aviso continua falando das rações");
+    const txt = await page.evaluate(() => [document.querySelector("#scores .muted").textContent, document.getElementById("game").getAttribute("aria-label")]);
+    ok(/50 por osso/.test(txt[0]) && /ossos/.test(txt[1]) && /blocos/.test(txt[1]), "a tela de pontuações cita os ossos e o rótulo do jogo (leitor de tela) fala de ossos e blocos");
+
+    // --- E/H/I: duas abas no mesmo navegador ---
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const A = await ctx.newPage(); watch(A); const B = await ctx.newPage(); watch(B);
+    const hasSave = (pg, name) => pg.evaluate((name) => { const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1") || "null"); return !!(raw && raw.saves && raw.saves[name.toLowerCase()]); }, name);
+    // E: Próxima fase continua com quem jogou (Totó), mesmo que a outra aba tenha trocado o jogador atual para Bia
+    await fresh(A, { name: "Totó" });
+    await A.evaluate(() => __game.start(1));
+    await finishNow(A, 10);
+    ok(await A.isVisible("#win"), "E: Totó venceu a Fase 1 na aba A");
+    await B.goto(URL);
+    await B.evaluate(() => { const st = Records.createStore(localStorage); st.setPlayer("Bia"); });
+    await B.reload(); await B.evaluate(PAGE_HELPERS);
+    await B.evaluate(() => { __game.start(1); __game.save(); });
+    ok(await hasSave(B, "Bia"), "E: na aba B, Bia tem um jogo salvo");
+    await A.waitForTimeout(300); // (o navegador leva alguns milissegundos para repassar o que uma aba gravou às outras)
+    await A.click("#btn-next");
+    ok(await A.evaluate(() => __game.level) === 2 && await hasSave(A, "Bia"), "E: Próxima fase (aba A) segue com o Totó e NÃO apaga o jogo salvo da Bia");
+    await finishNow(A, 10);
+    const prog = await A.evaluate(() => { const st = Records.createStore(localStorage); return { toto: st.progress("Totó").completed, bia: st.progress("Bia").completed, bests: st.personalBest("Bia", 2) }; });
+    ok(prog.toto.includes(2) && prog.bia.length === 0 && !prog.bests, `E: a Fase 2 vale para o Totó (${prog.toto}) e não para a Bia (${prog.bia})`);
+    // I: lista de fases velha na aba A (jogador trocado para Bia, sem a Fase 1 concluída): a Fase 2 não abre
+    await fresh(A, { name: "Totó", done: [1] });
+    await A.click("#btn-start"); await A.waitForSelector("#levels:not(.hidden)");
+    ok(await A.isEnabled("#levels-list button:nth-child(2)"), "I: a lista de fases do Totó libera a Fase 2");
+    await B.goto(URL); await B.evaluate(() => { const st = Records.createStore(localStorage); st.setPlayer("Bia"); });
+    await A.waitForTimeout(300);
+    await A.click("#levels-list button:nth-child(2)", { force: true }).catch(() => {});
+    const stale = await A.evaluate(() => ({ state: __game.state, lvl: __game.level, p2: document.querySelector("#levels-list button:nth-child(2)").disabled }));
+    ok(stale.state !== "playing" && stale.p2, "I: clicar na Fase 2 com a lista velha não começa a fase (ela está bloqueada para a Bia) e a lista se atualiza");
+    // H: conta apagada em outra aba não é recriada pela partida que continua
+    const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const C = await ctx2.newPage(); watch(C); const D = await ctx2.newPage(); watch(D);
+    await C.goto(URL);
+    await C.evaluate(async () => { localStorage.clear(); const st = Records.createStore(localStorage, { authOptions: { iterations: 2000 } }); await st.register("Nando", "Senha123"); });
+    await C.reload(); await C.evaluate(PAGE_HELPERS);
+    await C.evaluate(() => __game.start(1));
+    ok(await C.evaluate(() => __game.save()) === true, "H: com a conta existindo, o jogo salva");
+    await D.goto(URL); await D.evaluate(() => { const st = Records.createStore(localStorage); st.deleteAccount("Nando"); });
+    await C.waitForTimeout(300);
+    const afterDelete = await C.evaluate(() => __game.save());
+    await finishNow(C, 10);
+    const left = await C.evaluate(() => JSON.stringify([localStorage.getItem("cachorrinho.v1"), localStorage.getItem("cachorrinho.save.v1")]));
+    ok(afterDelete === false && !/nando/i.test(left), `H: depois de apagada em outra aba, a conta não volta (nem jogo salvo, nem pontuação, nem progresso) ${/nando/i.test(left) ? left.slice(0, 400) : ""}`);
+    ok(/apagada em outra aba/.test(await C.textContent("#win-personal")), "H: a tela de vitória avisa que a pontuação não foi guardada");
+    await ctx.close(); await ctx2.close();
+  });
+
+  // =====================================================================
   await section("toque (celular e tablet)", async () => {
     const t = await newPage({ viewport: { width: 390, height: 740 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
     await fresh(t);
@@ -1873,7 +1958,18 @@ const PAGE_HELPERS = () => {
     await padHit(13); ok(await focusId() === "btn-howto", "menu: direcional para baixo vai para Como jogar");
     await padHit(0); ok(await g.isVisible("#howto"), "A abre Como jogar");
     ok(/Controle \(gamepad\)/.test(await g.textContent("#howto")) && /Ctrl/.test(await g.textContent("#howto")), "Como jogar explica o controle e o teclado");
+    // telas longas (Como jogar): o direcional e o analógico ROLAM a tela (antes só pulavam para o botão Voltar)
+    await g.setViewportSize({ width: 390, height: 480 });
+    const hold = (btn, axes, frames) => ev(g, ([btn, axes, frames]) => { __padSet({ press: btn === null ? [] : [btn], axes: axes || [0, 0, 0, 0] }); for (let i = 0; i < frames; i++) __game.padPoll(1 / 60); __padSet({ release: btn === null ? [] : [btn], axes: [0, 0, 0, 0] }); __game.padPoll(1 / 60); }, [btn, axes, frames]);
+    const sTop = () => ev(g, () => document.getElementById("howto").scrollTop);
+    const s0 = await sTop();
+    await hold(13, null, 20); const s1 = await sTop();
+    await hold(null, [0, 1, 0, 0], 20); const s2 = await sTop();
+    await hold(12, null, 25); const s3 = await sTop();
+    ok(s1 > s0 + 100 && s2 > s1 + 100 && s3 < s2 - 100, `Como jogar rola com o controle: direcional ↓ (${s0} → ${s1}), analógico ↓ (→ ${s2}) e direcional ↑ volta (→ ${s3})`);
+    ok(await focusId() !== "btn-howto-back" && await g.isVisible("#howto"), "rolar com o controle não salta para o botão Voltar");
     await padHit(1); ok(await g.isVisible("#menu"), "B volta ao menu");
+    await g.setViewportSize({ width: 1280, height: 720 });
     await ev(g, () => document.getElementById("btn-start").focus());
     await ev(g, () => { __padSet({ axes: [0, 1, 0, 0] }); __game.padPoll(); __padSet({ axes: [0, 0, 0, 0] }); __game.padPoll(); });
     ok(await focusId() === "btn-howto", "menu: o analógico para baixo também escolhe o botão seguinte");

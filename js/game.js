@@ -214,6 +214,7 @@
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let blocks = [];             // blocos que se movem na fase atual: { d: definição, bt: relógio do ciclo, rect: posição (também em `solids`) }
   const dynBlocked = new Set(); // tiles ocupados agora pelos blocos que se movem (chave: linha * COLS + coluna): os veterinários os contornam
+  let gameIsAccount = false; // a partida começou com uma conta: se ela for apagada em outra aba, nada mais é gravado em nome dela
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let rand = Math.random;
@@ -253,7 +254,7 @@
 
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
-    levelId = id; lv = BUILT[id]; gamePlayer = store.player();
+    levelId = id; lv = BUILT[id]; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
     blocks = lv.blockDefs.map((d) => ({ d, bt: d.phase, rect: blockRectAt(d, d.phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
@@ -432,9 +433,9 @@
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS - livesLost * Records.LIFE_PENALTY - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
 
-  function giveLife() {
+  function giveLife(it) {
     if (lives < MAX_LIVES) { lives++; toast("Vida extra! +1 vida", 2.2); }
-    else toast(`Esta ração tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).`, 2.8);
+    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).`, 2.8);
   }
 
   // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
@@ -453,7 +454,7 @@
     if (lives <= 0) { gameOver(); return; }
     respawn();
     relocateItems();
-    toast(`Perdeu uma vida! −${Records.LIFE_PENALTY} pontos. As rações mudaram de lugar.`, 2.6);
+    toast(`Perdeu uma vida! −${Records.LIFE_PENALTY} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
     saveNow();
   }
 
@@ -479,7 +480,7 @@
 
     updateBlocks(dt);
     for (const it of items) {
-      if (!it.taken && overlap(player, it)) { it.taken = true; if (it.bone) bonesGot++; else collected++; if (it.life) giveLife(); score = runningScore(); saveNow(); }
+      if (!it.taken && overlap(player, it)) { it.taken = true; if (it.bone) bonesGot++; else collected++; if (it.life) giveLife(it); score = runningScore(); saveNow(); }
     }
 
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
@@ -544,8 +545,9 @@
   }
 
   // Começa uma fase: do zero (vidas = 3), com as vidas que vieram da fase anterior, ou como nova tentativa.
+  // `o.player`: quem segue na mesma partida (Próxima fase, Jogar novamente, Tentar novamente) continua sendo quem jogou, mesmo que outra aba tenha trocado o jogador atual
   function begin(id = levelId, o = {}) {
-    const me = store.player();
+    const me = typeof o.player === "string" ? o.player : store.player();
     if (me) store.clearGame(me); // um jogo novo substitui o salvo (só aqui: cancelar a escolha da fase não apaga nada)
     reset(id, o);
     beginPlay();
@@ -655,9 +657,10 @@
     saveFlashTimer = setTimeout(() => e.classList.remove("on"), 1400);
   }
 
+  const accountGone = () => gameIsAccount && !store.hasAccount(gamePlayer); // a conta desta partida foi apagada em outra aba
   function saveNow() {
     const me = gamePlayer;
-    if (!me || (state !== "playing" && state !== "paused")) return false;
+    if (!me || (state !== "playing" && state !== "paused") || accountGone()) return false;
     const ok = store.saveGame(me, snapshot());
     flashSaved();
     return ok;
@@ -696,7 +699,13 @@
       b.append(el("strong", null, l.title), el("span", "sub", open
         ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${l.bones ? " · ossos e blocos móveis" : ""} · ${best ? `sua melhor: ${best.p} pts` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
-      if (open) { b.dataset.autofocus = ""; b.addEventListener("click", () => begin(l.id)); }
+      if (open) {
+        b.dataset.autofocus = "";
+        b.addEventListener("click", () => { // a lista pode estar velha (outra aba trocou o jogador): confere antes de começar
+          if (store.progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1)}.`, 2.4); return; }
+          begin(l.id);
+        });
+      }
       list.append(b);
     }
   }
@@ -732,9 +741,10 @@
     $("btn-next").textContent = next ? `Próxima fase (${next.title})` : "";
     $("btn-again").classList.toggle("primary", !next);
     let res = null;
+    const gone = accountGone();
     try {
-      res = store.addRun({ level: levelId, timeMs, points, name: gamePlayer });
-      const me = gamePlayer;
+      if (!gone) res = store.addRun({ level: levelId, timeMs, points, name: gamePlayer });
+      const me = gone ? "" : gamePlayer;
       if (me) { store.completeLevel(me, levelId); store.clearGame(me); } // fase concluída: o jogo em andamento termina
       if (res && res.newPersonal) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
     } catch { /* seguem sem registrar */ }
@@ -749,7 +759,7 @@
         : `Recorde deste aparelho: ${res.generalBest.p} pontos (${res.generalBest.n})`;
       $("win-total").textContent = `Pontuação total: ${store.totalScore(gamePlayer, LEVEL_IDS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
     } else {
-      $("win-personal").textContent = "Escolha um nome de usuário para guardar as suas pontuações.";
+      $("win-personal").textContent = gone ? "Esta conta foi apagada em outra aba: a pontuação não foi guardada." : "Escolha um nome de usuário para guardar as suas pontuações.";
       $("win-general").textContent = "";
       $("win-total").textContent = "";
     }
@@ -1015,25 +1025,30 @@
   // ---------- Câmera e tamanho (proporcional a cada aparelho) ----------
   function fitCanvas() {
     const r = canvas.getBoundingClientRect();
-    if (!r.width) return;
+    if (!r.width) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     const bw = clamp(Math.round(r.width * dpr), 200, MAX_BACKING_W), bh = Math.round((bw * WORLD_H) / WORLD_W);
-    if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
+    const resized = canvas.width !== bw || canvas.height !== bh;
+    if (resized) { canvas.width = bw; canvas.height = bh; } // (isto apaga o desenho: quem chama redesenha logo em seguida)
     view.k = bw / WORLD_W;
     view.zoom = clamp(MIN_TILE_CSS / (r.width / COLS), 1, 2); // telas pequenas: aproxima e segue o cachorro
+    return resized;
   }
 
-  // O placar ocupa 1, 2 ou mais linhas conforme a largura: o tamanho do jogo reserva a altura REAL dele (variável --hud-h),
-  // senão a página rolaria. Reservar mais deixa o jogo mais estreito, o que nunca faz o placar ficar mais baixo: a conta converge.
-  let hudReserve = 0, hudRaf = 0, hudTries = 0;
+  // O placar ocupa 1, 2 ou mais linhas conforme a largura: o tamanho do jogo reserva a altura REAL dele (variável --hud-h), senão a página rolaria.
+  // Mas reservar mais deixa o jogo mais estreito, e isso pode mudar a quebra de linha do placar. Para a conta sempre terminar, enquanto nada muda
+  // (janela, itens do placar, vidas) a reserva só CRESCE: ela fica na maior altura medida e para (sem ficar alternando entre dois valores).
+  let hudReserve = 0, hudMax = 0, hudKey = "", hudRaf = 0;
   function syncHudHeight() {
     hudRaf = 0;
     const hud = $("hud"), r = hud.getBoundingClientRect();
     if (!r.height) return;
-    const h = Math.ceil(r.height + (parseFloat(getComputedStyle(hud).marginBottom) || 0));
-    if (Math.abs(h - hudReserve) <= 1 || hudTries++ > 8) return;
-    hudReserve = h;
-    document.body.style.setProperty("--hud-h", `${h}px`);
+    const key = `${innerWidth}x${innerHeight}|${[...hud.querySelectorAll(".hud-item")].map((e) => (e.classList.contains("hidden") ? 0 : 1)).join("")}|${lives}`;
+    if (key !== hudKey) { hudKey = key; hudMax = 0; } // outra situação: mede de novo, do zero
+    hudMax = Math.max(hudMax, Math.ceil(r.height + (parseFloat(getComputedStyle(hud).marginBottom) || 0)));
+    if (Math.abs(hudMax - hudReserve) <= 1) return;
+    hudReserve = hudMax;
+    document.body.style.setProperty("--hud-h", `${hudMax}px`);
   }
   function scheduleHudSync() { if (!hudRaf) hudRaf = requestAnimationFrame(syncHudHeight); }
 
@@ -1300,6 +1315,12 @@
     const ax = Number(g.axes && g.axes[0]) || 0, ay = Number(g.axes && g.axes[1]) || 0;
     const prev = padBtn(g, 12) || padBtn(g, 14) || ay < -0.6 || ax < -0.6, next = padBtn(g, 13) || padBtn(g, 15) || ay > 0.6 || ax > 0.6;
     const dir = prev && !next ? -1 : next && !prev ? 1 : 0;
+    const longScreen = document.querySelector(".screen:not(.hidden)");
+    if (longScreen && longScreen.hasAttribute("data-scroll") && longScreen.scrollHeight > longScreen.clientHeight + 1) { // telas longas (Como jogar, Pontuações): o direcional rola
+      gpNavDir = dir;
+      if (dir) longScreen.scrollTop += dir * 520 * Math.min(dt, 0.05);
+      return;
+    }
     if (dir !== gpNavDir) { gpNavDir = dir; gpNavT = 0.4; if (dir) moveFocus(dir); }
     else if (dir && (gpNavT -= dt) <= 0) { gpNavT = 0.12; moveFocus(dir); }
   }
@@ -1307,7 +1328,7 @@
 
   // ---------- Entrada: teclado ----------
   const CODE_KEYS = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" }; // posição física: vale em qualquer layout
-  const keyName = (e) => CODE_KEYS[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+  const keyName = (e) => CODE_KEYS[e.code] || (typeof e.key !== "string" ? "" : e.key.length === 1 ? e.key.toLowerCase() : e.key); // (o autopreenchimento do navegador manda eventos sem "key")
 
   // As Pontuações abertas da tela de vitória voltam para ela (com "Próxima fase" e as vidas); abertas do menu, voltam ao menu.
   let scoresBack = "menu";
@@ -1332,7 +1353,7 @@
   }
 
   window.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "s" && (state === "playing" || state === "paused")) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && String(e.key).toLowerCase() === "s" && (state === "playing" || state === "paused")) {
       e.preventDefault(); manualSave(); return; // Ctrl+S (ou Cmd+S) salva o jogo em vez de abrir "Salvar página"
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
@@ -1412,18 +1433,18 @@
   on("btn-pause", pauseGame);
   on("btn-resume", resumeGame);
   on("btn-pause-menu", goMenu);
-  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives }); }); // as vidas passam para a próxima fase
-  on("btn-again", () => begin(levelId));
+  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, player: gamePlayer }); }); // as vidas passam para a próxima fase
+  on("btn-again", () => begin(levelId, { player: gamePlayer }));
   on("btn-win-scores", () => openScores("win"));
   on("btn-win-menu", goMenu);
-  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1 }); });
+  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1, player: gamePlayer }); });
   on("btn-lose-menu", goMenu);
 
   // outra aba mudou os dados guardados (pontuações, contas, jogo salvo): a tela aberta se atualiza
   window.addEventListener("storage", (e) => {
     if (e.key !== null && !String(e.key).startsWith("cachorrinho.")) return;
     const screen = document.body.dataset.screen;
-    if (screen === "menu") renderMenu(); else if (screen === "scores") renderScores();
+    if (screen === "menu") renderMenu(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
   });
 
   // gancho de depuração/testes
@@ -1441,9 +1462,9 @@
   reset();
   fitCanvas();
   if (typeof ResizeObserver === "function") {
-    new ResizeObserver(() => { fitCanvas(); scheduleHudSync(); }).observe(canvas);
-    new ResizeObserver(() => { hudTries = 0; scheduleHudSync(); }).observe($("hud"));
-  } else window.addEventListener("resize", () => { fitCanvas(); hudTries = 0; syncHudHeight(); });
+    new ResizeObserver(() => { if (fitCanvas()) draw(); scheduleHudSync(); }).observe(canvas); // redesenha na hora: redimensionar o canvas o apaga
+    new ResizeObserver(() => scheduleHudSync()).observe($("hud"));
+  } else window.addEventListener("resize", () => { if (fitCanvas()) draw(); syncHudHeight(); });
   syncHudHeight();
   goMenu();
   requestAnimationFrame(loop);

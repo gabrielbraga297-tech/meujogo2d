@@ -16,8 +16,9 @@ const mk = (st = memStorage(), o = {}) => R.createStore(st, { ...fast, ...o });
 (async () => {
   await test("isValidName: aceita o nome como está; recusa o que precisaria ser 'consertado'", () => {
     for (const ok of ["Totó", "Rex", "Mel Bela", "Rex-2", "D'Artagnan", "a", "A".repeat(16)]) assert.ok(R.isValidName(ok), ok);
-    for (const bad of ["", " ", "Totó!", "<b>Rex</b>", "A".repeat(17), "---", "Rex_1", "Re\nx", 5, null]) assert.ok(!R.isValidName(bad), String(bad));
+    for (const bad of ["", " ", "Totó!", "<b>Rex</b>", "A".repeat(17), "---", "Rex_1", 5, null]) assert.ok(!R.isValidName(bad), String(bad));
     assert.ok(R.isValidName("  Rex  "), "espaços nas pontas são ignorados");
+    assert.ok(R.isValidName("Mel\u00a0Bela") && R.isValidName("Re\nx"), "qualquer tipo de espaço vira espaço comum");
   });
 
   await test("cadastro: cria a conta, já entra e guarda só sal e impressão (nunca a senha)", async () => {
@@ -234,6 +235,25 @@ const mk = (st = memStorage(), o = {}) => R.createStore(st, { ...fast, ...o });
     a.deleteAccount("Ana");               // ...e outra aba apaga a conta
     assert.strictEqual((await p).ok, false);
     assert.strictEqual(mk(st).player(), "");
+  });
+
+  await test("entrar ignora espaços sobrando e apóstrofo tipográfico, como o cadastro (e não conta como tentativa errada)", async () => {
+    const s = mk();
+    await s.register("Totó ", "Senha123"); s.logout();
+    for (const typed of ["Totó ", " toto", "  TOTÓ  ", "To\u00a0tó".replace("\u00a0", "")]) { // o último é só "Totó" com outra grafia
+      const r = await s.login(typed, "Senha123");
+      assert.ok(r.ok && r.name === "Totó", `entrar como ${JSON.stringify(typed)}: ${JSON.stringify(r)}`);
+      s.logout();
+    }
+    assert.ok((await s.login("Totó\u00a0", "Senha123")).ok, "espaço não separável no fim");
+    s.logout();
+    for (let i = 0; i < 4; i++) await s.login("Totó ", "errada"); // 4 erros (o bloqueio é só na 5ª)
+    assert.ok((await s.login(" Totó", "Senha123")).ok, "depois de 4 erros a senha certa ainda entra");
+    s.logout();
+    const r2 = await s.register("D’Ávila", "Senha123"); // apóstrofo tipográfico (teclado do celular)
+    assert.ok(r2.ok && r2.name === "D'Ávila", JSON.stringify(r2));
+    s.logout();
+    assert.ok((await s.login("d'ávila", "Senha123")).ok && (await s.login("D’Ávila ", "Senha123")).ok, "entra com qualquer grafia do apóstrofo");
   });
 
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de contas passaram");

@@ -37,7 +37,7 @@
     </header>
 
     <div id="wrap">
-      <canvas id="game" width="800" height="576" role="img" aria-label="Área do jogo: um cachorrinho coleta tigelas de ração e foge do veterinário"></canvas>
+      <canvas id="game" width="800" height="576" role="img" aria-label="Área do jogo: um cachorrinho coleta tigelas de ração (e ossos, em algumas fases) e foge dos veterinários; em algumas fases blocos deslizam e abrem e fecham as portas"></canvas>
       <div id="toast" role="status" aria-live="polite"></div>
     </div>
   </main>
@@ -110,7 +110,7 @@
   <section id="scores" class="screen page hidden" aria-labelledby="scores-title" tabindex="-1" data-scroll>
     <div class="panel wide">
       <h1 id="scores-title">Pontuações</h1>
-      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + bônus de tempo − 50 por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
+      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + 50 por osso + bônus de tempo − pontos por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
       <div id="scores-private" class="score-private"></div>
       <h2>Ranking do jogo</h2>
       <p id="scores-source" class="muted" role="status" aria-live="polite"></p>
@@ -133,7 +133,7 @@
       </ol>
       <form id="name-form" autocomplete="off" novalidate>
         <label for="name-input">Nome do jogador</label>
-        <input id="name-input" name="player" type="text" maxlength="16" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Ex.: Totó" data-autofocus>
+        <input id="name-input" name="player" type="text" maxlength="16" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Ex.: Totó" data-autofocus>
         <p id="name-error" class="error" role="alert"></p>
         <div class="row">
           <button type="submit" class="primary">Salvar nome</button>
@@ -162,7 +162,7 @@
       <p class="muted">Cadastro simples: um nome de usuário e uma senha. Depois é só entrar para jogar com as suas pontuações.</p>
       <form id="register-form" autocomplete="on" novalidate>
         <label for="reg-user">Nome de usuário</label>
-        <input id="reg-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <input id="reg-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
         <p class="hint">Pode ser o nome de um cachorrinho! Até 16 letras ou números.</p>
         <label for="reg-pass">Senha</label>
         <input id="reg-pass" name="password" type="password" autocomplete="new-password" aria-describedby="pass-rules" spellcheck="false">
@@ -186,7 +186,7 @@
       <h1 id="login-title">Entrar</h1>
       <form id="login-form" autocomplete="on" novalidate>
         <label for="login-user">Nome de usuário</label>
-        <input id="login-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <input id="login-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
         <label for="login-pass">Senha</label>
         <input id="login-pass" name="password" type="password" autocomplete="current-password" spellcheck="false">
         <label class="check"><input id="login-show" type="checkbox"> Mostrar senha</label>
