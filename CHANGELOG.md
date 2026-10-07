@@ -4,6 +4,12 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
+## 0.6.0 — 07/10/2026 (em preparação)
+- **Fase 4:** labirinto grande (41 × 29, a câmera segue o cachorrinho), **10 rações + 2 ossos**, **3 veterinários** (+10% de velocidade sobre a Fase 3: 66,55 e 133,1 px/s, com o "!" a 8 quadrados), cachorrinho **5% mais rápido** que na Fase 3 (170,1 px/s) e **3 vidas escondidas**.
+- **Poder do osso (Fase 4):** o osso vira os veterinários em **carteiros** por 30 s; quem encosta num carteiro ganha dele; depois eles voltam ao normal.
+- **Blocos que esmagam (Fase 4):** 3 blocos; sem o poder do osso, o bloco que alcança o cachorrinho tira 1 vida.
+- **Pontos da Fase 4:** −200 por vida perdida e **mínimo de 800 pontos na fase** para passar (o placar mostra *PONTOS n / 800*).
+
 ## 0.5.0 — 07/10/2026 (em preparação)
 - **Fase 3:** 7 rações + **2 ossos** (50 pontos cada; é preciso pegar todos para sair), 2 veterinários, **2 blocos que deslizam** abrindo e fechando portas nos corredores (nunca esmagam, sempre sobra caminho) e **bônus de tempo de 20 pontos a cada 10 s** (de 0 a 200). Uma só vida escondida, numa ração **ou** num osso.
 - **Cachorrinho 10% mais lento na Fase 3** (162 px/s; nas Fases 1 e 2 segue 180 px/s).
