@@ -1,4 +1,6 @@
 # Preferências do dono do projeto
 
 - **Sempre avisar quanto tempo vai levar:** antes de cada comando ou etapa de trabalho, dizer a previsão de tempo (em minutos ou horas) e, se passar do previsto, avisar. Nas entregas de versão (0.4.0, 0.5.0, …), informar também a previsão total.
+- **Entrega contínua (vale para tudo do jogo):** sempre que um código, comando, característica, personagem, fase, correção ou qualquer outra parte do jogo estiver pronta **e testada, sem bug conhecido**, já deve ser incluída no jogo jogável (republicar a página do jogo no mesmo link e enviar à branch), sem esperar a versão inteira ficar pronta. O que ainda tem dúvida ou teste falhando espera. Enquanto a versão não estiver 100% entregue, `js/version.js` fica com `stage: "em preparação"` (o menu mostra isso) e o `CHANGELOG.md` marca o mesmo.
+- **Avisos de progresso:** a cada entrega parcial e a cada resposta sobre andamento, informar a **porcentagem já feita e incluída para ser jogada de cada versão em andamento** (e a previsão de tempo), e avisar de forma clara quando a versão final estiver **100% entregue** (nesse momento tirar o `stage` de `js/version.js` e a marca do CHANGELOG).
 - Cada atualização publicada tem um número de versão (`js/version.js`, mostrado no menu inicial) e uma entrada no `CHANGELOG.md`.

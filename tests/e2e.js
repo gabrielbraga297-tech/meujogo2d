@@ -184,12 +184,16 @@ const PAGE_HELPERS = () => {
       return { text: e.textContent, left: r.left, bottom: innerHeight - r.bottom, creditLeft: c.left, visible: r.width > 0 && r.height > 0, v, fs: parseFloat(getComputedStyle(e).fontSize) };
     });
     const [yy, mm, dd] = ver.v.date.split("-");
-    ok(ver.visible && ver.text === `Versão ${ver.v.number} · ${dd}/${mm}/${yy}`, `o menu mostra a versão do jogo (${ver.text})`);
+    const stageTxt = ver.v.stage ? ` (${ver.v.stage})` : "";
+    ok(ver.visible && ver.text === `Versão ${ver.v.number}${stageTxt} · ${dd}/${mm}/${yy}`, `o menu mostra a versão do jogo (${ver.text})`);
     ok(/^\d+\.\d+\.\d+$/.test(ver.v.number) && ver.v.build === "dev", "a versão vem de js/version.js (no código o build é 'dev' e não aparece)");
     ok(ver.left < 40 && ver.bottom < 40 && ver.left < ver.creditLeft && ver.fs >= 13, `versão no canto inferior esquerdo, legível (${ver.fs}px), sem tapar o crédito`);
     await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", date: "2030-01-02", build: "abc1234" }; });
     await page.click("#btn-howto"); await page.click("#btn-howto-back");
     ok(await page.textContent("#menu-version") === "Versão 9.8.7 · 02/01/2030 · build abc1234", "publicado no GitHub Pages, a versão mostra também o código do commit (build)");
+    await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", stage: "em preparação", date: "2030-01-02", build: "abc1234" }; });
+    await page.click("#btn-howto"); await page.click("#btn-howto-back");
+    ok(await page.textContent("#menu-version") === "Versão 9.8.7 (em preparação) · 02/01/2030 · build abc1234", "enquanto a versão recebe itens, o menu diz que ela está em preparação");
     await page.evaluate(() => { window.GAME_VERSION = undefined; });
     await page.click("#btn-howto"); await page.click("#btn-howto-back");
     ok(await page.textContent("#menu-version") === "Versão desconhecida", "sem js/version.js o menu não quebra");

@@ -19,10 +19,16 @@ test("js/version.js define número, data e build", () => {
   assert.match(V.date, /^\d{4}-\d{2}-\d{2}$/, "data no formato AAAA-MM-DD");
   assert.ok(!Number.isNaN(Date.parse(V.date)), "data válida");
   assert.strictEqual(V.build, "dev", 'no código o build é "dev" (o workflow carimba o commit)');
+  assert.ok(V.stage === undefined || (typeof V.stage === "string" && V.stage.length <= 30), "stage é opcional e curto");
+});
+
+test("o CHANGELOG marca 'em preparação' na entrada do topo se, e só se, js/version.js tem stage", () => {
+  const head = read("CHANGELOG.md").match(/^## .*$/m)[0];
+  assert.strictEqual(/\(em preparação\)/.test(head), !!V.stage, `cabeçalho do topo: "${head}" / stage: ${JSON.stringify(V.stage)}`);
 });
 
 test("o CHANGELOG começa pela versão atual, com a mesma data", () => {
-  const first = read("CHANGELOG.md").match(/^## (\d+\.\d+\.\d+) — (\d{2})\/(\d{2})\/(\d{4})/m);
+  const first = read("CHANGELOG.md").match(/^## (\d+\.\d+\.\d+) — (\d{2})\/(\d{2})\/(\d{4})/m); // aceita " (em preparação)" depois da data
   assert.ok(first, "há uma versão no CHANGELOG");
   assert.strictEqual(first[1], V.number, "versão do topo do CHANGELOG = js/version.js");
   assert.strictEqual(`${first[4]}-${first[3]}-${first[2]}`, V.date, "data do CHANGELOG = js/version.js");
