@@ -22,12 +22,13 @@ const U = (s) => new TextEncoder().encode(s);
       ["senha-" + "é".repeat(30), "sal-comprido-".repeat(10), 777], ["🐶🐶🐶🐶🐶🐶🐶🐶🐶🐶", "z", 123]];
     for (const [pw, salt, it] of cases) assert.strictEqual(A.toHex(A.pbkdf2Js(U(pw), U(salt), it)), ref(pw, salt, it), JSON.stringify([pw.length, salt.length, it]));
   });
-  await test("PBKDF2 em JS: 50.000 iterações confere e termina em tempo razoável", () => {
+  await test("PBKDF2 em JS: 150.000 iterações (as do jogo) conferem e terminam em tempo razoável", () => {
     const t0 = Date.now();
     const got = A.toHex(A.pbkdf2Js(U("Senha#Forte20"), U("0123456789abcdef"), A.ITERATIONS));
     const ms = Date.now() - t0;
     assert.strictEqual(got, ref("Senha#Forte20", "0123456789abcdef", A.ITERATIONS));
-    console.log(`     (50.000 iterações em JS puro: ${ms} ms)`);
+    assert.strictEqual(A.ITERATIONS, 150000, "o jogo usa 150.000 iterações");
+    console.log(`     (${A.ITERATIONS} iterações em JS puro: ${ms} ms)`);
     assert.ok(ms < 5000, `lento demais: ${ms} ms`);
   });
 

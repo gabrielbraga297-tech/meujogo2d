@@ -384,5 +384,51 @@ test("limite de saves: guarda no máximo um por jogador lembrado", () => {
   assert.ok(s.hasGame("Cao19"));
 });
 
+// ---------- duas abas no mesmo armazenamento ----------
+test("duas abas: o que uma grava a outra enxerga e nada se perde (pontuações, progresso e jogos salvos)", () => {
+  const st = memStorage();
+  const a = R.createStore(st), b = R.createStore(st); // b nasceu antes de a Ana existir: é uma cópia "velha"
+  a.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
+  b.addRun({ level: 1, timeMs: 25000, points: 590, name: "Bia" }); // grava depois, sem ter visto a Ana
+  const c = R.createStore(st);
+  assert.deepStrictEqual(c.ranking(1).map((r) => r.n), ["Ana", "Bia"], "as duas pontuações estão guardadas");
+  assert.deepStrictEqual(a.ranking(1).map((r) => r.n), ["Ana", "Bia"], "a aba que gravou primeiro enxerga a outra sem recarregar");
+  a.completeLevel("Ana", 1); b.completeLevel("Bia", 1);
+  assert.ok(c.progress("Ana").completed.includes(1) && c.progress("Bia").completed.includes(1), "o progresso das duas ficou");
+  a.saveGame("Ana", { x: 1 }); b.saveGame("Bia", { x: 2 });
+  assert.ok(c.hasGame("Ana") && c.hasGame("Bia"), "os jogos salvos das duas ficaram");
+  b.clearGame("Ana");
+  assert.ok(!a.hasGame("Ana") && a.hasGame("Bia"), "apagar um jogo salvo numa aba vale na outra, sem apagar os demais");
+  assert.strictEqual(a.totalScore("Bia"), 590);
+});
+
+test("duas abas: uma melhor pontuação gravada em outra aba nunca é rebaixada por uma aba velha", () => {
+  const st = memStorage();
+  const a = R.createStore(st), b = R.createStore(st);
+  a.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
+  b.addRun({ level: 1, timeMs: 60000, points: 500, name: "Ana" }); // aba velha com uma partida pior
+  assert.strictEqual(R.createStore(st).personalBest("Ana", 1).p, 600);
+  b.addRun({ level: 1, timeMs: 10000, points: 600, name: "Ana" }); // mesma nota, menos tempo
+  assert.strictEqual(a.personalBest("Ana", 1).t, 10000);
+});
+
+test("armazenamento apagado por fora: a cópia em memória começa do zero em vez de ressuscitar dados", () => {
+  const st = memStorage();
+  const a = R.createStore(st);
+  a.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
+  st.removeItem("cachorrinho.v1");
+  assert.deepStrictEqual(a.ranking(1), []);
+  a.addRun({ level: 1, timeMs: 21000, points: 590, name: "Bia" });
+  assert.deepStrictEqual(R.createStore(st).ranking(1).map((r) => r.n), ["Bia"]);
+});
+
+test("sem armazenamento (só memória) tudo continua funcionando", () => {
+  const a = R.createStore(null);
+  a.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
+  a.saveGame("Ana", { x: 1 });
+  assert.strictEqual(a.persistent, false);
+  assert.ok(a.hasGame("Ana") && a.personalBest("Ana", 1).p === 600);
+});
+
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
 process.exit(failed ? 1 : 0);

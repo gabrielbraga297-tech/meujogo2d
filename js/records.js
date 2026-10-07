@@ -82,9 +82,13 @@
     const failures = new Map(); // chave do jogador -> { n, until } (só em memória)
 
     // objetos sem protótipo: um nome como "constructor" não pode colidir com Object.prototype
-    let data = { v: 2, player: "", players: [], bests: Object.create(null), progress: Object.create(null), accounts: Object.create(null) };
+    const emptyData = () => ({ v: 2, player: "", players: [], bests: Object.create(null), progress: Object.create(null), accounts: Object.create(null) });
+    let data = emptyData();
     const saves = Object.create(null); // jogo salvo por jogador: { chave: { t, snap } }
     let persistent = false;
+    // Várias abas (ou uma aba esquecida aberta) usam o mesmo armazenamento: cada operação primeiro relê o que está guardado,
+    // se outra aba mudou, para nunca apagar o que ela gravou (ver sync()). `lastRaw`: o texto que esta cópia conhece.
+    let lastRaw = null, lastSavesRaw = null;
 
     function probe() {
       if (!storage) return false;
@@ -103,9 +107,16 @@
 
     function load() {
       persistent = probe();
-      if (!persistent) return;
+      if (persistent) readData();
+    }
+
+    function readData() {
+      let text;
+      try { text = storage.getItem(KEY); } catch { return; }
+      lastRaw = text;
+      data = emptyData();
       try {
-        const raw = JSON.parse(storage.getItem(KEY) || "null");
+        const raw = JSON.parse(text || "null");
         if (!raw || typeof raw !== "object") return;
         const players = Array.isArray(raw.players) ? raw.players.map(sanitizeName).filter(Boolean) : [];
         const player = sanitizeName(raw.player);
@@ -154,8 +165,12 @@
 
     function loadSaves() {
       if (!persistent) return;
+      let text;
+      try { text = storage.getItem(SAVE_KEY); } catch { return; }
+      lastSavesRaw = text;
+      for (const k of Object.keys(saves)) delete saves[k];
       try {
-        const raw = JSON.parse(storage.getItem(SAVE_KEY) || "null");
+        const raw = JSON.parse(text || "null");
         if (!raw || typeof raw !== "object" || !raw.saves || typeof raw.saves !== "object") return;
         for (const [k, v] of Object.entries(raw.saves)) {
           if (k && v && Number.isFinite(v.t) && v.snap && typeof v.snap === "object" && JSON.stringify(v.snap).length <= MAX_SAVE_BYTES) saves[k] = { t: v.t, snap: v.snap };
@@ -165,12 +180,21 @@
 
     function persistSaves() {
       if (!persistent) return true;
-      try { storage.setItem(SAVE_KEY, JSON.stringify({ v: 1, saves })); return true; } catch { persistent = false; return false; }
+      try { const text = JSON.stringify({ v: 1, saves }); storage.setItem(SAVE_KEY, text); lastSavesRaw = text; return true; } catch { persistent = false; return false; }
     }
 
     function save() {
       if (!persistent) return;
-      try { storage.setItem(KEY, JSON.stringify(data)); } catch { persistent = false; }
+      try { const text = JSON.stringify(data); storage.setItem(KEY, text); lastRaw = text; } catch { persistent = false; }
+    }
+
+    // Se outra aba mudou os dados guardados desde a última vez, relê antes de continuar (barato: só compara textos).
+    function sync() {
+      if (!persistent) return;
+      let a, b;
+      try { a = storage.getItem(KEY); b = storage.getItem(SAVE_KEY); } catch { return; }
+      if (a !== lastRaw) readData();
+      if (b !== lastSavesRaw) loadSaves();
     }
 
     function canonical(name) { // usa a grafia já guardada, se o jogador existir
@@ -183,7 +207,7 @@
     load();
     loadSaves();
 
-    return {
+    const api = {
       get persistent() { return persistent; },
       player() { return data.player; },
       players() { return data.players.slice(); },
@@ -213,6 +237,7 @@
         if (data.accounts[k]) return { ok: false, error: "taken" };
         let hash;
         try { hash = await auth.hashPassword(password, opts.authOptions); } catch { return { ok: false, error: "crypto" }; }
+        sync();
         if (data.accounts[k]) return { ok: false, error: "taken" }; // outro cadastro igual terminou antes
         const display = canonical(clean);
         data.accounts[k] = { n: display, a: hash.a, i: hash.i, s: hash.s, h: hash.h, c: now() };
@@ -226,8 +251,9 @@
       async login(name, password) {
         const k = nameKey(typeof name === "string" ? name : ""), f = failures.get(k);
         if (f && f.until > now()) return { ok: false, error: "locked", waitMs: f.until - now() };
-        const acc = data.accounts[k];
-        const good = !!acc && await auth.verifyPassword(password, acc, opts.authOptions);
+        let acc = data.accounts[k];
+        let good = !!acc && await auth.verifyPassword(password, acc, opts.authOptions);
+        if (good) { sync(); acc = data.accounts[k]; good = !!acc; } // a conta pode ter sido apagada em outra aba durante a espera
         if (!good) {
           const n = (f ? f.n : 0) + 1;
           failures.set(k, { n, until: n % LOCK_AFTER === 0 ? now() + LOCK_MS * 2 ** (n / LOCK_AFTER - 1) : 0 });
@@ -352,6 +378,14 @@
       hasGame(name) { return !!saves[nameKey(name)]; },
       clearGame(name) { const k = nameKey(name); if (k in saves) { delete saves[k]; persistSaves(); } },
     };
+
+    // Toda operação começa sincronizando com o armazenamento (outras abas). Os métodos assíncronos (register/login) sincronizam de novo depois da espera.
+    for (const name of Object.keys(api)) {
+      const fn = api[name];
+      if (typeof fn !== "function") continue;
+      api[name] = function (...args) { sync(); return fn.apply(this, args); };
+    }
+    return api;
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,

@@ -211,6 +211,31 @@ const mk = (st = memStorage(), o = {}) => R.createStore(st, { ...fast, ...o });
     for (const [k, v] of Object.entries(st._m)) assert.ok(!v.includes("BemSecreta") && !k.includes("BemSecreta"), k);
   });
 
+  // ---------- duas abas ----------
+  await test("duas abas: contas criadas em abas diferentes convivem; apagar numa vale na outra; entrar com conta já apagada falha", async () => {
+    const st = memStorage();
+    const a = mk(st), b = mk(st);
+    assert.ok((await a.register("Ana", "SenhaAna1")).ok);
+    assert.ok((await b.register("Bia", "SenhaBia1")).ok, "a aba velha não apaga a conta que a outra criou");
+    const c = mk(st);
+    assert.deepStrictEqual(c.accountNames().sort(), ["Ana", "Bia"]);
+    assert.ok(a.hasAccount("Bia") && b.hasAccount("Ana"), "cada aba enxerga a conta da outra");
+    assert.deepStrictEqual((await b.register("Ana", "OutraSenha1")).error, "taken", "o nome já tem conta (criada em outra aba)");
+    a.deleteAccount("Ana");
+    assert.ok(!b.hasAccount("Ana") && !mk(st).hasAccount("Ana"), "conta apagada numa aba some nas outras");
+    assert.strictEqual((await b.login("Ana", "SenhaAna1")).ok, false, "entrar numa conta apagada falha");
+    assert.ok((await b.login("Bia", "SenhaBia1")).ok && mk(st).hasAccount("Bia"));
+  });
+  await test("duas abas: login já em andamento é descartado se a conta for apagada durante a espera da senha", async () => {
+    const st = memStorage();
+    const a = mk(st), b = mk(st);
+    await a.register("Ana", "SenhaAna1"); a.logout();
+    const p = b.login("Ana", "SenhaAna1"); // aguardando o cálculo da senha...
+    a.deleteAccount("Ana");               // ...e outra aba apaga a conta
+    assert.strictEqual((await p).ok, false);
+    assert.strictEqual(mk(st).player(), "");
+  });
+
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de contas passaram");
   process.exit(failed ? 1 : 0);
 })();

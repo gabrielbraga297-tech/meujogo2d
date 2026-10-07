@@ -133,6 +133,7 @@
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, score, time, lives, livesLost, retries, invuln, hintTimer;
+  let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
@@ -151,9 +152,10 @@
 
   // Sorteia onde ficam `count` rações: só em chão alcançável, longe do início do cachorro, dos veterinários e da saída,
   // e espalhadas pelo mapa (a distância mínima entre elas diminui só se for preciso).
-  function placeItems(spawnTile, vetTiles, exitTiles, count) {
+  // `avoid`: tiles que já têm uma ração (as já pegas ficam no mapa até a fase acabar) e não podem receber outra.
+  function placeItems(spawnTile, vetTiles, exitTiles, count, avoid = []) {
     const g = bfs(spawnTile), key = (c, r) => r * COLS + c;
-    const exitKeys = new Set(exitTiles.map(([c, r]) => key(c, r)));
+    const exitKeys = new Set([...exitTiles, ...avoid].map(([c, r]) => key(c, r)));
     const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     const cand = shuffle(g.q.filter((t) => !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= 4)));
     for (const gap of [6, 5, 4, 3, 2, 0]) {
@@ -170,7 +172,7 @@
 
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
-    levelId = id; lv = BUILT[id];
+    levelId = id; lv = BUILT[id]; gamePlayer = store.player();
     solids = lv.solids; walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
     collected = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
@@ -191,7 +193,8 @@
   function relocateItems() {
     const rest = items.filter((i) => !i.taken);
     if (!rest.length) return;
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length);
+    const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de uma ração já pega
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, taken);
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life)); });
   }
 
@@ -315,6 +318,7 @@
 
   // ---------- Atualização ----------
   function update(dt) {
+    if (!(dt > 0)) dt = 0; // o relógio nunca anda para trás (o tempo do quadro pode vir antes do instante em que a partida foi retomada)
     time += dt;
     if (hintTimer > 0 && (hintTimer -= dt) <= 0) $("toast").classList.remove("show");
 
@@ -356,7 +360,10 @@
     if (s !== "playing") clearTouch();
   }
 
+  let screenSeq = 0; // muda a cada troca de tela: serve para ignorar respostas atrasadas (cadastro/entrada) de uma tela que o jogador já deixou
   function showScreen(id) {
+    screenSeq++;
+    if (id) { $("toast").classList.remove("show"); hintTimer = 0; } // o aviso do jogo não aparece por trás das telas
     if (id !== "register") clearAuthFields(["reg-user", "reg-pass", "reg-pass2"], "reg-show");
     if (id !== "login") clearAuthFields(["login-user", "login-pass"], "login-show");
     for (const el of SCREENS) el.classList.toggle("hidden", el.id !== id);
@@ -366,7 +373,8 @@
     if (el) {
       el.scrollTop = 0;
       const visible = (n) => n.offsetParent !== null;
-      const f = [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
+      // telas longas (Como jogar, Pontuações): o foco fica na própria tela, para as setas, Espaço e PageDown rolarem o texto
+      const f = el.hasAttribute("data-scroll") ? el : [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
       if (f) f.focus({ preventScroll: true });
     }
   }
@@ -395,6 +403,8 @@
 
   // Começa uma fase: do zero (vidas = 3), com as vidas que vieram da fase anterior, ou como nova tentativa.
   function begin(id = levelId, o = {}) {
+    const me = store.player();
+    if (me) store.clearGame(me); // um jogo novo substitui o salvo (só aqui: cancelar a escolha da fase não apaga nada)
     reset(id, o);
     beginPlay();
     const n = vets.length;
@@ -408,7 +418,7 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 3, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(Math.max(0, invuln)),
+      v: 3, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, INVULN)),
       items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0]),
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
@@ -432,8 +442,8 @@
         if (!Array.isArray(it) || it.length !== 4) return null;
         const [c, r, t, l] = it;
         if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1)) return null;
-        if (seen.has(r * COLS + c)) return null;
-        seen.add(r * COLS + c);
+        // duas rações que faltam pegar não podem ocupar o mesmo tile (uma já pega pode: jogos salvos da 0.4.0 tinham esse defeito)
+        if (t === 0) { if (seen.has(r * COLS + c)) return null; seen.add(r * COLS + c); }
         lifeItems += l;
       }
       if (lifeItems < L.lifeMin || lifeItems > L.lifeMax) return null; // a fase tem de ter a quantidade prevista de rações com vida extra
@@ -491,7 +501,7 @@
   }
 
   function saveNow() {
-    const me = store.player();
+    const me = gamePlayer;
     if (!me || (state !== "playing" && state !== "paused")) return false;
     const ok = store.saveGame(me, snapshot());
     flashSaved();
@@ -568,8 +578,8 @@
     $("btn-again").classList.toggle("primary", !next);
     let res = null;
     try {
-      res = store.addRun({ level: levelId, timeMs, points });
-      const me = store.player();
+      res = store.addRun({ level: levelId, timeMs, points, name: gamePlayer });
+      const me = gamePlayer;
       if (me) { store.completeLevel(me, levelId); store.clearGame(me); } // fase concluída: o jogo em andamento termina
       if (res && res.newPersonal) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
     } catch { /* seguem sem registrar */ }
@@ -579,9 +589,10 @@
         : res.newPersonal ? (res.gained > 0 ? `Nova melhor pontuação da fase! Antes: ${res.previousPersonal.p}.`
           : `Mesma pontuação da sua melhor (${best}), em menos tempo: novo recorde pessoal!`)
         : `Sua melhor pontuação nesta fase continua ${best}. Na mesma fase não soma: vale a maior.`;
-      $("win-general").textContent = res.newGeneral ? "Novo recorde geral!"
-        : `Recorde geral: ${res.generalBest.p} pontos (${res.generalBest.n})`;
-      $("win-total").textContent = `Pontuação total: ${store.totalScore(store.player(), LEVEL_IDS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
+      // o ranking é por aparelho (o compartilhado está em stand by): o recorde é o deste aparelho
+      $("win-general").textContent = res.newGeneral ? "Novo recorde deste aparelho!"
+        : `Recorde deste aparelho: ${res.generalBest.p} pontos (${res.generalBest.n})`;
+      $("win-total").textContent = `Pontuação total: ${store.totalScore(gamePlayer, LEVEL_IDS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
     } else {
       $("win-personal").textContent = "Escolha um nome de usuário para guardar as suas pontuações.";
       $("win-general").textContent = "";
@@ -593,7 +604,7 @@
   // Sem vidas: até 3 novas tentativas da mesma fase (do zero), cada uma custa 100 pontos.
   function gameOver() {
     setState("lost");
-    if (store.player()) store.clearGame(store.player()); // acabaram as vidas: não há o que continuar
+    if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas: não há o que continuar
     const left = MAX_RETRIES - retries;
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations} · Pontos: ${score}`;
     $("lose-chances").textContent = left > 0
@@ -717,7 +728,13 @@
   }
 
   function saveName(raw) {
-    if (store.hasAccount(raw)) {
+    const clean = Records.sanitizeName(raw), me = store.player();
+    if (clean && me && store.isLoggedIn() && Records.nameKey(clean) === Records.nameKey(me)) { // é a conta em que a pessoa já entrou
+      renderMenu();
+      if (nameThenStart) requestNewGame(); else goMenu();
+      return;
+    }
+    if (clean && store.hasAccount(clean)) {
       $("name-error").textContent = "Esse nome tem uma conta com senha. Toque em Entrar para usá-lo.";
       $("name-input").focus();
       return;
@@ -787,7 +804,9 @@
       if (why) return fail(PW_MESSAGES[why], "reg-pass");
       if (p1 !== p2) return fail("As duas senhas precisam ser iguais.", "reg-pass2");
       let r;
+      const seq = screenSeq;
       try { r = await store.register(user, p1); } catch { r = { ok: false, error: "crypto" }; }
+      if (seq !== screenSeq) { renderMenu(); return; } // a pessoa já saiu desta tela (Esc/Voltar): não puxa de volta
       if (!r.ok) {
         if (r.error === "taken") return fail("Esse nome de usuário já tem uma conta. Toque em Voltar e depois em Entrar.", "reg-user");
         if (r.error === "name") return fail(NAME_HELP, "reg-user");
@@ -807,7 +826,9 @@
       if (!user.trim()) return fail("Escreva o seu nome de usuário.", "login-user");
       if (!pass) return fail("Escreva a sua senha.", "login-pass");
       let r;
+      const seq = screenSeq;
       try { r = await store.login(user, pass); } catch { r = { ok: false, error: "wrong" }; }
+      if (seq !== screenSeq) { renderMenu(); return; } // a pessoa já saiu desta tela (Esc/Voltar): não puxa de volta
       if (!r.ok) {
         $("login-pass").value = "";
         return fail(r.error === "locked" ? `Muitas tentativas erradas. Tente de novo em ${Math.ceil(r.waitMs / 1000)} segundos.` : "Usuário ou senha incorretos.", "login-pass");
@@ -958,7 +979,7 @@
     }
     ctx.fillStyle = collected >= lv.rations ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center";
+    ctx.fillStyle = collected >= lv.rations ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
     for (const s of solids) {
       if (s.kind === "#") {
@@ -1005,7 +1026,7 @@
   let last = performance.now();
   function loop(now) {
     requestAnimationFrame(loop); // reagenda primeiro: um erro isolado não congela o jogo
-    const dt = Math.min((now - last) / 1000, 0.05); last = now; // aba parada não gasta o tempo do recorde
+    const dt = clamp((now - last) / 1000, 0, 0.05); last = now; // aba parada não gasta o tempo do recorde; nunca negativo
     pollGamepad(dt); // botões do controle (menus, pausa, salvar); o movimento é lido em update()
     if (state === "playing") {
       update(dt);
@@ -1017,7 +1038,8 @@
 
   // Salvar pelo botão, por Ctrl+S ou pelo controle: avisa na pausa (mensagem da tela) ou no jogo (aviso sobre o mapa).
   function manualSave() {
-    const msg = saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar.";
+    const ok = saveNow();
+    const msg = !ok ? "Não foi possível salvar o jogo agora." : store.persistent ? "Jogo salvo!" : "Salvo só nesta página: este navegador não guarda dados.";
     if (state === "paused") $("pause-msg").textContent = msg; else toast(msg, 1.8);
   }
 
@@ -1093,8 +1115,14 @@
   const CODE_KEYS = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" }; // posição física: vale em qualquer layout
   const keyName = (e) => CODE_KEYS[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
 
+  // As Pontuações abertas da tela de vitória voltam para ela (com "Próxima fase" e as vidas); abertas do menu, voltam ao menu.
+  let scoresBack = "menu";
+  function openScores(from) { scoresBack = from; renderScores(); showScreen("scores"); }
+  function closeScores() { if (scoresBack === "win" && state === "won") showScreen("win"); else goMenu(); }
+
   function onEscape() {
-    if (state === "playing") pauseGame();
+    if (document.body.dataset.screen === "scores") closeScores();
+    else if (state === "playing") pauseGame();
     else if (state === "paused") resumeGame();
     else if (state === "won" || state === "lost") goMenu();
     else if (document.body.dataset.screen && document.body.dataset.screen !== "menu") goMenu();
@@ -1115,18 +1143,18 @@
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
     const k = keyName(e);
-    if (k === "Escape") { onEscape(); return; }
+    if (k === "Escape") { if (!e.repeat) onEscape(); return; } // segurar a tecla não fica pausando e continuando
     if (k === "p" && !e.repeat && state === "paused") { resumeGame(); return; }
     if (state === "playing") {
       keys[k] = true;
       if (k === "p") { if (!e.repeat) pauseGame(); return; }
-      if (k.startsWith("Arrow") || k === " ") e.preventDefault(); // não rola a página
-    } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen) {
+      if (k.startsWith("Arrow") || (k === " " && !(e.target instanceof HTMLButtonElement))) e.preventDefault(); // não rola a página
+    } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen && !document.querySelector(".screen:not(.hidden)")?.hasAttribute("data-scroll")) {
       e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
     }
   });
   window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });
-  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; clearTouch(); });
+  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; clearTouch(); pauseGame(); }); // trocar de janela pausa (pauseGame só age se estiver jogando)
   document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
   window.addEventListener("pagehide", () => saveNow()); // fechar/recarregar a página também salva
 
@@ -1166,15 +1194,15 @@
   on("btn-start", requestNewGame);
   on("btn-continue", continueGame);
   on("btn-confirm-keep", continueGame);
-  on("btn-confirm-new", () => { store.clearGame(store.player()); chooseLevel(); });
+  on("btn-confirm-new", chooseLevel);
   on("btn-confirm-back", goMenu);
   on("btn-levels-back", goMenu);
   on("btn-save", manualSave);
   on("btn-save-hud", manualSave);
   on("btn-howto", () => showScreen("howto"));
   on("btn-howto-back", goMenu);
-  on("btn-scores", () => { renderScores(); showScreen("scores"); });
-  on("btn-scores-back", goMenu);
+  on("btn-scores", () => openScores("menu"));
+  on("btn-scores-back", closeScores);
   on("btn-name", () => openName(false));
   on("btn-name-back", goMenu);
   on("btn-open-register", () => openRegister());
@@ -1192,10 +1220,17 @@
   on("btn-pause-menu", goMenu);
   on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives }); }); // as vidas passam para a próxima fase
   on("btn-again", () => begin(levelId));
-  on("btn-win-scores", () => { renderScores(); showScreen("scores"); });
+  on("btn-win-scores", () => openScores("win"));
   on("btn-win-menu", goMenu);
   on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1 }); });
   on("btn-lose-menu", goMenu);
+
+  // outra aba mudou os dados guardados (pontuações, contas, jogo salvo): a tela aberta se atualiza
+  window.addEventListener("storage", (e) => {
+    if (e.key !== null && !String(e.key).startsWith("cachorrinho.")) return;
+    const screen = document.body.dataset.screen;
+    if (screen === "menu") renderMenu(); else if (screen === "scores") renderScores();
+  });
 
   // gancho de depuração/testes
   window.__game = {
@@ -1205,7 +1240,7 @@
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
-    padPoll(dt = 1 / 60) { pollGamepad(dt); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
+    padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
 
   reset();

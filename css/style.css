@@ -39,7 +39,7 @@ canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-
 /* ---------- Placar (HTML, nítido em qualquer tamanho) ---------- */
 #hud {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px;
-  min-height: 36px; margin-bottom: 8px; padding: 2px 4px; font-size: clamp(13px, 1.9vw, 20px); font-size: clamp(12px, 2.3cqw, 20px); font-weight: 700; letter-spacing: .02em;
+  min-height: 36px; margin-bottom: 8px; padding: 2px 4px; font-size: clamp(13px, 1.9vw, 20px); font-size: clamp(13px, 2.3cqw, 20px); font-weight: 700; letter-spacing: .02em;
 }
 .hud-left, .hud-right { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
 .hud-item { color: var(--muted); font-size: .8em; text-transform: uppercase; }
@@ -58,8 +58,8 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 @container (max-width: 520px) {
   #hud { gap: 2px 8px; letter-spacing: 0; }
   .hud-left, .hud-right { gap: 2px 8px; }
-  .hud-item { font-size: .72em; }
-  .hud-item b { font-size: 1.2em; margin-left: .15em; }
+  .hud-item { font-size: .85em; }   /* rótulos de pelo menos 11 px e números de 14 px, mesmo com o jogo estreito */
+  .hud-item b { font-size: 1.3em; margin-left: .15em; }
   .save-status { display: none; }
   .hearts { gap: 1px; }
   .heart { width: 1.25em; height: 1.25em; }
@@ -79,8 +79,9 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 .screen {
   position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: var(--pad);
   padding-top: calc(var(--pad) + env(safe-area-inset-top, 0px)); padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
-  background: rgba(10, 12, 18, .88);
+  background: rgba(10, 12, 18, .94);
 }
+.screen:focus { outline: none; }
 .screen.page { background: radial-gradient(ellipse at 50% 20%, #1d2436 0%, var(--bg) 70%); }
 .panel { margin: auto; width: min(100%, 520px); display: flex; flex-direction: column; gap: 12px; text-align: center; }
 .panel.wide { width: min(100%, 640px); }
@@ -194,6 +195,37 @@ body.touch[data-state="playing"] #touch { display: flex; }
   body.touch { --touch-h: 0px; --hud-h: 56px; }
   body.touch[data-state="playing"] #touch { position: fixed; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; z-index: 5; }
   .rotate-tip { display: none !important; }
+}
+
+/* Telas baixas (celular deitado): menus, vitória, derrota e pausa mais compactos, para tudo caber sem rolar */
+@media (max-height: 520px) {
+  .screen { padding-block: 8px; }
+  .screen { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .panel { gap: 6px; }
+  .screen h1 { margin: 0; font-size: clamp(22px, 7vh, 32px); }
+  .screen h2 { font-size: 18px; }
+  .screen p { font-size: 14px; line-height: 1.3; }
+  .who { font-size: 15px !important; }
+  .big-time { font-size: 34px !important; }
+  .label { font-size: 12px !important; }
+  .menu-list { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 2px; }
+  .menu-list button { flex: 1 1 42%; min-height: 40px; padding: 6px 14px; font-size: 16px; }
+  .level-list { flex-direction: row; flex-wrap: wrap; }
+  .level-list button { flex: 1 1 42%; }
+  .menu-foot { margin-top: 4px; }
+  .credit, .version { font-size: 12px !important; line-height: 1.2 !important; }
+  .saved-info { padding: 4px 10px; font-size: 13px !important; }
+}
+
+/* Celular estreito em pé: telas um pouco mais compactas (menu com jogo salvo e vitória cabem melhor) */
+@media (max-width: 380px) and (min-height: 521px) {
+  .panel { gap: 8px; }
+  .screen h1 { font-size: 30px; }
+  .screen p { font-size: 15px; line-height: 1.35; }
+  .big-time { font-size: 44px !important; }
+  .menu-list { gap: 8px; margin-top: 4px; }
+  .menu-list button { min-height: 44px; padding: 8px 16px; font-size: 17px; }
+  .menu-foot { margin-top: 8px; }
 }
 
 @media (max-width: 420px) {

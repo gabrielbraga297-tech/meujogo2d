@@ -51,8 +51,10 @@ const { MAP, free, find, bfs, distances } = G1; // as seções antigas usam a Fa
 let failed = 0;
 const ok = (cond, msg) => { console.log((cond ? "OK   " : "FAIL ") + msg); if (!cond) failed++; };
 const only = process.argv[2]; // opcional: roda só as seções cujo título contém este texto
+let sectionsRun = 0;
 async function section(title, fn) {
   if (only && !title.includes(only)) return;
+  sectionsRun++;
   try { await fn(); } catch (e) { failed++; console.log(`FAIL (erro em "${title}"): ${String(e.message).split("\n")[0]}`); }
 }
 
@@ -198,7 +200,7 @@ const PAGE_HELPERS = () => {
     ok(/3 vidas/.test(how) && /celular|tablet/i.test(how) && /Salvar/.test(how) && /disquete/.test(how), "Como jogar explica vidas, toque e salvamento (inclusive o botão de salvar)");
     ok(/bônus de tempo/i.test(how) && /20 segundos = 100/.test(how) && /até 30 s = 90/.test(how) && /10 pontos a menos a cada 10 s/.test(how) && /de 0 a 100/.test(how) && /maior/.test(how) && /não soma/.test(how) && /Fases diferentes se somam/.test(how), "Como jogar explica o bônus de tempo (0 a 100: 100 até 20 s, −10 a cada 10 s), que vale a maior pontuação da fase e que fases diferentes somam");
     ok(/50 pontos/.test(how) && /negativa/.test(how) && /mudam de lugar/.test(how) && /1 a 5/.test(how) && /passam para a fase seguinte/.test(how), "Como jogar explica −50 por vida, pontuação negativa, rações que mudam de lugar e vidas de 1 a 5 que passam de fase");
-    ok(/3 novas tentativas/.test(how) && /100 pontos/.test(how) && /do zero/.test(how), "Como jogar explica as 3 novas tentativas (do zero, −100 pontos)");
+    ok(/3 novas tentativas/.test(how) && /Cada nova tentativa custa 100 pontos/.test(how) && /do zero/.test(how), "Como jogar explica as 3 novas tentativas (do zero, cada uma custa 100 pontos)");
     ok(/5 na Fase 1 e 7 na Fase 2/.test(how) && /2 veterinários/.test(how) && /10% mais espertos/.test(how) && /1 ou 2/.test(how), "Como jogar explica a Fase 2 (7 rações, 2 veterinários 10% mais espertos, 1 ou 2 vidas extras)");
     ok(/Suas pontuações/.test(how) && /só você vê/.test(how) && /ranking do jogo/i.test(how) && /para todos/.test(how), "Como jogar explica a pontuação individual (só você) e o ranking do jogo (todos)");
     ok(/Menu inicial/.test(await page.textContent("#menu-title")), "o menu inicial se chama Menu inicial");
@@ -331,7 +333,7 @@ const PAGE_HELPERS = () => {
     ok(/Primeira pontuação/.test(await page.textContent("#win-personal")), "primeira pontuação do jogador é registrada");
     const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), prog: s.progress("Totó"), total: s.totalScore("Totó") }; });
     ok(rec.pb && rec.pb.p === winPts && Math.abs(rec.pb.t - shownMs) < 1, "pontuação e tempo guardados conferem com os mostrados");
-    ok(rec.gb.n === "Totó" && /Novo recorde geral/.test(await page.textContent("#win-general")), "superou o outro jogador: novo recorde geral");
+    ok(rec.gb.n === "Totó" && /Novo recorde deste aparelho/.test(await page.textContent("#win-general")), "superou o outro jogador: novo recorde do aparelho");
     ok(rec.total === winPts && (await page.textContent("#win-total")).includes(`Pontuação total: ${winPts}`), "pontuação total = pontuação da fase");
     ok(rec.prog.completed.includes(1) && rec.prog.unlocked === 2, "progresso: Fase 1 concluída e próxima fase liberada");
     ok(await ev(page, () => !Records.createStore(localStorage).hasGame("Totó")), "terminar a fase apaga o jogo em andamento");
@@ -340,6 +342,8 @@ const PAGE_HELPERS = () => {
     const sc = await page.textContent("#scores");
     ok(/Suas pontuações/.test(sc) && /Ranking do jogo/.test(sc) && /Ranking geral/.test(sc) && /Ranking da Fase 1/.test(sc) && /Fase 2/.test(sc) && !/histórico/i.test(sc) && /pontos/.test(sc), "Pontuações mostra as suas pontuações e o ranking do jogo, sem histórico de partidas");
     await page.keyboard.press("Escape");
+    ok(await page.isVisible("#win") && await page.isVisible("#btn-next"), "Esc nas Pontuações abertas da vitória volta para a vitória (com o botão Próxima fase)");
+    await page.click("#btn-win-menu");
     await page.click("#btn-start");
     ok(await page.isVisible("#levels") && await page.isEnabled("#levels-list button:nth-child(2)"), "com a Fase 2 liberada, Iniciar jogo deixa escolher a fase");
     await page.click("#levels-list button:nth-child(1)");
@@ -361,7 +365,7 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => __game.state) === "won", "fase concluída");
     ok(await page.textContent("#win-points") === "570" && /bônus de tempo: 70/.test(await page.textContent("#win-breakdown")), "45 s dão bônus 70: pontuação da fase 570");
     ok(/continua 590/.test(await page.textContent("#win-personal")) && /não soma/.test(await page.textContent("#win-personal")), "mensagem: a melhor pontuação continua 590 e partidas da mesma fase não somam");
-    ok(/Recorde geral: 600 pontos \(Rex\)/.test(await page.textContent("#win-general")), "mostra o recorde geral de outro jogador");
+    ok(/Recorde deste aparelho: 600 pontos \(Rex\)/.test(await page.textContent("#win-general")), "mostra o recorde do aparelho, de outro jogador");
     let st = await store();
     ok(st.pb.p === 590 && st.total === 590 && st.rows === 1 && st.history === "undefined", "guardado: melhor continua 590, total 590 (não 1160), uma só linha por jogador e nenhum histórico de partidas");
     ok((await page.textContent("#win-total")).trim() === "Pontuação total: 590", "tela mostra Pontuação total: 590 (sem acréscimo)");
@@ -373,7 +377,7 @@ const PAGE_HELPERS = () => {
     await finishAfter(6);
     ok(await page.textContent("#win-points") === "600" && /bônus de tempo: 100/.test(await page.textContent("#win-breakdown")), "6 s dão bônus 100: pontuação da fase 600");
     ok(/Nova melhor pontuação da fase! Antes: 590/.test(await page.textContent("#win-personal")), "nova melhor pontuação pessoal (antes: 590)");
-    ok(/Novo recorde geral/.test(await page.textContent("#win-general")), "600 em menos tempo supera o recorde geral de Rex");
+    ok(/Novo recorde deste aparelho/.test(await page.textContent("#win-general")), "600 em menos tempo supera o recorde do aparelho de Rex");
     ok((await page.textContent("#win-total")).trim() === "Pontuação total: 600 (+10)", "total passa de 590 para 600 (+10), não para 1190");
     st = await store();
     ok(st.pb.p === 600 && st.total === 600 && st.rows === 1 && st.gb.n === "Totó", "guardado: melhor 600, total 600, recorde geral de Totó");
@@ -735,6 +739,8 @@ const PAGE_HELPERS = () => {
     await ns.keyboard.press("Escape");
     await ns.click("#btn-start");
     ok(await ev(ns, () => __game.state) === "playing", "dá para jogar sem armazenamento");
+    await ns.click("#btn-save-hud");
+    ok(/só nesta página/.test(await ns.textContent("#toast")) && !/^Jogo salvo!$/.test(await ns.textContent("#toast")), "sem armazenamento, o botão de salvar avisa que só vale nesta página (não diz 'Jogo salvo!')");
     await ns.context().close();
   });
 
@@ -998,7 +1004,7 @@ const PAGE_HELPERS = () => {
       const totals = await A.$$eval("#scores-public section:nth-of-type(1) li", (ls) => ls.map((l) => l.textContent));
       ok(totals.length === 2 && totals.some((t) => t.startsWith("Bia —")) && totals.some((t) => t.startsWith("Ana —")), "o ranking geral também mostra os dois");
       ok(/Ana/.test(await A.textContent("#scores-private")) && !/Bia/.test(await A.textContent("#scores-private")), "a parte individual da Ana continua só dela");
-      await A.keyboard.press("Escape");
+      await A.keyboard.press("Escape"); await A.click("#btn-win-menu");
 
       // --- melhor pontuação apenas: uma partida pior da Ana não muda o servidor; uma melhor atualiza ---
       const snapshotServer = JSON.stringify(db.scores);
@@ -1082,6 +1088,211 @@ const PAGE_HELPERS = () => {
     await F.waitForFunction(() => /compartilhado/.test(document.getElementById("scores-source").textContent) && /Eva/.test(document.getElementById("scores-public").textContent), null, { timeout: 5000 });
     ok(/banco compartilhado do Claude/.test(await F.textContent("#scores-source")) && !/Eva/.test(await F.textContent("#scores-private")), "outro login vê a Eva no ranking do jogo, mas não na parte individual");
     await E.context().close(); await F.context().close();
+  });
+
+  // =====================================================================
+  await section("correções da auditoria (0.5.0)", async () => {
+    const SAVE_KEY = "cachorrinho.save.v1";
+
+    // --- A: ração que muda de lugar nunca cai em cima de uma já pega; o jogo salvo continua válido ---
+    await playLevel(page, 2, { done: [1], keepSave: true });
+    const rel = await ev(page, () => {
+      const key = (it) => (it.x - 8) / 32 + "," + (it.y - 8) / 32;
+      let dup = 0, relocations = 0;
+      for (let round = 0; round < 300; round++) {
+        __game.start(2); __game.freezeVets = true;
+        for (const it of __game.items.slice(0, 3)) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+        for (let k = 0; k < 2; k++) {
+          __game.setLives(5);
+          for (const v of __game.vets) v.cool = 99;
+          for (let i = 0; i < 45; i++) __game.tick(0.05); // passa a proteção
+          const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); // perde uma vida
+          relocations++;
+          if (new Set(__game.items.map(key)).size !== __game.items.length) dup++;
+        }
+      }
+      __game.save();
+      return { dup, relocations };
+    });
+    ok(rel.dup === 0 && rel.relocations === 600, `A: em ${rel.relocations} trocas de lugar com 3 rações já pegas, nenhuma ração caiu em cima de outra (${rel.dup} sobreposições)`);
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    ok(await page.isVisible("#btn-continue"), "A: depois de várias vidas perdidas, o jogo salvo continua válido e o Continuar jogo aparece");
+
+    // --- relógio nunca anda para trás (tempo de quadro negativo invalidava o jogo salvo) ---
+    const neg = await ev(page, () => {
+      __game.start(2); __game.freezeVets = true;
+      const v = __game.vets[0], p = __game.player; for (const x of __game.vets) x.cool = 99;
+      v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); // perde uma vida: proteção de 2 s
+      const t0 = __game.time, i0 = __game.invuln;
+      for (const bad of [-0.4, -1e-9, NaN, undefined]) __game.tick(bad);
+      return { dt: __game.time - t0, di: __game.invuln - i0 };
+    });
+    ok(neg.dt === 0 && neg.di === 0, "tempo de quadro negativo ou inválido é ignorado: o tempo e a proteção não andam para trás nem aumentam");
+    await ev(page, () => { __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    ok(await page.isVisible("#btn-continue"), "depois de pausar logo após perder uma vida, o jogo salvo continua válido");
+
+    // --- N/P: blur pausa; Espaço com botão focado; toast e fundo das telas ---
+    await page.click("#btn-continue");
+    await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => window.dispatchEvent(new Event("blur")));
+    ok(await ev(page, () => __game.state) === "paused" && await page.isVisible("#pause"), "N: perder o foco da janela pausa o jogo");
+    ok(!(await page.$eval("#toast", (e) => e.classList.contains("show"))), "P: o aviso do jogo some quando uma tela abre (não aparece por trás do texto)");
+    await page.click("#btn-pause-menu");
+    await ev(page, () => window.dispatchEvent(new Event("blur")));
+    ok(await ev(page, () => __game.state) === "menu", "N: perder o foco no menu não faz nada");
+
+    // --- B: vitória > Pontuações > Voltar preserva a Próxima fase e as vidas ---
+    await play(page); await ev(page, () => { __game.freezeVets = true; __game.setLives(3); });
+    await finishNow(page, 10);
+    const carry = Number((await page.textContent("#win-extra")).match(/Você leva (\d+)/)[1]);
+    ok(await ev(page, () => __game.state) === "won" && await ev(page, () => document.getElementById("win").style.opacity === "") && /rgba\(10, 12, 18, 0\.9[0-9]*\)/.test(await ev(page, () => getComputedStyle(document.getElementById("win")).backgroundColor)), "P: o fundo das telas de vitória/derrota é quase opaco (placar e aviso não aparecem por trás)");
+    await page.click("#btn-win-scores"); await page.click("#btn-scores-back");
+    ok(await page.isVisible("#win") && await page.isVisible("#btn-next"), "B: Voltar das Pontuações abertas na vitória leva de volta à vitória, com Próxima fase");
+    await page.click("#btn-next");
+    ok(await ev(page, () => __game.level) === 2 && await ev(page, () => __game.lives) === carry, `B: e as ${carry} vidas acumuladas passam para a Fase 2`);
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    await page.click("#btn-scores"); await page.click("#btn-scores-back");
+    ok(await page.isVisible("#menu"), "B: Pontuações abertas do menu voltam ao menu");
+
+    // --- G: "Apagar e começar de novo" só apaga o jogo salvo quando o novo jogo realmente começa ---
+    await fresh(page, { keepSave: true, done: [1] });
+    await page.evaluate(() => __game.start(1)); await ev(page, () => { __game.freezeVets = true; __game.tick(2); __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    const has = () => ev(page, () => Records.createStore(localStorage).hasGame("Totó"));
+    ok(await has(), "G: (antes) há um jogo salvo");
+    await page.click("#btn-start"); await page.click("#btn-confirm-new");
+    ok(await page.isVisible("#levels") && await has(), "G: Apagar e começar de novo abre a escolha da fase e o jogo salvo ainda existe");
+    await page.click("#btn-levels-back");
+    ok(await page.isVisible("#btn-continue") && await has(), "G: cancelar na escolha da fase não perde o jogo salvo");
+    await page.click("#btn-start"); await page.click("#btn-confirm-new"); await page.click("#levels-list button:nth-child(1)");
+    ok(await ev(page, () => __game.state) === "playing" && !(await has()), "G: escolher a fase de fato começa o jogo novo e só então o salvo antigo é descartado");
+
+    // --- I: segurar o Esc não alterna a pausa ---
+    const held = await ev(page, () => {
+      const kd = (repeat) => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", repeat }));
+      kd(false); const afterFirst = __game.state;
+      for (let i = 0; i < 6; i++) kd(true);
+      return [afterFirst, __game.state];
+    });
+    ok(held.join() === "paused,paused", "I: segurar o Esc pausa uma vez e não fica pausando e continuando");
+    await page.keyboard.press("Escape");
+
+    // --- salvar: aviso honesto e salvamento ao perder uma vida ---
+    await ev(page, () => { __game.freezeVets = true; localStorage.removeItem("cachorrinho.save.v1"); });
+    await catchOnce(page);
+    const lifeSave = await ev(page, () => { const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1") || "null"); return raw && raw.saves && raw.saves.toto && raw.saves.toto.snap.lives; });
+    ok(lifeSave === 2, "salvar: perder uma vida salva o jogo na hora (autosave)");
+
+    // --- O: contraste do texto SAÍDA ---
+    const exitPixels = (open) => ev(page, (open) => {
+      __game.start(1); __game.freezeVets = true;
+      if (open) for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } // pega todas: a saída abre
+      __game.player.x = __game.spawn?.x ?? 36; __game.player.y = __game.spawn?.y ?? 36;
+      return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const cv = document.getElementById("game"), c = cv.getContext("2d"), k = __game.view.k, e = __game.exit;
+        const d = c.getImageData(Math.round(e.x * k), Math.round(e.y * k), Math.round(e.w * k), Math.round(e.h * k)).data;
+        let white = 0, dark = 0;
+        for (let i = 0; i < d.length; i += 4) { if (d[i] > 235 && d[i + 1] > 235 && d[i + 2] > 235) white++; if (d[i] < 40 && d[i + 1] < 90 && d[i + 2] < 60) dark++; }
+        resolve({ white, dark });
+      })));
+    }, open);
+    const closed = await exitPixels(false), open = await exitPixels(true);
+    ok(closed.white > 20 && closed.dark < 5, `O: saída fechada (fundo avermelhado): texto claro (${closed.white} px claros)`);
+    ok(open.dark > 20 && open.white < 5, `O: saída aberta (fundo verde claro): texto escuro com bom contraste (${open.dark} px escuros, ${open.white} claros)`);
+
+    // --- M: telas longas rolam com as setas e a barra de espaço ---
+    await page.setViewportSize({ width: 390, height: 480 });
+    await fresh(page); await page.click("#btn-howto");
+    ok(await ev(page, () => document.activeElement.id) === "howto", "M: ao abrir Como jogar o foco fica na própria tela (para rolar)");
+    const top0 = await ev(page, () => document.getElementById("howto").scrollTop);
+    await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown"); await page.waitForTimeout(500); // o navegador rola com animação
+    const top1 = await ev(page, () => document.getElementById("howto").scrollTop);
+    await page.keyboard.press("Space"); await page.waitForTimeout(500);
+    const top2 = await ev(page, () => document.getElementById("howto").scrollTop);
+    ok(top1 > top0 && top2 > top1 && await page.isVisible("#howto"), `M: setas e Espaço rolam o Como jogar (${top0} → ${top1} → ${top2}) sem acionar o Voltar`);
+    await page.keyboard.press("Escape");
+    ok(await page.isVisible("#menu"), "M: Esc continua voltando ao menu");
+    await page.click("#btn-scores");
+    await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown");
+    ok(await page.isVisible("#scores") && await ev(page, () => document.activeElement.id) === "scores", "M: as setas também rolam as Pontuações, sem sair da tela");
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    // --- nomes e contas (J) ---
+    const idle = (id) => page.waitForFunction((id) => !document.getElementById(id).disabled, id, { timeout: 15000 });
+    await fresh(page, { name: "" });
+    await page.click("#btn-name"); await page.click("#btn-open-register");
+    await page.fill("#reg-user", "Totó"); await page.fill("#reg-pass", "Senha1234"); await page.fill("#reg-pass2", "Senha1234");
+    await page.click("#btn-register-submit"); await idle("btn-register-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+    ok(await page.textContent("#menu-player") === "Totó (conta com senha)", "(antes) conta criada e conectada");
+    await page.click("#btn-name"); await page.click("#name button[type=submit]");
+    ok(await page.isVisible("#menu") && await page.textContent("#menu-player") === "Totó (conta com senha)" && (await page.textContent("#name-error")) === "", "J: salvar o nome da própria conta em que já se entrou volta ao menu, sem erro");
+    await page.click("#btn-logout");
+    await page.click("#btn-name"); await page.fill("#name-input", "Totó "); await page.click("#name button[type=submit]");
+    ok(/conta com senha/.test(await page.textContent("#name-error")) && await page.isVisible("#name"), "J: nome de conta digitado com espaço no fim recebe a mensagem certa (conta com senha)");
+    await page.fill("#name-input", "Toto."); await page.click("#name button[type=submit]");
+    ok(/conta com senha/.test(await page.textContent("#name-error")), "J: nome de conta com pontuação no fim também");
+    await page.keyboard.press("Escape");
+
+    // --- K: cadastro demorado concluído depois que a pessoa já saiu da tela não puxa de volta ---
+    const slow = await newPage();
+    await slow.addInitScript(() => { try { Object.defineProperty(window.crypto, "subtle", { value: undefined, configurable: true }); } catch { /* */ } });
+    await slow.goto(URL); await slow.evaluate(() => localStorage.clear()); await slow.reload();
+    await slow.click("#btn-name"); await slow.click("#btn-open-register");
+    await slow.fill("#reg-user", "Bidu"); await slow.fill("#reg-pass", "Compat#JS-2024"); await slow.fill("#reg-pass2", "Compat#JS-2024");
+    await slow.evaluate(() => { document.getElementById("btn-register-submit").click(); document.getElementById("btn-register-back").click(); }); // envia e já volta
+    ok(await slow.isVisible("#name"), "K: depois de Voltar, a pessoa está na tela do nome");
+    await slow.waitForFunction(() => !document.getElementById("btn-register-submit").disabled, null, { timeout: 15000 });
+    await slow.waitForTimeout(300);
+    ok(await slow.isVisible("#name") && await ev(slow, () => __game.state) === "menu", "K: o cadastro que terminou depois não tira a pessoa da tela em que ela está");
+    await slow.keyboard.press("Escape");
+    ok(await slow.textContent("#menu-player") === "Bidu (conta com senha)", "K: a conta foi criada e o menu mostra o jogador conectado");
+    await slow.context().close();
+
+    // --- E/F/L: telas e placar legíveis e sem esconder botões em celulares ---
+    const fit = async (vp) => {
+      const t = await newPage({ viewport: vp, hasTouch: true, isMobile: true });
+      await fresh(t, { done: [1], keepSave: true });
+      const out = {};
+      const measure = (name) => ev(t, () => { const sc = document.querySelector(".screen:not(.hidden)"); const btns = [...sc.querySelectorAll("button")].filter((b) => b.offsetParent); return { overflow: sc.scrollHeight - sc.clientHeight, bottom: Math.max(...btns.map((b) => b.getBoundingClientRect().bottom)), firstBottom: btns[0].getBoundingClientRect().bottom, vh: innerHeight }; }).then((m) => { out[name] = m; });
+      await ev(t, () => { __game.start(1); __game.freezeVets = true; __game.tick(5); __game.save(); document.getElementById("btn-pause").click(); });
+      await measure("pausa");
+      await ev(t, () => document.getElementById("btn-pause-menu").click());
+      await measure("menu");
+      const credit = await ev(t, () => { const r = document.querySelector("#menu .credit").getBoundingClientRect(); return { bottom: r.bottom, vh: innerHeight }; });
+      await ev(t, () => { document.getElementById("btn-continue").click(); for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); });
+      await measure("vitória");
+      await ev(t, () => { __game.start(2); __game.freezeVets = true; for (let k = 0; k < 3; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); } });
+      await measure("derrota");
+      await t.context().close();
+      return { out, credit };
+    };
+    for (const vp of [{ width: 740, height: 390 }, { width: 667, height: 375 }]) {
+      const r = await fit(vp);
+      const all = Object.entries(r.out);
+      ok(all.every(([, m]) => m.overflow <= 1 && m.bottom <= m.vh), `E: em ${vp.width}x${vp.height} (celular deitado) menu com jogo salvo, pausa, vitória e derrota cabem sem rolar, com todos os botões à vista (${all.map(([n, m]) => `${n}: ${Math.round(m.bottom)}/${m.vh}`).join(", ")})`);
+      ok(r.credit.bottom <= r.credit.vh, `L: ${vp.width}x${vp.height}: o crédito do criador aparece no menu`);
+    }
+    const small = await fit({ width: 320, height: 568 });
+    ok(Object.values(small.out).every((m) => m.firstBottom <= m.vh && m.overflow <= 12), "E: em 320x568 (celular pequeno em pé) o botão principal de cada tela está à vista (rolagem de no máximo uns pixels)");
+    for (const vp of [{ width: 320, height: 568 }, { width: 390, height: 780 }]) {
+      const t = await newPage({ viewport: vp, hasTouch: true, isMobile: true });
+      await fresh(t); await t.click("#btn-start"); await t.waitForTimeout(150);
+      const f = await ev(t, () => { const item = document.querySelector("#hud .hud-item"), b = item.querySelector("b"); return { label: parseFloat(getComputedStyle(item).fontSize), value: parseFloat(getComputedStyle(b).fontSize), scroll: document.documentElement.scrollHeight - innerHeight }; });
+      ok(f.label >= 10.5 && f.value >= 13.5 && f.scroll <= 2, `F: placar legível em ${vp.width}x${vp.height}: rótulos de ${f.label.toFixed(1)} px e números de ${f.value.toFixed(1)} px, sem rolar a página`);
+      await t.context().close();
+    }
+
+    // --- saves da 0.4.0 (rações já pegas no mesmo tile) ainda são aceitos; duas por pegar no mesmo tile não ---
+    const snap = await (async () => { await playLevel(page, 1, { keepSave: true }); return ev(page, () => { __game.save(); return JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves.toto.snap; }); })();
+    const accepts = async (sn) => {
+      await fresh(page, { keepSave: true });
+      await ev(page, (sn) => Records.createStore(localStorage).saveGame("Totó", sn), sn);
+      await page.reload(); await page.evaluate(PAGE_HELPERS);
+      return page.isVisible("#btn-continue");
+    };
+    const same = (sn, taken) => { const c = JSON.parse(JSON.stringify(sn)); c.items[0][2] = taken ? 1 : 0; c.items[1][0] = c.items[0][0]; c.items[1][1] = c.items[0][1]; return c; };
+    ok(await accepts(same(snap, true)), "A: um save antigo com uma ração já pega no mesmo tile de outra é aceito (jogos salvos da 0.4.0 não se perdem)");
+    ok(!(await accepts(same(snap, false))), "A: duas rações por pegar no mesmo tile continuam sendo recusadas");
   });
 
   // =====================================================================
@@ -1340,9 +1551,12 @@ const PAGE_HELPERS = () => {
     ok(await k.isVisible("#btn-continue") && await kf() === "btn-continue", "teclado: o menu oferece Continuar jogo, já escolhido");
     await k.keyboard.press("Enter");
     ok(await ev(k, () => __game.state) === "playing" && await ev(k, () => __game.level) === 2, "teclado: Enter em Continuar jogo retoma a Fase 2");
+    await ev(k, () => { document.activeElement.blur(); });
+    await k.keyboard.press("Space");
+    ok(await ev(k, () => __game.state) === "playing" && await ev(k, () => window.scrollY) === 0, "teclado: a barra de espaço sem botão em foco não pausa nem rola a página");
     await ev(k, () => document.getElementById("btn-pause").focus());
     await k.keyboard.press("Space");
-    ok(await ev(k, () => __game.state) === "playing", "teclado: a barra de espaço com um botão do placar em foco não pausa nem rola sem querer");
+    ok(await ev(k, () => __game.state) === "paused", "teclado: com o botão de pausa do placar em foco, Espaço aciona o botão (como em qualquer botão)");
     await k.context().close();
   });
 
@@ -1468,7 +1682,7 @@ const PAGE_HELPERS = () => {
     // sair e voltar
     await page.click("#btn-logout");
     ok(await page.textContent("#menu-player") === "ainda não escolhido" && await page.isHidden("#btn-logout"), "Sair da conta desconecta");
-    ok((await stored()).includes('"accounts"'), "a conta continua existindo");
+    ok(JSON.parse(await stored()).accounts?.toto?.n === "Totó", "a conta Totó continua existindo no armazenamento depois de sair");
 
     // nome com senha não vale como nome simples
     await page.click("#btn-name"); await page.fill("#name-input", "Totó"); await page.click("#name button[type=submit]");
@@ -1582,6 +1796,7 @@ const PAGE_HELPERS = () => {
 
   console.log("erros JS:", errs);
   if (errs.length) failed++;
+  if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
   await browser.close();
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes passaram");
   process.exit(failed ? 1 : 0);
