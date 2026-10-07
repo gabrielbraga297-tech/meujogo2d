@@ -9,16 +9,33 @@ Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
 
 ## Objetivo
-Você é um cachorrinho. Pegue as 5 tigelas de ração (100 pontos cada) e chegue à saída, que só abre com as 5. As rações aparecem em **lugares diferentes a cada jogo**.
+Você é um cachorrinho. Pegue as 5 tigelas de ração e chegue à saída, que só abre com as 5. As rações aparecem em **lugares diferentes a cada jogo**, e **uma delas traz uma vida extra** (tem um coração em cima).
 
-Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho ainda é mais veloz). Se ele encostar, você perde **1 de 3 vidas** (3 corações vermelhos no placar, logo depois dos pontos). Ao perder uma vida, o cachorrinho volta ao início e ganha uns segundos de proteção. Sem vidas, a fase recomeça.
+Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho ainda é mais veloz).
 
-**A pontuação que vale para o recorde é o tempo** que você levou para chegar à saída: quanto menor, melhor.
+## Vidas
+Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5**. Se o veterinário encosta, você perde 1 vida e **50 pontos**; o cachorrinho volta ao início com uns segundos de proteção. Pegar a ração com a vida extra dá +1 vida; com 5 vidas, ela não passa do máximo. Sem vidas, a fase recomeça.
+
+## Pontuação
+A pontuação da fase é: **100 por ração + bônus de tempo − 50 por vida perdida** (nunca abaixo de 0).
+
+| Terminou em | Bônus de tempo |
+|---|---|
+| até 20 s | 100 |
+| até 30 s | 90 |
+| até 40 s | 80 |
+| … (−10 a cada 10 s a mais) | … |
+| até 110 s | 10 |
+| mais de 110 s | 0 |
+
+- **Na mesma fase vale só a MAIOR pontuação** (jogar de novo não soma). Em caso de empate, vale o menor tempo.
+- **Fases diferentes se somam:** a pontuação total é a soma da melhor pontuação de cada fase.
+- O tempo oficial é arredondado ao décimo de segundo.
 
 ## Menu
 - **Iniciar jogo** (e **Continuar jogo**, quando há um jogo salvo)
 - **Como jogar**
-- **Pontuações:** recorde pessoal, recorde geral, ranking e histórico por fase
+- **Pontuações:** pontuação total, melhor pontuação por fase, recorde geral, rankings e histórico
 - **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes.
 
 ## Controles

@@ -95,7 +95,7 @@ const PAGE_HELPERS = () => {
       sessionStorage.setItem("keepSave", keep ? "1" : "");
       localStorage.clear();
       const st = Records.createStore(localStorage);
-      for (const r of runs) { st.setPlayer(r.name); st.addRun({ level: 1, timeMs: r.timeMs }); }
+      for (const r of runs) { st.setPlayer(r.name); st.addRun({ level: r.level || 1, timeMs: r.timeMs, points: r.points ?? 500 + Records.timeBonus(r.timeMs) }); }
       if (name) st.setPlayer(name);
     }, [name, keepSave, runs]);
     await page.reload();
@@ -138,7 +138,8 @@ const PAGE_HELPERS = () => {
 
     await page.click("#btn-howto");
     const how = await page.textContent("#howto");
-    ok(/3 vidas/.test(how) && /tempo/i.test(how) && /celular|tablet/i.test(how) && /Salvar/.test(how), "Como jogar explica vidas, tempo, toque e salvamento");
+    ok(/3 vidas/.test(how) && /celular|tablet/i.test(how) && /Salvar/.test(how), "Como jogar explica vidas, toque e salvamento");
+    ok(/bônus de tempo/i.test(how) && /20 segundos = 100/.test(how) && /até 30 s = 90/.test(how) && /10 a cada 10 s/.test(how) && /maior/.test(how) && /não soma/.test(how) && /Fases diferentes se somam/.test(how), "Como jogar explica o bônus de tempo (100 até 20 s, −10 a cada 10 s), que vale a maior pontuação da fase e que fases diferentes somam");
     await page.click("#btn-howto-back");
     ok(await page.isVisible("#menu"), "Voltar retorna ao menu");
 
@@ -203,6 +204,9 @@ const PAGE_HELPERS = () => {
     ok(!bad, `80 sorteios: sempre 5 rações em chão livre, alcançável e longe de início/veterinário/saída ${bad && "(" + bad + ")"}`);
     const distinct = new Set(layouts.map((L) => L.map(String).sort().join("|"))).size;
     ok(distinct >= 70, `os lugares mudam a cada jogo (${distinct} disposições diferentes em 80)`);
+    const lifeCounts = await ev(page, () => { const out = []; for (let i = 0; i < 60; i++) { __game.start(); const f = __game.items.map((it) => it.life); out.push([f.filter(Boolean).length, f.indexOf(true)]); } return out; });
+    ok(lifeCounts.every((c) => c[0] === 1), "em todo jogo exatamente 1 das 5 rações traz a vida extra");
+    ok(new Set(lifeCounts.map((c) => c[1])).size >= 3, "a ração com a vida extra muda de uma para outra a cada jogo");
     const spread = layouts.filter((L) => { let m = 99; for (const a of L) for (const b of L) if (a !== b) m = Math.min(m, Math.hypot(a[0] - b[0], a[1] - b[1])); return m >= 2; }).length;
     ok(spread === 80, "rações sempre espalhadas (nunca coladas umas nas outras)");
     // cada início novo pelos botões também sorteia de novo
@@ -245,45 +249,103 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => __game.collected) === 5, "as 5 rações foram coletadas");
     await ev(page, (p) => __t.walk(p), bfs(await cur(), exit));
     ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#win"), "vitória ao chegar na saída com 5 rações");
-    const winTime = await page.textContent("#win-time");
-    ok(/\d/.test(winTime), `tela de vitória mostra o tempo (${winTime})`);
-    ok(/Primeiro tempo/.test(await page.textContent("#win-personal")), "primeiro tempo do jogador é registrado como recorde pessoal");
-    const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), prog: s.progress("Totó"), runs: s.history("Totó", 1).length }; });
-    ok(rec.pb && Math.abs(rec.pb.t / 1000 - parseFloat(winTime.replace(",", "."))) < 0.06, "tempo guardado no histórico confere com o mostrado");
-    ok(rec.gb.n === "Totó" && /Novo recorde geral/.test(await page.textContent("#win-general")), "superou o tempo do outro jogador: novo recorde geral");
+    const winText = await page.textContent("#win-breakdown"), winPts = Number(await page.textContent("#win-points"));
+    const m = winText.match(/Rações: (\d+) \+ bônus de tempo: (\d+) · tempo: ([\d,]+) s/);
+    ok(!!m, `tela de vitória detalha rações, bônus de tempo e tempo (${winText})`);
+    const shownMs = Math.round(parseFloat(m[3].replace(",", ".")) * 1000);
+    const expectBonus = await ev(page, (ms) => Records.timeBonus(ms), shownMs);
+    ok(Number(m[1]) === 500 && Number(m[2]) === expectBonus && winPts === 500 + expectBonus, `pontuação da fase = 500 + bônus de tempo (${winPts} = 500 + ${expectBonus} para ${m[3]} s)`);
+    ok(/Primeira pontuação/.test(await page.textContent("#win-personal")), "primeira pontuação do jogador é registrada");
+    const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), prog: s.progress("Totó"), total: s.totalScore("Totó") }; });
+    ok(rec.pb && rec.pb.p === winPts && Math.abs(rec.pb.t - shownMs) < 1, "pontuação e tempo guardados conferem com os mostrados");
+    ok(rec.gb.n === "Totó" && /Novo recorde geral/.test(await page.textContent("#win-general")), "superou o outro jogador: novo recorde geral");
+    ok(rec.total === winPts && (await page.textContent("#win-total")).includes(`Pontuação total: ${winPts}`), "pontuação total = pontuação da fase");
     ok(rec.prog.completed.includes(1) && rec.prog.unlocked === 2, "progresso: Fase 1 concluída e próxima fase liberada");
     ok(await ev(page, () => !Records.createStore(localStorage).hasGame("Totó")), "terminar a fase apaga o jogo em andamento");
-    ok(/Pontos: 500/.test(await page.textContent("#win-extra")), "pontos por ração (500) continuam sendo mostrados");
     await page.click("#btn-win-scores");
     const sc = await page.textContent("#scores");
-    ok(/Seu recorde \(Totó\)/.test(sc) && /Recorde geral/.test(sc) && /Ranking/.test(sc) && /histórico/i.test(sc) && /★ recorde/.test(sc), "Pontuações mostra recorde pessoal, geral, ranking e histórico");
+    ok(/Sua melhor pontuação \(Totó\)/.test(sc) && /Recorde geral/.test(sc) && /Ranking/.test(sc) && /histórico/i.test(sc) && /★ melhor/.test(sc) && /Pontuação total/.test(sc), "Pontuações mostra melhor pontuação, recorde geral, rankings, histórico e total");
     await page.keyboard.press("Escape");
     await page.click("#btn-start");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.collected) === 0 && await ev(page, () => __game.lives) === 3, "novo jogo depois da vitória começa do zero com 3 vidas");
   });
 
   // =====================================================================
-  await section("recordes: melhor/pior tempo e jogadores", async () => {
-    await play(page, { runs: [{ name: "Rex", timeMs: 1000 }, { name: "Totó", timeMs: 1500 }] });
+  await section("pontuação: maior vale na mesma fase, fases diferentes somam, bônus de tempo", async () => {
+    // Rex: 600 pontos (20 s). Totó já tem 590 (25 s).
+    await play(page, { runs: [{ name: "Rex", timeMs: 20000 }, { name: "Totó", timeMs: 25000 }] });
     await ev(page, () => { __game.freezeVets = true; });
-    await ev(page, () => { for (let i = 0; i < 100; i++) __game.tick(0.05); }); // 5 s de jogo: mais lento que o recorde de 1,5 s
-    const winNow = async () => { // teletransporta para as 5 rações e para a saída
-      await ev(page, () => { for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); });
+    const finishAfter = async (seconds) => { // joga `seconds` s de relógio e termina a fase teletransportando para as rações e para a saída
+      await ev(page, (n) => { for (let i = 0; i < n; i++) __game.tick(0.05); for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); }, Math.round(seconds / 0.05));
     };
-    await winNow();
-    ok(await ev(page, () => __game.state) === "won", "jogo vence ao tocar as 5 rações e a saída");
-    ok(/Seu recorde: 1,5 s/.test(await page.textContent("#win-personal")) && /Recorde geral: 1,0 s \(Rex\)/.test(await page.textContent("#win-general")), "tempo pior que o recorde mostra os recordes existentes");
-    const st = await ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1).t, gb: s.generalBest(1).t, n: s.history("Totó", 1).length }; });
-    ok(st.pb === 1500 && st.gb === 1000 && st.n === 2, "recordes não mudam com um tempo pior; histórico cresce");
+    const store = () => ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), total: s.totalScore("Totó"), runs: s.history("Totó", 1).length }; });
+
+    // 1) partida mais lenta (~45 s => bônus 70 => 570): não derruba a melhor (590) e não soma
+    await finishAfter(45);
+    ok(await ev(page, () => __game.state) === "won", "fase concluída");
+    ok(await page.textContent("#win-points") === "570" && /bônus de tempo: 70/.test(await page.textContent("#win-breakdown")), "45 s dão bônus 70: pontuação da fase 570");
+    ok(/continua 590/.test(await page.textContent("#win-personal")) && /não soma/.test(await page.textContent("#win-personal")), "mensagem: a melhor pontuação continua 590 e partidas da mesma fase não somam");
+    ok(/Recorde geral: 600 pontos \(Rex\)/.test(await page.textContent("#win-general")), "mostra o recorde geral de outro jogador");
+    let st = await store();
+    ok(st.pb.p === 590 && st.total === 590 && st.runs === 2, "guardado: melhor continua 590, total 590 (não 1160) e histórico com 2 partidas");
+    ok((await page.textContent("#win-total")).trim() === "Pontuação total: 590", "tela mostra Pontuação total: 590 (sem acréscimo)");
     await page.click("#btn-win-menu");
-    ok((await page.textContent("#menu-best")).includes("1,5 s"), "menu mostra o recorde pessoal");
+    ok((await page.textContent("#menu-best")).includes("Sua melhor pontuação na Fase 1: 590") && (await page.textContent("#menu-progress")).includes("Pontuação total: 590"), "menu mostra a melhor pontuação e a total");
+
+    // 2) partida rápida (~6 s => bônus 100 => 600): empata com o recorde geral, mas é mais rápida
+    await page.click("#btn-start"); await ev(page, () => { __game.freezeVets = true; });
+    await finishAfter(6);
+    ok(await page.textContent("#win-points") === "600" && /bônus de tempo: 100/.test(await page.textContent("#win-breakdown")), "6 s dão bônus 100: pontuação da fase 600");
+    ok(/Nova melhor pontuação da fase! Antes: 590/.test(await page.textContent("#win-personal")), "nova melhor pontuação pessoal (antes: 590)");
+    ok(/Novo recorde geral/.test(await page.textContent("#win-general")), "600 em menos tempo supera o recorde geral de Rex");
+    ok((await page.textContent("#win-total")).trim() === "Pontuação total: 600 (+10)", "total passa de 590 para 600 (+10), não para 1190");
+    st = await store();
+    ok(st.pb.p === 600 && st.total === 600 && st.runs === 3 && st.gb.n === "Totó", "guardado: melhor 600, total 600, recorde geral de Totó");
+
+    // 3) repetir 600 não soma
+    await page.click("#btn-again"); await ev(page, () => { __game.freezeVets = true; });
+    await finishAfter(8);
+    ok(await page.textContent("#win-points") === "600", "outra partida de 600");
+    st = await store();
+    ok(st.total === 600 && st.runs === 4, "repetir 600 NÃO soma: total continua 600 (não 1200)");
+    ok((await page.textContent("#win-total")).trim() === "Pontuação total: 600", "tela continua mostrando total 600");
+
+    // 3b) duas vidas perdidas: −100 pontos (600 → 500) e não derruba a melhor
+    await page.click("#btn-again"); await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => { for (let k = 0; k < 2; k++) { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); for (let i = 0; i < 45; i++) __game.tick(0.05); } });
+    await finishAfter(2);
+    ok(await page.textContent("#win-points") === "500" && /bônus de tempo: 100 − vidas perdidas: 100/.test(await page.textContent("#win-breakdown")), "2 vidas perdidas descontam 100: 500 + 100 − 100 = 500");
+    ok(/continua 600/.test(await page.textContent("#win-personal")) && (await store()).total === 600, "partida com perdas não derruba a melhor (600)");
+
+    // 4) bônus de 90 (~25 s)
+    await page.click("#btn-again"); await ev(page, () => { __game.freezeVets = true; });
+    await finishAfter(25);
+    ok(await page.textContent("#win-points") === "590" && /bônus de tempo: 90/.test(await page.textContent("#win-breakdown")), "25 s dão bônus 90: pontuação da fase 590");
+    ok((await store()).total === 600, "590 não derruba a melhor de 600");
+
+    // 5) fases diferentes somam (dados de outra fase no mesmo navegador)
+    await ev(page, () => { const s = Records.createStore(localStorage); s.setPlayer("Totó"); s.addRun({ level: 2, timeMs: 45000, points: 570 }); });
+    const sums = await ev(page, () => { const s = Records.createStore(localStorage); return [s.totalScore("Totó"), s.totalScore("Totó", [1])]; });
+    ok(sums[0] === 1170 && sums[1] === 600, "fases diferentes somam (600 + 570 = 1170); a Fase 1 sozinha continua 600");
+  });
+
+  // =====================================================================
+  await section("bônus de tempo no placar", async () => {
+    await play(page); await ev(page, () => { __game.freezeVets = true; });
+    ok(await hudIs(page, "#hud-bonus", "+100"), "começa valendo +100 de bônus");
+    await ev(page, () => { for (let i = 0; i < 420; i++) __game.tick(0.05); });
+    ok(await hudIs(page, "#hud-bonus", "+90"), "depois de 21 s o bônus cai para +90");
+    await ev(page, () => { for (let i = 0; i < 200; i++) __game.tick(0.05); });
+    ok(await hudIs(page, "#hud-bonus", "+80"), "depois de 31 s cai para +80");
+    await ev(page, () => { for (let i = 0; i < 2000; i++) __game.tick(0.05); });
+    ok(await hudIs(page, "#hud-bonus", "+0"), "bônus nunca fica negativo (+0)");
   });
 
   // =====================================================================
   await section("vidas e corações", async () => {
     await play(page);
     const hud = await page.evaluate(() => {
-      const hs = [...document.querySelectorAll("#hud-lives .heart")], pts = document.getElementById("hud-points").closest(".hud-item").getBoundingClientRect(),
+      const hs = [...document.querySelectorAll("#hud-lives .heart")].filter((h) => !h.classList.contains("hidden")), pts = document.getElementById("hud-points").closest(".hud-item").getBoundingClientRect(),
         cv = document.getElementById("game").getBoundingClientRect(), hr = hs[0].getBoundingClientRect();
       return { n: hs.length, lost: hs.filter((h) => h.classList.contains("lost")).length, fill: getComputedStyle(hs[0]).fill,
         afterPoints: hr.left >= pts.right - 1, sameRow: Math.abs((hr.top + hr.bottom) / 2 - (pts.top + pts.bottom) / 2) < 14,
@@ -293,7 +355,8 @@ const PAGE_HELPERS = () => {
     ok(hud.fill === "rgb(229, 48, 60)", `os corações são vermelhos (${hud.fill})`);
     ok(hud.afterPoints && hud.sameRow && hud.aboveGame && hud.top < 120, "corações no canto superior, logo depois de PONTOS");
 
-    await ev(page, () => { __game.freezeVets = true; const it = __game.items[0]; __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); __game.freezeVets = false; });
+    await ev(page, () => { __game.freezeVets = true; const it = __game.items.find((i) => !i.life); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); __game.freezeVets = false; });
+    ok(await hudIs(page, "#hud-points", "100"), "PONTOS mostra 100 depois de uma ração");
     const catchNow = () => ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return __game.lives; });
     ok(await catchNow() === 2, "veterinário captura: perde 1 vida (3 → 2)");
     const afterLoss = await ev(page, () => { const p = __game.player, v = __game.vets[0]; return { x: p.x, y: p.y, invuln: __game.invuln, vx: v.cx, vy: v.cy, sx: v.sx, sy: v.sy, got: __game.collected }; });
@@ -301,6 +364,8 @@ const PAGE_HELPERS = () => {
     ok(afterLoss.vx === afterLoss.sx && afterLoss.vy === afterLoss.sy, "veterinário volta ao seu posto");
     ok(afterLoss.invuln > 1.5 && afterLoss.got === 1, "fica protegido por uns segundos e mantém as rações coletadas");
     ok(await lostHearts(page, 1) && await page.getAttribute("#hud-lives", "aria-label") === "2 vidas", "um coração apaga (restam 2)");
+    ok(await hudIs(page, "#hud-points", "50") && await ev(page, () => __game.livesLost) === 1, "perder a vida custa 50 pontos (100 → 50)");
+    ok(/−50 pontos/.test(await page.textContent("#toast")), "aviso mostra −50 pontos");
     ok(await catchNow() === 2, "durante a proteção o veterinário não captura de novo");
     await ev(page, () => { for (let i = 0; i < 45; i++) __game.tick(0.05); });
     await ev(page, () => { __game.vets[0].cool = 99; });
@@ -316,6 +381,59 @@ const PAGE_HELPERS = () => {
     await page.keyboard.press("Space");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.lives) === 3 && await ev(page, () => __game.collected) === 0, "barra de espaço aciona Tentar novamente: 3 vidas e rações zeradas");
     ok(await lostHearts(page, 0), "corações voltam a ficar todos vermelhos");
+  });
+
+  // =====================================================================
+  await section("vida extra: de 1 a 5 vidas", async () => {
+    await play(page); await ev(page, () => { __game.freezeVets = true; });
+    const grab = () => ev(page, () => { const it = __game.items.find((i) => i.life && !i.taken); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); return [__game.lives, __game.collected]; });
+    const visible = () => page.$$eval("#hud-lives .heart", (h) => ({ shown: h.filter((x) => !x.classList.contains("hidden")).length, lost: h.filter((x) => x.classList.contains("lost")).length }));
+    ok(await ev(page, () => __game.maxLives) === 5, "o máximo é de 5 vidas");
+    let r = await grab();
+    ok(r[0] === 4 && r[1] === 1, "pegar a ração com a vida extra: 3 → 4 vidas (e conta como ração)");
+    ok(/Vida extra/.test(await page.textContent("#toast")), "avisa que ganhou uma vida extra");
+    await page.waitForFunction(() => document.querySelectorAll("#hud-lives .heart:not(.hidden)").length === 4);
+    ok((await visible()).shown === 4 && (await visible()).lost === 0 && await page.getAttribute("#hud-lives", "aria-label") === "4 vidas", "o placar passa a mostrar 4 corações vermelhos");
+    ok(await ev(page, () => { const it = __game.items.find((i) => i.life); return it.taken; }), "a ração com a vida extra some depois de pega");
+    ok(await ev(page, () => { __game.tick(0.5); return __game.lives; }) === 4, "não dá a vida de novo");
+
+    // de 1 para 2
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-start"); await ev(page, () => { __game.freezeVets = true; __game.setLives(1); });
+    ok(await ev(page, () => __game.lives) === 1, "dá para ficar com apenas 1 vida");
+    r = await grab();
+    ok(r[0] === 2, "de 1 vida para 2");
+    ok(await hudIs(page, "#hud-points", "100"), "a ração com a vida extra também vale 100 pontos");
+
+    // teto de 5
+    await ev(page, () => { __game.start(); __game.freezeVets = true; __game.setLives(5); });
+    ok(await ev(page, () => __game.lives) === 5, "dá para ter 5 vidas");
+    await page.waitForFunction(() => document.querySelectorAll("#hud-lives .heart:not(.hidden)").length === 5);
+    ok((await visible()).shown === 5 && (await visible()).lost === 0, "5 corações vermelhos no placar");
+    r = await grab();
+    ok(r[0] === 5 && r[1] === 1, "com 5 vidas a ração com a vida extra não passa do máximo (continua 5)");
+    ok(/máximo/.test(await page.textContent("#toast")), "avisa que já está com o máximo de vidas");
+    ok(await ev(page, () => { __game.setLives(99); return __game.lives; }) === 5, "nunca passa de 5");
+    // perder a vida com 5: 5 → 4, e os corações apagados voltam ao padrão de 3
+    await ev(page, () => { __game.setLives(5); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.invuln = 0; __game.freezeVets = false; __game.tick(0.01); });
+    ok(await ev(page, () => __game.lives) === 4 && await hudIs(page, "#hud-points", "50"), "perder a vida com 5: 5 → 4, e custa 50 pontos (100 → 50)");
+    await ev(page, () => { __game.setLives(2); });
+    await page.waitForFunction(() => document.querySelectorAll("#hud-lives .heart:not(.hidden)").length === 3 && document.querySelectorAll("#hud-lives .heart.lost").length === 1);
+    const hs = await visible();
+    ok(hs.shown === 3 && hs.lost === 1, "com menos de 3 vidas o placar mostra 3 corações, com os perdidos apagados");
+
+    // salvar e continuar guarda vidas, vidas perdidas e a ração com a vida extra que ainda não foi pega
+    await play(page, { keepSave: true }); await ev(page, () => { __game.freezeVets = true; __game.setLives(4); });
+    await ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.save(); });
+    ok(await ev(page, () => [__game.lives, __game.livesLost]).then((x) => x.join()) === "3,1", "perdeu 1 vida (4 → 3)");
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    await page.click("#btn-continue");
+    const resumed = await ev(page, () => ({ lives: __game.lives, lost: __game.livesLost, life: __game.items.filter((i) => i.life && !i.taken).length }));
+    ok(resumed.lives === 3 && resumed.lost === 1 && resumed.life === 1, "continuar mantém vidas, vidas perdidas e a vida extra ainda não pega");
+    // com 5 vidas salvas, o save é válido
+    await ev(page, () => { __game.freezeVets = true; __game.setLives(5); __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    await page.click("#btn-continue");
+    ok(await ev(page, () => __game.lives) === 5, "um jogo salvo com 5 vidas continua com 5");
   });
 
   // =====================================================================
@@ -421,7 +539,7 @@ const PAGE_HELPERS = () => {
     await ev(page, () => { const it = __game.items[0]; __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); });
     ok(await ev(page, () => Records.createStore(localStorage).hasGame("Totó")), "salva sozinho ao coletar uma ração (autosave)");
     await ev(page, () => { __game.tick(3.0); __game.save(); });
-    const before = await ev(page, () => ({ items: __game.items.map((i) => [i.x, i.y, i.taken]), time: __game.time, lives: __game.lives, p: [__game.player.x, __game.player.y] }));
+    const before = await ev(page, () => ({ items: __game.items.map((i) => [i.x, i.y, i.taken, i.life]), time: __game.time, lives: __game.lives, lost: __game.livesLost, p: [__game.player.x, __game.player.y] }));
     const t1 = await ev(page, () => Records.createStore(localStorage).loadGame("Totó").savedAt);
     await page.waitForTimeout(5600);
     const t2 = await ev(page, () => Records.createStore(localStorage).loadGame("Totó").savedAt);
@@ -430,9 +548,9 @@ const PAGE_HELPERS = () => {
     ok(await page.isVisible("#btn-continue") && /Jogo salvo/.test(await page.textContent("#menu-save")), "depois de recarregar o menu oferece Continuar jogo e resume o save");
     ok(await ev(page, () => document.activeElement.id) === "btn-continue", "Continuar jogo vem focado");
     await page.click("#btn-continue");
-    const after = await ev(page, () => ({ items: __game.items.map((i) => [i.x, i.y, i.taken]), time: __game.time, lives: __game.lives, collected: __game.collected, invuln: __game.invuln, state: __game.state }));
-    ok(after.state === "playing" && JSON.stringify(after.items) === JSON.stringify(before.items), "continua com as mesmas rações nos mesmos lugares");
-    ok(after.collected === 1 && after.lives === before.lives && after.time >= before.time - 0.1, "mantém rações coletadas, vidas e tempo");
+    const after = await ev(page, () => ({ items: __game.items.map((i) => [i.x, i.y, i.taken, i.life]), time: __game.time, lives: __game.lives, lost: __game.livesLost, collected: __game.collected, invuln: __game.invuln, state: __game.state }));
+    ok(after.state === "playing" && JSON.stringify(after.items) === JSON.stringify(before.items), "continua com as mesmas rações nos mesmos lugares (e a que tem a vida extra)");
+    ok(after.collected === 1 && after.lives === before.lives && after.lost === before.lost && after.time >= before.time - 0.1, "mantém rações coletadas, vidas, vidas perdidas e tempo");
     ok(after.invuln >= 1.4, "ganha uma proteção curta ao retomar");
 
     // novo jogo com save existente pede confirmação
@@ -497,7 +615,7 @@ const PAGE_HELPERS = () => {
   await section("derrota e Esc", async () => {
     await play(page);
     await ev(page, () => { for (let k = 0; k < 3; k++) { for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; v.cool = 99; __game.tick(0.01); } });
-    ok(await page.isVisible("#lose") && /Acabaram as 3 vidas/.test(await page.textContent("#lose")), "tela de fim de jogo explica que as vidas acabaram");
+    ok(await page.isVisible("#lose") && /Acabaram as suas vidas/.test(await page.textContent("#lose")), "tela de fim de jogo explica que as vidas acabaram");
     await page.keyboard.press("Escape");
     ok(await ev(page, () => __game.state) === "menu", "Esc na tela final volta ao menu");
   });
@@ -611,10 +729,14 @@ const PAGE_HELPERS = () => {
     await fresh(page, { name: "Totó", runs: [{ name: "Rex", timeMs: 20000 }, { name: "Mel", timeMs: 18000 }, { name: "Totó", timeMs: 25000 }, { name: "Totó", timeMs: 22000 }] });
     await page.click("#btn-scores");
     const txt = await page.textContent("#scores-body");
-    ok(/Seu recorde \(Totó\)\s*22,0 s/.test(txt) && /Recorde geral\s*18,0 s — Mel/.test(txt), "mostra o recorde pessoal e o geral com o nome de quem fez");
-    const rank = await page.$$eval("#scores-body ol li", (l) => l.map((x) => x.textContent));
-    ok(rank.join("|") === "Mel — 18,0 s|Rex — 20,0 s|Totó — 22,0 s", "ranking ordenado do mais rápido ao mais lento (melhor tempo de cada jogador)");
-    ok((await page.$$eval("#scores-body ul li", (l) => l.length)) === 2, "histórico lista as partidas do jogador");
+    ok(/Pontuação total[\s\S]*590 pontos/.test(txt), "mostra a pontuação total do jogador (590: a melhor da fase, não 1180)");
+    ok(/Sua melhor pontuação \(Totó\)\s*590 pts · 22,0 s/.test(txt) && /Recorde geral\s*600 pts — Mel \(18,0 s\)/.test(txt), "mostra a melhor pontuação pessoal e o recorde geral com quem fez e o tempo");
+    const rank = await page.$$eval("#scores-body ol", (ols) => ols.map((ol) => [...ol.querySelectorAll("li")].map((x) => x.textContent)));
+    ok(rank[0].join("|") === "Mel — 600 pontos|Rex — 600 pontos|Totó — 590 pontos", "ranking geral por pontuação total (empate decidido por quem é mais rápido)");
+    ok(rank[1].join("|") === "Mel — 600 pts (18,0 s)|Rex — 600 pts (20,0 s)|Totó — 590 pts (22,0 s)", "ranking da fase por pontuação (tempo desempata)");
+    ok((await page.$$eval("#scores-body ul li", (l) => l.map((x) => x.textContent))).length === 2, "histórico lista as partidas do jogador");
+    ok(/★ melhor/.test(await page.textContent("#scores-body ul")), "histórico marca a melhor partida");
+    ok(/Em cada fase vale a sua maior pontuação/.test(await page.textContent("#scores")), "explica que vale a maior pontuação e que fases diferentes somam");
     await ev(page, () => Records.createStore(localStorage).setPlayer("Bidu")); await page.reload();
     await page.click("#btn-scores");
     ok(/ainda não terminou/i.test(await page.textContent("#scores-body")), "jogador novo vê uma mensagem amigável no histórico");

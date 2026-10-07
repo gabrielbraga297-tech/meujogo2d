@@ -1,4 +1,4 @@
-// Nome do jogador e recordes (tempo para completar cada fase), guardados no navegador.
+// Nome do jogador, pontuação por fase (rações + bônus de tempo), recordes, progresso e jogo salvo, guardados no navegador.
 // Sem dependências: funciona no navegador (window.Records) e no Node (testes).
 (function (root, factory) {
   const api = factory();
@@ -12,6 +12,30 @@
   const MAX_RUNS = 500;     // histórico total guardado (os recordes nunca são apagados)
   const MAX_PLAYERS = 12;   // nomes lembrados
   const MAX_TIME_MS = 24 * 60 * 60 * 1000;
+  const MAX_POINTS = 100000;
+
+  // Bônus de tempo: terminou a fase em até 20 s = 100 pontos; cada 10 s a mais tira 10 pontos (até 0).
+  // Ex.: até 30 s = 90, até 40 s = 80, ... até 110 s = 10, acima disso = 0.
+  const BONUS_MAX = 100, BONUS_FULL_MS = 20000, BONUS_STEP_MS = 10000, BONUS_STEP_PTS = 10;
+  const LEGACY_RATION_POINTS = 500; // partidas antigas (só com tempo) valem 5 rações + bônus do tempo
+  function timeBonus(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return 0;
+    const over = Math.round(ms) - BONUS_FULL_MS;
+    if (over <= 0) return BONUS_MAX;
+    return Math.max(0, BONUS_MAX - BONUS_STEP_PTS * Math.ceil(over / BONUS_STEP_MS));
+  }
+
+  // Pontuação da fase: 100 por ração + bônus de tempo − 50 por vida perdida (nunca abaixo de 0).
+  const RATION_POINTS = 100, LIFE_PENALTY = 50;
+  function levelPoints(rations, timeMs, livesLost) {
+    const r = Number.isInteger(rations) && rations > 0 ? rations : 0;
+    const l = Number.isInteger(livesLost) && livesLost > 0 ? livesLost : 0;
+    return Math.max(0, r * RATION_POINTS + timeBonus(timeMs) - l * LIFE_PENALTY);
+  }
+
+  // Maior pontuação vence; em caso de empate, o menor tempo.
+  const better = (a, b) => a.p > b.p || (a.p === b.p && a.t < b.t);
+  const byBest = (a, b) => b.p - a.p || a.t - b.t || a.w - b.w;
 
   // Nome válido: letras, números, espaço, hífen e apóstrofo; até 16 caracteres.
   function sanitizeName(raw) {
@@ -38,13 +62,15 @@
   function validRun(r) {
     return r && typeof r === "object" && typeof r.n === "string" && sanitizeName(r.n) &&
       Number.isInteger(r.l) && r.l >= 1 && r.l <= 999 &&
-      Number.isFinite(r.t) && r.t > 0 && r.t <= MAX_TIME_MS && Number.isFinite(r.w);
+      Number.isFinite(r.t) && r.t > 0 && r.t <= MAX_TIME_MS && Number.isFinite(r.w) &&
+      (r.p === undefined || (Number.isInteger(r.p) && r.p >= 0 && r.p <= MAX_POINTS));
   }
 
   // `storage` é algo com getItem/setItem (ex.: window.localStorage) ou null (só memória).
   function createStore(storage) {
-    let data = { v: 1, player: "", players: [], runs: [], progress: {} };
-    let saves = {}; // jogo salvo por jogador: { chave: { t, snap } }
+    // objetos sem protótipo: um nome como "constructor" não pode colidir com Object.prototype
+    let data = { v: 1, player: "", players: [], runs: [], progress: Object.create(null) };
+    const saves = Object.create(null); // jogo salvo por jogador: { chave: { t, snap } }
     let persistent = false;
 
     function probe() {
@@ -59,9 +85,9 @@
         const raw = JSON.parse(storage.getItem(KEY) || "null");
         if (!raw || typeof raw !== "object") return;
         const players = Array.isArray(raw.players) ? raw.players.map(sanitizeName).filter(Boolean) : [];
-        const runs = Array.isArray(raw.runs) ? raw.runs.filter(validRun).map((r) => ({ n: sanitizeName(r.n), l: r.l, t: Math.round(r.t), w: r.w })) : [];
+        const runs = Array.isArray(raw.runs) ? raw.runs.filter(validRun).map((r) => ({ n: sanitizeName(r.n), l: r.l, t: Math.round(r.t), p: Number.isInteger(r.p) ? r.p : LEGACY_RATION_POINTS + timeBonus(Math.round(r.t)), w: r.w })) : [];
         const player = sanitizeName(raw.player);
-        const progress = {};
+        const progress = Object.create(null);
         if (raw.progress && typeof raw.progress === "object") {
           for (const [k, p] of Object.entries(raw.progress)) {
             const done = p && Array.isArray(p.completed) ? [...new Set(p.completed.filter((n) => Number.isInteger(n) && n >= 1 && n <= 999))].sort((a, b) => a - b) : null;
@@ -101,7 +127,7 @@
     }
 
     function bestOf(runs) {
-      return runs.reduce((b, r) => (!b || r.t < b.t ? r : b), null);
+      return runs.reduce((b, r) => (!b || better(r, b) ? r : b), null);
     }
 
     function prune() {
@@ -110,7 +136,7 @@
         const seen = new Map();
         for (const r of data.runs) {
           const k = nameKey(r.n) + "|" + r.l, b = seen.get(k);
-          if (!b || r.t < b.t) seen.set(k, r);
+          if (!b || better(r, b)) seen.set(k, r);
         }
         for (const r of seen.values()) keep.add(r);
         const i = data.runs.findIndex((r) => !keep.has(r));
@@ -136,24 +162,30 @@
         return p;
       },
 
-      // Registra uma conclusão de fase e diz se bateu recordes.
-      addRun({ level, timeMs, name }) {
+      // Registra uma conclusão de fase (`points` = pontuação da fase: rações + bônus de tempo).
+      // Na mesma fase vale só a MAIOR pontuação (as partidas não se somam); fases diferentes somam.
+      addRun({ level, timeMs, points, name }) {
         const p = canonical(name || data.player);
         const t = Math.round(timeMs);
         if (!p || !Number.isInteger(level) || level < 1 || !Number.isFinite(t) || t <= 0 || t > MAX_TIME_MS) return null;
+        if (!Number.isInteger(points) || points < 0 || points > MAX_POINTS) return null;
         const prevPersonal = this.personalBest(p, level), prevGeneral = this.generalBest(level);
-        const run = { n: p, l: level, t, w: Date.now() };
+        const run = { n: p, l: level, t, p: points, w: Date.now() };
         data.runs.push(run);
         if (!data.players.some((x) => nameKey(x) === nameKey(p))) data.players = [p, ...data.players].slice(0, MAX_PLAYERS);
         prune();
         save();
+        const newPersonal = !prevPersonal || better(run, prevPersonal);
         return {
           run,
+          bonus: timeBonus(t),
           first: !prevPersonal,
-          newPersonal: !prevPersonal || t < prevPersonal.t,
-          newGeneral: !prevGeneral || t < prevGeneral.t,
+          newPersonal,
+          newGeneral: !prevGeneral || better(run, prevGeneral),
+          previousPersonal: prevPersonal,
           personalBest: bestOf(this.history(p, level)),
           generalBest: this.generalBest(level),
+          gained: newPersonal ? run.p - (prevPersonal ? prevPersonal.p : 0) : 0, // quanto a pontuação total aumentou
         };
       },
 
@@ -199,18 +231,39 @@
       personalBest(name, level) { return bestOf(this.history(name, level)); },
       generalBest(level) { return bestOf(data.runs.filter((r) => r.l === level)); },
 
-      // Melhor tempo de cada jogador na fase, do mais rápido ao mais lento.
+      // Melhor partida de cada jogador na fase: maior pontuação primeiro (empate: menor tempo).
       ranking(level, n = 5) {
         const best = new Map();
         for (const r of data.runs) {
           if (r.l !== level) continue;
           const k = nameKey(r.n), b = best.get(k);
-          if (!b || r.t < b.t) best.set(k, r);
+          if (!b || better(r, b)) best.set(k, r);
         }
-        return [...best.values()].sort((a, b) => a.t - b.t || a.w - b.w).slice(0, n);
+        return [...best.values()].sort(byBest).slice(0, n);
+      },
+
+      // Pontuação total do jogador: soma da MELHOR pontuação de cada fase (`levels` limita quais fases contam).
+      totalScore(name, levels) {
+        const k = nameKey(name), best = new Map();
+        for (const r of data.runs) {
+          if (nameKey(r.n) !== k || (levels && !levels.includes(r.l))) continue;
+          const b = best.get(r.l);
+          if (!b || better(r, b)) best.set(r.l, r);
+        }
+        let sum = 0;
+        for (const r of best.values()) sum += r.p;
+        return sum;
+      },
+
+      // Ranking geral: jogadores ordenados pela pontuação total.
+      totalRanking(n = 5, levels) {
+        const names = new Map();
+        for (const r of data.runs) if (!names.has(nameKey(r.n))) names.set(nameKey(r.n), r.n);
+        return [...names.values()].map((nm) => ({ n: nm, total: this.totalScore(nm, levels) }))
+          .filter((x) => x.total > 0 || !levels).sort((a, b) => b.total - a.total || a.n.localeCompare(b.n)).slice(0, n);
       },
     };
   }
 
-  return { createStore, sanitizeName, nameKey, formatTime, MAX_NAME, MAX_RUNS };
+  return { createStore, sanitizeName, nameKey, formatTime, timeBonus, levelPoints, BONUS_MAX, RATION_POINTS, LIFE_PENALTY, MAX_NAME, MAX_RUNS };
 });

@@ -18,10 +18,13 @@
           <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
         </span>
       </div>
       <div class="hud-right">
         <span id="save-status" class="save-status" aria-hidden="true">✓ salvo</span>
+        <span class="hud-item" title="Bônus de tempo: 100 pontos até 20 s, menos 10 a cada 10 s">BÔNUS <b id="hud-bonus">+100</b></span>
         <span class="hud-item">TEMPO <b id="hud-time">0,0 s</b></span>
         <button id="btn-pause" class="icon-btn" type="button" aria-label="Pausar (tecla Esc)"><span></span><span></span></button>
       </div>
@@ -67,8 +70,8 @@
       <ol class="steps">
         <li><strong>Objetivo:</strong> ajude o cachorrinho a pegar as 5 tigelas de ração e depois chegar à <strong>SAÍDA</strong>. A saída só abre quando você pegar as 5.</li>
         <li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela.</li>
-        <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica mais rápido e vai atrás do cachorrinho com mais força. As rações mudam de lugar a cada jogo. Se ele encostar no cachorrinho, você perde 1 vida. Você tem 3 vidas, mostradas por 3 corações vermelhos <span class="red">♥ ♥ ♥</span>. Quando as 3 vidas acabam, a fase recomeça.</li>
-        <li><strong>Pontuação:</strong> o que vale é o tempo! Quanto mais rápido você chegar à saída, melhor. O seu menor tempo é o seu recorde. Cada ração também dá 100 pontos.</li>
+        <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica mais rápido e vai atrás do cachorrinho com mais força. As rações mudam de lugar a cada jogo. Se ele encostar no cachorrinho, você perde 1 vida. Você começa com 3 vidas, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Cada vez que perde uma vida, também perde <strong>50 pontos</strong>. Uma das rações esconde uma <strong>vida extra</strong> (ela tem um coração em cima): pegá-la dá +1 vida, até o máximo de 5. Quando as vidas acabam, a fase recomeça.</li>
+        <li><strong>Pontuação:</strong> cada ração vale 100 pontos (500 na fase). Terminando rápido você ganha até 100 pontos de <strong>bônus de tempo</strong>: até 20 segundos = 100, até 30 s = 90, até 40 s = 80, e assim por diante (perde 10 a cada 10 s a mais), até chegar a 0. Cada vida perdida desconta 50 pontos (a pontuação nunca fica abaixo de 0). Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam.</li>
         <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou toque no botão de pausa no topo do jogo.</li>
       </ol>
@@ -80,7 +83,7 @@
   <section id="scores" class="screen page hidden" aria-labelledby="scores-title">
     <div class="panel wide">
       <h1 id="scores-title">Pontuações</h1>
-      <p class="muted">Vale o menor tempo: do início da fase até a saída.</p>
+      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação. Fases diferentes se somam. A pontuação da fase é 100 por ração + o bônus de tempo − 50 por vida perdida.</p>
       <div id="scores-body"></div>
       <p id="scores-note" class="note hidden">Não foi possível guardar dados neste navegador. Seus recordes valem só até fechar a página.</p>
       <div class="menu-list"><button id="btn-scores-back" type="button" class="primary" data-autofocus>Voltar</button></div>
@@ -145,10 +148,12 @@
   <section id="win" class="screen hidden" aria-labelledby="win-title">
     <div class="panel">
       <h1 id="win-title">Fase 1 concluída!</h1>
-      <p class="label">Seu tempo</p>
-      <p id="win-time" class="big-time"></p>
+      <p class="label">Pontuação da fase</p>
+      <p id="win-points" class="big-time"></p>
+      <p id="win-breakdown" class="muted"></p>
       <p id="win-personal" class="record"></p>
       <p id="win-general" class="record"></p>
+      <p id="win-total" class="muted"></p>
       <p id="win-extra" class="muted"></p>
       <div class="menu-list">
         <button id="btn-again" type="button" class="primary" data-autofocus>Jogar novamente</button>
@@ -162,7 +167,7 @@
   <section id="lose" class="screen hidden" aria-labelledby="lose-title">
     <div class="panel">
       <h1 id="lose-title" class="bad">O veterinário pegou o cachorrinho!</h1>
-      <p>Acabaram as 3 vidas.</p>
+      <p>Acabaram as suas vidas.</p>
       <p id="lose-text" class="muted"></p>
       <div class="menu-list">
         <button id="btn-retry" type="button" class="primary" data-autofocus>Tentar novamente</button>
