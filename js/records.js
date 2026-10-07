@@ -1,10 +1,10 @@
 // Nome do jogador, pontuação por fase (rações + bônus de tempo), recordes, progresso e jogo salvo, guardados no navegador.
 // Sem dependências: funciona no navegador (window.Records) e no Node (testes).
 (function (root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Records = api;
-})(typeof window !== "undefined" ? window : globalThis, function () {
+})(typeof window !== "undefined" ? window : globalThis, function (root) {
   const KEY = "cachorrinho.v1";
   const SAVE_KEY = "cachorrinho.save.v1"; // jogo salvo (separado: é regravado com frequência)
   const MAX_SAVE_BYTES = 20000;
@@ -13,6 +13,8 @@
   const MAX_PLAYERS = 12;   // nomes lembrados
   const MAX_TIME_MS = 24 * 60 * 60 * 1000;
   const MAX_POINTS = 100000;
+  const LOCK_AFTER = 5, LOCK_MS = 30000; // depois de 5 senhas erradas seguidas, espera 30 s (dobra a cada nova rodada)
+  const defaultAuth = () => (typeof module === "object" && module.exports ? require("./auth.js") : root.Auth);
 
   // Bônus de tempo: terminou a fase em até 20 s = 100 pontos; cada 10 s a mais tira 10 pontos (até 0).
   // Ex.: até 30 s = 90, até 40 s = 80, ... até 110 s = 10, acima disso = 0.
@@ -45,6 +47,11 @@
     return /[\p{L}\p{N}]/u.test(s) ? s : "";
   }
 
+  // Nome aceito como está (cadastro/entrada não "consertam" o que foi digitado em silêncio).
+  function isValidName(raw) {
+    return typeof raw === "string" && sanitizeName(raw) !== "" && sanitizeName(raw) === raw.trim().replace(/\s+/g, " ");
+  }
+
   // "Totó", "toto" e "TOTÓ" são o mesmo jogador.
   function nameKey(name) {
     return String(name).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -67,9 +74,13 @@
   }
 
   // `storage` é algo com getItem/setItem (ex.: window.localStorage) ou null (só memória).
-  function createStore(storage) {
+  // `opts` (testes): { auth, authOptions: { iterations, forceJs }, now }
+  function createStore(storage, opts = {}) {
+    const auth = opts.auth || defaultAuth();
+    const now = opts.now || Date.now;
+    const failures = new Map(); // chave do jogador -> { n, until } (só em memória)
     // objetos sem protótipo: um nome como "constructor" não pode colidir com Object.prototype
-    let data = { v: 1, player: "", players: [], runs: [], progress: Object.create(null) };
+    let data = { v: 1, player: "", players: [], runs: [], progress: Object.create(null), accounts: Object.create(null) };
     const saves = Object.create(null); // jogo salvo por jogador: { chave: { t, snap } }
     let persistent = false;
 
@@ -94,7 +105,18 @@
             if (typeof k === "string" && k && done) progress[k] = { unlocked: Math.max(1, ...done.map((n) => n + 1)), completed: done };
           }
         }
-        data = { v: 1, player, players: players.slice(0, MAX_PLAYERS), runs: runs.slice(-MAX_RUNS), progress };
+        const accounts = Object.create(null);
+        if (raw.accounts && typeof raw.accounts === "object") {
+          for (const [k, a] of Object.entries(raw.accounts)) {
+            const n = a && sanitizeName(a.n);
+            if (n && nameKey(n) === k && a.a === "pbkdf2-sha256" && Number.isInteger(a.i) && a.i >= 1000 && a.i <= 5000000 &&
+                typeof a.s === "string" && /^[0-9a-f]{32}$/.test(a.s) && typeof a.h === "string" && /^[0-9a-f]{64}$/.test(a.h)) {
+              accounts[k] = { n, a: a.a, i: a.i, s: a.s, h: a.h, c: Number.isFinite(a.c) ? a.c : 0 };
+            }
+          }
+        }
+        data = { v: 1, player, players: players.slice(0, MAX_PLAYERS), runs: runs.slice(-MAX_RUNS), progress, accounts };
+        // se o jogador guardado tem conta, só vale depois de entrar com senha; se a conta sumiu, continua como jogador sem senha
       } catch { /* dados corrompidos: começa do zero */ }
     }
 
@@ -123,7 +145,7 @@
       const clean = sanitizeName(name);
       if (!clean) return "";
       const k = nameKey(clean);
-      return data.players.find((p) => nameKey(p) === k) || data.runs.find((r) => nameKey(r.n) === k)?.n || clean;
+      return data.accounts[k]?.n || data.players.find((p) => nameKey(p) === k) || data.runs.find((r) => nameKey(r.n) === k)?.n || clean;
     }
 
     function bestOf(runs) {
@@ -156,10 +178,70 @@
       setPlayer(name) {
         const p = canonical(name);
         if (!p) return "";
+        if (data.accounts[nameKey(p)] && nameKey(data.player) !== nameKey(p)) return ""; // nome com senha: só entrando com a senha
         data.player = p;
         data.players = [p, ...data.players.filter((x) => nameKey(x) !== nameKey(p))].slice(0, MAX_PLAYERS);
         save();
         return p;
+      },
+
+      // ---------- Contas (cadastro simples, só neste navegador) ----------
+      hasAccount(name) { return !!data.accounts[nameKey(name)]; },
+      accountNames() { return Object.values(data.accounts).map((a) => a.n); },
+      isLoggedIn() { return !!data.player && !!data.accounts[nameKey(data.player)]; },
+
+      // Cria a conta e já entra. Um nome que já tem pontuações (sem senha) pode ser "adotado" por uma conta.
+      async register(name, password) {
+        if (!isValidName(name)) return { ok: false, error: "name" };
+        const reason = auth.validatePassword(password);
+        if (reason) return { ok: false, error: "password", reason };
+        const clean = sanitizeName(name), k = nameKey(clean);
+        if (data.accounts[k]) return { ok: false, error: "taken" };
+        let hash;
+        try { hash = await auth.hashPassword(password, opts.authOptions); } catch { return { ok: false, error: "crypto" }; }
+        if (data.accounts[k]) return { ok: false, error: "taken" }; // outro cadastro igual terminou antes
+        const display = canonical(clean);
+        data.accounts[k] = { n: display, a: hash.a, i: hash.i, s: hash.s, h: hash.h, c: now() };
+        data.player = display;
+        data.players = [display, ...data.players.filter((x) => nameKey(x) !== k)].slice(0, MAX_PLAYERS);
+        save();
+        return { ok: true, name: display, persistent };
+      },
+
+      // Entra com usuário e senha. Erros: "wrong" (usuário ou senha errados, sem dizer qual) ou "locked" (muitas tentativas).
+      async login(name, password) {
+        const k = nameKey(typeof name === "string" ? name : ""), f = failures.get(k);
+        if (f && f.until > now()) return { ok: false, error: "locked", waitMs: f.until - now() };
+        const acc = data.accounts[k];
+        const good = !!acc && await auth.verifyPassword(password, acc, opts.authOptions);
+        if (!good) {
+          const n = (f ? f.n : 0) + 1;
+          failures.set(k, { n, until: n % LOCK_AFTER === 0 ? now() + LOCK_MS * 2 ** (n / LOCK_AFTER - 1) : 0 });
+          const locked = failures.get(k).until > now();
+          return locked ? { ok: false, error: "locked", waitMs: failures.get(k).until - now() } : { ok: false, error: "wrong" };
+        }
+        failures.delete(k);
+        data.player = acc.n;
+        data.players = [acc.n, ...data.players.filter((x) => nameKey(x) !== k)].slice(0, MAX_PLAYERS);
+        save();
+        return { ok: true, name: acc.n, persistent };
+      },
+
+      logout() { data.player = ""; save(); },
+
+      // "Esqueci a senha": sem servidor não há recuperação; a saída é apagar a conta e os dados dela neste aparelho.
+      deleteAccount(name) {
+        const k = nameKey(name);
+        if (!k) return false;
+        delete data.accounts[k];
+        delete data.progress[k];
+        data.runs = data.runs.filter((r) => nameKey(r.n) !== k);
+        data.players = data.players.filter((x) => nameKey(x) !== k);
+        if (nameKey(data.player) === k) data.player = "";
+        failures.delete(k);
+        save();
+        if (k in saves) { delete saves[k]; persistSaves(); }
+        return true;
       },
 
       // Registra uma conclusão de fase (`points` = pontuação da fase: rações + bônus de tempo).
@@ -265,5 +347,5 @@
     };
   }
 
-  return { createStore, sanitizeName, nameKey, formatTime, timeBonus, levelPoints, BONUS_MAX, RATION_POINTS, LIFE_PENALTY, MAX_NAME, MAX_RUNS };
+  return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, BONUS_MAX, RATION_POINTS, LIFE_PENALTY, MAX_NAME, MAX_RUNS };
 });

@@ -52,12 +52,14 @@
       <p id="menu-best" class="muted"></p>
       <p id="menu-progress" class="muted"></p>
       <p id="menu-save" class="saved-info hidden"></p>
+      <p id="menu-note" class="note hidden">Este navegador não guarda dados: nome, contas e pontuações valem só até fechar a página.</p>
       <nav class="menu-list" aria-label="Menu principal">
         <button id="btn-continue" class="primary hidden" type="button" data-autofocus>Continuar jogo</button>
         <button id="btn-start" class="primary" type="button" data-autofocus>Iniciar jogo</button>
         <button id="btn-howto" type="button">Como jogar</button>
         <button id="btn-scores" type="button">Pontuações</button>
         <button id="btn-name" type="button">Escolher nome de usuário</button>
+        <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
       </nav>
     </div>
     <p class="credit"><span>Criador do jogo</span><strong>GABRIEL BRAGA CAVALCANTE DE FRANÇA COSTA</strong></p>
@@ -73,6 +75,7 @@
         <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica mais rápido e vai atrás do cachorrinho com mais força. As rações mudam de lugar a cada jogo. Se ele encostar no cachorrinho, você perde 1 vida. Você começa com 3 vidas, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Cada vez que perde uma vida, também perde <strong>50 pontos</strong>. Uma das rações esconde uma <strong>vida extra</strong> (ela tem um coração em cima): pegá-la dá +1 vida, até o máximo de 5. Quando as vidas acabam, a fase recomeça.</li>
         <li><strong>Pontuação:</strong> cada ração vale 100 pontos (500 na fase). Terminando rápido você ganha até 100 pontos de <strong>bônus de tempo</strong>: até 20 segundos = 100, até 30 s = 90, até 40 s = 80, e assim por diante (perde 10 a cada 10 s a mais), até chegar a 0. Cada vida perdida desconta 50 pontos (a pontuação nunca fica abaixo de 0). Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam.</li>
         <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
+        <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome e as suas pontuações neste aparelho.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou toque no botão de pausa no topo do jogo.</li>
       </ol>
       <div class="menu-list"><button id="btn-howto-back" type="button" class="primary" data-autofocus>Voltar</button></div>
@@ -114,7 +117,74 @@
         <p class="muted">Ou escolha um nome que já foi usado neste aparelho:</p>
         <div id="name-chips" class="chips"></div>
       </div>
+      <div class="account-box">
+        <p class="muted">Quer proteger o seu nome com uma senha?</p>
+        <div class="row">
+          <button id="btn-open-register" type="button">Criar conta</button>
+          <button id="btn-open-login" type="button">Entrar</button>
+        </div>
+      </div>
       <p id="name-note" class="note hidden">Não foi possível guardar dados neste navegador. O nome vale só até fechar a página.</p>
+    </div>
+  </section>
+
+  <!-- Criar conta -->
+  <section id="register" class="screen page hidden" aria-labelledby="register-title">
+    <div class="panel">
+      <h1 id="register-title">Criar conta</h1>
+      <p class="muted">Cadastro simples: um nome de usuário e uma senha. Depois é só entrar para jogar com as suas pontuações.</p>
+      <form id="register-form" autocomplete="on" novalidate>
+        <label for="reg-user">Nome de usuário</label>
+        <input id="reg-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <p class="hint">Pode ser o nome de um cachorrinho! Até 16 letras ou números.</p>
+        <label for="reg-pass">Senha</label>
+        <input id="reg-pass" name="password" type="password" autocomplete="new-password" aria-describedby="pass-rules" spellcheck="false">
+        <p id="pass-rules" class="hint">De 4 a 20 caracteres. Pode usar letras minúsculas e MAIÚSCULAS, números e símbolos (! @ # $ …). Números e símbolos são opcionais. <span id="reg-count" class="count">0/20</span></p>
+        <label for="reg-pass2">Repita a senha</label>
+        <input id="reg-pass2" name="password2" type="password" autocomplete="new-password" spellcheck="false">
+        <label class="check"><input id="reg-show" type="checkbox"> Mostrar senha</label>
+        <p id="reg-error" class="error" role="alert"></p>
+        <div class="row">
+          <button id="btn-register-submit" type="submit" class="primary">Criar conta</button>
+          <button id="btn-register-back" type="button">Voltar</button>
+        </div>
+      </form>
+      <p class="note-soft">A senha não é guardada: o jogo guarda só uma "impressão" dela, e tudo fica neste aparelho. Não dá para entrar em outro celular ou computador, e a senha esquecida não pode ser recuperada.</p>
+    </div>
+  </section>
+
+  <!-- Entrar -->
+  <section id="login" class="screen page hidden" aria-labelledby="login-title">
+    <div class="panel">
+      <h1 id="login-title">Entrar</h1>
+      <form id="login-form" autocomplete="on" novalidate>
+        <label for="login-user">Nome de usuário</label>
+        <input id="login-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <label for="login-pass">Senha</label>
+        <input id="login-pass" name="password" type="password" autocomplete="current-password" spellcheck="false">
+        <label class="check"><input id="login-show" type="checkbox"> Mostrar senha</label>
+        <p id="login-error" class="error" role="alert"></p>
+        <div class="row">
+          <button id="btn-login-submit" type="submit" class="primary">Entrar</button>
+          <button id="btn-login-back" type="button">Voltar</button>
+        </div>
+      </form>
+      <div class="row">
+        <button id="btn-login-to-register" type="button" class="linky">Ainda não tenho conta</button>
+        <button id="btn-forgot" type="button" class="linky">Esqueci a senha</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Esqueci a senha -->
+  <section id="forgot" class="screen page hidden" aria-labelledby="forgot-title">
+    <div class="panel">
+      <h1 id="forgot-title">Esqueci a senha</h1>
+      <p id="forgot-text">Este jogo guarda tudo só neste aparelho e não tem como recuperar uma senha. Você pode apagar a conta (com as pontuações e o jogo salvo dela) e criar uma nova.</p>
+      <div class="menu-list">
+        <button id="btn-forgot-back" type="button" class="primary" data-autofocus>Voltar</button>
+        <button id="btn-forgot-delete" type="button" class="danger">Apagar a conta e começar de novo</button>
+      </div>
     </div>
   </section>
 
@@ -176,6 +246,7 @@
     </div>
   </section>
 
+  <script src="js/auth.js"></script>
   <script src="js/records.js"></script>
   <script src="js/game.js"></script>
 </body>

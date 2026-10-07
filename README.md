@@ -36,7 +36,20 @@ A pontuação da fase é: **100 por ração + bônus de tempo − 50 por vida pe
 - **Iniciar jogo** (e **Continuar jogo**, quando há um jogo salvo)
 - **Como jogar**
 - **Pontuações:** pontuação total, melhor pontuação por fase, recorde geral, rankings e histórico
-- **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes.
+- **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes. Ali também dá para **Criar conta** (com senha) e **Entrar**.
+
+## Conta com senha (opcional)
+Além do nome simples, dá para criar uma **conta**: nome de usuário + senha.
+
+- **Senha:** de **4 a 20 caracteres**, com letras **minúsculas e MAIÚSCULAS**, números e símbolos (`! @ # $ …`), acentos e espaços. Números e símbolos são opcionais. O campo mostra um contador (n/20) e há "Mostrar senha".
+- **Nome de usuário:** até 16 letras ou números (pode ter espaço, hífen e apóstrofo). "Totó", "toto" e "TOTÓ" são o mesmo usuário.
+- **Entrar / Sair da conta:** depois de entrar, o jogo lembra de você até tocar em *Sair da conta*. Um nome que tem conta só pode ser usado entrando com a senha.
+- **Esqueci a senha:** não há como recuperar (não existe servidor). A saída é **apagar a conta** (com as pontuações e o jogo salvo dela) e criar outra.
+- **Tentativas:** depois de 5 senhas erradas seguidas, o jogo pede para esperar 30 s (e dobra nas rodadas seguintes).
+
+**Como a senha é guardada:** nunca como texto. O jogo guarda só um sal aleatório e uma "impressão" PBKDF2-SHA256 com 150.000 repetições (`js/auth.js`; usa a criptografia do navegador e, se ela não existir, uma versão em JavaScript equivalente, testada contra a do Node).
+
+**Limites honestos:** é um cadastro **local**, só neste navegador e aparelho. Não dá para entrar em outro aparelho, e quem tem acesso ao navegador e sabe mexer nas ferramentas dele consegue editar os dados guardados. A conta serve para separar e proteger os jogadores de um mesmo aparelho (por exemplo, irmãos), não para segurança de verdade. Contas globais precisariam de um servidor.
 
 ## Controles
 | | |
@@ -61,16 +74,21 @@ O jogo ocupa o máximo da tela mantendo a proporção 25:18 e fica nítido em te
 ```
 index.html            canvas, placar (HTML) e todas as telas (menu, como jogar, pontuações, nome, pausa, vitória, derrota)
 css/style.css         visual, tamanho proporcional e controle de toque
-js/records.js         nome do jogador, recordes, progresso e jogo salvo (testável sozinho)
+js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
+js/records.js         nome, contas, pontuação, recordes, progresso e jogo salvo (testável sozinho)
 js/game.js            mapa, cachorro, rações, veterinário (IA), vidas, telas, salvamento, toque e desenho
+tests/auth.test.js    testes unitários das senhas (Node)
 tests/records.test.js testes unitários do módulo de recordes (Node)
+tests/accounts.test.js testes unitários do cadastro e da entrada (Node)
 tests/e2e.js          testes no navegador (Playwright)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
 
 ## Testes
 ```
-node tests/records.test.js     # unitários, só precisa do Node
+node tests/auth.test.js        # unitários, só precisam do Node
+node tests/records.test.js
+node tests/accounts.test.js
 npm i playwright
 npx playwright install chromium   # ou use CHROMIUM_PATH=/caminho/do/chromium
 node tests/e2e.js              # opcional: node tests/e2e.js "toque" roda só as seções com esse texto

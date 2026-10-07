@@ -273,7 +273,7 @@
   }
 
   // ---------- Estados e telas ----------
-  const SCREENS = ["menu", "howto", "scores", "name", "confirm", "pause", "win", "lose"].map($);
+  const SCREENS = ["menu", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "lose"].map($);
 
   function setState(s) {
     state = s;
@@ -282,6 +282,8 @@
   }
 
   function showScreen(id) {
+    if (id !== "register") clearAuthFields(["reg-user", "reg-pass", "reg-pass2"], "reg-show");
+    if (id !== "login") clearAuthFields(["login-user", "login-pass"], "login-show");
     for (const el of SCREENS) el.classList.toggle("hidden", el.id !== id);
     document.body.dataset.screen = id || "";
     $("stage").inert = !!id; $("touch").inert = !!id;
@@ -486,7 +488,9 @@
 
   function renderMenu() {
     const me = store.player();
-    $("menu-player").textContent = me || "ainda não escolhido";
+    $("menu-player").textContent = me ? me + (store.hasAccount(me) ? " (conta com senha)" : "") : "ainda não escolhido";
+    $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
+    $("menu-note").classList.toggle("hidden", store.persistent);
     const best = me ? store.personalBest(me, LEVEL_ID) : null;
     $("menu-best").textContent = best ? `Sua melhor pontuação na Fase ${LEVEL_ID}: ${best.p}` : "";
     const done = me ? store.progress(me).completed.filter((l) => LEVELS.includes(l)).length : 0;
@@ -565,8 +569,9 @@
     const chips = $("name-chips"), list = store.players();
     chips.replaceChildren();
     for (const n of list) {
-      const b = el("button", null, n); b.type = "button";
-      b.addEventListener("click", () => saveName(n));
+      const locked = store.hasAccount(n);
+      const b = el("button", null, locked ? `${n} (com senha)` : n); b.type = "button";
+      b.addEventListener("click", () => (locked ? openLogin(n) : saveName(n)));
       chips.append(b);
     }
     $("name-saved").classList.toggle("hidden", list.length === 0);
@@ -575,6 +580,11 @@
   }
 
   function saveName(raw) {
+    if (store.hasAccount(raw)) {
+      $("name-error").textContent = "Esse nome tem uma conta com senha. Toque em Entrar para usá-lo.";
+      $("name-input").focus();
+      return;
+    }
     const p = store.setPlayer(raw);
     if (!p) {
       $("name-error").textContent = "Escreva um nome com pelo menos uma letra ou número. Exemplo: Totó.";
@@ -583,6 +593,109 @@
     }
     renderMenu();
     if (nameThenStart) requestNewGame(); else goMenu();
+  }
+
+  // ---------- Cadastro simples: usuário e senha (só neste aparelho) ----------
+  const NAME_HELP = "Use de 1 a 16 letras ou números (pode ter espaço, hífen ou apóstrofo). Exemplo: Totó.";
+  const PW_MESSAGES = {
+    empty: "Escreva uma senha.",
+    short: `A senha precisa ter pelo menos ${Auth.PASSWORD_MIN} caracteres.`,
+    long: `A senha pode ter no máximo ${Auth.PASSWORD_MAX} caracteres.`,
+    invalid: "A senha tem caracteres que não podem ser usados.",
+  };
+  let authBusy = false;
+
+  function clearAuthFields(ids, showId) { // as senhas não ficam esperando nos campos
+    for (const id of ids) { const f = $(id); f.value = ""; if (f.type === "text" && id.includes("pass")) f.type = "password"; }
+    $(showId).checked = false;
+    for (const id of ids) if (id.includes("pass")) $(id).type = "password";
+    const err = $(showId === "reg-show" ? "reg-error" : "login-error");
+    if (err) err.textContent = "";
+    if (showId === "reg-show") { $("reg-count").textContent = `0/${Auth.PASSWORD_MAX}`; $("reg-count").classList.remove("over"); }
+  }
+
+  async function withBusy(button, busyText, fn) { // evita enviar duas vezes enquanto a senha é processada
+    if (authBusy) return;
+    authBusy = true;
+    const label = button.textContent;
+    button.disabled = true; button.textContent = busyText;
+    try { await fn(); } finally { authBusy = false; button.disabled = false; button.textContent = label; }
+  }
+
+  function openRegister(prefill = "") {
+    showScreen("register");
+    $("reg-user").value = prefill;
+    $((prefill ? "reg-pass" : "reg-user")).focus();
+  }
+
+  function openLogin(prefill = "") {
+    showScreen("login");
+    $("login-user").value = prefill;
+    $((prefill ? "login-pass" : "login-user")).focus();
+  }
+
+  function afterAuth() {
+    renderMenu();
+    if (nameThenStart) requestNewGame(); else goMenu();
+  }
+
+  $("register-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    withBusy($("btn-register-submit"), "Criando…", async () => {
+      const user = $("reg-user").value, p1 = $("reg-pass").value, p2 = $("reg-pass2").value, err = $("reg-error");
+      const fail = (msg, id) => { err.textContent = msg; $(id).focus(); };
+      err.textContent = "";
+      if (!Records.isValidName(user)) return fail(NAME_HELP, "reg-user");
+      const why = Auth.validatePassword(p1);
+      if (why) return fail(PW_MESSAGES[why], "reg-pass");
+      if (p1 !== p2) return fail("As duas senhas precisam ser iguais.", "reg-pass2");
+      let r;
+      try { r = await store.register(user, p1); } catch { r = { ok: false, error: "crypto" }; }
+      if (!r.ok) {
+        if (r.error === "taken") return fail("Esse nome de usuário já tem uma conta. Toque em Voltar e depois em Entrar.", "reg-user");
+        if (r.error === "name") return fail(NAME_HELP, "reg-user");
+        if (r.error === "password") return fail(PW_MESSAGES[r.reason] || PW_MESSAGES.invalid, "reg-pass");
+        return fail("Não foi possível criar a conta neste navegador.", "reg-user");
+      }
+      afterAuth();
+    });
+  });
+
+  $("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    withBusy($("btn-login-submit"), "Entrando…", async () => {
+      const user = $("login-user").value, pass = $("login-pass").value, err = $("login-error");
+      const fail = (msg, id) => { err.textContent = msg; $(id).focus(); };
+      err.textContent = "";
+      if (!user.trim()) return fail("Escreva o seu nome de usuário.", "login-user");
+      if (!pass) return fail("Escreva a sua senha.", "login-pass");
+      let r;
+      try { r = await store.login(user, pass); } catch { r = { ok: false, error: "wrong" }; }
+      if (!r.ok) {
+        $("login-pass").value = "";
+        return fail(r.error === "locked" ? `Muitas tentativas erradas. Tente de novo em ${Math.ceil(r.waitMs / 1000)} segundos.` : "Usuário ou senha incorretos.", "login-pass");
+      }
+      afterAuth();
+    });
+  });
+
+  $("reg-pass").addEventListener("input", () => { // contador de caracteres da senha (n/20)
+    const n = Array.from($("reg-pass").value.normalize("NFC")).length;
+    $("reg-count").textContent = `${n}/${Auth.PASSWORD_MAX}`;
+    $("reg-count").classList.toggle("over", n > Auth.PASSWORD_MAX);
+  });
+
+  for (const [box, ids] of [["reg-show", ["reg-pass", "reg-pass2"]], ["login-show", ["login-pass"]]]) {
+    $(box).addEventListener("change", (e) => { for (const id of ids) $(id).type = e.target.checked ? "text" : "password"; });
+  }
+
+  let forgotName = "";
+  function openForgot() {
+    const typed = $("login-user").value;
+    forgotName = store.accountNames().find((n) => Records.nameKey(n) === Records.nameKey(typed.trim())) || "";
+    if (!forgotName) { $("login-error").textContent = "Escreva o seu nome de usuário primeiro, depois toque em Esqueci a senha."; $("login-user").focus(); return; }
+    $("forgot-text").textContent = `Este jogo guarda tudo só neste aparelho e não tem como recuperar uma senha. Você pode apagar a conta de ${forgotName} (com as pontuações e o jogo salvo dela) e criar uma nova.`;
+    showScreen("forgot");
   }
 
   // ---------- Câmera e tamanho (proporcional a cada aparelho) ----------
@@ -823,6 +936,15 @@
   on("btn-scores-back", goMenu);
   on("btn-name", () => openName(false));
   on("btn-name-back", goMenu);
+  on("btn-open-register", () => openRegister());
+  on("btn-open-login", () => openLogin());
+  on("btn-register-back", () => openName(nameThenStart));
+  on("btn-login-back", () => openName(nameThenStart));
+  on("btn-login-to-register", () => openRegister($("login-user").value.trim()));
+  on("btn-forgot", openForgot);
+  on("btn-forgot-back", () => openLogin(forgotName));
+  on("btn-forgot-delete", () => { const n = forgotName; store.deleteAccount(n); renderMenu(); openRegister(n); });
+  on("btn-logout", () => { store.logout(); renderMenu(); $("btn-start").focus(); });
   $("name-form").addEventListener("submit", (e) => { e.preventDefault(); saveName($("name-input").value); });
   on("btn-pause", pauseGame);
   on("btn-resume", resumeGame);

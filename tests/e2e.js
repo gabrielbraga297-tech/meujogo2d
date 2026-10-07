@@ -742,6 +742,177 @@ const PAGE_HELPERS = () => {
     ok(/ainda não terminou/i.test(await page.textContent("#scores-body")), "jogador novo vê uma mensagem amigável no histórico");
   });
 
+  // =====================================================================
+  await section("cadastro e entrada (usuário e senha)", async () => {
+    const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
+    const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };
+    const idle = (p, id) => p.waitForFunction((id) => !document.getElementById(id).disabled, id, { timeout: 15000 }); // a senha é processada de forma assíncrona
+    const submitReg = async (user, p1, p2 = p1) => { await page.fill("#reg-user", user); await page.fill("#reg-pass", p1); await page.fill("#reg-pass2", p2); await page.click("#btn-register-submit"); await idle(page, "btn-register-submit"); };
+    const errText = (sel) => page.waitForFunction((s) => document.querySelector(s).textContent.length > 0, sel, { timeout: 4000 }).then(() => page.textContent(sel));
+
+    await fresh(page, { name: "" });
+    await page.click("#btn-name");
+    ok(await page.isVisible("#btn-open-register") && await page.isVisible("#btn-open-login"), "tela de nome oferece Criar conta e Entrar");
+    await page.click("#btn-open-register");
+    const regTxt = await page.textContent("#register");
+    ok(/4 a 20 caracteres/.test(regTxt) && /minúsculas e MAIÚSCULAS/.test(regTxt) && /números e símbolos são opcionais/i.test(regTxt) && /cachorrinho/.test(regTxt), "cadastro explica a regra da senha (4 a 20, minúsculas/MAIÚSCULAS, números e símbolos opcionais) e a dica do cachorrinho");
+    ok(await ev(page, () => document.activeElement.id) === "reg-user", "o cursor já vem no campo do nome");
+    const labels = await page.$$eval("#register input:not([type=checkbox])", (is) => is.map((i) => !!document.querySelector(`label[for=${i.id}]`)));
+    ok(labels.every(Boolean), "todos os campos têm rótulo");
+    const types = await ev(page, () => ["reg-pass", "reg-pass2"].map((id) => document.getElementById(id).type));
+    ok(types.join() === "password,password", "senhas ficam escondidas");
+    await page.check("#reg-show");
+    ok((await ev(page, () => ["reg-pass", "reg-pass2"].map((id) => document.getElementById(id).type))).join() === "text,text", "Mostrar senha revela os campos");
+    await page.uncheck("#reg-show");
+    await page.fill("#reg-pass", ""); await page.type("#reg-pass", "abcd");
+    ok(await page.textContent("#reg-count") === "4/20", "contador mostra quantos caracteres a senha tem (4/20)");
+    await page.type("#reg-pass", "e".repeat(21));
+    ok(await page.textContent("#reg-count") === "25/20" && await page.isVisible("#reg-count.over"), "passou de 20: o contador avisa (25/20) em vez de cortar a senha em silêncio");
+    await page.fill("#reg-pass", "");
+
+    // validações
+    await submitReg("", "Senha123");
+    ok(/letras ou números/.test(await errText("#reg-error")), "nome vazio: mostra como escolher o nome");
+    await submitReg("Totó!", "Senha123");
+    ok(/letras ou números/.test(await page.textContent("#reg-error")) && await ev(page, () => document.activeElement.id) === "reg-user", "nome com símbolo é recusado (sem 'consertar' em silêncio)");
+    await submitReg("Totó", "abc");
+    ok(/pelo menos 4/.test(await errText("#reg-error")), "senha curta é recusada");
+    await submitReg("Totó", "x".repeat(21));
+    ok(/no máximo 20/.test(await page.textContent("#reg-error")), "senha de 21 caracteres é recusada");
+    await submitReg("Totó", "Senha123", "Senha124");
+    ok(/iguais/.test(await page.textContent("#reg-error")), "senhas diferentes são recusadas");
+    ok(!(await stored()).includes('"accounts":{"toto"'), "nada foi criado até aqui");
+
+    // sucesso, com senha de 20 caracteres mista
+    const pw20 = "Aa1!Bb2@Cc3#Dd4$Ee5%";
+    ok(pw20.length === 20, "senha de teste tem 20 caracteres");
+    await submitReg("Totó", pw20);
+    await page.waitForFunction(() => document.getElementById("menu") && !document.getElementById("menu").classList.contains("hidden"));
+    ok(await page.textContent("#menu-player") === "Totó (conta com senha)" && await page.isVisible("#btn-logout"), "conta criada: entra direto e o menu mostra o jogador e Sair da conta");
+    let raw = await stored();
+    ok(raw.includes('"accounts"') && raw.includes("pbkdf2-sha256") && !raw.includes(pw20) && !raw.includes("Bb2@"), "no armazenamento há só sal e impressão (a senha não aparece)");
+    ok((await ev(page, () => Object.keys(localStorage).map((k) => localStorage.getItem(k)).join("|"))).includes(pw20) === false, "a senha não está em nenhuma chave do armazenamento");
+    await page.reload();
+    ok(await page.textContent("#menu-player") === "Totó (conta com senha)", "continua conectado depois de recarregar");
+    await page.click("#btn-name"); await page.click("#btn-open-register");
+    ok((await ev(page, () => ["reg-user", "reg-pass", "reg-pass2"].map((id) => document.getElementById(id).value))).join("") === "", "os campos de senha voltam vazios");
+    await page.keyboard.press("Escape");
+
+    // sair e voltar
+    await page.click("#btn-logout");
+    ok(await page.textContent("#menu-player") === "ainda não escolhido" && await page.isHidden("#btn-logout"), "Sair da conta desconecta");
+    ok((await stored()).includes('"accounts"'), "a conta continua existindo");
+
+    // nome com senha não vale como nome simples
+    await page.click("#btn-name"); await page.fill("#name-input", "Totó"); await page.click("#name button[type=submit]");
+    ok(/conta com senha/.test(await page.textContent("#name-error")) && await page.textContent("#menu-player").catch(() => "") !== "Totó", "usar o nome 'Totó' sem senha é recusado e manda para Entrar");
+    ok(await page.isVisible("#name-chips button:text-is('Totó (com senha)')"), "o atalho do nome mostra que tem senha");
+    await page.click("#name-chips button:text-is('Totó (com senha)')");
+    ok(await page.isVisible("#login") && await page.inputValue("#login-user") === "Totó" && await ev(page, () => document.activeElement.id) === "login-pass", "tocar no atalho abre Entrar com o nome já preenchido");
+
+    // entrar
+    const login = async (user, pass) => { await page.fill("#login-user", user); await page.fill("#login-pass", pass); await page.click("#btn-login-submit"); await idle(page, "btn-login-submit"); };
+    await login("Totó", "errada123");
+    ok(/incorretos/.test(await errText("#login-error")) && await page.isVisible("#login") && await page.inputValue("#login-pass") === "", "senha errada: mensagem e campo de senha limpo");
+    await login("Fantasma", pw20);
+    ok(/Usuário ou senha incorretos/.test(await page.textContent("#login-error")), "usuário inexistente dá a mesma mensagem (não revela quem existe)");
+    await login("", pw20);
+    ok(/nome de usuário/.test(await page.textContent("#login-error")), "nome vazio é avisado");
+    await login("totó", pw20.toLowerCase());
+    ok(/incorretos/.test(await page.textContent("#login-error")), "a senha diferencia maiúsculas e minúsculas");
+    await login("TOTO", pw20);
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+    ok(await page.textContent("#menu-player") === "Totó (conta com senha)", "entrar com o nome em outra caixa/acento (TOTO) e a senha certa funciona");
+
+    // bloqueio por tentativas
+    await page.click("#btn-logout"); await page.click("#btn-name"); await page.click("#btn-open-login");
+    for (let i = 0; i < 5; i++) await login("Totó", "errada" + i);
+    ok(/Muitas tentativas/.test(await errText("#login-error")) && /\d+ segundos/.test(await page.textContent("#login-error")), "5 erros seguidos: avisa e pede para esperar");
+    await login("Totó", pw20);
+    ok(/Muitas tentativas/.test(await page.textContent("#login-error")) && await page.isVisible("#login"), "durante o bloqueio nem a senha certa entra");
+
+    // esqueci a senha: apaga só essa conta
+    await ev(page, () => { const s = Records.createStore(localStorage); s.setPlayer("Rex"); s.addRun({ level: 1, timeMs: 20000, points: 600 }); });
+    await page.reload(); await page.click("#btn-name"); await page.click("#btn-open-login");
+    await page.fill("#login-user", ""); await page.click("#btn-forgot");
+    ok(/primeiro/.test(await page.textContent("#login-error")) && await page.isVisible("#login"), "Esqueci a senha sem nome: pede o nome primeiro");
+    await page.fill("#login-user", "totó"); await page.click("#btn-forgot");
+    ok(await page.isVisible("#forgot") && /Totó/.test(await page.textContent("#forgot-text")) && /não tem como recuperar/.test(await page.textContent("#forgot-text")), "explica que a senha não pode ser recuperada e que dá para apagar a conta");
+    ok(await ev(page, () => document.activeElement.id) === "btn-forgot-back", "o foco começa no botão seguro (Voltar)");
+    await page.click("#btn-forgot-back");
+    ok(await page.isVisible("#login"), "Voltar não apaga nada");
+    await page.fill("#login-user", "Totó"); await page.click("#btn-forgot"); await page.click("#btn-forgot-delete");
+    ok(await page.isVisible("#register") && await page.inputValue("#reg-user") === "Totó", "depois de apagar, abre Criar conta com o nome já preenchido");
+    raw = await stored();
+    ok(!raw.includes('"toto":{"n"') && raw.includes("Rex"), "a conta foi apagada e os dados de outros jogadores ficaram");
+    await page.fill("#reg-pass", "Nova1234"); await page.fill("#reg-pass2", "Nova1234"); await page.click("#btn-register-submit"); await idle(page, "btn-register-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+    ok(await page.textContent("#menu-player") === "Totó (conta com senha)", "o nome pode ser cadastrado de novo");
+
+    // senhas variadas
+    for (const [i, pw] of ["somenteminusculas", "SOMENTEMAIUSCULAS", "AbCdEfGh", "12345678", "!@#$%^&*", "Com Espaço 9", "çãõ-ÉÜ"].entries()) {
+      await page.click("#btn-logout"); await page.click("#btn-name"); await page.click("#btn-open-register");
+      await submitReg("Cao" + i, pw);
+      await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+      const who = await page.textContent("#menu-player");
+      await page.click("#btn-logout"); await page.click("#btn-name"); await page.click("#btn-open-login");
+      await login("Cao" + i, pw);
+      await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+      ok(who === `Cao${i} (conta com senha)` && await page.textContent("#menu-player") === `Cao${i} (conta com senha)`, `senha "${pw}" cadastra e entra`);
+    }
+
+    // começar o jogo sem nome: Criar conta e jogar
+    await fresh(page, { name: "" });
+    await page.click("#btn-start");
+    ok(await page.isVisible("#name"), "Iniciar jogo sem jogador abre a escolha de nome");
+    await page.click("#btn-open-register");
+    await submitReg("Mel", "Doce#2024");
+    await page.waitForFunction(() => __game.state === "playing");
+    ok(await ev(page, () => __game.state) === "playing", "criar a conta a partir de Iniciar jogo já começa a partida");
+    await ev(page, () => { __game.freezeVets = true; for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); });
+    const melBest = await ev(page, () => Records.createStore(localStorage).personalBest("Mel", 1));
+    ok(melBest && melBest.p >= 500, "as pontuações ficam guardadas na conta");
+    await page.click("#btn-win-menu"); await page.click("#btn-logout");
+    await page.click("#btn-scores");
+    ok(/Escolha um nome de usuário/.test(await page.textContent("#scores-body")), "sem entrar, a tela de pontuações não mostra o histórico de ninguém");
+    await page.keyboard.press("Escape");
+    await page.click("#btn-name"); await page.click("#btn-open-login"); await page.fill("#login-user", "Mel"); await page.fill("#login-pass", "Doce#2024"); await page.click("#btn-login-submit"); await idle(page, "btn-login-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
+    ok((await page.textContent("#menu-best")).includes("Sua melhor pontuação"), "ao entrar de novo, as pontuações da conta voltam");
+  });
+
+  await section("cadastro sem criptografia nativa (versão em JavaScript)", async () => {
+    const js = await newPage();
+    await js.addInitScript(() => { try { Object.defineProperty(window.crypto, "subtle", { value: undefined, configurable: true }); } catch { /* */ } });
+    await js.goto(URL);
+    ok(await js.evaluate(() => !window.crypto.subtle), "teste sem crypto.subtle (como numa página em http)");
+    await js.evaluate(() => localStorage.clear()); await js.reload();
+    await js.click("#btn-name"); await js.click("#btn-open-register");
+    await js.fill("#reg-user", "Bidu"); await js.fill("#reg-pass", "Compat#JS-2024"); await js.fill("#reg-pass2", "Compat#JS-2024");
+    const t0 = Date.now(); await js.click("#btn-register-submit");
+    await js.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"), null, { timeout: 15000 });
+    const ms = Date.now() - t0;
+    ok(await js.textContent("#menu-player") === "Bidu (conta com senha)", `cadastro funciona só com JavaScript (${ms} ms)`);
+    await js.click("#btn-logout"); await js.click("#btn-name"); await js.click("#btn-open-login");
+    await js.fill("#login-user", "Bidu"); await js.fill("#login-pass", "Compat#JS-2024"); await js.click("#btn-login-submit");
+    await js.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"), null, { timeout: 15000 });
+    ok(await js.textContent("#menu-player") === "Bidu (conta com senha)", "e entrar também");
+    await js.context().close();
+  });
+
+  await section("cadastro no celular pequeno", async () => {
+    const m = await newPage({ viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    await fresh(m, { name: "" });
+    for (const [open, id] of [["#btn-open-register", "register"], ["#btn-open-login", "login"]]) {
+      await m.tap("#btn-name"); await m.tap(open);
+      const g = await ev(m, (id) => { const el = document.getElementById(id), btns = [...el.querySelectorAll("button")].filter((b) => b.offsetParent); return { hs: document.documentElement.scrollWidth - innerWidth, scrolls: el.scrollHeight > el.clientHeight, minBtn: Math.min(...btns.map((b) => b.getBoundingClientRect().height)), maxRight: Math.max(...btns.map((b) => b.getBoundingClientRect().right)) }; }, id);
+      ok(g.hs <= 0 && g.maxRight <= 320, `${id}: sem rolagem lateral e botões dentro da tela de 320 px`);
+      ok(g.minBtn >= 40, `${id}: botões com tamanho bom para o dedo (${g.minBtn.toFixed(0)} px)`);
+      await m.keyboard.press("Escape");
+    }
+    await m.context().close();
+  });
+
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   await browser.close();
