@@ -1,81 +1,126 @@
 (() => {
+  "use strict";
+
   const TILE = 32;
   const TOTAL_ITEMS = 5;
-  const SPEED = 180; // cachorro, pixels por segundo
+  const SPEED = 180;       // cachorro, pixels do mundo por segundo
+  const MAX_LIVES = 3;
+  const INVULN = 2;        // segundos de proteção depois de perder uma vida
+  const LEVEL_ID = 1;      // fase atual (chave dos recordes)
+  const LEVELS = [1];      // fases que aparecem na tela de pontuações
+  const MIN_TILE_CSS = 24; // abaixo disso (telas pequenas) a câmera dá zoom e segue o cachorro
+  const MAX_BACKING_W = 2400; // limite de resolução interna do canvas (desempenho)
+  const AUTOSAVE_EVERY = 5;   // segundos entre salvamentos automáticos
+  const RESUME_GRACE = 1.5;   // proteção ao continuar um jogo salvo
 
-  // Configuração dos veterinários da Fase 1: apenas um, lento e pouco insistente.
+  // Configuração dos veterinários da Fase 1: apenas um. Patrulha devagar e raramente decide perseguir,
+  // mas, quando aparece o "!", ele acelera e persegue com mais empenho.
   const LEVEL = {
     vets: [{
       speed: 48,        // velocidade ao patrulhar
-      chaseSpeed: 64,   // velocidade ao perseguir (bem menor que a do cachorro)
+      chaseSpeed: 100,  // velocidade ao perseguir (o cachorro, a 180, ainda é bem mais rápido)
       sight: 112,       // distância máxima para notar o cachorro (px)
       chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
       thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
-      chaseTime: 1.8,   // duração máxima de uma perseguição (s)
+      chaseTime: 3,     // duração mínima de uma perseguição (s)
+      chaseMax: 6,      // duração máxima: enquanto vê o cachorro ele não desiste, até este limite (s)
       restTime: 5,      // descanso depois de perseguir (s)
       idleMin: 0.6, idleMax: 1.6, // pausa ao chegar no destino da patrulha (s)
     }],
   };
 
-  // # parede | X caixa | I ração | E saída | P início do cachorro | V início do veterinário
+  // # parede | X caixa | E saída | P início do cachorro | V início do veterinário
+  // (as rações são sorteadas em lugares livres a cada jogo novo: veja placeItems)
   const MAP = [
     "#########################",
     "#P......#.........#.....#",
-    "#.......#....X....#..I..#",
+    "#.......#....X....#.....#",
     "#..XX...#....X....#.....#",
     "#..XX.........X.........#",
     "#.......#.....X....##.###",
     "#####.###..........#....#",
     "#.....#....#####...#....#",
-    "#.I...#....#...#........#",
-    "#.....#....#.I.#...XX...#",
+    "#.....#....#...#........#",
+    "#.....#....#...#...XX...#",
     "#.....X.........#..XX...#",
     "#.....#....#....#.......#",
     "###.###....######.#######",
-    "#.V.....#.............I.#",
-    "#..XXX..#....I..........#",
+    "#.V.....#...............#",
+    "#..XXX..#...............#",
     "#.......#...XX.......EEE#",
     "#...............XX...EEE#",
     "#########################",
   ];
   const COLS = MAP[0].length, ROWS = MAP.length;
+  const WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE;
 
-  const canvas = document.getElementById("game");
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("game");
   const ctx = canvas.getContext("2d");
-  const menuEl = document.getElementById("menu");
-  const winEl = document.getElementById("win");
-  const loseEl = document.getElementById("lose");
-  const winText = document.getElementById("win-text");
-  const loseText = document.getElementById("lose-text");
+  const fmt = Records.formatTime;
+  const calm = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  function safeStorage() { try { return window.localStorage; } catch { return null; } }
+  const store = Records.createStore(safeStorage());
 
   const keys = {};
-  let state = "menu";
-  let solids, items, vets, exitRect, player, walk, collected, score, time, hint, hintTimer;
+  const touch = { left: false, right: false, up: false, down: false };
+  let state = "menu"; // menu | playing | paused | won | lost
+  let solids, items, vets, exitRect, player, spawn, walk;
+  let collected, score, time, lives, invuln, hintTimer;
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
   let noCatch = false;    // usado apenas em testes
+  const view = { k: 1, zoom: 1, camX: 0, camY: 0 };
 
   const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   const tileOf = (cx, cy) => [Math.floor(cx / TILE), Math.floor(cy / TILE)];
   const centerOf = (c, r) => [c * TILE + TILE / 2, r * TILE + TILE / 2];
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  // Sorteia onde ficam as rações: só em chão alcançável, longe do início do cachorro, do veterinário e da saída,
+  // e espalhadas pelo mapa (a distância mínima entre elas diminui só se for preciso).
+  function placeItems(spawnTile, vetTiles, exitTiles) {
+    const g = bfs(spawnTile), key = (c, r) => r * COLS + c;
+    const exitKeys = new Set(exitTiles.map(([c, r]) => key(c, r)));
+    const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const cand = shuffle(g.q.filter((t) => !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= 4)));
+    for (const gap of [6, 5, 4, 3, 2, 0]) {
+      const picked = [];
+      for (const t of cand) {
+        if (picked.every((p) => apart(p, t) >= gap)) picked.push(t);
+        if (picked.length === TOTAL_ITEMS) return picked;
+      }
+    }
+    return cand.slice(0, TOTAL_ITEMS);
+  }
 
   function reset() {
-    solids = []; items = []; vets = []; collected = 0; score = 0; time = 0; hint = ""; hintTimer = 0;
+    solids = []; items = []; vets = [];
+    collected = 0; score = 0; time = 0; lives = MAX_LIVES; invuln = 0; hintTimer = 0;
     walk = MAP.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X"));
     let ex1 = COLS, ey1 = ROWS, ex2 = 0, ey2 = 0;
+    const exitTiles = [], vetTiles = [];
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const ch = MAP[r][c], x = c * TILE, y = r * TILE;
       if (ch === "#" || ch === "X") solids.push({ x, y, w: TILE, h: TILE, kind: ch });
-      else if (ch === "I") items.push({ x: x + 8, y: y + 8, w: 16, h: 16, taken: false });
-      else if (ch === "E") { ex1 = Math.min(ex1, c); ey1 = Math.min(ey1, r); ex2 = Math.max(ex2, c); ey2 = Math.max(ey2, r); }
-      else if (ch === "P") player = { x: x + 4, y: y + 4, w: 24, h: 24, facing: "right", moving: false };
+      else if (ch === "E") { exitTiles.push([c, r]); ex1 = Math.min(ex1, c); ey1 = Math.min(ey1, r); ex2 = Math.max(ex2, c); ey2 = Math.max(ey2, r); }
+      else if (ch === "P") { spawn = { x: x + 4, y: y + 4 }; player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false }; }
       else if (ch === "V") {
         const cfg = LEVEL.vets[vets.length] || LEVEL.vets[0];
         const [cx, cy] = centerOf(c, r);
-        vets.push({ cfg, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, cool: 2, dir: 1 });
+        vets.push({ cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 2, dir: 1 });
+        vetTiles.push([c, r]);
       }
     }
     exitRect = { x: ex1 * TILE, y: ey1 * TILE, w: (ex2 - ex1 + 1) * TILE, h: (ey2 - ey1 + 1) * TILE };
+    items = placeItems(tileOf(spawn.x + 12, spawn.y + 12), vetTiles, exitTiles)
+      .map(([c, r]) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false }));
   }
 
   // ---------- Cachorro ----------
@@ -128,9 +173,13 @@
     v.cool -= dt; v.think -= dt; v.modeT -= dt;
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
-      if (canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; }
+      if (canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; }
     }
-    if (v.mode === "chase" && v.modeT <= 0) { v.mode = "patrol"; v.cool = cfg.restTime; v.route = []; v.idle = 0.5; }
+    if (v.mode === "chase") {
+      v.chaseAge += dt;
+      if (canSee(v)) v.modeT = Math.max(v.modeT, cfg.chaseTime * 0.4); // enquanto vê o cachorro, não desiste
+    }
+    if (v.mode === "chase" && (v.modeT <= 0 || v.chaseAge >= cfg.chaseMax)) { v.mode = "patrol"; v.cool = cfg.restTime; v.route = []; v.idle = 0.5; }
 
     if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
       if (v.mode === "chase") {
@@ -162,15 +211,33 @@
     }
   }
 
+  // ---------- Vidas ----------
+  function respawn() { // cachorro volta ao início, veterinário volta ao seu posto
+    Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
+    for (const v of vets) {
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], idle: 2, cool: 3, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+    }
+    invuln = INVULN;
+  }
+
+  function loseLife() {
+    lives--;
+    if (lives <= 0) { gameOver(); return; }
+    respawn();
+    toast("Perdeu uma vida! Cuidado com o veterinário.", 2);
+    saveNow();
+  }
+
   // ---------- Atualização ----------
   function update(dt) {
     time += dt;
-    if (hintTimer > 0) hintTimer -= dt;
+    if (hintTimer > 0 && (hintTimer -= dt) <= 0) $("toast").classList.remove("show");
+
     let ix = 0, iy = 0;
-    if (keys.ArrowLeft || keys.a) ix -= 1;
-    if (keys.ArrowRight || keys.d) ix += 1;
-    if (keys.ArrowUp || keys.w) iy -= 1;
-    if (keys.ArrowDown || keys.s) iy += 1;
+    if (keys.ArrowLeft || keys.a || touch.left) ix -= 1;
+    if (keys.ArrowRight || keys.d || touch.right) ix += 1;
+    if (keys.ArrowUp || keys.w || touch.up) iy -= 1;
+    if (keys.ArrowDown || keys.s || touch.down) iy += 1;
     player.moving = !!(ix || iy);
     if (ix) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
@@ -180,51 +247,320 @@
     moveAxis(0, iy * step);
 
     for (const it of items) {
-      if (!it.taken && overlap(player, it)) { it.taken = true; collected++; score += 100; }
+      if (!it.taken && overlap(player, it)) { it.taken = true; collected++; score += 100; saveNow(); }
     }
 
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
-    if (!noCatch && vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { lose(); return; }
+    if (invuln > 0) invuln -= dt;
+    else if (!noCatch && vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
       if (collected >= TOTAL_ITEMS) win();
-      else if (hintTimer <= 0) { hint = "Colete todas as rações antes de sair!"; hintTimer = 1.5; }
+      else if (hintTimer <= 0) toast("Colete todas as rações antes de sair!", 1.5);
     }
   }
 
-  function win() {
-    state = "won";
-    const bonus = Math.max(0, Math.round(300 - time * 5));
-    score += bonus;
-    winText.textContent = `Pontuação: ${score} (bônus de tempo: ${bonus}) — Tempo: ${time.toFixed(1)}s`;
-    winEl.classList.remove("hidden");
-    winEl.querySelector("button").focus();
+  // ---------- Estados e telas ----------
+  const SCREENS = ["menu", "howto", "scores", "name", "confirm", "pause", "win", "lose"].map($);
+
+  function setState(s) {
+    state = s;
+    document.body.dataset.state = s;
+    if (s !== "playing") clearTouch();
   }
 
-  function lose() {
-    state = "lost";
-    loseText.textContent = `Rações coletadas: ${collected}/${TOTAL_ITEMS} — Pontuação: ${score}`;
-    loseEl.classList.remove("hidden");
-    loseEl.querySelector("button").focus();
+  function showScreen(id) {
+    for (const el of SCREENS) el.classList.toggle("hidden", el.id !== id);
+    document.body.dataset.screen = id || "";
+    $("stage").inert = !!id; $("touch").inert = !!id;
+    const el = id && $(id);
+    if (el) {
+      el.scrollTop = 0;
+      const visible = (n) => n.offsetParent !== null;
+      const f = [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
+      if (f) f.focus({ preventScroll: true });
+    }
   }
 
-  function start() {
-    reset();
+  function toast(text, seconds) {
+    $("toast").textContent = text; $("toast").classList.add("show"); hintTimer = seconds;
+  }
+
+  function goMenu() {
+    setState("menu");
+    hintTimer = 0; $("toast").classList.remove("show");
+    renderMenu();
+    showScreen("menu");
+  }
+
+  function beginPlay() {
     for (const k in keys) keys[k] = false;
-    menuEl.classList.add("hidden");
-    winEl.classList.add("hidden");
-    loseEl.classList.add("hidden");
-    state = "playing";
+    hintTimer = 0; $("toast").classList.remove("show");
+    autosaveT = 0;
+    setState("playing");
+    showScreen(null);
+    fitCanvas();
+    updateHud();
+    last = performance.now();
   }
 
-  // ---------- Desenho ----------
+  function startGame() { reset(); beginPlay(); }
+
+  // ---------- Jogo salvo ----------
+  let autosaveT = 0, saveFlashTimer = null;
+
+  function snapshot() {
+    const r2 = (n) => Math.round(n * 100) / 100;
+    return {
+      v: 1, l: LEVEL_ID, time: r2(time), lives, invuln: r2(Math.max(0, invuln)),
+      items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0]),
+      p: { x: r2(player.x), y: r2(player.y), f: player.facing },
+      vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
+    };
+  }
+
+  // Confere um jogo salvo antes de usar (o armazenamento pode ter sido editado ou corrompido).
+  function parseSnapshot(sv) {
+    try {
+      const num = (n, lo, hi) => Number.isFinite(n) && n >= lo && n <= hi;
+      if (!sv || sv.v !== 1 || sv.l !== LEVEL_ID) return null;
+      if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES || !num(sv.invuln, 0, INVULN)) return null;
+      if (!Array.isArray(sv.items) || sv.items.length !== TOTAL_ITEMS) return null;
+      const seen = new Set();
+      for (const it of sv.items) {
+        if (!Array.isArray(it) || it.length !== 3) return null;
+        const [c, r, t] = it;
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c] || (t !== 0 && t !== 1)) return null;
+        if (seen.has(r * COLS + c)) return null;
+        seen.add(r * COLS + c);
+      }
+      const p = sv.p;
+      if (!p || !num(p.x, 0, WORLD_W - 24) || !num(p.y, 0, WORLD_H - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
+      if (solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
+      if (!Array.isArray(sv.vets) || sv.vets.length !== vets.length) return null;
+      for (const v of sv.vets) {
+        if (!Array.isArray(v) || !num(v[0], 0, WORLD_W - 1) || !num(v[1], 0, WORLD_H - 1)) return null;
+        const [c, r] = tileOf(v[0], v[1]);
+        if (!walk[r][c]) return null;
+      }
+      return sv;
+    } catch { return null; }
+  }
+
+  function savedGame() { // jogo salvo válido do jogador atual, ou null (e limpa um save inválido)
+    const me = store.player();
+    if (!me) return null;
+    const g = store.loadGame(me);
+    if (!g) return null;
+    const sv = parseSnapshot(g.snap);
+    if (!sv) { store.clearGame(me); return null; }
+    return { savedAt: g.savedAt, snap: sv };
+  }
+
+  function applySnapshot(sv) {
+    reset();
+    items = sv.items.map(([c, r, t]) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: t === 1 }));
+    collected = items.filter((i) => i.taken).length; score = collected * 100;
+    time = sv.time; lives = sv.lives;
+    Object.assign(player, { x: sv.p.x, y: sv.p.y, facing: sv.p.f, moving: false });
+    vets.forEach((v, i) => {
+      const [c, r] = tileOf(sv.vets[i][0], sv.vets[i][1]);
+      [v.cx, v.cy] = centerOf(c, r); // o veterinário volta ao centro do tile mais próximo
+      Object.assign(v, { mode: "patrol", leg: null, route: [], idle: 1, cool: 2, modeT: 0, chaseAge: 0 });
+    });
+    invuln = Math.max(sv.invuln, RESUME_GRACE);
+  }
+
+  function continueGame() {
+    const g = savedGame();
+    if (!g) { renderMenu(); goMenu(); return; }
+    applySnapshot(g.snap);
+    beginPlay();
+    toast("Jogo carregado. Boa sorte!", 2);
+  }
+
+  function flashSaved() {
+    const e = $("save-status");
+    e.textContent = store.persistent ? "✓ salvo" : "salvo só nesta página";
+    e.classList.add("on");
+    clearTimeout(saveFlashTimer);
+    saveFlashTimer = setTimeout(() => e.classList.remove("on"), 1400);
+  }
+
+  function saveNow() {
+    const me = store.player();
+    if (!me || (state !== "playing" && state !== "paused")) return false;
+    const ok = store.saveGame(me, snapshot());
+    flashSaved();
+    return ok;
+  }
+
+  // "Novo jogo": pede nome se ainda não há um e confirma antes de apagar um jogo salvo.
+  function requestNewGame() {
+    if (!store.player()) { openName(true); return; }
+    const g = savedGame();
+    if (!g) { startGame(); return; }
+    $("confirm-text").textContent = `${store.player()} já tem um jogo salvo (${describeSave(g.snap)}). Se você começar um novo jogo, esse progresso será apagado.`;
+    showScreen("confirm");
+  }
+
+  function describeSave(sv) {
+    const got = sv.items.filter((i) => i[2] === 1).length;
+    return `Fase ${sv.l} · ${fmt(sv.time * 1000)} · ${got}/${TOTAL_ITEMS} rações · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
+  }
+
+  function pauseGame() {
+    if (state !== "playing") return;
+    saveNow(); // pausar também salva
+    setState("paused");
+    $("pause-msg").textContent = "";
+    showScreen("pause");
+  }
+  function resumeGame() { if (state !== "paused") return; setState("playing"); showScreen(null); last = performance.now(); }
+
+  function win() {
+    setState("won");
+    const timeMs = Math.round(time * 1000);
+    let res = null;
+    try {
+      res = store.addRun({ level: LEVEL_ID, timeMs });
+      const me = store.player();
+      if (me) { store.completeLevel(me, LEVEL_ID); store.clearGame(me); } // fase concluída: o jogo em andamento termina
+    } catch { /* seguem sem registrar */ }
+    $("win-time").textContent = fmt(timeMs);
+    if (res) {
+      $("win-personal").textContent = res.first ? "Primeiro tempo registrado! Esse é o seu recorde."
+        : res.newPersonal ? "Novo recorde pessoal!" : `Seu recorde: ${fmt(res.personalBest.t)}`;
+      $("win-general").textContent = res.newGeneral ? "Novo recorde geral!"
+        : `Recorde geral: ${fmt(res.generalBest.t)} (${res.generalBest.n})`;
+    } else {
+      $("win-personal").textContent = "Escolha um nome de usuário para guardar os seus recordes.";
+      $("win-general").textContent = "";
+    }
+    $("win-extra").textContent = `Rações: ${collected}/${TOTAL_ITEMS} · Pontos: ${score} · Vidas restantes: ${lives}`;
+    showScreen("win");
+  }
+
+  function gameOver() {
+    setState("lost");
+    if (store.player()) store.clearGame(store.player()); // acabaram as vidas: não há o que continuar
+    $("lose-text").textContent = `Rações coletadas: ${collected}/${TOTAL_ITEMS} · Pontos: ${score}`;
+    showScreen("lose");
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function renderMenu() {
+    const me = store.player();
+    $("menu-player").textContent = me || "ainda não escolhido";
+    const best = me ? store.personalBest(me, LEVEL_ID) : null;
+    $("menu-best").textContent = best ? `Seu recorde na Fase ${LEVEL_ID}: ${fmt(best.t)}` : "";
+    const done = me ? store.progress(me).completed.filter((l) => LEVELS.includes(l)).length : 0;
+    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length}` : "";
+    const g = savedGame();
+    $("btn-continue").classList.toggle("hidden", !g);
+    $("btn-start").classList.toggle("primary", !g);
+    $("menu-save").classList.toggle("hidden", !g);
+    if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
+  }
+
+  function fmtDate(w) {
+    try { return new Date(w).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+  }
+
+  function renderScores() {
+    const body = $("scores-body"), me = store.player();
+    body.replaceChildren();
+    for (const lvl of LEVELS) {
+      const sec = el("section", "score-level");
+      sec.append(el("h2", null, `Fase ${lvl}`));
+      const pb = me ? store.personalBest(me, lvl) : null, gb = store.generalBest(lvl);
+      const dl = el("dl");
+      dl.append(el("dt", null, me ? `Seu recorde (${me})` : "Seu recorde"), el("dd", null, pb ? fmt(pb.t) : "—"));
+      dl.append(el("dt", null, "Recorde geral"), el("dd", null, gb ? `${fmt(gb.t)} — ${gb.n}` : "—"));
+      sec.append(dl);
+
+      const rank = store.ranking(lvl, 5);
+      if (rank.length) {
+        sec.append(el("h3", null, "Ranking"));
+        const ol = el("ol");
+        for (const r of rank) ol.append(el("li", me && Records.nameKey(r.n) === Records.nameKey(me) ? "me" : "", `${r.n} — ${fmt(r.t)}`));
+        sec.append(ol);
+      }
+
+      sec.append(el("h3", null, "Seu histórico"));
+      const hist = me ? store.history(me, lvl, 10) : [];
+      if (hist.length) {
+        const ul = el("ul");
+        let starred = false;
+        for (const r of hist) {
+          const li = el("li", null, `${fmtDate(r.w)} — ${fmt(r.t)}`);
+          if (!starred && pb && r.t === pb.t) { li.append(" ", el("span", "star", "★ recorde")); starred = true; }
+          ul.append(li);
+        }
+        sec.append(ul);
+      } else {
+        sec.append(el("p", null, me ? "Você ainda não terminou esta fase. Termine para aparecer aqui." : "Escolha um nome de usuário para guardar o seu histórico."));
+      }
+      body.append(sec);
+    }
+    $("scores-note").classList.toggle("hidden", store.persistent);
+  }
+
+  let nameThenStart = false;
+  function openName(thenStart) {
+    nameThenStart = !!thenStart;
+    $("name-input").value = store.player();
+    $("name-error").textContent = "";
+    $("name-why").classList.toggle("hidden", !thenStart);
+    $("name-note").classList.toggle("hidden", store.persistent);
+    const chips = $("name-chips"), list = store.players();
+    chips.replaceChildren();
+    for (const n of list) {
+      const b = el("button", null, n); b.type = "button";
+      b.addEventListener("click", () => saveName(n));
+      chips.append(b);
+    }
+    $("name-saved").classList.toggle("hidden", list.length === 0);
+    showScreen("name");
+    $("name-input").select();
+  }
+
+  function saveName(raw) {
+    const p = store.setPlayer(raw);
+    if (!p) {
+      $("name-error").textContent = "Escreva um nome com pelo menos uma letra ou número. Exemplo: Totó.";
+      $("name-input").focus();
+      return;
+    }
+    renderMenu();
+    if (nameThenStart) requestNewGame(); else goMenu();
+  }
+
+  // ---------- Câmera e tamanho (proporcional a cada aparelho) ----------
+  function fitCanvas() {
+    const r = canvas.getBoundingClientRect();
+    if (!r.width) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const bw = clamp(Math.round(r.width * dpr), 200, MAX_BACKING_W), bh = Math.round((bw * WORLD_H) / WORLD_W);
+    if (canvas.width !== bw || canvas.height !== bh) { canvas.width = bw; canvas.height = bh; }
+    view.k = bw / WORLD_W;
+    view.zoom = clamp(MIN_TILE_CSS / (r.width / COLS), 1, 2); // telas pequenas: aproxima e segue o cachorro
+  }
+
+  // ---------- Desenho do mundo ----------
   function ellipse(x, y, rx, ry, color, rot = 0) {
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
   }
 
   function drawKibble(it) { // tigela de ração
-    const cx = it.x + 8, cy = it.y + 8 + Math.sin(time * 4 + it.x) * 2;
+    const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 5, 10, 4, "rgba(0,0,0,.25)");
     for (const [dx, dy] of [[-5, 0], [0, -2], [5, 0], [-2, 1], [3, 1], [0, 2]]) ellipse(cx + dx, cy + dy, 3.2, 2.6, "#8b5a2b");
     ellipse(cx - 1, cy - 3, 2.6, 2.2, "#a8703a");
@@ -235,13 +571,14 @@
 
   function drawDog(p) {
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-    const wag = Math.sin(time * 16) * (p.moving ? 5 : 2);
+    const wag = calm ? 0 : Math.sin(time * 16) * (p.moving ? 5 : 2);
     const leg = p.moving ? Math.sin(time * 18) * 3 : 0;
     const TAN = "#d9a066", DARK = "#7a4a22", LIGHT = "#f1d2a6";
     ellipse(cx, cy + 10, 12, 4, "rgba(0,0,0,.25)");
+    ctx.lineCap = "round";
     if (p.facing === "left" || p.facing === "right") {
       const s = p.facing === "right" ? 1 : -1;
-      ctx.strokeStyle = DARK; ctx.lineWidth = 3; ctx.lineCap = "round"; // rabo
+      ctx.strokeStyle = DARK; ctx.lineWidth = 3; // rabo
       ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * 15, cy - 5 + wag, cx - s * 14, cy - 9 + wag); ctx.stroke();
       ctx.fillStyle = DARK; // patas
       ctx.fillRect(cx - s * 7 - 2 + leg, cy + 4, 4, 7); ctx.fillRect(cx + s * 4 - 2 - leg, cy + 4, 4, 7);
@@ -254,7 +591,7 @@
       ellipse(cx + s * 10, cy - 5, 1.4, 1.4, "#222");          // olho
     } else {
       const s = p.facing === "down" ? 1 : -1;
-      ctx.strokeStyle = DARK; ctx.lineWidth = 3; ctx.lineCap = "round";
+      ctx.strokeStyle = DARK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * 13); ctx.stroke(); // rabo
       ctx.fillStyle = DARK;
       ctx.fillRect(cx - 8, cy - 2 + leg, 4, 6); ctx.fillRect(cx + 4, cy - 2 - leg, 4, 6);
@@ -271,7 +608,7 @@
   }
 
   function drawVet(v) {
-    const x = v.cx, y = v.cy + Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0);
+    const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
     ctx.fillStyle = "#2f4a6b"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9); // calça
     ctx.fillStyle = "#f4f7fa"; ctx.fillRect(x - 10, y - 7, 20, 15); // jaleco
@@ -282,73 +619,183 @@
     ctx.fillRect(x - 7, y - 13.5, 14, 2);
     ellipse(x - 2.2 + v.dir, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + v.dir, y - 11, 1, 1, "#222");
     if (v.mode === "chase") {
-      ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 20px system-ui"; ctx.textAlign = "center";
-      ctx.fillText("!", x, y - 22);
+      ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("!", x, y - 22 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
     }
   }
 
   function draw() {
+    if (state === "menu" || !solids) return;
+    const sx = view.k * view.zoom;
+    const vw = WORLD_W / view.zoom, vh = WORLD_H / view.zoom;
+    const camX = Math.round(clamp(player.x + player.w / 2 - vw / 2, 0, WORLD_W - vw) * sx) / sx;
+    const camY = Math.round(clamp(player.y + player.h / 2 - vh / 2, 0, WORLD_H - vh) * sx) / sx;
+    view.camX = camX; view.camY = camY;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#1d2330"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(sx, 0, 0, sx, -camX * sx, -camY * sx);
+
+    // retângulos alinhados aos pixels do aparelho: sem frestas entre os blocos em nenhum tamanho
+    const snap = (v) => Math.round(v * sx) / sx;
+    const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
+
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       ctx.fillStyle = (r + c) % 2 ? "#232a3a" : "#262e40";
-      ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+      rect(c * TILE, r * TILE, TILE, TILE);
     }
-    if (!solids) return;
-    const open = collected >= TOTAL_ITEMS;
-    ctx.fillStyle = open ? "#3ddc84" : "#7a4b4b";
-    ctx.fillRect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = "#fff"; ctx.font = "bold 14px system-ui"; ctx.textAlign = "center";
+    ctx.fillStyle = collected >= TOTAL_ITEMS ? "#3ddc84" : "#7a4b4b";
+    rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center";
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
     for (const s of solids) {
       if (s.kind === "#") {
-        ctx.fillStyle = "#4a5470"; ctx.fillRect(s.x, s.y, s.w, s.h);
-        ctx.fillStyle = "#5d6a8c"; ctx.fillRect(s.x, s.y, s.w, 4);
+        ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
+        ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);
       } else {
-        ctx.fillStyle = "#8a5a2b"; ctx.fillRect(s.x + 2, s.y + 2, s.w - 4, s.h - 4);
+        ctx.fillStyle = "#8a5a2b"; rect(s.x + 2, s.y + 2, s.w - 4, s.h - 4);
         ctx.strokeStyle = "#5e3b17"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
       }
     }
-    // HUD
-    ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(TILE, 2, 300, 28);
-    ctx.fillStyle = "#fff"; ctx.font = "bold 18px system-ui"; ctx.textAlign = "left";
-    ctx.fillText(`RAÇÕES: ${collected}/${TOTAL_ITEMS}   PONTOS: ${score}`, TILE + 8, 22);
     for (const it of items) if (!it.taken) drawKibble(it);
     for (const v of vets) drawVet(v);
-    drawDog(player);
-    if (hintTimer > 0) {
-      ctx.textAlign = "center"; ctx.fillStyle = "#ffd54a"; ctx.font = "bold 20px system-ui";
-      ctx.fillText(hint, canvas.width / 2, canvas.height - 45);
+    if (!(invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido
+  }
+
+  // ---------- Placar (HTML) ----------
+  const hudEl = { items: $("hud-items"), points: $("hud-points"), time: $("hud-time"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")] };
+  const hudCache = {};
+  function setHud(key, node, value) { if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; } }
+  function updateHud() {
+    if (!solids) return;
+    setHud("i", hudEl.items, `${collected}/${TOTAL_ITEMS}`);
+    setHud("p", hudEl.points, String(score));
+    setHud("t", hudEl.time, fmt(time * 1000));
+    if (hudCache.l !== lives) {
+      hudCache.l = lives;
+      hudEl.hearts.forEach((h, i) => h.classList.toggle("lost", i >= lives));
+      hudEl.lives.setAttribute("aria-label", `${lives} ${lives === 1 ? "vida" : "vidas"}`);
     }
   }
 
+  // ---------- Loop ----------
   let last = performance.now();
   function loop(now) {
-    const dt = Math.min((now - last) / 1000, 0.05); last = now; // aba parada não gasta o bônus de tempo
-    if (state === "playing") update(dt);
+    requestAnimationFrame(loop); // reagenda primeiro: um erro isolado não congela o jogo
+    const dt = Math.min((now - last) / 1000, 0.05); last = now; // aba parada não gasta o tempo do recorde
+    if (state === "playing") {
+      update(dt);
+      if (state === "playing" && (autosaveT += dt) >= AUTOSAVE_EVERY) { autosaveT = 0; saveNow(); }
+    }
     draw();
-    requestAnimationFrame(loop);
+    updateHud();
   }
 
-  const normKey = (k) => (k.length === 1 ? k.toLowerCase() : k);
+  // ---------- Entrada: teclado ----------
+  const CODE_KEYS = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d" }; // posição física: vale em qualquer layout
+  const keyName = (e) => CODE_KEYS[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
+
+  function onEscape() {
+    if (state === "playing") pauseGame();
+    else if (state === "paused") resumeGame();
+    else if (state === "won" || state === "lost") goMenu();
+    else if (document.body.dataset.screen && document.body.dataset.screen !== "menu") goMenu();
+  }
+
+  function moveFocus(dir) {
+    const scope = document.querySelector(".screen:not(.hidden)");
+    if (!scope) return;
+    const els = [...scope.querySelectorAll("button, input")].filter((e) => !e.disabled && e.offsetParent !== null);
+    if (!els.length) return;
+    const i = els.indexOf(document.activeElement);
+    els[(i + dir + els.length) % els.length].focus();
+  }
+
   window.addEventListener("keydown", (e) => {
-    const k = normKey(e.key);
-    keys[k] = true;
-    if (k.startsWith("Arrow") || (k === " " && state === "playing")) e.preventDefault();
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
+    const k = keyName(e);
+    if (k === "Escape") { onEscape(); return; }
+    if (state === "playing") {
+      keys[k] = true;
+      if (k === "p") { pauseGame(); return; }
+      if (k.startsWith("Arrow") || k === " ") e.preventDefault(); // não rola a página
+    } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen) {
+      e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
+    }
   });
-  window.addEventListener("keyup", (e) => { keys[normKey(e.key)] = false; });
-  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
-  document.getElementById("btn-play").addEventListener("click", start);
-  document.getElementById("btn-again").addEventListener("click", start);
-  document.getElementById("btn-retry").addEventListener("click", start);
+  window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });
+  window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; clearTouch(); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+  window.addEventListener("pagehide", () => saveNow()); // fechar/recarregar a página também salva
+
+  // ---------- Entrada: toque (celular/tablet) ----------
+  const pad = $("pad"), knob = $("pad-knob");
+  let padPointer = null;
+  function clearTouch() {
+    padPointer = null;
+    touch.left = touch.right = touch.up = touch.down = false;
+    knob.style.transform = "";
+  }
+  function padMove(e) {
+    const r = pad.getBoundingClientRect(), R = r.width / 2;
+    let dx = (e.clientX - (r.left + R)) / R, dy = (e.clientY - (r.top + R)) / R;
+    const len = Math.hypot(dx, dy);
+    if (len > 1) { dx /= len; dy /= len; }
+    const dead = 0.3;
+    touch.left = dx < -dead; touch.right = dx > dead; touch.up = dy < -dead; touch.down = dy > dead;
+    knob.style.transform = `translate(${dx * R * 0.5}px, ${dy * R * 0.5}px)`;
+  }
+  pad.addEventListener("pointerdown", (e) => {
+    if (padPointer !== null) return;
+    padPointer = e.pointerId;
+    try { pad.setPointerCapture(e.pointerId); } catch { /* ponteiro sintético */ }
+    padMove(e); e.preventDefault();
+  });
+  pad.addEventListener("pointermove", (e) => { if (e.pointerId === padPointer) padMove(e); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) pad.addEventListener(ev, (e) => { if (e.pointerId === padPointer) clearTouch(); });
+  pad.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  const touchCapable = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || navigator.maxTouchPoints > 0 || /[?&]touch=1\b/.test(location.search);
+  if (touchCapable) document.body.classList.add("touch");
+  window.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") document.body.classList.add("touch"); }, { passive: true });
+
+  // ---------- Botões e formulário ----------
+  const on = (id, fn) => $(id).addEventListener("click", fn);
+  on("btn-start", requestNewGame);
+  on("btn-continue", continueGame);
+  on("btn-confirm-keep", continueGame);
+  on("btn-confirm-new", () => { store.clearGame(store.player()); startGame(); });
+  on("btn-confirm-back", goMenu);
+  on("btn-save", () => { $("pause-msg").textContent = saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar."; });
+  on("btn-howto", () => showScreen("howto"));
+  on("btn-howto-back", goMenu);
+  on("btn-scores", () => { renderScores(); showScreen("scores"); });
+  on("btn-scores-back", goMenu);
+  on("btn-name", () => openName(false));
+  on("btn-name-back", goMenu);
+  $("name-form").addEventListener("submit", (e) => { e.preventDefault(); saveName($("name-input").value); });
+  on("btn-pause", pauseGame);
+  on("btn-resume", resumeGame);
+  on("btn-pause-menu", goMenu);
+  on("btn-again", startGame);
+  on("btn-win-scores", () => { renderScores(); showScreen("scores"); });
+  on("btn-win-menu", goMenu);
+  on("btn-retry", startGame);
+  on("btn-lose-menu", goMenu);
 
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
+    get lives() { return lives; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
+    start: startGame, save: saveNow,
   };
 
   reset();
-  document.getElementById("btn-play").focus();
+  fitCanvas();
+  if (typeof ResizeObserver === "function") new ResizeObserver(fitCanvas).observe(canvas);
+  else window.addEventListener("resize", fitCanvas);
+  goMenu();
   requestAnimationFrame(loop);
 })();
