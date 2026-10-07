@@ -543,10 +543,11 @@ const PAGE_HELPERS = () => {
     ok(cfg.speed === 50 && cfg.chaseSpeed === 100, `Fase 1: sem o "!" o veterinário anda a 50 px/s e com o "!" a 100 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
     ok(cfg.chaseSpeed < 180 * 0.6 && cfg.speed < cfg.chaseSpeed, "o veterinário é mais lento que o cachorro (180 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
     ok(cfg.chaseSpeed >= cfg.speed * 1.8, `com o "!" ele fica bem mais rápido (${cfg.speed} → ${cfg.chaseSpeed} px/s)`);
-    ok(cfg.chaseTime >= 3 && cfg.chaseMax > cfg.chaseTime && cfg.sight <= 4 * 32 && cfg.chaseChance <= 0.3, "persegue com mais empenho, mas só enxerga perto e decide perseguir raramente");
+    ok(cfg.chaseTime >= 3 && cfg.chaseMax > cfg.chaseTime, "persegue com empenho: no mínimo 3 s e insiste enquanto vê o cachorro");
+    ok(await ev(page, () => __game.alertTiles) === 2 && cfg.sight === 64 && cfg.chaseChance === 1 && cfg.thinkEvery <= 0.1, `Fase 1: o "!" liga a 2 quadrados (${cfg.sight} px), sem sorteio e olhando 10 vezes por segundo`);
 
     const patrol = await ev(page, () => {
-      const v = __game.vets[0]; v.cfg.chaseChance = 0; __game.noCatch = true;
+      const v = __game.vets[0]; v.cfg = { ...v.cfg, chaseChance: 0 }; __game.noCatch = true;
       const seen = new Set(); let maxSpeed = 0, chased = 0, px = v.cx, py = v.cy;
       for (let i = 0; i < 4000; i++) {
         __game.tick(1 / 30);
@@ -573,11 +574,12 @@ const PAGE_HELPERS = () => {
     ok(wallHits === 0, "veterinário nunca atravessa paredes nem caixas");
 
     // cenários de perseguição: cada um roda dentro de UM evaluate (o loop real não intercala frames)
-    const scenario = (rnd, dog, vet, seconds, escapeAfterStart) => ev(page, ([rnd, dog, vet, seconds, escape]) => {
-      __game.setRand(rnd === "low" ? () => 0 : () => 0.99);
+    // o sorteio fica no valor MAIS desfavorável (0,99): o "!" não depende de sorte
+    const scenario = (dog, vet, seconds, escapeAfterStart) => ev(page, ([dog, vet, seconds, escape]) => {
+      __game.setRand(() => 0.99);
       __game.noCatch = true; __game.freezeVets = false;
       const v = __game.vets[0], p = __game.player;
-      v.cfg.chaseChance = 0.25;
+      __game.vets.forEach((o, i) => { if (i) o.cool = 999; });
       p.x = dog[0] * 32 + 4; p.y = dog[1] * 32 + 4;
       v.cx = vet[0] * 32 + 16; v.cy = vet[1] * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0;
       const dist0 = Math.hypot(v.cx - (p.x + 12), v.cy - (p.y + 12));
@@ -591,25 +593,77 @@ const PAGE_HELPERS = () => {
         if (endedAt !== null && v.mode === "chase" && restartAt === null) restartAt = t;
       }
       return { dist0, startedAt, endedAt, restartAt, chaseSpeedMax, cfg: v.cfg };
-    }, [rnd, dog, vet, seconds, escapeAfterStart]);
+    }, [dog, vet, seconds, escapeAfterStart]);
 
     await play(page);
-    const noChase = await scenario("high", [20, 4], [22, 4], 20);
-    ok(noChase.dist0 < noChase.cfg.sight && noChase.startedAt === null, "vê o cachorro mas, com o sorteio alto, não persegue");
+    const far = await scenario([1, 1], [22, 15], 10);
+    ok(far.startedAt === null, "fora do alcance de visão não persegue");
     await play(page);
-    const far = await scenario("low", [1, 1], [22, 15], 10);
-    ok(far.startedAt === null, "fora do alcance de visão não persegue, mesmo com sorteio favorável");
-    await play(page);
-    const stay = await scenario("low", [20, 4], [22, 4], 30);
-    ok(stay.startedAt !== null && stay.startedAt <= 1.0, "com sorteio favorável e cachorro à vista, inicia a perseguição");
+    const stay = await scenario([20, 4], [22, 4], 30);
+    ok(stay.dist0 <= stay.cfg.sight && stay.startedAt !== null && stay.startedAt <= 0.1, `com o cachorro a 2 quadrados e à vista, o "!" liga na hora (${stay.startedAt}s), mesmo com o sorteio no pior valor`);
     ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 100) <= 1, `durante a perseguição o veterinário anda a 100 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
     const dur = stay.endedAt - stay.startedAt;
     ok(Math.abs(dur - stay.cfg.chaseMax) <= 0.3, `enquanto vê o cachorro ele insiste até o limite (${dur.toFixed(1)}s de ${stay.cfg.chaseMax}s)`);
     ok(stay.restartAt === null || stay.restartAt - stay.endedAt >= stay.cfg.restTime - 0.1, `depois de perseguir descansa ${stay.cfg.restTime}s antes de tentar de novo`);
     await play(page);
-    const escaped = await scenario("low", [20, 4], [22, 4], 30, true);
+    const escaped = await scenario([20, 4], [22, 4], 30, true);
     const dur2 = escaped.endedAt - escaped.startedAt;
     ok(Math.abs(dur2 - escaped.cfg.chaseTime) <= 0.3, `se o cachorro escapa da vista, a perseguição acaba em ~${escaped.cfg.chaseTime}s (${dur2.toFixed(1)}s)`);
+  });
+
+  // =====================================================================
+  await section("alcance do !: 2, 4 e 6 quadrados", async () => {
+    await play(page);
+    const info = await ev(page, () => { const o = {}; for (const id of [1, 2, 3]) { __game.start(id); o[id] = { tiles: __game.alertTiles, sight: __game.vets.map((v) => v.cfg.sight), chance: __game.vets.map((v) => v.cfg.chaseChance), lv: __game.levels[id - 1].alertTiles }; } __game.start(1); return o; });
+    ok(info[1].tiles === 2 && info[2].tiles === 4 && info[3].tiles === 6 && info[1].lv === 2 && info[2].lv === 4 && info[3].lv === 6, "o alcance do ! é 2 quadrados na Fase 1, 4 na Fase 2 e 6 na Fase 3 (2 × número da fase, como será nas fases 4 e 5: 8 e 10)");
+    ok([1, 2, 3].every((id) => info[id].sight.every((s) => s === info[id].tiles * 32) && info[id].chance.every((c) => c === 1)), "em todas as fases o alcance em pixels é quadrados × 32 e o ! liga sempre (sem sorteio)");
+
+    // Um veterinário parado numa linha livre; o cachorro a `dx` px dele (centro a centro). Retorna se o "!" ligou e quando.
+    const probe = (level, vet, dx, dy, secs) => ev(page, ([level, vet, dx, dy, secs]) => {
+      __game.start(level); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = false;
+      const v = __game.vets[0], p = __game.player;
+      __game.vets.forEach((o, i) => { if (i) o.cool = 999; });
+      v.cx = vet[0] * 32 + 16; v.cy = vet[1] * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 99; // parado
+      p.x = v.cx + dx - 12; p.y = v.cy + dy - 12;
+      let at = null;
+      for (let i = 0; i < secs * 20; i++) { __game.tick(0.05); if (v.mode === "chase") { at = Math.round((i + 1) * 5) / 100; break; } }
+      __game.setRand(null);
+      return at;
+    }, [level, vet, dx, dy, secs]);
+
+    // linhas livres: Fase 1 linha 13 (colunas 9 a 23), Fase 2 linha 14 (1 a 23), Fase 3 linha 15 (1 a 20); o veterinário fica no meio delas
+    const setups = [[1, [14, 13], 2], [2, [12, 14], 4], [3, [10, 15], 6]];
+    for (const [level, vet, n] of setups) {
+      const edge = n * 32;
+      const inside = await probe(level, vet, edge - 6, 0, 1), outside = await probe(level, vet, edge + 6, 0, 2);
+      ok(inside !== null && inside <= 0.1, `Fase ${level}: com o cachorro a ${n} quadrados (${edge - 6} px) o ! liga na hora (${inside}s)`);
+      ok(outside === null, `Fase ${level}: com o cachorro um pouco além de ${n} quadrados (${edge + 6} px) o ! não liga`);
+      const half = await probe(level, vet, 0.5 * 32, 0, 1), left = await probe(level, vet, -(edge - 6), 0, 1);
+      ok(half !== null && half <= 0.1 && left !== null && left <= 0.1, `Fase ${level}: perto, ou para o outro lado, o ! liga igual`);
+    }
+    // o mesmo ponto liga ou não conforme a fase: a 3 quadrados (96 px) só a Fase 2 e a Fase 3 enxergam
+    const three = [await probe(1, [14, 13], 96, 0, 1), await probe(2, [12, 14], 96, 0, 1), await probe(3, [10, 15], 96, 0, 1)];
+    ok(three[0] === null && three[1] !== null && three[2] !== null, `a 3 quadrados: Fase 1 não vê, Fase 2 e Fase 3 veem (${three.join(", ")})`);
+    const five = [await probe(2, [12, 14], 160, 0, 1), await probe(3, [10, 15], 160, 0, 1)];
+    ok(five[0] === null && five[1] !== null, `a 5 quadrados: Fase 2 não vê, Fase 3 vê (${five.join(", ")})`);
+    // distância é em linha reta (diagonal conta): 2 quadrados na diagonal = 45 px em cada eixo (63,6 px)
+    const diag = [await probe(1, [10, 14], 44, 44, 1), await probe(1, [10, 14], 50, 50, 1)];
+    ok(diag[0] !== null && diag[1] === null, `na diagonal vale a distância em linha reta (44+44 px liga, 50+50 px não) (${diag.join(", ")})`);
+    // a parede impede de ver, mesmo dentro do alcance: Fase 1, veterinário em (7,5) e cachorro em (9,5), com a parede da coluna 8 no meio
+    const wall = await probe(1, [7, 5], 60, 0, 2);
+    ok(wall === null, "uma parede entre os dois impede o ! mesmo dentro do alcance");
+    // e o veterinário volta a ficar "calmo": depois de perder o cachorro de vista a perseguição acaba (já coberto acima), e o descanso vale
+    const rest = await ev(page, () => {
+      __game.start(1); __game.setRand(() => 0.99); __game.noCatch = true;
+      const v = __game.vets[0], p = __game.player; v.cx = 14 * 32 + 16; v.cy = 13 * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 99;
+      p.x = v.cx + 40 - 12; p.y = v.cy - 12;
+      for (let i = 0; i < 4; i++) __game.tick(0.05);
+      const on = v.mode === "chase"; v.mode = "patrol"; v.cool = v.cfg.restTime; v.think = 0; // fim de uma perseguição: descansa
+      for (let i = 0; i < 60; i++) __game.tick(0.05); // 3 s ainda descansando
+      const during = v.mode; __game.setRand(null);
+      return { on, during };
+    });
+    ok(rest.on && rest.during === "patrol", "durante o descanso depois de uma perseguição o ! não liga de novo, mesmo com o cachorro à vista");
   });
 
   // =====================================================================
@@ -783,8 +837,8 @@ const PAGE_HELPERS = () => {
     ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 veterinários começam no centro do mapa (${vs.join(" e ")})`);
     const cfgs = await ev(page, () => { const a = { ...__game.vets[0].cfg }, b = { ...__game.vets[1].cfg }; __game.start(1); return { f2a: a, f2b: b, f1: { ...__game.vets[0].cfg } }; });
     const close = (a, b) => Math.abs(a - b) < 1e-9;
-    const up = ["speed", "chaseSpeed", "sight", "chaseChance", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
-    ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade, visão, chance e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
+    const up = ["speed", "chaseSpeed", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
+    ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
     ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
     ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 180 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (180 px/s) continua mais rápido que eles");
     ok(cfgs.f1.speed === 50 && cfgs.f1.chaseSpeed === 100 && cfgs.f2a.speed === 55 && cfgs.f2a.chaseSpeed === 110, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
@@ -908,7 +962,7 @@ const PAGE_HELPERS = () => {
     const cf = await ev(page, () => { __game.start(2); const f2 = { ...__game.vets[0].cfg }; __game.start(3); return { f2, f3a: { ...__game.vets[0].cfg }, f3b: { ...__game.vets[1].cfg } }; });
     ok(cf.f3a.speed === 60.5 && cf.f3a.chaseSpeed === 121 && cf.f2.speed === 55 && cf.f2.chaseSpeed === 110, `Fase 3: veterinários a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
     ok(Math.abs(cf.f3a.speed / cf.f2.speed - 1.1) < 1e-9 && Math.abs(cf.f3a.chaseSpeed / cf.f2.chaseSpeed - 1.1) < 1e-9, "a velocidade de movimento da Fase 3 é exatamente 10% maior que a da Fase 2, nos dois modos");
-    ok(["sight", "chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 180, "o resto do comportamento é o da Fase 2, os 2 veterinários são iguais e o cachorro (180 px/s) segue mais rápido");
+    ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 180, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 veterinários são iguais e o cachorro (180 px/s) segue mais rápido");
 
     // ---- cachorrinho 10% mais lento na Fase 3 ----
     const run1s = (id, x, y) => ev(page, ([id, x, y]) => { __game.start(id); __game.freezeVets = true; __game.noCatch = true; __game.player.x = x; __game.player.y = y; const x0 = __game.player.x; __t.hold("d", 60); return [__game.dogSpeed, __game.player.x - x0]; }, [id, x, y]);

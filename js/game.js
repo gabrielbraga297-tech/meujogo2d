@@ -21,23 +21,26 @@
   const BASE_VET = {
     speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 50 px/s
     chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 100 px/s (o cachorro, a 180, ainda é bem mais rápido)
-    sight: 112,       // distância máxima para notar o cachorro (px)
-    chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
-    thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
+    // O alcance para notar o cachorro ("sight", px) vem da fase: veja `alertTiles` em LEVELS.
+    chaseChance: 1,   // chance de decidir perseguir a cada "olhada": 1 = o "!" liga na hora que o cachorro entra no alcance
+    thinkEvery: 0.1,  // intervalo entre "olhadas" (s)
     chaseTime: 3,     // duração mínima de uma perseguição (s)
     chaseMax: 6,      // duração máxima: enquanto vê o cachorro ele não desiste, até este limite (s)
     restTime: 5,      // descanso depois de perseguir (s)
     idleMin: 0.6, idleMax: 1.6, // pausa ao chegar no destino da patrulha (s)
   };
-  // "Mais esperto" = 10% mais difícil: mais rápido, enxerga mais longe, decide perseguir mais vezes, insiste mais e descansa menos.
+  // "Mais esperto" = 10% mais difícil: mais rápido, insiste mais e descansa menos (o alcance do "!" é regra da fase: alertTilesFor).
   const harder = (c, f) => ({
-    speed: Math.round(c.speed * f * 100) / 100, chaseSpeed: Math.round(c.chaseSpeed * f * 100) / 100, sight: c.sight * f, chaseChance: Math.min(1, c.chaseChance * f),
+    speed: Math.round(c.speed * f * 100) / 100, chaseSpeed: Math.round(c.chaseSpeed * f * 100) / 100, chaseChance: Math.min(1, c.chaseChance * f),
     thinkEvery: c.thinkEvery / f, chaseTime: c.chaseTime * f, chaseMax: c.chaseMax * f, restTime: c.restTime / f,
     idleMin: c.idleMin / f, idleMax: c.idleMax / f,
   });
   const PHASE2_VET = harder(BASE_VET, 1.1);
   // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 60,5 e 121 px/s. O resto fica como na Fase 2.
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
+  // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
+  // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6 (e, quando existirem, Fase 4 = 8 e Fase 5 = 10).
+  const alertTilesFor = (levelNumber) => 2 * levelNumber;
   // Blocos que se movem (Fase 3): deslizam entre dois tiles em linha reta, esperando BLOCK_DWELL s em cada ponta. Nunca esmagam ninguém:
   // se o cachorro ou um veterinário estiver no caminho, o bloco espera.
   const BLOCK_SPEED = 60, BLOCK_DWELL = 3;
@@ -113,10 +116,11 @@
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
     // dogSpeed = fração da velocidade do cachorrinho (1 = 180 px/s; a Fase 3 usa 0,9 = 162 px/s)
-    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, blocks: [] },
-    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, blocks: [] },
+    // alertTiles = a que distância (em quadrados) o veterinário liga o "!"
+    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(1), blocks: [] },
+    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 0, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9,
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3),
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e depois se recolhe ao nicho de cima
         { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e depois fecha o corredor
@@ -152,6 +156,8 @@
     if (!spawnTile || !exitTiles.length || vetSpawns.length !== def.vets.length) throw new Error(`Mapa incompleto: ${def.title}`);
     const [lifeMin, lifeMax] = def.extraLives, bones = def.bones || 0, bonusStep = def.bonusStep || 10, dogSpeed = def.dogSpeed ?? 1;
     if (!(dogSpeed >= 0.3 && dogSpeed <= 1.5)) throw new Error(`Velocidade do cachorro inválida: ${def.title}`);
+    const alertTiles = def.alertTiles;
+    if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 20) throw new Error(`Alcance do "!" inválido: ${def.title}`);
     if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(bones) || bones < 0 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) ||
         lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations + bones || !Number.isInteger(bonusStep) || bonusStep < 1) {
       throw new Error(`Itens inválidos: ${def.title}`);
@@ -173,7 +179,7 @@
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
-      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
+      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       blockDefs, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -250,7 +256,7 @@
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
-      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 2, dir: 1 };
+      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
@@ -398,7 +404,7 @@
   function respawn() {
     Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], idle: 2, cool: 3, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = INVULN;
   }
@@ -1386,10 +1392,10 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get dogSpeed() { return SPEED * lv.dogSpeed; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
+    get alertTiles() { return lv.alertTiles; }, get dogSpeed() { return SPEED * lv.dogSpeed; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, blocks: l.blocks.map((b) => ({ ...b })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };

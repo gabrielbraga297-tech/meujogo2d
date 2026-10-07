@@ -42,9 +42,17 @@ A Fase 2 é liberada ao terminar a Fase 1, e a Fase 3 ao terminar a Fase 2. Em *
 | Fase 2 (+10% nos dois) | **55** px/s | **110** px/s |
 | Fase 3 (mais +10% sobre a Fase 2) | **60,5** px/s | **121** px/s |
 
-**Os veterinários da Fase 2 são 10% mais difíceis:** velocidade (patrulha e perseguição), distância de visão, chance de decidir perseguir, duração mínima e máxima da perseguição ×1,1; e o tempo entre "olhadas", o descanso depois de perseguir e as pausas ÷1,1.
+**Alcance do "!":** o veterinário liga o "!" **na hora** (ele olha 10 vezes por segundo, sem sorteio) em que o cachorrinho está dentro do alcance e **à vista** (sem parede ou bloco fechado no meio). O alcance é medido em linha reta, do centro de um ao centro do outro, e cresce 2 quadrados a cada fase:
 
-**Na Fase 3** só a **velocidade** de movimento ganha mais 10% (60,5 e 121 px/s); visão, chance de perseguir, duração das perseguições e descanso são os da Fase 2.
+| Fase 1 | Fase 2 | Fase 3 | Fase 4 (futura) | Fase 5 (futura) |
+|---|---|---|---|---|
+| **2** quadrados | **4** quadrados | **6** quadrados | 8 quadrados | 10 quadrados |
+
+Depois que o "!" liga, ele fica ligado enquanto o veterinário vê o cachorrinho (de 3 s até um limite de 6 s na Fase 1); depois ele descansa uns segundos antes de poder ligar de novo. A regra é `alertTiles` de cada fase em `js/game.js` (`2 × número da fase`).
+
+**Os veterinários da Fase 2 são 10% mais difíceis:** velocidade (patrulha e perseguição) e duração mínima e máxima da perseguição ×1,1; e o tempo entre "olhadas", o descanso depois de perseguir e as pausas ÷1,1.
+
+**Na Fase 3** a **velocidade** de movimento ganha mais 10% (60,5 e 121 px/s); a duração das perseguições e o descanso são os da Fase 2.
 
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5**; as vidas são **cumulativas**:

@@ -9,6 +9,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 - **Cachorrinho 10% mais lento na Fase 3** (162 px/s; nas Fases 1 e 2 segue 180 px/s).
 - **Veterinários:** 50 px/s patrulhando e 100 px/s perseguindo na Fase 1; Fase 2 com +10% (55 e 110); Fase 3 com mais +10% (60,5 e 121).
 - **Correções da auditoria:** a ração que muda de lugar não cai mais sobre uma já pega (o "Continuar jogo" sumia); o relógio nunca anda para trás; voltar das Pontuações na vitória mantém a Próxima fase; duas abas não se apagam; "Apagar e começar de novo" só descarta o jogo salvo quando o novo começa; avisos de salvar honestos; Esc segurado, nome da conta e cadastro lento; saída com contraste; telas e placar legíveis em celular deitado e pequeno; setas e Espaço rolam as telas longas.
+- **Alcance do "!":** o veterinário agora liga o "!" na hora em que o cachorrinho está à vista dentro de **2 quadrados (Fase 1), 4 (Fase 2) e 6 (Fase 3)** — sem sorteio; a regra é 2 × o número da fase (Fase 4 = 8 e Fase 5 = 10, quando existirem).
 - Jogos salvos da 0.4.0 continuam valendo.
 - **Entrega contínua:** a 0.5.0 vai ao ar por partes, à medida que cada item fica pronto e testado; enquanto não estiver 100% entregue o menu mostra "(em preparação)".
 
