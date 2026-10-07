@@ -151,6 +151,40 @@
     "#...............#.........#.....#....EEE#",
     "#########################################",
   ];
+  // Fase 5: outro labirinto de 41 × 29 tiles com 3 salas de "paredes que se movem" (uma parede de 3 tiles desliza a cada 10 s, abrindo a passagem em outro lugar
+  // da sala) e 3 portas de bloco que esmagam. O teste confere que, com as 6 peças em qualquer posição (64 combinações), todo o chão fora dos trilhos continua ligado.
+  const MAP_5 = [
+    "#########################################",
+    "#P......#.....#...#...#.................#",
+    "#...###.#.#####.#.#.#.#.#####.#########.#",
+    "#...#...#.....#.#...#.#.....#.#.....#...#",
+    "#.###.###.#.#.#..####.#.###.#.#.###.#.###",
+    "#.#...#...#.....#...#...#...#.#.#...#...#",
+    "#.#.###.###.#######.#.###.###.#.#.#####.#",
+    "#.#.#.............#.#.....#...........#.#",
+    "#.#.#.#.......#.#.#.#####.#.###.......#.#",
+    "#.#.#...........#.....#...#...........#.#",
+    "#.#.###.......#.###.#.#.#.#####.......#.#",
+    "#.#...#.......#...#.#...#.............#.#",
+    "#.###.#####.#.#.#X.....X#.###########.#.#",
+    "#...#.....#...#.#...V.............#...#.#",
+    "#.#.#####.#####.#..V.V..###.#####.#.###.#",
+    "#.#.#.....#...#.........#...#...#...#...#",
+    "#.#.#.#####.#.#.#X.....X#.###.#.#.###.#.#",
+    "#.#.........#.#.#.......#...#.#...#...#.#",
+    "#.#.......###.###.#######.#.#.#.##..###.#",
+    "#.#.......#.....#.#...#...#.#.....#...#.#",
+    "#.#.......#####.#.#.#.###.#.#####.###.#.#",
+    "#.#...........#.#...#...#.#...#...#...#.#",
+    "#.###########.#.#######.#####.#####.###.#",
+    "#.........#...#.........#.....#.....#...#",
+    "#########.#.#..##########.#.###.#.#.....#",
+    "#.........#...#...........#.#...#.......#",
+    "#.###########.#.###.#########.###.#..EEE#",
+    "#.............#...#...............#..EEE#",
+    "#########################################",
+  ];
+
   const LEVELS = [
     // rations = quantas rações há na fase; bones = quantos ossos (50 pontos cada; é preciso pegar todos para sair);
     // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
@@ -179,6 +213,19 @@
         { from: [36, 16], to: [36, 17], phase: 2 }, // porta 3: começa aberta (nicho de cima) e depois fecha
       ],
     },
+    {
+      id: 5, title: "Fase 5", map: MAP_5, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 10, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
+      alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY,
+      note: "paredes que se movem, poder do osso de 35 s e 1000 pontos",
+      blocks: [
+        { from: [34, 7], to: [34, 9], size: [1, 3], wall: true, every: 10, phase: 0 }, // parede 1: desliza a cada 10 s
+        { from: [10, 7], to: [10, 9], size: [1, 3], wall: true, every: 10, phase: 3 }, // parede 2: desliza a cada 10 s
+        { from: [6, 17], to: [6, 19], size: [1, 3], wall: true, every: 10, phase: 6 }, // parede 3: desliza a cada 10 s
+        { from: [34, 18], to: [35, 18], phase: 0 },                        // porta 1 (bloco de 3 s)
+        { from: [14, 24], to: [13, 24], phase: 1 },                        // porta 2 (bloco de 3 s)
+        { from: [16, 4], to: [15, 4], phase: 2 },                        // porta 3 (bloco de 3 s)
+      ],
+    },
   ];
   const LEVEL_IDS = LEVELS.map((l) => l.id);
 
@@ -194,9 +241,9 @@
   }
   // Mantém o relógio pequeno: a partir de `every` o movimento se repete a cada `period` s.
   const normBt = (d, bt) => (bt < 3 * d.every ? bt : d.every + ((bt - d.every) % d.period));
-  // Quanto falta (0 a 1) para a próxima mudança de lado, só nos últimos BLOCK_WARN s: 1 = vai começar agora. 0 = sem aviso.
-  const blockWarn = (d, bt) => { const left = d.every - (bt % d.every); return left <= BLOCK_WARN ? 1 - left / BLOCK_WARN : 0; };
-  const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: TILE, h: TILE, kind: "M" }; };
+  // Quanto falta (0 a 1) para a próxima mudança de lado, só nos últimos `warn` s (0,6 s; 2 s nas paredes de 10 s): 1 = vai começar agora. 0 = sem aviso.
+  const blockWarn = (d, bt) => { const left = d.every - (bt % d.every); return left <= d.warn ? 1 - left / d.warn : 0; };
+  const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: d.w, h: d.h, kind: d.kind }; };
 
   // Converte um mapa em dados prontos para jogar (e para conferir jogos salvos), sem mexer no estado atual.
   function buildLevel(def) {
@@ -226,20 +273,22 @@
         lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations + bones || !Number.isInteger(bonusStep) || bonusStep < 1) {
       throw new Error(`Itens inválidos: ${def.title}`);
     }
-    // blocos que se movem: dois tiles livres na mesma linha ou coluna; todo o trilho entre eles é chão livre e sem início/saída
+    // blocos (e paredes) que se movem: um retângulo de `size` = [largura, altura] tiles (padrão 1 × 1) que desliza em linha reta de `from` a `to`
+    // (canto de cima à esquerda, em tiles); todo o trilho (tudo o que ele cobre no caminho) é chão livre. `wall: true` desenha como parede.
+    // `every` (padrão: `blockEvery` da fase) = segundos entre uma mudança de lado e a próxima; `speed` = px/s ao deslizar.
     const blockDefs = (def.blocks || []).map((b) => {
-      const [ac, ar] = b.from, [bc, br] = b.to;
-      if (![ac, ar, bc, br].every(Number.isInteger) || (ac !== bc && ar !== br) || (ac === bc && ar === br) || !(b.phase >= 0)) throw new Error(`Bloco inválido: ${def.title}`);
+      const [ac, ar] = b.from, [bc, br] = b.to, [bw, bh] = b.size || [1, 1];
+      if (![ac, ar, bc, br, bw, bh].every(Number.isInteger) || bw < 1 || bh < 1 || bw > 4 || bh > 4 || (ac !== bc && ar !== br) || (ac === bc && ar === br) || !(b.phase >= 0)) throw new Error(`Bloco inválido: ${def.title}`);
       const track = [];
-      for (let c = Math.min(ac, bc); c <= Math.max(ac, bc); c++) for (let r = Math.min(ar, br); r <= Math.max(ar, br); r++) {
+      for (let c = Math.min(ac, bc); c <= Math.max(ac, bc) + bw - 1; c++) for (let r = Math.min(ar, br); r <= Math.max(ar, br) + bh - 1; r++) {
         if (c < 0 || r < 0 || c >= cols || r >= rows || map[r][c] !== ".") throw new Error(`Trilho de bloco inválido: ${def.title}`);
         track.push([c, r]);
       }
-      const slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / BLOCK_SPEED, every = def.blockEvery ?? BLOCK_EVERY;
-      if (!(every >= slide + 0.5 && every <= 60)) throw new Error(`Intervalo dos blocos inválido: ${def.title}`);
-      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, slide, every, period: 2 * every, phase: b.phase, track };
+      const speed = b.speed ?? BLOCK_SPEED, slide = (Math.abs(ac - bc) + Math.abs(ar - br)) * TILE / speed, every = b.every ?? def.blockEvery ?? BLOCK_EVERY;
+      if (!(speed >= 30 && speed <= 600) || !(every >= slide + 0.5 && every <= 60)) throw new Error(`Intervalo dos blocos inválido: ${def.title}`);
+      return { ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, w: bw * TILE, h: bh * TILE, kind: b.wall ? "W" : "M", slide, every, warn: Math.max(BLOCK_WARN, Math.min(2, every * 0.2)), period: 2 * every, phase: b.phase, track };
     });
-    if (blockDefs.length > 3) throw new Error(`Blocos demais: ${def.title}`);
+    if (blockDefs.length > 8) throw new Error(`Blocos demais: ${def.title}`);
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
@@ -1205,7 +1254,7 @@
   function drawBlocks() { // trilhos (o caminho que cada bloco percorre) e os blocos que se movem
     ctx.lineCap = "round";
     for (const b of blocks) {
-      const x1 = b.d.ax + TILE / 2, y1 = b.d.ay + TILE / 2, x2 = b.d.bx + TILE / 2, y2 = b.d.by + TILE / 2;
+      const x1 = b.d.ax + b.d.w / 2, y1 = b.d.ay + b.d.h / 2, x2 = b.d.bx + b.d.w / 2, y2 = b.d.by + b.d.h / 2;
       ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       const warn = calm ? 0 : blockWarn(b.d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado
       ctx.strokeStyle = warn ? `rgba(242,194,48,${(0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
@@ -1213,6 +1262,18 @@
     }
   }
 
+  // Parede que se move (Fase 5): pedra como as paredes, com faixas amarelas nas pontas para avisar que ela anda.
+  function drawMovingWall(s) {
+    ctx.fillStyle = "#4a5470"; ctx.fillRect(s.x, s.y, s.w, s.h);
+    ctx.fillStyle = "#5d6a8c"; ctx.fillRect(s.x, s.y, s.w, 4);
+    ctx.fillStyle = "#f2c230";
+    const vertical = s.h >= s.w, n = Math.round((vertical ? s.h : s.w) / TILE);
+    for (let i = 0; i < n; i++) {
+      const x = s.x + (vertical ? 0 : i * TILE), y = s.y + (vertical ? i * TILE : 0);
+      ctx.fillRect(x + 3, y + 3, 5, 5); ctx.fillRect(x + TILE - 8, y + TILE - 8, 5, 5);
+    }
+    ctx.strokeStyle = "#2c3347"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
+  }
   function drawMovingBlock(s) {
     ctx.fillStyle = "#6b7794"; ctx.fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
     ctx.fillStyle = "#aeb8d0"; ctx.fillRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
@@ -1321,6 +1382,7 @@
     drawBlocks();
     for (const s of solids) {
       if (s.kind === "M") drawMovingBlock(s);
+      else if (s.kind === "W") drawMovingWall(s);
       else if (s.kind === "#") {
         ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
         ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);

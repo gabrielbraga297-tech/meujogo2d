@@ -1,6 +1,6 @@
 # Jogo 2D top-down (sem nome ainda)
 
-Versão atual: **Fase 1, Fase 2, Fase 3 e Fase 4**.
+Versão atual: **Fase 1 a Fase 5**.
 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
@@ -17,32 +17,36 @@ Você é um cachorrinho. Pegue **todas** as tigelas de ração (e, a partir da F
 Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho ainda é mais veloz).
 
 ## Fases
-| | Fase 1 | Fase 2 | Fase 3 | Fase 4 |
-|---|---|---|---|---|
-| Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) | **armazém** com corredores, nichos e portas de bloco | **labirinto grande** (41 × 29 tiles; a câmera segue o cachorrinho) |
-| Rações | 5 | **7** | **7** | **10** |
-| Ossos (50 pontos cada) | — | — | **2** (é preciso pegar todos para sair) | **2**, e agora dão **poder** |
-| Vida extra escondida | 1 ração | **1 ou 2** rações (sorteado a cada jogo) | **1**, numa ração **ou** num osso | **3** (no máximo 1 num osso) |
-| Veterinários | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa | **3**, no **centro** do mapa |
-| Dificuldade dos veterinários | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 |
-| Cachorrinho | 180 px/s | 180 px/s | 162 px/s (−10%) | **170,1 px/s** (+5% sobre a Fase 3) |
-| Blocos que se movem | — | — | **2** (portas que abrem e fecham) | **3**, e agora **esmagam** |
-| Pontos | 100 por ração; −50 por vida | idem | idem (+50 por osso) | idem, **−200 por vida** e é preciso **fazer 800 pontos na fase** para passar |
-| Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** | 0 a 200 (20 a cada 10 s) |
+| | Fase 1 | Fase 2 | Fase 3 | Fase 4 | Fase 5 |
+|---|---|---|---|---|---|
+| Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) | **armazém** com corredores, nichos e portas de bloco | **labirinto grande** (41 × 29 tiles; a câmera segue o cachorrinho) | **outro labirinto grande**, com salas de paredes que se movem |
+| Rações | 5 | **7** | **7** | **10** | **10** |
+| Ossos (50 pontos cada) | — | — | **2** (é preciso pegar todos para sair) | **2**, e agora dão **poder** (30 s) | **2**, poder de **35 s** |
+| Vida extra escondida | 1 ração | **1 ou 2** rações (sorteado a cada jogo) | **1**, numa ração **ou** num osso | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
+| Veterinários | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa | **3**, no **centro** do mapa | **3**, no **centro** do mapa |
+| Dificuldade dos veterinários | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 | igual à Fase 4 |
+| Cachorrinho | 180 px/s | 180 px/s | 162 px/s (−10%) | **170,1 px/s** (+5% sobre a Fase 3) | 170,1 px/s |
+| Blocos que se movem | — | — | **2** (portas que abrem e fecham) | **3**, e agora **esmagam** | **3 portas** que esmagam **+ 3 paredes** que se movem a cada 10 s |
+| Pontos | 100 por ração; −50 por vida | idem | idem (+50 por osso) | idem, **−200 por vida** e é preciso **fazer 800 pontos na fase** para passar | −200 por vida e **1000 pontos na fase** para passar |
+| Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** | 0 a 200 (20 a cada 10 s) | 0 a 200 (20 a cada 10 s) |
 
 Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**.
 
 **Fase 3, os blocos:** dois blocos deslizam por trilhos curtos e abrem e fecham as portas dos dois corredores de cima. Eles **mudam de lado a cada 3 segundos** (`blockEvery` da fase, em `js/game.js`), sem esperar ninguém chegar perto, e deslizam a 120 px/s (cerca de 0,27 s por mudança). Nos 0,6 s antes de cada mudança o **trilho pisca em amarelo**. Eles **nunca esmagam**: se o cachorrinho ou um veterinário estiver no lugar para onde o bloco vai, ele é **empurrado para o lado** livre mais perto (só se não houvesse mesmo onde pô-lo o bloco ficaria parado). Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos). Um bloco fechado tapa a visão dos veterinários e eles esperam diante dele.
 
-**Fase 4, o poder do osso:** pegar um osso liga o **poder** por **30 segundos** (o placar mostra *PODER* contando): os veterinários viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho, e quem **encosta num carteiro ganha dele**: o carteiro sai de cena até o poder acabar e volta ao seu posto como veterinário. Pegar o outro osso com o poder ligado **recomeça** os 30 s (não soma). Quando o poder acaba, o cachorrinho ganha **1 s de proteção** (um veterinário que volte em cima dele não o pega na hora). Com o poder o cachorrinho também **não é esmagado** pelos blocos. Na Fase 3 os ossos só valem 50 pontos (sem poder). O tempo do poder é `bonePower` da fase.
+**Fases 4 e 5, o poder do osso:** pegar um osso liga o **poder** por **30 segundos** (**35 s na Fase 5**) (o placar mostra *PODER* contando): os veterinários viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho, e quem **encosta num carteiro ganha dele**: o carteiro sai de cena até o poder acabar e volta ao seu posto como veterinário. Pegar o outro osso com o poder ligado **recomeça** os 30 s (não soma). Quando o poder acaba, o cachorrinho ganha **1 s de proteção** (um veterinário que volte em cima dele não o pega na hora). Com o poder o cachorrinho também **não é esmagado** pelos blocos. Na Fase 3 os ossos só valem 50 pontos (sem poder). O tempo do poder é `bonePower` da fase.
 
-**Fase 4, os blocos que esmagam:** os 3 blocos mudam de lado a cada 3 s como na Fase 3, mas agora, se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e 200 pontos. O trilho pisca antes de cada mudança. Os veterinários continuam sendo empurrados, não esmagados. É `crush: true` da fase.
+**Fases 4 e 5, os blocos que esmagam:** os 3 blocos mudam de lado a cada 3 s como na Fase 3, mas agora, se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e 200 pontos. O trilho pisca antes de cada mudança. Os veterinários continuam sendo empurrados, não esmagados. É `crush: true` da fase.
 
-**Fase 4, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e, para passar da fase, é preciso chegar à saída com **pelo menos 800 pontos nessa fase** (`minPoints`; vale a pontuação da fase, não o total). O placar mostra *PONTOS 450 / 800*. Se você pega tudo mas chega à saída com menos de 800, a fase **não é concluída** (nada é guardado) e aparece *Faltaram pontos para passar!*, com o botão *Tentar novamente* (do zero, −100 pontos, até 3 vezes).
+**Fases 4 e 5, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e, para passar da fase, é preciso chegar à saída com **pelo menos 800 pontos nessa fase** (**1000 na Fase 5**) (`minPoints`; vale a pontuação da fase, não o total). O placar mostra *PONTOS 450 / 800*. Se você pega tudo mas chega à saída com menos de 800, a fase **não é concluída** (nada é guardado) e aparece *Faltaram pontos para passar!*, com o botão *Tentar novamente* (do zero, −100 pontos, até 3 vezes).
 
 **Fase 4, o mapa:** um labirinto de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho), com corredores de 1 tile, algumas salas e o salão central dos 3 veterinários. As 3 portas de bloco ficam em passagens que têm caminho alternativo: o teste confere que, com os blocos em qualquer posição (8 combinações), todo o chão continua ligado.
 
-**Velocidade do cachorrinho:** 180 px/s nas Fases 1 e 2, **162 px/s na Fase 3** (10% mais lento) e **170,1 px/s na Fase 4** (5% mais rápido que na Fase 3).
+**Fase 5, as paredes que se movem:** além das 3 portas de bloco (que mudam de lado a cada 3 s), há **3 salas com uma parede de 3 tiles que desliza a cada 10 segundos**: a parede vai de uma parede fixa à outra da sala e a abertura de 2 tiles que sobra **muda de lugar**, formando um caminho novo. O trilho pisca em amarelo nos **2 s** antes de cada mudança. As paredes que se movem **esmagam** como os blocos (sem o poder do osso, quem estiver no lugar para onde a parede vai perde uma vida), e os veterinários são empurrados. Cada parede começa o ciclo num ponto diferente (aos 10 s, 7 s e 4 s), então elas não mudam todas juntas. O mapa foi feito para que, com as 6 peças em qualquer posição, todo o chão continue ligado.
+
+**Fase 5, regras:** mesmas velocidades da Fase 4, 10 rações e 2 ossos, **4 vidas escondidas** (1 a mais que na Fase 4), poder do osso de **35 s**, o "!" liga a **10 quadrados**, −200 por vida perdida e **1000 pontos na fase** para passar (com 1 vida perdida só dá para passar terminando em até ~70 s; com 2 vidas perdidas nem o bônus máximo basta).
+
+**Velocidade do cachorrinho:** 180 px/s nas Fases 1 e 2, **162 px/s na Fase 3** (10% mais lento) e **170,1 px/s nas Fases 4 e 5** (5% mais rápido que na Fase 3).
 
 **Velocidade dos veterinários:**
 
@@ -52,12 +56,13 @@ Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a 
 | Fase 2 (+10% nos dois) | **55** px/s | **110** px/s |
 | Fase 3 (mais +10% sobre a Fase 2) | **60,5** px/s | **121** px/s |
 | Fase 4 (mais +10% sobre a Fase 3) | **66,55** px/s | **133,1** px/s |
+| Fase 5 (igual à Fase 4) | **66,55** px/s | **133,1** px/s |
 
 **Alcance do "!":** o veterinário liga o "!" **na hora** (ele olha 10 vezes por segundo, sem sorteio) em que o cachorrinho está dentro do alcance e **à vista** (sem parede ou bloco fechado no meio). O alcance é medido em linha reta, do centro de um ao centro do outro, e cresce 2 quadrados a cada fase:
 
-| Fase 1 | Fase 2 | Fase 3 | Fase 4 | Fase 5 (futura) |
+| Fase 1 | Fase 2 | Fase 3 | Fase 4 | Fase 5 |
 |---|---|---|---|---|
-| **2** quadrados | **4** quadrados | **6** quadrados | **8** quadrados | 10 quadrados |
+| **2** quadrados | **4** quadrados | **6** quadrados | **8** quadrados | **10** quadrados |
 
 Depois que o "!" liga, ele fica ligado enquanto o veterinário vê o cachorrinho (de 3 s até um limite de 6 s na Fase 1); depois ele descansa uns segundos antes de poder ligar de novo. A regra é `alertTiles` de cada fase em `js/game.js` (`2 × número da fase`).
 
@@ -74,7 +79,7 @@ Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos p
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + 50 por osso + bônus de tempo − pontos por vida perdida (50; 200 na Fase 4) − 100 por nova tentativa**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 50 por osso + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5) − 100 por nova tentativa**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 

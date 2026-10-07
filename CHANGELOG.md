@@ -6,9 +6,10 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 
 ## 0.6.0 — 07/10/2026 (em preparação)
 - **Fase 4:** labirinto grande (41 × 29, a câmera segue o cachorrinho), **10 rações + 2 ossos**, **3 veterinários** (+10% de velocidade sobre a Fase 3: 66,55 e 133,1 px/s, com o "!" a 8 quadrados), cachorrinho **5% mais rápido** que na Fase 3 (170,1 px/s) e **3 vidas escondidas**.
-- **Poder do osso (Fase 4):** o osso vira os veterinários em **carteiros** por 30 s; quem encosta num carteiro ganha dele; depois eles voltam ao normal.
-- **Blocos que esmagam (Fase 4):** 3 blocos; sem o poder do osso, o bloco que alcança o cachorrinho tira 1 vida.
-- **Pontos da Fase 4:** −200 por vida perdida e **mínimo de 800 pontos na fase** para passar (o placar mostra *PONTOS n / 800*).
+- **Fase 5:** outro labirinto grande, as mesmas velocidades da Fase 4, 10 rações + 2 ossos, **4 vidas escondidas**, "!" a 10 quadrados, **poder do osso de 35 s**, **1000 pontos** para passar e, além das 3 portas de bloco, **3 paredes que se movem a cada 10 s** (a abertura da sala muda de lugar; o trilho pisca 2 s antes; elas também esmagam).
+- **Poder do osso (Fases 4 e 5):** o osso vira os veterinários em **carteiros** por 30 s (35 s na Fase 5); quem encosta num carteiro ganha dele; depois eles voltam ao normal.
+- **Blocos que esmagam (Fases 4 e 5):** sem o poder do osso, o bloco (ou a parede) que alcança o cachorrinho tira 1 vida.
+- **Pontos das Fases 4 e 5:** −200 por vida perdida e **mínimo de pontos na fase** para passar (800 na Fase 4, 1000 na Fase 5; o placar mostra *PONTOS n / 800*).
 
 ## 0.5.0 — 07/10/2026 (em preparação)
 - **Fase 3:** 7 rações + **2 ossos** (50 pontos cada; é preciso pegar todos para sair), 2 veterinários, **2 blocos que deslizam** abrindo e fechando portas nos corredores (nunca esmagam, sempre sobra caminho) e **bônus de tempo de 20 pontos a cada 10 s** (de 0 a 200). Uma só vida escondida, numa ração **ou** num osso.

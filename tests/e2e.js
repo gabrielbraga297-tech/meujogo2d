@@ -46,7 +46,7 @@ function grid(MAP) {
   }
   return { MAP, free, find, bfs, distances };
 }
-const G1 = grid(mapOf(1)), G2 = grid(mapOf(2)), G3 = grid(mapOf(3)), G4 = grid(mapOf(4));
+const G1 = grid(mapOf(1)), G2 = grid(mapOf(2)), G3 = grid(mapOf(3)), G4 = grid(mapOf(4)), G5 = grid(mapOf(5));
 const { MAP, free, find, bfs, distances } = G1; // as seções antigas usam a Fase 1
 
 let failed = 0;
@@ -160,7 +160,7 @@ const PAGE_HELPERS = () => {
     const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
     ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
     const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
-    ok(gl.length === 4 && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3, "o jogo carrega as quatro fases com os mapas e veterinários esperados");
+    ok(gl.length === 5 && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as cinco fases com os mapas e veterinários esperados");
   });
 
   // =====================================================================
@@ -1509,7 +1509,7 @@ const PAGE_HELPERS = () => {
     await page.click("#levels-list button:nth-child(4)");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 4, "escolher a Fase 4 começa a Fase 4");
     await playLevel(page, 4, { done: [1, 2, 3] }); await finishNow(page, 10);
-    ok(await page.isHidden("#btn-next") && await ev(page, () => document.activeElement.id) === "btn-again", "depois da Fase 4 (por enquanto a última) não há Próxima fase");
+    ok(await page.isVisible("#btn-next") && /Fase 5/.test(await page.textContent("#btn-next")), "depois da Fase 4 vem a Fase 5: o botão Próxima fase aparece");
 
     // ---- jogo salvo com poder e carteiros derrotados ----
     await playLevel(page, 4, { done: [1, 2, 3], keepSave: true });
@@ -1565,6 +1565,153 @@ const PAGE_HELPERS = () => {
       ok(h.label >= 10.5 && h.scroll <= 2 && h.hscroll <= 0 && /\d+ s/.test(h.power), `Fase 4 em ${vp.width}x${vp.height}: placar com PODER (${h.power}) e PONTOS (${h.pts}) legível (${h.label.toFixed(1)} px) e a página não rola`);
       await t.context().close();
     }
+  });
+
+  // =====================================================================
+  await section("Fase 5: paredes que se movem, poder de 35 s, 1000 pontos", async () => {
+    const L = await (async () => { await fresh(page); return ev(page, () => __game.levels[4]); })();
+    const v5 = G5.find("V"), p5 = G5.find("P")[0], e5 = G5.find("E");
+    const NOLIFE = () => ev(page, () => __game.items.forEach((i) => { i.life = false; }));
+    // ---- mapa ----
+    ok(G5.MAP.length === 29 && G5.MAP.every((row) => row.length === 41) && [...G5.MAP[0], ...G5.MAP[28], ...G5.MAP.map((r) => r[0]), ...G5.MAP.map((r) => r[40])].every((ch) => ch === "#"), "Fase 5: mapa de 41 × 29 tiles, cercado por paredes");
+    ok(G5.MAP.join("\n") !== G4.MAP.join("\n"), "o mapa da Fase 5 é outro");
+    ok(v5.length === 3 && v5.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2) && e5.length === 6 && G5.find("P").length === 1, `Fase 5: 3 veterinários no centro (${v5.join(" e ")}), saída 3 × 2 e um só início`);
+    const d5 = G5.distances(p5);
+    ok([...e5, ...v5].every((t) => d5.has(t + "")) && d5.get(e5[0] + "") >= 60, `Fase 5: saída e veterinários alcançáveis (caminho de ${d5.get(e5[0] + "")} passos)`);
+    const walls = L.blocks.filter((b) => b.wall), doors = L.blocks.filter((b) => !b.wall);
+    ok(L.blocks.length === 6 && walls.length === 3 && doors.length === 3, "Fase 5: 3 paredes que se movem e 3 portas de bloco");
+    ok(walls.every((w) => w.size && w.size.join() === (w.from[0] === w.to[0] ? "1,3" : "3,1") && w.every === 10), "cada parede tem 3 tiles de comprimento e muda de lugar a cada 10 s");
+    // cada parede vai de lado a lado da sala: as pontas do trilho (5 tiles) encostam em paredes fixas
+    const stripEnds = walls.map((w) => w.from[0] === w.to[0] ? [[w.from[0], w.from[1] - 1], [w.from[0], w.from[1] + 5]] : [[w.from[0] - 1, w.from[1]], [w.from[0] + 5, w.from[1]]]);
+    ok(stripEnds.every((ends) => ends.every(([c, r]) => !G5.free(c, r))), "as paredes que se movem vão de uma parede fixa à outra da sala (sempre sobra uma abertura de 2 tiles, que muda de lugar)");
+    const rectsOf = (b, which) => { const [c, r] = b[which], [w, h] = b.size || [1, 1], out = []; for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) out.push([c + i, r + j]); return out; };
+    const track = new Set(L.blocks.flatMap((b) => [...rectsOf(b, "from"), ...rectsOf(b, "to")]).map((x) => x + ""));
+    let conn = 0, connOk = 0;
+    for (let mask = 0; mask < 1 << L.blocks.length; mask++) {
+      const blocked = new Set(L.blocks.flatMap((b, i) => rectsOf(b, (mask >> i) & 1 ? "to" : "from")).map((x) => x + ""));
+      const floor = []; for (let r = 0; r < 29; r++) for (let c = 0; c < 41; c++) if (G5.free(c, r) && !track.has(c + "," + r)) floor.push([c, r]);
+      const seen = new Set([floor[0] + ""]), q = [floor[0]];
+      for (const [c, r] of q) for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = [c + dc, r + dr]; if (n[0] < 0 || n[1] < 0 || n[0] > 40 || n[1] > 28 || !G5.free(...n) || blocked.has(n + "") || seen.has(n + "")) continue; seen.add(n + ""); q.push(n); }
+      conn++; if (floor.every((t) => seen.has(t + ""))) connOk++;
+    }
+    ok(conn === 64 && connOk === 64, `Fase 5: com as 6 peças em qualquer posição (${conn} combinações) todo o chão fora dos trilhos continua alcançável (${connOk})`);
+
+    // ---- dados da fase ----
+    ok(L.rations === 10 && L.bones === 2 && L.extraLives.join() === "4,4" && L.alertTiles === 10 && L.lifePenalty === 200 && L.minPoints === 1000 && L.bonePower === 35 && L.crush === true && L.bonusStep === 20, "Fase 5: 10 rações + 2 ossos, 4 vidas escondidas (3 + 1), ! a 10 quadrados, −200 por vida, 1000 pontos para passar, poder de 35 s e blocos que esmagam");
+    const cf = await ev(page, () => { __game.start(4); const a = { ...__game.vets[0].cfg }, da = __game.dogSpeed; __game.start(5); return { a, da, b: [0, 1, 2].map((i) => ({ ...__game.vets[i].cfg })), db: __game.dogSpeed, n: __game.vets.length }; });
+    ok(cf.n === 3 && cf.b.every((c) => c.speed === 66.55 && c.chaseSpeed === 133.1 && c.sight === 320 && c.chaseChance === 1) && cf.db === cf.da && cf.a.speed === cf.b[0].speed, "Fase 5: mantém as velocidades da Fase 4 (66,55 / 133,1 px/s e 170,1 do cachorro); o ! liga a 10 quadrados");
+    await playLevel(page, 5, { done: [1, 2, 3, 4] });
+    ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.blocks.length].join()) === "5,12,2,3,6" && await hudIs(page, "#hud-points", "0 / 1000") && await hudIs(page, "#hud-items", "0/10") && await hudIs(page, "#hud-bones", "0/2"), "a Fase 5 começa com 10 rações + 2 ossos, 3 veterinários, 6 peças móveis e placar PONTOS 0 / 1000");
+    const lay = await ev(page, () => { const out = []; for (let i = 0; i < 150; i++) { __game.start(5); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; });
+    let bad = "";
+    for (const items of lay) {
+      if (items.length !== 12 || new Set(items.map((i) => i[0] + "," + i[1])).size !== 12) bad = "quantidade/repetidos";
+      if (items.filter((i) => i[2]).length !== 2) bad = "ossos";
+      if (items.filter((i) => i[3]).length !== 4) bad = "vidas escondidas (devem ser exatamente 4)";
+      if (items.filter((i) => i[3] && i[2]).length > 1) bad = "vida nos dois ossos";
+      for (const [c, r] of items) {
+        if (!G5.free(c, r)) bad = "em parede/caixa";
+        if (e5.some((t) => t[0] === c && t[1] === r)) bad = "na saída";
+        if (track.has(c + "," + r)) bad = "no trilho de uma peça móvel";
+        if (!d5.has([c, r] + "")) bad = "inalcançável"; else if (d5.get([c, r] + "") < 4) bad = "perto do início";
+        if (v5.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário";
+      }
+    }
+    ok(!bad, `150 sorteios: 10 rações + 2 ossos, exatamente 4 vidas escondidas (no máximo 1 num osso), em chão livre e alcançável, fora dos trilhos ${bad && "(" + bad + ")"}`);
+
+    // ---- as paredes mudam de lugar a cada 10 s e as portas a cada 3 s ----
+    const ts = await ev(page, () => {
+      __game.start(5); __game.freezeVets = true; __game.noCatch = true;
+      const snap = () => __game.blocks.map((b) => [Math.round(b.x), Math.round(b.y)]);
+      const out = []; let now = 0; for (const target of [0, 3.9, 4.8, 6.9, 7.8, 9.9, 10.8, 13.9, 14.8, 20.8]) { while (now < target - 1e-9) { const dt = Math.min(0.01, target - now); __game.tick(dt); now += dt; } out.push(snap()); }
+      return { out, defs: __game.blocks.map((b) => [b.def.every, b.def.warn, +b.def.slide.toFixed(3), b.def.phase]), from: __game.blocks.map((b) => [b.def.ax, b.def.ay]) };
+    });
+    ok(ts.defs.slice(0, 3).every((d) => d[0] === 10 && d[1] === 2 && Math.abs(d[2] - 2 * 32 / 120) < 0.002) && ts.defs.slice(3).every((d) => d[0] === 3 && Math.abs(d[1] - 0.6) < 1e-9), "paredes: ciclo de 10 s, aviso de 2 s, 0,53 s para deslizar 2 tiles; portas: ciclo de 3 s e aviso de 0,6 s");
+    const tl = ts.out.map((s) => JSON.stringify(s.map(([x, y]) => [x / 32, y / 32])));
+    const exp = {
+      0: [[34, 7], [10, 7], [6, 17], [34, 18], [14, 24], [16, 4]],       // tudo no ponto de partida
+      1: [[34, 7], [10, 7], [6, 17], [35, 18], [13, 24], [15, 4]],       // 3,9 s: as 3 portas já mudaram (aos 1, 2 e 3 s)
+      2: [[34, 7], [10, 7], [6, 19], [35, 18], [13, 24], [16, 4]],       // 4,8 s: a parede 3 (aos 4 s) e a porta 3 (de novo, aos 4 s)
+      3: [[34, 7], [10, 7], [6, 19], [34, 18], [14, 24], [16, 4]],       // 6,9 s
+      4: [[34, 7], [10, 9], [6, 19], [34, 18], [14, 24], [15, 4]],       // 7,8 s: a parede 2 (aos 7 s)
+      5: [[34, 7], [10, 9], [6, 19], [35, 18], [13, 24], [15, 4]],       // 9,9 s
+      6: [[34, 9], [10, 9], [6, 19], [35, 18], [13, 24], [16, 4]],       // 10,8 s: a parede 1 (aos 10 s)
+      7: [[34, 9], [10, 9], [6, 19], [34, 18], [14, 24], [15, 4]],       // 13,9 s
+      8: [[34, 9], [10, 9], [6, 17], [34, 18], [13, 24], [15, 4]],       // 14,8 s: a parede 3 volta (aos 14 s)
+      9: [[34, 7], [10, 7], [6, 17], [34, 18], [13, 24], [15, 4]],       // 20,8 s: as paredes 1 e 2 voltaram (aos 20 e 17 s)
+    };
+    ok(Object.entries(exp).every(([k, v]) => tl[k] === JSON.stringify(v)), `as paredes mudam de lugar a cada 10 s (a parede 1 aos 10 e 20 s, a 2 aos 7 e 17 s, a 3 aos 4 e 14 s) e as portas a cada 3 s: ${Object.entries(exp).filter(([k, v]) => tl[k] !== JSON.stringify(v)).map(([k]) => k + ":" + tl[k]).join(" | ") || "todas as posições conferem"}`);
+
+    // ---- poder de 35 s ----
+    const pw = await ev(page, () => { __game.start(5); __game.items.forEach((i) => { i.life = false; }); __game.freezeVets = true; const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01); return { p: __game.power, toast: document.getElementById("toast").textContent }; });
+    ok(Math.abs(pw.p - 35) < 0.05 && /Poder do osso por 35 s/.test(pw.toast), `na Fase 5 o osso dá 35 s de poder (${pw.p.toFixed(2)} s)`);
+
+    // ---- a parede esmaga (sem poder) ----
+    const crushW = await ev(page, () => {
+      __game.start(5); __game.items.forEach((i) => { i.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      const w = __game.blocks[0]; // parede 1: vertical, de (34,7) a (34,9), tamanho 1 × 3
+      for (let i = 0; i < 9 * 60 + 30; i++) __game.tick(1 / 60); // 9,5 s
+      __game.player.x = 34 * 32 + 4; __game.player.y = 10 * 32 + 4; // na abertura de baixo, onde a parede vai chegar
+      const r = { lives0: __game.lives }; let t = 9.5;
+      for (let i = 0; i < 90; i++) { __game.tick(1 / 60); t += 1 / 60; if (__game.lives < r.lives0 && r.at === undefined) { r.at = t; r.toast = document.getElementById("toast").textContent; } }
+      r.lives = __game.lives; r.score = __game.score; return r;
+    });
+    ok(crushW.lives === 2 && crushW.score === -200 && crushW.at > 10 && crushW.at < 10.8 && /Esmagado por um bloco/.test(crushW.toast), `a parede que se move esmaga o cachorro que ficou na abertura: −1 vida e −200 pontos (aos ${crushW.at && crushW.at.toFixed(2)} s)`);
+    const spareW = await ev(page, () => {
+      __game.start(5); __game.items.forEach((i) => { i.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
+      for (let i = 0; i < 9 * 60 + 30; i++) __game.tick(1 / 60);
+      __game.player.x = 34 * 32 + 4; __game.player.y = 10 * 32 + 4;
+      let over = 0; for (let i = 0; i < 120; i++) { __game.tick(1 / 60); const b = __game.blocks[0], p = __game.player; if (b.x < p.x + p.w && b.x + 32 > p.x && b.y < p.y + p.h && b.y + 96 > p.y) over++; }
+      return { lives: __game.lives, over, x: __game.player.x, power: __game.power };
+    });
+    ok(spareW.lives === 3 && spareW.over === 0 && spareW.power > 0 && Math.abs(spareW.x - 34 * 32 - 4) > 1, "com o poder do osso a parede não esmaga: empurra o cachorro para o lado");
+    const fz = await ev(page, () => {
+      __game.start(5); __game.freezeVets = false; __game.noCatch = true; __game.setRand(() => Math.random());
+      let bad = 0; const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      for (let i = 0; i < 60 * 130; i++) {
+        __game.tick(1 / 60);
+        for (const b of __game.blocks) { const [w, h] = b.def.w ? [b.def.w, b.def.h] : [32, 32]; for (const v of __game.vets) if (hit({ x: b.x, y: b.y, w, h }, { x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 })) bad++; }
+      }
+      __game.setRand(null); return bad;
+    });
+    ok(fz === 0, `em 130 s com 3 veterinários patrulhando, nenhuma peça móvel sobrepôs um veterinário (${fz})`);
+
+    // ---- pontos: 1000 para passar ----
+    await playLevel(page, 5, { done: [1, 2, 3, 4] });
+    await finishNow(page, 10);
+    ok(await ev(page, () => __game.state) === "won" && Number(await page.textContent("#win-points")) === 1300 && /Fase 5 concluída/.test(await page.textContent("#win-title")), "Fase 5 completa sem perder vida: 1000 + 100 + 200 = 1300 pontos");
+    ok(await page.isHidden("#btn-next") && await ev(page, () => document.activeElement.id) === "btn-again", "depois da Fase 5 (a última) não há Próxima fase");
+    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await finishNow(page, 60);
+    ok(await ev(page, () => __game.state) === "won" && Number(await page.textContent("#win-points")) === 1000, "com 1 morte e bônus de 100, a Fase 5 fecha com exatamente 1000 pontos e passa");
+    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await finishNow(page, 70);
+    ok(await ev(page, () => __game.state) === "lost" && /fez só 980 pontos/.test(await page.textContent("#lose-lead")) && /pelo menos 1000/.test(await page.textContent("#lose-lead")) && /\(mínimo 1000\)/.test(await page.textContent("#lose-text")), "com 980 pontos a Fase 5 não passa (precisa de 1000)");
+    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await catchOnce(page); await finishNow(page, 10);
+    ok(await ev(page, () => __game.state) === "lost" && /fez só 900 pontos/.test(await page.textContent("#lose-lead")), "com 2 mortes (−400) nem o bônus máximo basta: 900 pontos");
+
+    // ---- escolha de fase ----
+    await fresh(page, { done: [1, 2, 3] }); await page.click("#btn-start");
+    ok(await page.evaluate(() => document.querySelector("#levels-list button:nth-child(5)").disabled && /bloqueada: termine a Fase 4/.test(document.querySelector("#levels-list button:nth-child(5)").textContent)), "a Fase 5 está bloqueada até terminar a Fase 4");
+    await fresh(page, { done: [1, 2, 3, 4] }); await page.click("#btn-start");
+    const b5 = await page.evaluate(() => { const b = document.querySelector("#levels-list button:nth-child(5)"); return { disabled: b.disabled, text: b.textContent }; });
+    ok(!b5.disabled && /3 veterinários · paredes que se movem, poder do osso de 35 s e 1000 pontos/.test(b5.text), `com a Fase 4 concluída a Fase 5 abre (${b5.text})`);
+
+    // ---- jogo salvo na Fase 5 ----
+    await playLevel(page, 5, { done: [1, 2, 3, 4], keepSave: true });
+    await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; for (let i = 0; i < 700; i++) __game.tick(1 / 60); __game.save(); });
+    const sn = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves.toto.snap);
+    const parse5 = (sv) => ev(page, (sv) => __game.parseSave(sv), sv);
+    const cl5 = (o) => JSON.parse(JSON.stringify(o));
+    ok(await parse5(sn) && sn.bl.length === 6 && sn.l === 5, "o save da Fase 5 guarda o ponto do ciclo das 6 peças");
+    const t1 = cl5(sn); t1.bl = t1.bl.slice(0, 5);
+    const t2 = cl5(sn); t2.pw = 36;
+    const t3 = cl5(sn); t3.items.forEach((i) => { i[3] = 0; });
+    const t4 = cl5(sn); t4.items.forEach((i, k) => { i[3] = k < 3 ? 1 : 0; });
+    const rs5 = []; for (const x of [t1, t2, t3, t4]) rs5.push(await parse5(x));
+    ok(rs5.every((r) => r === false), `saves adulterados da Fase 5 são recusados (peça a menos, poder demais, sem vidas, só 3 vidas): ${rs5.map((r) => (r ? "V" : "x")).join("")}`);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
+    const lb = await ev(page, () => ({ level: __game.level, bt: __game.blocks.map((b) => +b.bt.toFixed(1)) }));
+    ok(lb.level === 5 && lb.bt.length === 6 && lb.bt[0] > 10 && lb.bt[0] < 12, `continuar: a Fase 5 volta com as peças no mesmo ponto do ciclo (${lb.bt.join(", ")})`);
   });
 
   // =====================================================================
