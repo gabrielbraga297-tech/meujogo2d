@@ -7,40 +7,46 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const URL = "file://" + path.join(root, "index.html");
 const src = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
-const MAP = eval(src.match(/const MAP = (\[[\s\S]*?\]);/)[1]);
-const R = MAP.length, C = MAP[0].length;
-const free = (c, r) => MAP[r][c] !== "#" && MAP[r][c] !== "X";
-const find = (ch) => MAP.flatMap((row, r) => [...row].map((x, c) => (x === ch ? [c, r] : null)).filter(Boolean));
+const mapOf = (n) => eval(src.match(new RegExp(`const MAP_${n} = (\\[[\\s\\S]*?\\]);`))[1]);
+const R = 18, C = 25;
 
-function bfs(from, to) {
-  const key = (c, r) => r * C + c, prev = new Map([[key(...from), null]]), q = [from];
-  for (let i = 0; i < q.length; i++) {
-    const [c, r] = q[i];
-    if (to && c === to[0] && r === to[1]) break;
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nc = c + dc, nr = r + dr;
-      if (nc < 0 || nr < 0 || nc >= C || nr >= R || !free(nc, nr) || prev.has(key(nc, nr))) continue;
-      prev.set(key(nc, nr), [c, r]); q.push([nc, nr]);
+// Ferramentas de um mapa: chão livre, posições de um caractere, caminho mais curto e distâncias a partir de um tile.
+function grid(MAP) {
+  const free = (c, r) => MAP[r][c] !== "#" && MAP[r][c] !== "X";
+  const find = (ch) => MAP.flatMap((row, r) => [...row].map((x, c) => (x === ch ? [c, r] : null)).filter(Boolean));
+  function bfs(from, to) {
+    const key = (c, r) => r * C + c, prev = new Map([[key(...from), null]]), q = [from];
+    for (let i = 0; i < q.length; i++) {
+      const [c, r] = q[i];
+      if (to && c === to[0] && r === to[1]) break;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= C || nr >= R || !free(nc, nr) || prev.has(key(nc, nr))) continue;
+        prev.set(key(nc, nr), [c, r]); q.push([nc, nr]);
+      }
     }
+    if (!to) return { prev, key, q };
+    if (!prev.has(key(...to))) return null;
+    const out = []; for (let cur = to; cur; cur = prev.get(key(...cur))) out.unshift(cur);
+    return out;
   }
-  if (!to) return { prev, key, q };
-  if (!prev.has(key(...to))) return null;
-  const out = []; for (let cur = to; cur; cur = prev.get(key(...cur))) out.unshift(cur);
-  return out;
-}
-// distância (em passos) de `from` até todos os tiles alcançáveis
-function distances(from) {
-  const d = new Map([[from + "", 0]]), q = [from];
-  for (let i = 0; i < q.length; i++) {
-    const cur = q[i], [c, r] = cur;
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nc = c + dc, nr = r + dr;
-      if (nc < 0 || nr < 0 || nc >= C || nr >= R || !free(nc, nr) || d.has([nc, nr] + "")) continue;
-      d.set([nc, nr] + "", d.get(cur + "") + 1); q.push([nc, nr]);
+  // distância (em passos) de `from` até todos os tiles alcançáveis
+  function distances(from) {
+    const d = new Map([[from + "", 0]]), q = [from];
+    for (let i = 0; i < q.length; i++) {
+      const cur = q[i], [c, r] = cur;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= C || nr >= R || !free(nc, nr) || d.has([nc, nr] + "")) continue;
+        d.set([nc, nr] + "", d.get(cur + "") + 1); q.push([nc, nr]);
+      }
     }
+    return d;
   }
-  return d;
+  return { MAP, free, find, bfs, distances };
 }
+const G1 = grid(mapOf(1)), G2 = grid(mapOf(2));
+const { MAP, free, find, bfs, distances } = G1; // as seções antigas usam a Fase 1
 
 let failed = 0;
 const ok = (cond, msg) => { console.log((cond ? "OK   " : "FAIL ") + msg); if (!cond) failed++; };
@@ -89,25 +95,41 @@ const PAGE_HELPERS = () => {
     return page;
   }
   // Abre o jogo limpo, com (ou sem) nome salvo e recordes de outros jogadores já existentes.
-  async function fresh(page, { name = "Totó", keepSave = false, runs = [], query = "" } = {}) {
+  async function fresh(page, { name = "Totó", keepSave = false, runs = [], query = "", done = [] } = {}) {
     await page.goto(URL + query);
-    await page.evaluate(([name, keep, runs]) => {
+    await page.evaluate(([name, keep, runs, done]) => {
       sessionStorage.setItem("keepSave", keep ? "1" : "");
       localStorage.clear();
       const st = Records.createStore(localStorage);
       for (const r of runs) { st.setPlayer(r.name); st.addRun({ level: r.level || 1, timeMs: r.timeMs, points: r.points ?? 500 + Records.timeBonus(r.timeMs) }); }
-      if (name) st.setPlayer(name);
-    }, [name, keepSave, runs]);
+      if (name) { st.setPlayer(name); for (const l of done) st.completeLevel(name, l); } // `done`: fases já concluídas (libera as seguintes)
+    }, [name, keepSave, runs, done]);
     await page.reload();
     await page.evaluate(PAGE_HELPERS);
   }
   const play = async (page, opts) => { await fresh(page, opts); await page.click("#btn-start"); };
+  // começa direto numa fase (sem passar pelo menu), com as vidas e tentativas pedidas
+  const playLevel = async (page, id, opts, o) => { await fresh(page, opts); await page.evaluate(([id, o]) => __game.start(id, o), [id, o]); };
   const ev = (page, fn, arg) => page.evaluate(fn, arg);
   const tileOfPlayer = (page) => ev(page, () => [Math.floor((__game.player.x + 12) / 32), Math.floor((__game.player.y + 12) / 32)]);
   // o placar é atualizado no próximo quadro de animação: espera o valor esperado em vez de ler na hora
   const hudIs = (page, sel, text) => page.waitForFunction(([sel, text]) => document.querySelector(sel).textContent === text, [sel, text], { timeout: 2000 }).then(() => true, () => false);
   const lostHearts = (page, n) => page.waitForFunction((n) => document.querySelectorAll("#hud-lives .heart.lost").length === n, n, { timeout: 2000 }).then(() => true, () => false);
   const itemTiles = (page) => ev(page, () => __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken]));
+  // joga `seconds` s de relógio (sem veterinários) e termina a fase teletransportando o cachorro para as rações e depois para a saída
+  const finishNow = (page, seconds = 10) => ev(page, (n) => {
+    __game.freezeVets = true;
+    for (let i = 0; i < n; i++) __game.tick(0.05);
+    for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+    const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+  }, Math.round(seconds / 0.05));
+  // o veterinário `i` encosta no cachorro (perde 1 vida, se não estiver protegido); espera a proteção passar antes
+  const catchOnce = (page, i = 0) => ev(page, (i) => {
+    for (const v of __game.vets) v.cool = 99; // sem perseguição por conta própria
+    for (let k = 0; k < 45; k++) __game.tick(0.05); // passa a proteção
+    const v = __game.vets[i], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01);
+    return [__game.lives, __game.state];
+  }, i);
 
   const page = await newPage();
   const dogStart = find("P")[0], exit = find("E")[0], vetStarts = find("V");
@@ -118,6 +140,24 @@ const PAGE_HELPERS = () => {
     ok(vetStarts.length === 1, "Fase 1 tem exatamente 1 veterinário");
     const d = distances(dogStart);
     ok(d.size > 250 && [...find("E"), ...vetStarts].every((t) => d.has(t + "")), "todo o chão é alcançável a partir do cachorro, incluindo saída e veterinário");
+
+    // Fase 2: mapa próprio, 2 veterinários no centro
+    const m1 = G1.MAP.join("\n"), m2 = G2.MAP.join("\n");
+    ok(m1 !== m2, "o mapa da Fase 2 é diferente do da Fase 1");
+    const diff = G1.MAP.reduce((n, row, r) => n + [...row].filter((ch, c) => ch !== G2.MAP[r][c]).length, 0);
+    ok(diff > 80, `os mapas são bem diferentes (${diff} tiles distintos)`);
+    const v2 = G2.find("V"), p2 = G2.find("P")[0], e2 = G2.find("E");
+    ok(v2.length === 2, "Fase 2 tem exatamente 2 veterinários");
+    ok(v2.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 veterinários começam no centro do mapa (${v2.join(" e ")})`);
+    const d2 = G2.distances(p2);
+    ok([...e2, ...v2].every((t) => d2.has(t + "")), "Fase 2: saída e veterinários são alcançáveis a partir do cachorro");
+    let floor2 = 0; for (let r = 0; r < 18; r++) for (let c = 0; c < 25; c++) if (G2.free(c, r)) floor2++;
+    ok(d2.size === floor2, `Fase 2: todo o chão é conectado (${d2.size}/${floor2} tiles), sem cantos presos`);
+    ok(G2.find("I").length === 0 && G2.MAP.length === 18 && G2.MAP.every((row) => row.length === 25), "Fase 2: mapa 25x18 sem rações fixas");
+    const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
+    ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
+    const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
+    ok(gl.length === 2 && gl[0].maps === m1 && gl[1].maps === m2 && gl[0].vets === 1 && gl[1].vets === 2, "o jogo carrega as duas fases com os mapas e veterinários esperados");
   });
 
   // =====================================================================
@@ -138,8 +178,13 @@ const PAGE_HELPERS = () => {
 
     await page.click("#btn-howto");
     const how = await page.textContent("#howto");
-    ok(/3 vidas/.test(how) && /celular|tablet/i.test(how) && /Salvar/.test(how), "Como jogar explica vidas, toque e salvamento");
-    ok(/bônus de tempo/i.test(how) && /20 segundos = 100/.test(how) && /até 30 s = 90/.test(how) && /10 a cada 10 s/.test(how) && /maior/.test(how) && /não soma/.test(how) && /Fases diferentes se somam/.test(how), "Como jogar explica o bônus de tempo (100 até 20 s, −10 a cada 10 s), que vale a maior pontuação da fase e que fases diferentes somam");
+    ok(/3 vidas/.test(how) && /celular|tablet/i.test(how) && /Salvar/.test(how) && /disquete/.test(how), "Como jogar explica vidas, toque e salvamento (inclusive o botão de salvar)");
+    ok(/bônus de tempo/i.test(how) && /20 segundos = 100/.test(how) && /até 30 s = 90/.test(how) && /10 pontos a menos a cada 10 s/.test(how) && /de 0 a 100/.test(how) && /maior/.test(how) && /não soma/.test(how) && /Fases diferentes se somam/.test(how), "Como jogar explica o bônus de tempo (0 a 100: 100 até 20 s, −10 a cada 10 s), que vale a maior pontuação da fase e que fases diferentes somam");
+    ok(/50 pontos/.test(how) && /negativa/.test(how) && /mudam de lugar/.test(how) && /1 a 5/.test(how) && /passam para a fase seguinte/.test(how), "Como jogar explica −50 por vida, pontuação negativa, rações que mudam de lugar e vidas de 1 a 5 que passam de fase");
+    ok(/3 novas tentativas/.test(how) && /100 pontos/.test(how) && /do zero/.test(how), "Como jogar explica as 3 novas tentativas (do zero, −100 pontos)");
+    ok(/5 na Fase 1 e 7 na Fase 2/.test(how) && /2 veterinários/.test(how) && /10% mais espertos/.test(how) && /1 ou 2/.test(how), "Como jogar explica a Fase 2 (7 rações, 2 veterinários 10% mais espertos, 1 ou 2 vidas extras)");
+    ok(/Suas pontuações/.test(how) && /só você vê/.test(how) && /ranking do jogo/i.test(how) && /para todos/.test(how), "Como jogar explica a pontuação individual (só você) e o ranking do jogo (todos)");
+    ok(/Menu inicial/.test(await page.textContent("#menu-title")), "o menu inicial se chama Menu inicial");
     await page.click("#btn-howto-back");
     ok(await page.isVisible("#menu"), "Voltar retorna ao menu");
 
@@ -185,34 +230,45 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("rações em lugares aleatórios", async () => {
-    await play(page);
-    const layouts = await ev(page, () => { const out = []; for (let i = 0; i < 80; i++) { __game.start(); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32])); } return out; });
-    const d = distances(dogStart), dv = vetStarts[0], ex = new Set(find("E").map(String));
-    let bad = "";
-    for (const L of layouts) {
-      if (L.length !== 5) bad = "quantidade";
-      if (new Set(L.map(String)).size !== 5) bad = "tiles repetidos";
-      for (const [c, r] of L) {
-        if (!free(c, r)) bad = "em parede/caixa";
-        if (ex.has([c, r] + "")) bad = "na saída";
-        if (!d.has([c, r] + "")) bad = "inalcançável";
-        else if (d.get([c, r] + "") < 4) bad = "perto demais do início";
-        if (Math.hypot(c - dv[0], r - dv[1]) < 4) bad = "perto demais do veterinário";
+  await section("rações em lugares aleatórios (Fase 1: 5 e 1 vida extra; Fase 2: 7 e 1 ou 2 vidas extras)", async () => {
+    const info = [
+      { id: 1, g: G1, count: 5, lifeMin: 1, lifeMax: 1 },
+      { id: 2, g: G2, count: 7, lifeMin: 1, lifeMax: 2 },
+    ];
+    for (const { id, g, count, lifeMin, lifeMax } of info) {
+      await playLevel(page, id);
+      const layouts = await ev(page, () => { const out = []; for (let i = 0; i < 80; i++) { __game.start(); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32])); } return out; });
+      const start = g.find("P")[0], d = g.distances(start), vs = g.find("V"), ex = new Set(g.find("E").map(String));
+      let bad = "";
+      for (const L of layouts) {
+        if (L.length !== count) bad = "quantidade";
+        if (new Set(L.map(String)).size !== count) bad = "tiles repetidos";
+        for (const [c, r] of L) {
+          if (!g.free(c, r)) bad = "em parede/caixa";
+          if (ex.has([c, r] + "")) bad = "na saída";
+          if (!d.has([c, r] + "")) bad = "inalcançável";
+          else if (d.get([c, r] + "") < 4) bad = "perto demais do início";
+          if (vs.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto demais de um veterinário";
+        }
       }
+      ok(!bad, `Fase ${id}: 80 sorteios: sempre ${count} rações em chão livre, alcançável e longe de início/veterinários/saída ${bad && "(" + bad + ")"}`);
+      const distinct = new Set(layouts.map((L) => L.map(String).sort().join("|"))).size;
+      ok(distinct >= 70, `Fase ${id}: os lugares mudam a cada jogo (${distinct} disposições diferentes em 80)`);
+      const lifeCounts = await ev(page, () => { const out = []; for (let i = 0; i < 200; i++) { __game.start(); const f = __game.items.map((it) => it.life); out.push([f.filter(Boolean).length, f.indexOf(true)]); } return out; });
+      const seen = new Set(lifeCounts.map((c) => c[0]));
+      ok(lifeCounts.every((c) => c[0] >= lifeMin && c[0] <= lifeMax), `Fase ${id}: sempre entre ${lifeMin} e ${lifeMax} rações com vida extra`);
+      ok(lifeMin === lifeMax ? seen.size === 1 : (seen.has(1) && seen.has(2)), lifeMin === lifeMax ? `Fase ${id}: exatamente ${lifeMin} vida extra em todo jogo` : `Fase ${id}: o sorteio dá 1 vida extra em alguns jogos e 2 em outros (não é sempre 1 nem sempre 2)`);
+      ok(new Set(lifeCounts.map((c) => c[1])).size >= 3, `Fase ${id}: a ração com a vida extra muda de uma para outra a cada jogo`);
+      const spread = layouts.filter((L) => { let m = 99; for (const a of L) for (const b of L) if (a !== b) m = Math.min(m, Math.hypot(a[0] - b[0], a[1] - b[1])); return m >= 2; }).length;
+      ok(spread === 80, `Fase ${id}: rações sempre espalhadas (nunca coladas umas nas outras)`);
+      const a = JSON.stringify(await itemTiles(page));
+      await ev(page, () => __game.start());
+      ok(JSON.stringify(await itemTiles(page)) !== a, `Fase ${id}: reiniciar a partida muda o lugar das rações`);
     }
-    ok(!bad, `80 sorteios: sempre 5 rações em chão livre, alcançável e longe de início/veterinário/saída ${bad && "(" + bad + ")"}`);
-    const distinct = new Set(layouts.map((L) => L.map(String).sort().join("|"))).size;
-    ok(distinct >= 70, `os lugares mudam a cada jogo (${distinct} disposições diferentes em 80)`);
-    const lifeCounts = await ev(page, () => { const out = []; for (let i = 0; i < 60; i++) { __game.start(); const f = __game.items.map((it) => it.life); out.push([f.filter(Boolean).length, f.indexOf(true)]); } return out; });
-    ok(lifeCounts.every((c) => c[0] === 1), "em todo jogo exatamente 1 das 5 rações traz a vida extra");
-    ok(new Set(lifeCounts.map((c) => c[1])).size >= 3, "a ração com a vida extra muda de uma para outra a cada jogo");
-    const spread = layouts.filter((L) => { let m = 99; for (const a of L) for (const b of L) if (a !== b) m = Math.min(m, Math.hypot(a[0] - b[0], a[1] - b[1])); return m >= 2; }).length;
-    ok(spread === 80, "rações sempre espalhadas (nunca coladas umas nas outras)");
-    // cada início novo pelos botões também sorteia de novo
-    const a = JSON.stringify(await itemTiles(page));
-    await ev(page, () => __game.start());
-    ok(JSON.stringify(await itemTiles(page)) !== a, "reiniciar a partida muda o lugar das rações");
+    // controlando o sorteio: o valor baixo dá o mínimo e o alto dá o máximo de vidas extras da Fase 2
+    await playLevel(page, 2);
+    const forced = await ev(page, () => { const out = []; for (const v of [0, 0.99]) { __game.setRand(() => v); __game.start(2); out.push(__game.items.filter((i) => i.life).length); } __game.setRand(null); return out; });
+    ok(forced.join() === "1,2", "Fase 2: o sorteio vai de 1 a 2 vidas extras (extremos 1 e 2)");
   });
 
   // =====================================================================
@@ -262,12 +318,15 @@ const PAGE_HELPERS = () => {
     ok(rec.total === winPts && (await page.textContent("#win-total")).includes(`Pontuação total: ${winPts}`), "pontuação total = pontuação da fase");
     ok(rec.prog.completed.includes(1) && rec.prog.unlocked === 2, "progresso: Fase 1 concluída e próxima fase liberada");
     ok(await ev(page, () => !Records.createStore(localStorage).hasGame("Totó")), "terminar a fase apaga o jogo em andamento");
+    ok(await page.isVisible("#btn-next") && /Próxima fase \(Fase 2\)/.test(await page.textContent("#btn-next")) && await ev(page, () => document.activeElement.id) === "btn-next", "a vitória oferece Próxima fase (Fase 2) já focada");
     await page.click("#btn-win-scores");
     const sc = await page.textContent("#scores");
-    ok(/Sua melhor pontuação \(Totó\)/.test(sc) && /Recorde geral/.test(sc) && /Ranking/.test(sc) && /histórico/i.test(sc) && /★ melhor/.test(sc) && /Pontuação total/.test(sc), "Pontuações mostra melhor pontuação, recorde geral, rankings, histórico e total");
+    ok(/Suas pontuações/.test(sc) && /Ranking do jogo/.test(sc) && /Ranking geral/.test(sc) && /Ranking da Fase 1/.test(sc) && /Fase 2/.test(sc) && !/histórico/i.test(sc) && /pontos/.test(sc), "Pontuações mostra as suas pontuações e o ranking do jogo, sem histórico de partidas");
     await page.keyboard.press("Escape");
     await page.click("#btn-start");
-    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.collected) === 0 && await ev(page, () => __game.lives) === 3, "novo jogo depois da vitória começa do zero com 3 vidas");
+    ok(await page.isVisible("#levels") && await page.isEnabled("#levels-list button:nth-child(2)"), "com a Fase 2 liberada, Iniciar jogo deixa escolher a fase");
+    await page.click("#levels-list button:nth-child(1)");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1 && await ev(page, () => __game.collected) === 0 && await ev(page, () => __game.lives) === 3, "escolher a Fase 1 depois da vitória começa do zero com 3 vidas");
   });
 
   // =====================================================================
@@ -278,7 +337,7 @@ const PAGE_HELPERS = () => {
     const finishAfter = async (seconds) => { // joga `seconds` s de relógio e termina a fase teletransportando para as rações e para a saída
       await ev(page, (n) => { for (let i = 0; i < n; i++) __game.tick(0.05); for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); }, Math.round(seconds / 0.05));
     };
-    const store = () => ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), total: s.totalScore("Totó"), runs: s.history("Totó", 1).length }; });
+    const store = () => ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 1), gb: s.generalBest(1), total: s.totalScore("Totó"), rows: s.ranking(1, 50).filter((r) => r.n === "Totó").length, history: typeof s.history }; });
 
     // 1) partida mais lenta (~45 s => bônus 70 => 570): não derruba a melhor (590) e não soma
     await finishAfter(45);
@@ -287,27 +346,27 @@ const PAGE_HELPERS = () => {
     ok(/continua 590/.test(await page.textContent("#win-personal")) && /não soma/.test(await page.textContent("#win-personal")), "mensagem: a melhor pontuação continua 590 e partidas da mesma fase não somam");
     ok(/Recorde geral: 600 pontos \(Rex\)/.test(await page.textContent("#win-general")), "mostra o recorde geral de outro jogador");
     let st = await store();
-    ok(st.pb.p === 590 && st.total === 590 && st.runs === 2, "guardado: melhor continua 590, total 590 (não 1160) e histórico com 2 partidas");
+    ok(st.pb.p === 590 && st.total === 590 && st.rows === 1 && st.history === "undefined", "guardado: melhor continua 590, total 590 (não 1160), uma só linha por jogador e nenhum histórico de partidas");
     ok((await page.textContent("#win-total")).trim() === "Pontuação total: 590", "tela mostra Pontuação total: 590 (sem acréscimo)");
     await page.click("#btn-win-menu");
-    ok((await page.textContent("#menu-best")).includes("Sua melhor pontuação na Fase 1: 590") && (await page.textContent("#menu-progress")).includes("Pontuação total: 590"), "menu mostra a melhor pontuação e a total");
+    ok((await page.textContent("#menu-best")).includes("Suas melhores: Fase 1 590") && (await page.textContent("#menu-progress")).includes("Pontuação total: 590"), "menu mostra a melhor pontuação e a total");
 
     // 2) partida rápida (~6 s => bônus 100 => 600): empata com o recorde geral, mas é mais rápida
-    await page.click("#btn-start"); await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => __game.start(1)); await ev(page, () => { __game.freezeVets = true; });
     await finishAfter(6);
     ok(await page.textContent("#win-points") === "600" && /bônus de tempo: 100/.test(await page.textContent("#win-breakdown")), "6 s dão bônus 100: pontuação da fase 600");
     ok(/Nova melhor pontuação da fase! Antes: 590/.test(await page.textContent("#win-personal")), "nova melhor pontuação pessoal (antes: 590)");
     ok(/Novo recorde geral/.test(await page.textContent("#win-general")), "600 em menos tempo supera o recorde geral de Rex");
     ok((await page.textContent("#win-total")).trim() === "Pontuação total: 600 (+10)", "total passa de 590 para 600 (+10), não para 1190");
     st = await store();
-    ok(st.pb.p === 600 && st.total === 600 && st.runs === 3 && st.gb.n === "Totó", "guardado: melhor 600, total 600, recorde geral de Totó");
+    ok(st.pb.p === 600 && st.total === 600 && st.rows === 1 && st.gb.n === "Totó", "guardado: melhor 600, total 600, recorde geral de Totó");
 
     // 3) repetir 600 não soma
     await page.click("#btn-again"); await ev(page, () => { __game.freezeVets = true; });
     await finishAfter(8);
     ok(await page.textContent("#win-points") === "600", "outra partida de 600");
     st = await store();
-    ok(st.total === 600 && st.runs === 4, "repetir 600 NÃO soma: total continua 600 (não 1200)");
+    ok(st.total === 600 && st.rows === 1, "repetir 600 NÃO soma: total continua 600 (não 1200)");
     ok((await page.textContent("#win-total")).trim() === "Pontuação total: 600", "tela continua mostrando total 600");
 
     // 3b) duas vidas perdidas: −100 pontos (600 → 500) e não derruba a melhor
@@ -323,7 +382,12 @@ const PAGE_HELPERS = () => {
     ok(await page.textContent("#win-points") === "590" && /bônus de tempo: 90/.test(await page.textContent("#win-breakdown")), "25 s dão bônus 90: pontuação da fase 590");
     ok((await store()).total === 600, "590 não derruba a melhor de 600");
 
-    // 5) fases diferentes somam (dados de outra fase no mesmo navegador)
+    // 5) bônus proporcional: de 0 a 100, 10 pontos a cada 10 s (quanto menos tempo, mais pontos)
+    const table = await ev(page, () => [5, 20, 20.1, 30, 30.1, 40, 60, 80, 100, 110, 110.1, 120, 300].map((s) => Records.timeBonus(s * 1000)));
+    ok(table.join() === "100,100,90,90,80,80,60,40,20,10,0,0,0", `bônus por tempo (5, 20, 20,1, 30, 30,1, 40, 60, 80, 100, 110, 110,1, 120, 300 s): ${table.join(" ")}`);
+    ok(table.every((v, i) => i === 0 || v <= table[i - 1]) && Math.min(...table) === 0 && Math.max(...table) === 100, "o bônus nunca sobe com o tempo e fica entre 0 e 100");
+
+    // 6) fases diferentes somam (dados de outra fase no mesmo navegador)
     await ev(page, () => { const s = Records.createStore(localStorage); s.setPlayer("Totó"); s.addRun({ level: 2, timeMs: 45000, points: 570 }); });
     const sums = await ev(page, () => { const s = Records.createStore(localStorage); return [s.totalScore("Totó"), s.totalScore("Totó", [1])]; });
     ok(sums[0] === 1170 && sums[1] === 600, "fases diferentes somam (600 + 570 = 1170); a Fase 1 sozinha continua 600");
@@ -358,7 +422,16 @@ const PAGE_HELPERS = () => {
     await ev(page, () => { __game.freezeVets = true; const it = __game.items.find((i) => !i.life); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); __game.freezeVets = false; });
     ok(await hudIs(page, "#hud-points", "100"), "PONTOS mostra 100 depois de uma ração");
     const catchNow = () => ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return __game.lives; });
+    const pre = await ev(page, () => ({ time: __game.time, items: __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken, i.life]) }));
     ok(await catchNow() === 2, "veterinário captura: perde 1 vida (3 → 2)");
+    const post = await ev(page, () => ({ time: __game.time, items: __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken, i.life]) }));
+    ok(post.time >= pre.time && post.time - pre.time < 0.1, `o tempo não zera ao perder a vida: continua contando (${pre.time.toFixed(2)} → ${post.time.toFixed(2)})`);
+    ok(post.items.every((it, i) => it[2] === pre.items[i][2] && it[3] === pre.items[i][3]), "ao perder a vida, quem já foi pega continua pega e as rações com vida extra continuam sendo as mesmas");
+    const stayed = post.items.filter((it, i) => it[2] && it[0] === pre.items[i][0] && it[1] === pre.items[i][1]).length;
+    const moved = post.items.filter((it, i) => !it[2] && (it[0] !== pre.items[i][0] || it[1] !== pre.items[i][1])).length;
+    const rest = post.items.filter((it) => !it[2]);
+    ok(stayed === 1 && moved >= rest.length - 1 && moved >= 3, `ao perder a vida, as rações que faltavam mudam de lugar (${moved} de ${rest.length} em lugar novo)`);
+    ok(rest.every(([c, r]) => free(c, r) && distances(dogStart).has([c, r] + "")) && new Set(rest.map(String)).size === rest.length, "as rações que mudaram de lugar ficam em chão livre, alcançável e sem se sobrepor");
     const afterLoss = await ev(page, () => { const p = __game.player, v = __game.vets[0]; return { x: p.x, y: p.y, invuln: __game.invuln, vx: v.cx, vy: v.cy, sx: v.sx, sy: v.sy, got: __game.collected }; });
     ok(afterLoss.x === dogStart[0] * 32 + 4 && afterLoss.y === dogStart[1] * 32 + 4, "cachorro volta ao início depois de perder a vida");
     ok(afterLoss.vx === afterLoss.sx && afterLoss.vy === afterLoss.sy, "veterinário volta ao seu posto");
@@ -380,6 +453,7 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => document.activeElement.id) === "btn-retry", "botão Tentar novamente vem focado");
     await page.keyboard.press("Space");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.lives) === 3 && await ev(page, () => __game.collected) === 0, "barra de espaço aciona Tentar novamente: 3 vidas e rações zeradas");
+    ok(await ev(page, () => __game.retries) === 1 && await ev(page, () => __game.time) < 1 && await ev(page, () => __game.livesLost) === 0, "a nova tentativa recomeça a fase do zero (tempo zerado, nenhuma vida perdida) e conta como a 1ª");
     ok(await lostHearts(page, 0), "corações voltam a ficar todos vermelhos");
   });
 
@@ -572,6 +646,13 @@ const PAGE_HELPERS = () => {
     ok(/salvo/i.test(await page.textContent("#pause-msg")) && await ev(page, () => localStorage.getItem("cachorrinho.save.v1") !== null), "botão Salvar jogo grava e confirma na pausa");
     await page.click("#btn-resume");
 
+    // botão de salvar no topo do jogo (modo salvar)
+    await ev(page, () => localStorage.removeItem("cachorrinho.save.v1"));
+    ok(await page.isVisible("#btn-save-hud") && (await page.getAttribute("#btn-save-hud", "aria-label")) === "Salvar jogo", "há um botão Salvar jogo no topo da tela de jogo");
+    await page.click("#btn-save-hud");
+    ok(/Jogo salvo/.test(await page.textContent("#toast")) && await ev(page, () => localStorage.getItem("cachorrinho.save.v1") !== null) && await ev(page, () => Records.createStore(localStorage).hasGame("Totó")), "o botão de salvar grava o jogo na hora e avisa");
+    ok(await ev(page, () => __game.state) === "playing", "salvar não interrompe o jogo");
+
     // perder todas as vidas apaga o save
     await ev(page, () => { __game.freezeVets = false; });
     await ev(page, () => { for (let k = 0; k < 3; k++) { for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; v.cool = 99; __game.tick(0.01); } });
@@ -596,6 +677,34 @@ const PAGE_HELPERS = () => {
     await page.reload();
     ok(await page.isHidden("#btn-continue") && await ev(page, () => __game.state) === "menu", "save corrompido é ignorado");
 
+    // saves de outra fase / com contagens erradas (7 rações e 1–2 vidas extras na Fase 2; 5 e 1 na Fase 1)
+    const snapOf = async (id) => { await playLevel(page, id, { keepSave: true }); return ev(page, () => { __game.save(); return JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves.toto.snap; }); };
+    const s1 = await snapOf(1), s2 = await snapOf(2);
+    ok(s1.items.length === 5 && s2.items.length === 7 && s1.l === 1 && s2.l === 2, "o save guarda a fase e todas as rações dela (5 na Fase 1, 7 na Fase 2)");
+    const accepts = async (snap) => { // grava `snap` como jogo salvo do Totó e vê se o menu oferece Continuar
+      await fresh(page, { keepSave: true });
+      await ev(page, (snap) => Records.createStore(localStorage).saveGame("Totó", snap), snap);
+      await page.reload(); await page.evaluate(PAGE_HELPERS);
+      return page.isVisible("#btn-continue");
+    };
+    const clone = (o) => JSON.parse(JSON.stringify(o));
+    const withLife = (snap, n) => { const c = clone(snap); c.items.forEach((it, i) => { it[3] = i < n ? 1 : 0; }); return c; };
+    ok(await accepts(withLife(s2, 2)), "save válido da Fase 2 com 2 vidas extras é aceito");
+    await page.click("#btn-continue");
+    ok(await ev(page, () => __game.level) === 2 && await ev(page, () => __game.items.length) === 7 && await ev(page, () => __game.items.filter((i) => i.life).length) === 2 && await ev(page, () => __game.vets.length) === 2, "e continua na Fase 2, com 7 rações (2 com vida extra) e 2 veterinários");
+    ok(await accepts(withLife(s2, 1)) && await accepts(withLife(s1, 1)), "saves válidos com 1 vida extra são aceitos nas duas fases");
+    ok(!(await accepts(withLife(s2, 0))), "Fase 2 sem nenhuma vida extra é recusado");
+    ok(!(await accepts(withLife(s2, 3))), "Fase 2 com 3 vidas extras é recusado");
+    ok(!(await accepts(withLife(s1, 2))), "Fase 1 com 2 vidas extras é recusado");
+    ok(!(await accepts({ ...clone(s2), items: clone(s2.items).slice(0, 5) })), "Fase 2 com só 5 rações é recusado");
+    ok(!(await accepts({ ...clone(s1), l: 2 })), "save da Fase 1 trocado para a Fase 2 (rações/posições não conferem) é recusado");
+    ok(!(await accepts({ ...clone(s1), l: 9 })), "fase inexistente é recusada");
+    ok(!(await accepts({ ...clone(s1), rs: 4 })), "mais de 3 novas tentativas é recusado");
+    ok(!(await accepts({ ...clone(s1), lives: 6 })) && !(await accepts({ ...clone(s1), lives: 0 })), "vidas fora de 1 a 5 são recusadas");
+    ok(await accepts({ ...clone(s1), rs: 2, lives: 5, lost: 4 }), "tentativas extras (2), 5 vidas e vidas perdidas são aceitas");
+    await page.click("#btn-continue");
+    ok(await ev(page, () => [__game.retries, __game.lives, __game.livesLost].join()) === "2,5,4" && await hudIs(page, "#hud-retry", "2/3") && await hudIs(page, "#hud-points", "-400"), "continuar mantém as tentativas extras (2), as vidas perdidas (4) e a pontuação negativa: −100×2 −50×4 = −400");
+
     // navegador sem armazenamento (ex.: modo restrito): o jogo funciona e avisa
     const ns = await newPage();
     await ns.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("bloqueado", "SecurityError"); } }); });
@@ -616,8 +725,323 @@ const PAGE_HELPERS = () => {
     await play(page);
     await ev(page, () => { for (let k = 0; k < 3; k++) { for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; v.cool = 99; __game.tick(0.01); } });
     ok(await page.isVisible("#lose") && /Acabaram as suas vidas/.test(await page.textContent("#lose")), "tela de fim de jogo explica que as vidas acabaram");
+    const lt = await page.textContent("#lose");
+    ok(/3 vezes/.test(lt) && /do zero/.test(lt) && /100 pontos/.test(lt) && /Tentar novamente \(−100 pontos\)/.test(lt), "e explica que há 3 novas tentativas, do zero, a 100 pontos cada");
     await page.keyboard.press("Escape");
     ok(await ev(page, () => __game.state) === "menu", "Esc na tela final volta ao menu");
+  });
+
+  // =====================================================================
+  await section("Fase 2: 7 rações, 2 veterinários 10% mais espertos, jogo e vitória", async () => {
+    await fresh(page, { name: "Totó" });
+    await page.click("#btn-start");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1, "só com a Fase 1 liberada, Iniciar jogo vai direto para a Fase 1");
+
+    await fresh(page, { name: "Totó", done: [1] });
+    await page.click("#btn-start");
+    ok(await page.isVisible("#levels") && /Fase 1/.test(await page.textContent("#levels-list button:nth-child(1)")) && /1 veterinário/.test(await page.textContent("#levels-list button:nth-child(1)")), "Fase 1 concluída: Iniciar jogo abre a escolha de fase");
+    ok(/2 veterinários/.test(await page.textContent("#levels-list button:nth-child(2)")) && await page.isEnabled("#levels-list button:nth-child(2)"), "a Fase 2 está liberada e mostra os 2 veterinários");
+    await page.click("#btn-levels-back");
+    ok(await page.isVisible("#menu"), "Voltar na escolha de fase retorna ao menu");
+    await page.click("#btn-start"); await page.click("#levels-list button:nth-child(2)");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2, "escolher a Fase 2 começa a Fase 2");
+    ok(/Fase 2: 2 veterinários/.test(await page.textContent("#toast")), "aviso de início mostra a Fase 2 e os 2 veterinários");
+    ok(await hudIs(page, "#hud-level", "2") && await hudIs(page, "#hud-items", "0/7") && await hudIs(page, "#hud-points", "0"), "placar mostra FASE 2 e RAÇÕES 0/7");
+    ok(await ev(page, () => __game.items.length) === 7 && await ev(page, () => __game.lives) === 3, "a Fase 2 tem 7 rações e começa com 3 vidas");
+
+    // veterinários: no centro, 10% mais espertos
+    const vs = await ev(page, () => __game.vets.map((v) => [Math.floor(v.cx / 32), Math.floor(v.cy / 32)]));
+    ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 veterinários começam no centro do mapa (${vs.join(" e ")})`);
+    const cfgs = await ev(page, () => { const a = { ...__game.vets[0].cfg }, b = { ...__game.vets[1].cfg }; __game.start(1); return { f2a: a, f2b: b, f1: { ...__game.vets[0].cfg } }; });
+    const close = (a, b) => Math.abs(a - b) < 1e-9;
+    const up = ["speed", "chaseSpeed", "sight", "chaseChance", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
+    ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade, visão, chance e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
+    ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
+    ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 180 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (180 px/s) continua mais rápido que eles");
+
+    // jogo real na Fase 2: patrulha sem atravessar paredes
+    await ev(page, () => __game.start(2));
+    const patrol = await ev(page, (M) => {
+      __game.noCatch = true; for (const v of __game.vets) v.cfg = { ...v.cfg, chaseChance: 0 };
+      const seen = [new Set(), new Set()]; let hits = 0;
+      for (let i = 0; i < 3000; i++) {
+        __game.tick(1 / 30);
+        __game.vets.forEach((v, k) => {
+          seen[k].add(Math.floor(v.cx / 32) + "," + Math.floor(v.cy / 32));
+          for (const [ox, oy] of [[-11, -11], [11, -11], [-11, 11], [11, 11]]) { const ch = M[Math.floor((v.cy + oy) / 32)][Math.floor((v.cx + ox) / 32)]; if (ch === "#" || ch === "X") hits++; }
+        });
+      }
+      return { tiles: seen.map((x) => x.size), hits };
+    }, G2.MAP);
+    ok(patrol.hits === 0 && patrol.tiles.every((n) => n >= 25), `na Fase 2 os 2 veterinários patrulham (${patrol.tiles.join(" e ")} tiles) sem atravessar paredes nem caixas`);
+    // os dois perseguem: cachorro à vista, sorteio favorável
+    const chase = await ev(page, () => {
+      __game.start(2); __game.setRand(() => 0); __game.noCatch = true;
+      const p = __game.player, v0 = __game.vets[0], v1 = __game.vets[1];
+      p.x = v0.cx - 40; p.y = v0.cy - 12; v1.cx = v0.cx + 32; v1.cy = v0.cy; // os dois com o cachorro à vista
+      for (const v of __game.vets) { v.cool = 0; v.think = 0; v.leg = null; v.route = []; }
+      let both = false;
+      for (let i = 0; i < 60; i++) { __game.tick(0.05); if (__game.vets.every((v) => v.mode === "chase")) both = true; }
+      __game.setRand(null);
+      return both;
+    });
+    ok(chase, "na Fase 2 os dois veterinários conseguem perseguir ao mesmo tempo");
+
+    // percorre a Fase 2 de verdade (colisões nos corredores): pega as 7 rações e chega à saída
+    await playLevel(page, 2, { done: [1] });
+    await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; }); // o corredor central passa perto dos veterinários parados
+    const cur = () => tileOfPlayer(page);
+    for (let guard = 0; guard < 10; guard++) {
+      const left = (await itemTiles(page)).filter((i) => !i[2]).map((i) => [i[0], i[1]]);
+      if (!left.length) break;
+      const here = await cur();
+      left.sort((a, b) => G2.bfs(here, a).length - G2.bfs(here, b).length);
+      await ev(page, (p) => __t.walk(p), G2.bfs(here, left[0]));
+    }
+    ok(await ev(page, () => __game.collected) === 7 && await hudIs(page, "#hud-points", "700"), "caminhando pela Fase 2 dá para pegar as 7 rações (700 pontos)");
+    ok(await ev(page, () => __game.state) === "playing", "com as 7 rações, a vitória só vem ao chegar na saída");
+    await ev(page, (p) => __t.walk(p), G2.bfs(await cur(), G2.find("E")[0]));
+    ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#win"), `a Fase 2 termina ao chegar na saída com as 7 rações (cachorro em ${await tileOfPlayer(page)}, estado ${await ev(page, () => __game.state)})`);
+    const wt = await page.textContent("#win-breakdown"), wp = Number(await page.textContent("#win-points"));
+    const wm = wt.match(/Rações: (\d+) \+ bônus de tempo: (\d+)/);
+    ok(/Fase 2 concluída/.test(await page.textContent("#win-title")) && wm && Number(wm[1]) === 700 && wp === 700 + Number(wm[2]), `pontuação da Fase 2 = 700 + bônus de tempo (${wp})`);
+    ok(await page.isHidden("#btn-next") && await ev(page, () => document.activeElement.id) === "btn-again", "não há fase depois da Fase 2: sem Próxima fase");
+    const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { l2: s.personalBest("Totó", 2), l1: s.personalBest("Totó", 1), total: s.totalScore("Totó", [1, 2]) }; });
+    ok(rec.l2 && rec.l2.p === wp && rec.l1 === null && rec.total === wp, "a pontuação da Fase 2 é guardada à parte da Fase 1");
+
+    // vida extra na Fase 2: 1 ou 2 vidas
+    for (const [rnd, want] of [[0, 4], [0.99, 5]]) {
+      await ev(page, ([rnd]) => { __game.setRand(() => rnd); __game.start(2); __game.setRand(null); __game.freezeVets = true; }, [rnd]);
+      const lives = await ev(page, () => { for (const it of __game.items.filter((i) => i.life)) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } return [__game.lives, __game.collected]; });
+      ok(lives[0] === want, `Fase 2 com ${want - 3} vida(s) extra(s) escondida(s): pegar todas leva de 3 para ${want} vidas`);
+    }
+  });
+
+  // =====================================================================
+  await section("vidas cumulativas (1 a 5) passam para a próxima fase", async () => {
+    // a ração com a vida extra da Fase 1 dá +1 no caminho (até o teto de 5): 5 → 5, 3 → 4, 1 → 2
+    for (const [start, carry] of [[5, 5], [3, 4], [1, 2]]) {
+      await play(page); await ev(page, (n) => { __game.freezeVets = true; __game.setLives(n); }, start);
+      await finishNow(page, 10);
+      ok(await ev(page, () => __game.state) === "won" && /Próxima fase \(Fase 2\)/.test(await page.textContent("#btn-next")), `terminou a Fase 1 começando com ${start} vidas (e pegando a vida extra)`);
+      ok(new RegExp(`Você leva ${carry} ${carry === 1 ? "vida" : "vidas"} para a Fase 2`).test(await page.textContent("#win-extra")), `a tela avisa quantas vidas passam para a Fase 2 (${carry})`);
+      await page.click("#btn-next");
+      ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2 && await ev(page, () => __game.lives) === carry, `Próxima fase: a Fase 2 começa com as mesmas ${carry} vidas`);
+      ok(await ev(page, () => __game.collected) === 0 && await ev(page, () => __game.retries) === 0 && await ev(page, () => __game.livesLost) === 0, "e com rações, perdas e tentativas zeradas");
+      const shown = await page.$$eval("#hud-lives .heart:not(.hidden)", (h) => h.length);
+      ok(shown === Math.max(3, carry) && await lostHearts(page, Math.max(3, carry) - carry), `o placar mostra ${carry} coração(ões) vermelho(s)`);
+    }
+    // vida extra continua valendo até o teto de 5 também na Fase 2
+    await ev(page, () => { __game.setRand(() => 0.99); __game.start(2, { lives: 4 }); __game.setRand(null); __game.freezeVets = true; });
+    const r = await ev(page, () => { for (const it of __game.items.filter((i) => i.life)) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } return __game.lives; });
+    ok(r === 5, "na Fase 2, com 4 vidas e 2 vidas extras, o limite é 5 (a segunda não passa do máximo)");
+    // Jogar novamente / escolher a fase recomeça com 3 vidas
+    await ev(page, () => { __game.start(1); __game.freezeVets = true; __game.setLives(5); });
+    await finishNow(page, 10);
+    await page.click("#btn-again");
+    ok(await ev(page, () => __game.level) === 1 && await ev(page, () => __game.lives) === 3, "Jogar novamente recomeça a fase com 3 vidas");
+  });
+
+  // =====================================================================
+  await section("pontuação negativa e tentativas (3 chances de reiniciar a fase)", async () => {
+    await play(page);
+    ok(await hudIs(page, "#hud-points", "0"), "começa em 0 pontos");
+    ok((await catchOnce(page))[0] === 2 && await hudIs(page, "#hud-points", "-50") && await ev(page, () => __game.score) === -50, "perder a primeira vida sem nenhuma ração deixa a pontuação NEGATIVA (−50)");
+    ok((await catchOnce(page))[0] === 1 && await hudIs(page, "#hud-points", "-100"), "e continua descendo: −100 na segunda vida");
+    const [, st] = await catchOnce(page);
+    ok(st === "lost" && /Pontos: -150/.test(await page.textContent("#lose-text")), "a tela final mostra a pontuação negativa (−150)");
+    ok(/3 vezes/.test(await page.textContent("#lose-chances")) && await page.isVisible("#btn-retry") && /−100 pontos/.test(await page.textContent("#btn-retry")), "o jogador tem 3 chances (cada uma custa 100 pontos)");
+
+    // 1ª, 2ª e 3ª novas tentativas
+    for (let n = 1; n <= 3; n++) {
+      const before = await ev(page, () => ({ level: __game.level, items: __game.items.map((i) => [i.x, i.y].join()).join("|") }));
+      await page.click("#btn-retry");
+      const now = await ev(page, () => ({ state: __game.state, level: __game.level, lives: __game.lives, retries: __game.retries, collected: __game.collected, lost: __game.livesLost, time: __game.time, p: [__game.player.x, __game.player.y], score: __game.score, items: __game.items.map((i) => [i.x, i.y].join()).join("|") }));
+      ok(now.state === "playing" && now.level === 1 && now.lives === 3 && now.retries === n && now.collected === 0 && now.lost === 0 && now.time < 0.5, `tentativa ${n}: a fase recomeça do zero (3 vidas, rações e tempo zerados)`);
+      ok(now.p[0] === dogStart[0] * 32 + 4 && now.p[1] === dogStart[1] * 32 + 4, `tentativa ${n}: o cachorro volta ao ponto de partida da fase`);
+      ok(now.score === -100 * n && await hudIs(page, "#hud-points", String(-100 * n)), `tentativa ${n}: custa 100 pontos (placar ${-100 * n})`);
+      ok(await page.isVisible("#hud-retry-item") && await hudIs(page, "#hud-retry", `${n}/3`), `o placar mostra TENTATIVAS ${n}/3`);
+      ok(/Tentativa extra/.test(await page.textContent("#toast")), "aviso de tentativa extra");
+      ok(now.items !== before.items, "as rações ficam em lugares novos");
+      for (let k = 0; k < 3; k++) await catchOnce(page);
+      ok(await ev(page, () => __game.state) === "lost", `tentativa ${n}: perdendo todas as vidas de novo`);
+      const t = await page.textContent("#lose-chances");
+      if (n < 3) ok(new RegExp(`${3 - n} ${3 - n === 1 ? "vez" : "vezes"}`).test(t) && await page.isVisible("#btn-retry"), `sobram ${3 - n} chance(s)`);
+      else ok(/Acabaram as suas chances/.test(t) && await page.isHidden("#btn-retry") && await ev(page, () => document.activeElement.id) === "btn-lose-menu", "depois das 3 novas tentativas não há mais chance: só resta o Menu");
+    }
+    await page.click("#btn-lose-menu");
+    await page.click("#btn-start");
+    ok(await ev(page, () => __game.retries) === 0 && await ev(page, () => __game.lives) === 3, "um novo jogo pelo menu começa sem tentativas usadas");
+
+    // vencer depois de tentativas: os 100 pontos de cada tentativa são descontados
+    for (const [n, expect] of [[1, 600 - 100], [3, 600 - 300]]) {
+      await ev(page, (n) => __game.start(1, { retries: n }), n);
+      await finishNow(page, 10);
+      ok(await ev(page, () => __game.state) === "won" && await page.textContent("#win-points") === String(expect), `vitória na tentativa extra ${n}: 500 + 100 de bônus − ${100 * n} = ${expect}`);
+      ok(new RegExp(`− tentativas extras: ${100 * n}`).test(await page.textContent("#win-breakdown")), "a tela de vitória mostra o desconto das tentativas");
+    }
+    const st2 = await ev(page, () => Records.createStore(localStorage).personalBest("Totó", 1));
+    ok(st2 && st2.p === 500, "a melhor pontuação guardada é a da tentativa 1 (500), não a da 3 (300)");
+
+    // na Fase 2 a nova tentativa recomeça a Fase 2 (não a 1)
+    await playLevel(page, 2, { done: [1] });
+    for (let k = 0; k < 3; k++) await catchOnce(page);
+    ok(await ev(page, () => __game.state) === "lost" && /Fase 2/.test(await page.textContent("#lose-chances")), "sem vidas na Fase 2: a mensagem fala da Fase 2");
+    await page.click("#btn-retry");
+    ok(await ev(page, () => [__game.level, __game.items.length, __game.vets.length, __game.retries, __game.lives].join()) === "2,7,2,1,3", "nova tentativa na Fase 2 recomeça a Fase 2 do zero (7 rações, 2 veterinários, 3 vidas)");
+    ok(await hudIs(page, "#hud-points", "-100"), "e custa 100 pontos");
+  });
+
+  // =====================================================================
+  await section("ranking compartilhado entre aparelhos e logins (servidor REST e banco do Claude)", async () => {
+    const http = require("http");
+    // servidor de ranking no estilo Firebase Realtime Database, só para o teste
+    const db = { scores: null }, writes = [];
+    const srv = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "Content-Type"); res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
+      if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
+      const parts = decodeURIComponent(req.url.split("?")[0]).replace(/^\/rank\//, "").replace(/\.json$/, "").split("/").filter(Boolean);
+      let body = ""; req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        let node = db;
+        if (req.method === "PUT") {
+          for (let i = 0; i < parts.length - 1; i++) node = node[parts[i]] || (node[parts[i]] = {});
+          node[parts[parts.length - 1]] = JSON.parse(body); writes.push(parts.join("/"));
+          res.writeHead(200, { "Content-Type": "application/json" }).end(body); return;
+        }
+        for (const k of parts) node = node && typeof node === "object" ? node[k] : undefined;
+        res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(node === undefined ? null : node));
+      });
+    });
+    await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+    const rankingUrl = `http://127.0.0.1:${srv.address().port}/rank`;
+    const waitFor = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond()) { if (Date.now() - t0 > ms) throw new Error("tempo esgotado"); await new Promise((r) => setTimeout(r, 25)); } };
+    const device = async (name, init) => { // um aparelho = um contexto com armazenamento próprio
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const pg = await ctx.newPage(); watch(pg);
+      if (init) await init(pg, ctx);
+      await fresh(pg, { name });
+      return pg;
+    };
+    const withUrl = (pg) => pg.addInitScript((u) => { window.GAME_CONFIG = { rankingUrl: u }; }, rankingUrl);
+    const openScores = async (pg) => { await pg.click("#btn-scores"); await pg.waitForFunction(() => /compartilhado|deste aparelho/.test(document.getElementById("scores-source").textContent)); };
+    const shared = (pg) => pg.waitForFunction(() => /compartilhado/.test(document.getElementById("scores-source").textContent), null, { timeout: 5000 }).then(() => true, () => false);
+    const levelRows = (pg, n) => pg.$$eval(`#scores-public section:nth-of-type(${n + 1}) li`, (ls) => ls.map((l) => l.textContent));
+    try {
+      // --- aparelho A: a Ana termina a Fase 1 ---
+      const A = await device("Ana", withUrl);
+      await A.click("#btn-start"); await finishNow(A, 12);
+      ok(await ev(A, () => __game.state) === "won", "aparelho A: Ana termina a Fase 1");
+      await waitFor(() => db.scores && db.scores[1] && db.scores[1].ana);
+      const anaP = Number(await A.textContent("#win-points"));
+      ok(db.scores[1].ana.p === anaP && db.scores[1].ana.n === "Ana" && db.scores[1].ana.t > 0, `a pontuação (${anaP}) foi enviada ao servidor de ranking`);
+
+      // --- aparelho B (outro navegador, outro login): a Bia vê o ranking da Ana ---
+      const B = await device("Bia", withUrl);
+      await openScores(B);
+      ok(await shared(B) && /127\.0\.0\.1/.test(await B.textContent("#scores-source")), "aparelho B: o ranking é identificado como compartilhado");
+      ok((await levelRows(B, 1)).join("|").startsWith(`Ana — ${anaP} pts`), "aparelho B vê a Ana no ranking da Fase 1, sem nunca ter jogado com ela");
+      const privB = await B.textContent("#scores-private");
+      ok(/0 pontos/.test(privB) && !/Ana/.test(privB), "mas a parte individual da Bia é só dela (nada da Ana)");
+      ok(await ev(B, () => !localStorage.getItem("cachorrinho.v1").includes("Ana")), "e os dados da Ana não são copiados para o armazenamento do aparelho B");
+      await B.keyboard.press("Escape");
+
+      // --- a Bia joga mais rápido e passa a Ana; a Ana vê (só a melhor de cada uma, sem histórico) ---
+      await B.click("#btn-start"); await finishNow(B, 5);
+      const biaP = Number(await B.textContent("#win-points"));
+      ok(biaP >= anaP, `aparelho B: Bia termina a Fase 1 com ${biaP} pontos`);
+      await waitFor(() => db.scores[1].bia);
+      await A.click("#btn-win-scores");
+      await shared(A);
+      await A.waitForFunction(() => /Bia/.test(document.getElementById("scores-public").textContent));
+      const rowsA = await levelRows(A, 1);
+      ok(rowsA.length === 2 && /^Bia —/.test(rowsA[0]) && /^Ana —/.test(rowsA[1]), `aparelho A vê os dois jogadores, com a mesma pontuação decidida pelo menor tempo (${rowsA.join(" | ")})`);
+      const totals = await A.$$eval("#scores-public section:nth-of-type(1) li", (ls) => ls.map((l) => l.textContent));
+      ok(totals.length === 2 && totals.some((t) => t.startsWith("Bia —")) && totals.some((t) => t.startsWith("Ana —")), "o ranking geral também mostra os dois");
+      ok(/Ana/.test(await A.textContent("#scores-private")) && !/Bia/.test(await A.textContent("#scores-private")), "a parte individual da Ana continua só dela");
+      await A.keyboard.press("Escape");
+
+      // --- melhor pontuação apenas: uma partida pior da Ana não muda o servidor; uma melhor atualiza ---
+      const snapshotServer = JSON.stringify(db.scores);
+      await A.click("#btn-start"); // nenhuma fase nova liberada? A Fase 2 está liberada: escolhe a Fase 1
+      await A.click("#levels-list button:nth-child(1)"); await ev(A, () => { __game.freezeVets = true; });
+      await ev(A, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); }); // perde uma vida: partida pior
+      await finishNow(A, 60);
+      ok(Number(await A.textContent("#win-points")) < anaP, "a Ana joga de novo, mais devagar e perdendo uma vida: pontuação pior");
+      await A.waitForTimeout(400);
+      ok(JSON.stringify(db.scores) === snapshotServer, "partida pior não altera o ranking do servidor");
+      ok(Object.keys(db.scores[1]).sort().join() === "ana,bia" && Object.keys(db.scores).join() === "1", "o servidor guarda uma única entrada por jogador e fase (sem histórico)");
+
+      // --- ao abrir Pontuações, o aparelho envia o que o servidor ainda não tem ---
+      const C = await device("Cid"); // sem servidor configurado: joga offline
+      await C.click("#btn-start"); await finishNow(C, 9);
+      await C.waitForTimeout(200);
+      ok(!db.scores[1].cid, "sem servidor configurado, o resultado do Cid fica só no aparelho dele");
+      await C.click("#btn-win-scores");
+      ok(/deste aparelho/.test(await C.textContent("#scores-source")) && (await levelRows(C, 1)).length === 1, "e o ranking dele mostra só os jogadores daquele aparelho");
+      await C.context().close();
+      // o mesmo jogador, num aparelho em que o servidor já está configurado e que já tinha uma pontuação guardada
+      const C2 = await device("Cid", withUrl);
+      await C2.evaluate(() => Records.createStore(localStorage).addRun({ level: 1, timeMs: 9000, points: 600 }));
+      await C2.reload(); await C2.evaluate(PAGE_HELPERS);
+      await openScores(C2); await shared(C2);
+      await waitFor(() => db.scores[1].cid);
+      ok(db.scores[1].cid.p === 600, "ao abrir Pontuações com o servidor ligado, a melhor pontuação que só existia no aparelho é enviada");
+      ok((await levelRows(C2, 1)).length === 3, "e o ranking passa a ter os 3 jogadores");
+
+      // --- dados ruins no servidor são ignorados ---
+      db.scores[1].hack = { n: "<img src=x onerror=alert(1)>", p: 99999, t: 1000, w: 1 };
+      db.scores[1].big = { n: "Gigante", p: 10 ** 9, t: 1000, w: 1 };
+      db.scores[7] = { z: { n: "FaseFalsa", p: 1, t: 1000, w: 1 } };
+      await C2.keyboard.press("Escape"); await openScores(C2); await shared(C2);
+      const txt = await C2.textContent("#scores-public");
+      ok(!/img|Gigante|FaseFalsa/.test(txt) && (await levelRows(C2, 1)).length === 3, "nomes com HTML, pontuações absurdas e fases inexistentes vindos do servidor não aparecem");
+      ok(await C2.$("#scores-public img") === null, "nada do servidor é inserido como HTML");
+      await C2.context().close();
+      await B.context().close(); await A.context().close();
+
+      // --- servidor fora do ar: volta ao ranking do aparelho, sem erro ---
+      const url2 = rankingUrl; await new Promise((r) => srv.close(r)); // (fecha o servidor)
+      const ctxD = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const D = await ctxD.newPage(); // (sem o observador de erros: o navegador registra a conexão recusada no console)
+      await D.addInitScript((u) => { window.GAME_CONFIG = { rankingUrl: u }; }, url2);
+      await fresh(D, { name: "Dino", runs: [{ name: "Dino", timeMs: 20000 }] });
+      await D.click("#btn-scores");
+      await D.waitForFunction(() => /deste aparelho/.test(document.getElementById("scores-source").textContent));
+      await D.waitForTimeout(600);
+      ok(/deste aparelho/.test(await D.textContent("#scores-source")) && (await levelRows(D, 1)).join("|").startsWith("Dino — 600"), "servidor fora do ar: o ranking do aparelho continua aparecendo");
+      ok(await ev(D, () => document.getElementById("scores").classList.contains("hidden")) === false, "e a tela não quebra");
+      await ctxD.close();
+    } finally { if (srv.listening) await new Promise((r) => srv.close(r)); }
+
+    // --- banco compartilhado do Claude (página publicada no Claude): um documento por visitante ---
+    const docs = new Map();
+    const mkClaude = async (uid) => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const pg = await ctx.newPage(); watch(pg);
+      await pg.exposeFunction("__dbGet", (p) => docs.get(p) ?? null);
+      await pg.exposeFunction("__dbSet", (p, d) => { docs.set(p, JSON.parse(JSON.stringify(d))); });
+      await pg.exposeFunction("__dbList", (c) => [...docs].filter(([p]) => p.startsWith(c + "/")).map(([p, d]) => [p.split("/")[1], d]));
+      await pg.addInitScript((uid) => {
+        const snap = (id, d) => ({ id, exists: d !== null, data: () => (d === null ? undefined : d) });
+        const db = {
+          collection: (c) => ({ get: async () => ({ docs: (await window.__dbList(c)).map(([id, d]) => snap(id, d)) }) }),
+          doc: (p) => ({ get: async () => snap(p.split("/")[1], await window.__dbGet(p)), set: (d) => window.__dbSet(p, d) }),
+        };
+        window.claude = { use: async (n) => (n === "db" ? db : n === "user" ? { id: async () => uid } : null) };
+      }, uid);
+      return pg;
+    };
+    const E = await mkClaude("uid-E"), F = await mkClaude("uid-F");
+    await fresh(E, { name: "Eva" }); await fresh(F, { name: "Fred" });
+    await E.click("#btn-start"); await finishNow(E, 11);
+    await waitFor(() => docs.has("scores/uid-E"));
+    const entry = docs.get("scores/uid-E");
+    ok(Object.keys(entry).join() === "entries" && Object.keys(entry.entries).join() === "1|eva" && entry.entries["1|eva"].n === "Eva", "banco do Claude: um documento por visitante, só com a melhor pontuação de cada fase");
+    await F.click("#btn-scores");
+    await F.waitForFunction(() => /compartilhado/.test(document.getElementById("scores-source").textContent) && /Eva/.test(document.getElementById("scores-public").textContent), null, { timeout: 5000 });
+    ok(/banco compartilhado do Claude/.test(await F.textContent("#scores-source")) && !/Eva/.test(await F.textContent("#scores-private")), "outro login vê a Eva no ranking do jogo, mas não na parte individual");
+    await E.context().close(); await F.context().close();
   });
 
   // =====================================================================
@@ -725,21 +1149,33 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("tela de pontuações e jogadores", async () => {
+  await section("tela de pontuações: individual (só do usuário) e ranking do jogo (todos)", async () => {
     await fresh(page, { name: "Totó", runs: [{ name: "Rex", timeMs: 20000 }, { name: "Mel", timeMs: 18000 }, { name: "Totó", timeMs: 25000 }, { name: "Totó", timeMs: 22000 }] });
     await page.click("#btn-scores");
-    const txt = await page.textContent("#scores-body");
-    ok(/Pontuação total[\s\S]*590 pontos/.test(txt), "mostra a pontuação total do jogador (590: a melhor da fase, não 1180)");
-    ok(/Sua melhor pontuação \(Totó\)\s*590 pts · 22,0 s/.test(txt) && /Recorde geral\s*600 pts — Mel \(18,0 s\)/.test(txt), "mostra a melhor pontuação pessoal e o recorde geral com quem fez e o tempo");
-    const rank = await page.$$eval("#scores-body ol", (ols) => ols.map((ol) => [...ol.querySelectorAll("li")].map((x) => x.textContent)));
-    ok(rank[0].join("|") === "Mel — 600 pontos|Rex — 600 pontos|Totó — 590 pontos", "ranking geral por pontuação total (empate decidido por quem é mais rápido)");
-    ok(rank[1].join("|") === "Mel — 600 pts (18,0 s)|Rex — 600 pts (20,0 s)|Totó — 590 pts (22,0 s)", "ranking da fase por pontuação (tempo desempata)");
-    ok((await page.$$eval("#scores-body ul li", (l) => l.map((x) => x.textContent))).length === 2, "histórico lista as partidas do jogador");
-    ok(/★ melhor/.test(await page.textContent("#scores-body ul")), "histórico marca a melhor partida");
+    const priv = await page.textContent("#scores-private"), pub = await page.textContent("#scores-public");
+    ok(/Suas pontuações/.test(priv) && /590 pontos/.test(priv) && /Sua melhor na Fase 1\s*590 pts · 22,0 s/.test(priv) && /Sua melhor na Fase 2\s*ainda não jogada/.test(priv), "Suas pontuações: total 590 (a melhor da fase, não 1180) e a melhor de cada fase");
+    ok(/Só você vê/.test(priv) && !/Rex|Mel/.test(priv), "a parte individual é só do usuário: não mostra nenhum outro jogador");
+    const rank = await page.$$eval("#scores-public ol", (ols) => ols.map((ol) => [...ol.querySelectorAll("li")].map((x) => x.textContent)));
+    ok(rank[0].join("|") === "Mel — 600 pontos|Rex — 600 pontos|Totó — 590 pontos", "ranking geral do jogo por pontuação total, com todos os jogadores");
+    ok(rank[1].join("|") === "Mel — 600 pts (18,0 s)|Rex — 600 pts (20,0 s)|Totó — 590 pts (22,0 s)", "ranking da fase: só a melhor pontuação de cada jogador (Totó aparece uma vez, apesar de 2 partidas), tempo desempata");
+    ok(rank.length === 2 && /Ninguém terminou esta fase/.test(await page.textContent("#scores-public")), "a Fase 2 sem ninguém mostra mensagem amigável");
+    ok(/deste aparelho/.test(await page.textContent("#scores-source")) && /README/.test(await page.textContent("#scores-source")), "sem servidor, avisa que o ranking é só deste aparelho e como compartilhar");
+    ok(await page.$("#scores-public li.me") !== null && /Totó/.test(await page.textContent("#scores-public li.me")), "o próprio jogador aparece destacado no ranking");
+    ok(!/histórico/i.test(await page.textContent("#scores")) && await page.$("#scores ul") === null, "não existe histórico de partidas");
     ok(/Em cada fase vale a sua maior pontuação/.test(await page.textContent("#scores")), "explica que vale a maior pontuação e que fases diferentes somam");
+
+    // outro usuário no mesmo aparelho: a parte individual dele é só dele
     await ev(page, () => Records.createStore(localStorage).setPlayer("Bidu")); await page.reload();
     await page.click("#btn-scores");
-    ok(/ainda não terminou/i.test(await page.textContent("#scores-body")), "jogador novo vê uma mensagem amigável no histórico");
+    const priv2 = await page.textContent("#scores-private");
+    ok(/0 pontos/.test(priv2) && /ainda não jogada/.test(priv2) && !/590|600|Totó|Rex|Mel/.test(priv2), "outro usuário vê a parte individual dele (zerada), sem os dados do Totó");
+    ok(/Totó — 590/.test(await page.textContent("#scores-public")) && /Mel — 600/.test(await page.textContent("#scores-public")), "mas o ranking do jogo mostra todos");
+    // sem usuário escolhido, o ranking do jogo continua visível
+    await fresh(page, { name: "", runs: [{ name: "Rex", timeMs: 20000 }] });
+    await ev(page, () => { const raw = JSON.parse(localStorage.getItem("cachorrinho.v1")); raw.player = ""; localStorage.setItem("cachorrinho.v1", JSON.stringify(raw)); }); // ninguém escolhido neste aparelho
+    await page.reload();
+    await page.click("#btn-scores");
+    ok(/Escolha um nome de usuário/.test(await page.textContent("#scores-private")) && /Rex — 600/.test(await page.textContent("#scores-public")), "sem nome escolhido não há parte individual, mas o ranking do jogo aparece");
   });
 
   // =====================================================================
@@ -874,11 +1310,11 @@ const PAGE_HELPERS = () => {
     ok(melBest && melBest.p >= 500, "as pontuações ficam guardadas na conta");
     await page.click("#btn-win-menu"); await page.click("#btn-logout");
     await page.click("#btn-scores");
-    ok(/Escolha um nome de usuário/.test(await page.textContent("#scores-body")), "sem entrar, a tela de pontuações não mostra o histórico de ninguém");
+    ok(/Escolha um nome de usuário/.test(await page.textContent("#scores-private")) && !/Mel —? ?\d/.test(await page.textContent("#scores-private")), "sem entrar, a parte individual da tela de pontuações não mostra nada de ninguém");
     await page.keyboard.press("Escape");
     await page.click("#btn-name"); await page.click("#btn-open-login"); await page.fill("#login-user", "Mel"); await page.fill("#login-pass", "Doce#2024"); await page.click("#btn-login-submit"); await idle(page, "btn-login-submit");
     await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"));
-    ok((await page.textContent("#menu-best")).includes("Sua melhor pontuação"), "ao entrar de novo, as pontuações da conta voltam");
+    ok((await page.textContent("#menu-best")).includes("Suas melhores"), "ao entrar de novo, as pontuações da conta voltam");
   });
 
   await section("cadastro sem criptografia nativa (versão em JavaScript)", async () => {

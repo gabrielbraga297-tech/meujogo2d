@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Fase 1</title>
+  <title>Jogo do cachorrinho</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -12,6 +12,7 @@
   <main id="stage">
     <header id="hud" aria-label="Placar">
       <div class="hud-left">
+        <span class="hud-item">FASE <b id="hud-level">1</b></span>
         <span class="hud-item">RAÇÕES <b id="hud-items">0/5</b></span>
         <span class="hud-item">PONTOS <b id="hud-points">0</b></span>
         <span id="hud-lives" class="hearts" role="img" aria-label="3 vidas">
@@ -24,9 +25,13 @@
       </div>
       <div class="hud-right">
         <span id="save-status" class="save-status" aria-hidden="true">✓ salvo</span>
-        <span class="hud-item" title="Bônus de tempo: 100 pontos até 20 s, menos 10 a cada 10 s">BÔNUS <b id="hud-bonus">+100</b></span>
+        <span class="hud-item" title="Bônus de tempo: 100 pontos até 20 s, menos 10 a cada 10 s (0 depois de 110 s)">BÔNUS <b id="hud-bonus">+100</b></span>
         <span class="hud-item">TEMPO <b id="hud-time">0,0 s</b></span>
-        <button id="btn-pause" class="icon-btn" type="button" aria-label="Pausar (tecla Esc)"><span></span><span></span></button>
+        <span id="hud-retry-item" class="hud-item hidden" title="Novas tentativas usadas nesta fase (cada uma custa 100 pontos)">TENTATIVAS <b id="hud-retry">0/3</b></span>
+        <button id="btn-save-hud" class="icon-btn" type="button" aria-label="Salvar jogo" title="Salvar jogo">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#fff" d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 2v5h9V5H7zm5 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+        </button>
+        <button id="btn-pause" class="icon-btn" type="button" aria-label="Pausar (tecla Esc)" title="Pausar (Esc)"><span></span><span></span></button>
       </div>
     </header>
 
@@ -47,7 +52,7 @@
   <!-- Menu inicial -->
   <section id="menu" class="screen page" aria-labelledby="menu-title">
     <div class="panel">
-      <h1 id="menu-title">Fase 1</h1>
+      <h1 id="menu-title">Menu inicial</h1>
       <p class="who">Jogador: <strong id="menu-player">ainda não escolhido</strong></p>
       <p id="menu-best" class="muted"></p>
       <p id="menu-progress" class="muted"></p>
@@ -65,18 +70,32 @@
     <p class="credit"><span>Criador do jogo</span><strong>GABRIEL BRAGA CAVALCANTE DE FRANÇA COSTA</strong></p>
   </section>
 
+  <!-- Escolher a fase -->
+  <section id="levels" class="screen page hidden" aria-labelledby="levels-title">
+    <div class="panel">
+      <h1 id="levels-title">Escolher a fase</h1>
+      <p class="muted">Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.</p>
+      <div id="levels-list" class="level-list"></div>
+      <div class="menu-list"><button id="btn-levels-back" type="button">Voltar</button></div>
+    </div>
+  </section>
+
   <!-- Como jogar -->
   <section id="howto" class="screen page hidden" aria-labelledby="howto-title">
     <div class="panel">
       <h1 id="howto-title">Como jogar</h1>
       <ol class="steps">
-        <li><strong>Objetivo:</strong> ajude o cachorrinho a pegar as 5 tigelas de ração e depois chegar à <strong>SAÍDA</strong>. A saída só abre quando você pegar as 5.</li>
+        <li><strong>Objetivo:</strong> ajude o cachorrinho a pegar todas as tigelas de ração (5 na Fase 1 e 7 na Fase 2) e depois chegar à <strong>SAÍDA</strong>. A saída só abre quando você pegar todas.</li>
         <li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela.</li>
-        <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica mais rápido e vai atrás do cachorrinho com mais força. As rações mudam de lugar a cada jogo. Se ele encostar no cachorrinho, você perde 1 vida. Você começa com 3 vidas, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Cada vez que perde uma vida, também perde <strong>50 pontos</strong>. Uma das rações esconde uma <strong>vida extra</strong> (ela tem um coração em cima): pegá-la dá +1 vida, até o máximo de 5. Quando as vidas acabam, a fase recomeça.</li>
-        <li><strong>Pontuação:</strong> cada ração vale 100 pontos (500 na fase). Terminando rápido você ganha até 100 pontos de <strong>bônus de tempo</strong>: até 20 segundos = 100, até 30 s = 90, até 40 s = 80, e assim por diante (perde 10 a cada 10 s a mais), até chegar a 0. Cada vida perdida desconta 50 pontos (a pontuação nunca fica abaixo de 0). Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam.</li>
-        <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
-        <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome e as suas pontuações neste aparelho.</li>
+        <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica mais rápido e vai atrás do cachorrinho com mais força. Se ele encostar no cachorrinho, você perde 1 vida e o cachorrinho volta ao início da fase (o tempo continua contando). As rações que ainda não foram pegas <strong>mudam de lugar</strong>, e elas também ficam em lugares novos a cada jogo.</li>
+        <li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Algumas rações escondem uma <strong>vida extra</strong> (elas têm um coração em cima): na Fase 1 é 1 ração; na Fase 2 podem ser 1 ou 2, sorteadas a cada jogo. Cada uma dá +1 vida, até o máximo de 5. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>
+        <li><strong>Sem vidas?</strong> Você tem até <strong>3 novas tentativas</strong> da fase em que está: ela recomeça do zero, com 3 vidas. Cada nova tentativa custa <strong>100 pontos</strong>.</li>
+        <li><strong>Pontuação:</strong> cada ração vale 100 pontos. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>, de 0 a 100 pontos: até 20 segundos = 100, até 30 s = 90, até 40 s = 80, e assim por diante (10 pontos a menos a cada 10 s a mais), até chegar a 0. Cada vida perdida desconta <strong>50 pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam.</li>
+        <li><strong>Fase 2:</strong> abre quando você termina a Fase 1. O mapa é outro, há <strong>2 veterinários</strong> que começam no centro do mapa e eles são 10% mais espertos.</li>
+        <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou toque no botão de pausa no topo do jogo.</li>
+        <li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos e mostra apenas a melhor pontuação de cada jogador.</li>
+        <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome neste aparelho.</li>
       </ol>
       <div class="menu-list"><button id="btn-howto-back" type="button" class="primary" data-autofocus>Voltar</button></div>
     </div>
@@ -86,8 +105,11 @@
   <section id="scores" class="screen page hidden" aria-labelledby="scores-title">
     <div class="panel wide">
       <h1 id="scores-title">Pontuações</h1>
-      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação. Fases diferentes se somam. A pontuação da fase é 100 por ração + o bônus de tempo − 50 por vida perdida.</p>
-      <div id="scores-body"></div>
+      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + bônus de tempo − 50 por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
+      <div id="scores-private" class="score-private"></div>
+      <h2>Ranking do jogo</h2>
+      <p id="scores-source" class="muted" role="status" aria-live="polite"></p>
+      <div id="scores-public"></div>
       <p id="scores-note" class="note hidden">Não foi possível guardar dados neste navegador. Seus recordes valem só até fechar a página.</p>
       <div class="menu-list"><button id="btn-scores-back" type="button" class="primary" data-autofocus>Voltar</button></div>
     </div>
@@ -226,7 +248,8 @@
       <p id="win-total" class="muted"></p>
       <p id="win-extra" class="muted"></p>
       <div class="menu-list">
-        <button id="btn-again" type="button" class="primary" data-autofocus>Jogar novamente</button>
+        <button id="btn-next" type="button" class="primary hidden" data-autofocus>Próxima fase</button>
+        <button id="btn-again" type="button" data-autofocus>Jogar novamente</button>
         <button id="btn-win-scores" type="button">Pontuações</button>
         <button id="btn-win-menu" type="button">Menu</button>
       </div>
@@ -239,6 +262,7 @@
       <h1 id="lose-title" class="bad">O veterinário pegou o cachorrinho!</h1>
       <p>Acabaram as suas vidas.</p>
       <p id="lose-text" class="muted"></p>
+      <p id="lose-chances" class="muted"></p>
       <div class="menu-list">
         <button id="btn-retry" type="button" class="primary" data-autofocus>Tentar novamente</button>
         <button id="btn-lose-menu" type="button">Menu</button>
@@ -248,6 +272,8 @@
 
   <script src="js/auth.js"></script>
   <script src="js/records.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/board.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

@@ -1,38 +1,43 @@
 (() => {
   "use strict";
 
-  const TILE = 32;
-  const TOTAL_ITEMS = 5;
-  const SPEED = 180;       // cachorro, pixels do mundo por segundo
-  const START_LIVES = 3;   // vidas no começo da fase
-  const MAX_LIVES = 5;     // o jogador pode ter de 1 a 5 vidas (uma ração traz 1 vida extra)
-  const INVULN = 2;        // segundos de proteção depois de perder uma vida
-  const LEVEL_ID = 1;      // fase atual (chave dos recordes)
-  const LEVELS = [1];      // fases que aparecem na tela de pontuações
-  const MIN_TILE_CSS = 24; // abaixo disso (telas pequenas) a câmera dá zoom e segue o cachorro
+  const TILE = 32, COLS = 25, ROWS = 18;
+  const WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE;
+  const SPEED = 180;        // cachorro, pixels do mundo por segundo
+  const START_LIVES = 3;    // vidas ao começar uma fase do zero
+  const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
+  const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
+  const INVULN = 2;         // segundos de proteção depois de perder uma vida
+  const MIN_TILE_CSS = 24;  // abaixo disso (telas pequenas) a câmera dá zoom e segue o cachorro
   const MAX_BACKING_W = 2400; // limite de resolução interna do canvas (desempenho)
-  const AUTOSAVE_EVERY = 5;   // segundos entre salvamentos automáticos
-  const RESUME_GRACE = 1.5;   // proteção ao continuar um jogo salvo
+  const AUTOSAVE_EVERY = 5; // segundos entre salvamentos automáticos
+  const RESUME_GRACE = 1.5; // proteção ao continuar um jogo salvo
 
-  // Configuração dos veterinários da Fase 1: apenas um. Patrulha devagar e raramente decide perseguir,
-  // mas, quando aparece o "!", ele acelera e persegue com mais empenho.
-  const LEVEL = {
-    vets: [{
-      speed: 48,        // velocidade ao patrulhar
-      chaseSpeed: 100,  // velocidade ao perseguir (o cachorro, a 180, ainda é bem mais rápido)
-      sight: 112,       // distância máxima para notar o cachorro (px)
-      chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
-      thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
-      chaseTime: 3,     // duração mínima de uma perseguição (s)
-      chaseMax: 6,      // duração máxima: enquanto vê o cachorro ele não desiste, até este limite (s)
-      restTime: 5,      // descanso depois de perseguir (s)
-      idleMin: 0.6, idleMax: 1.6, // pausa ao chegar no destino da patrulha (s)
-    }],
+  // ---------- Fases ----------
+  // Veterinário da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
+  // ele acelera e persegue com mais empenho.
+  const BASE_VET = {
+    speed: 48,        // velocidade ao patrulhar
+    chaseSpeed: 100,  // velocidade ao perseguir (o cachorro, a 180, ainda é bem mais rápido)
+    sight: 112,       // distância máxima para notar o cachorro (px)
+    chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
+    thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
+    chaseTime: 3,     // duração mínima de uma perseguição (s)
+    chaseMax: 6,      // duração máxima: enquanto vê o cachorro ele não desiste, até este limite (s)
+    restTime: 5,      // descanso depois de perseguir (s)
+    idleMin: 0.6, idleMax: 1.6, // pausa ao chegar no destino da patrulha (s)
   };
+  // "Mais esperto" = 10% mais difícil: mais rápido, enxerga mais longe, decide perseguir mais vezes, insiste mais e descansa menos.
+  const harder = (c, f) => ({
+    speed: c.speed * f, chaseSpeed: c.chaseSpeed * f, sight: c.sight * f, chaseChance: Math.min(1, c.chaseChance * f),
+    thinkEvery: c.thinkEvery / f, chaseTime: c.chaseTime * f, chaseMax: c.chaseMax * f, restTime: c.restTime / f,
+    idleMin: c.idleMin / f, idleMax: c.idleMax / f,
+  });
+  const PHASE2_VET = harder(BASE_VET, 1.1);
 
-  // # parede | X caixa | E saída | P início do cachorro | V início do veterinário
-  // (as rações são sorteadas em lugares livres a cada jogo novo: veja placeItems)
-  const MAP = [
+  // # parede | X caixa | E saída | P início do cachorro | V início de um veterinário
+  // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
+  const MAP_1 = [
     "#########################",
     "#P......#.........#.....#",
     "#.......#....X....#.....#",
@@ -52,8 +57,63 @@
     "#...............XX...EEE#",
     "#########################",
   ];
-  const COLS = MAP[0].length, ROWS = MAP.length;
-  const WORLD_W = COLS * TILE, WORLD_H = ROWS * TILE;
+  // Fase 2: quatro salas nos cantos ligadas por corredores a um salão central, onde os dois veterinários começam.
+  const MAP_2 = [
+    "#########################",
+    "#P......#########.......#",
+    "#.....X.#########.X.....#",
+    "#.XX.................XX.#",
+    "#.......####.####.......#",
+    "#.......####.####.......#",
+    "####.###.........###.####",
+    "####.###..X...X..###.####",
+    "####.......V.........####",
+    "####.###.....V...###.####",
+    "####.###..X...X..###.####",
+    "####.###.........###.####",
+    "#.......####.####.......#",
+    "#.....X.####.####.......#",
+    "#.......................#",
+    "#.XX..X.#########....EEE#",
+    "#.......#########..X.EEE#",
+    "#########################",
+  ];
+  const LEVELS = [
+    // rations = quantas rações há na fase; extraLives = [mín, máx] de rações que escondem uma vida extra (sorteado a cada jogo)
+    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, extraLives: [1, 1] },
+    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, extraLives: [1, 2] },
+  ];
+  const LEVEL_IDS = LEVELS.map((l) => l.id);
+
+  // Converte um mapa em dados prontos para jogar (e para conferir jogos salvos), sem mexer no estado atual.
+  function buildLevel(def) {
+    const { map } = def;
+    if (map.length !== ROWS || map.some((r) => r.length !== COLS)) throw new Error(`Mapa inválido: ${def.title}`);
+    const solids = [], exitTiles = [], vetSpawns = [];
+    let spawnTile = null;
+    const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X"));
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const ch = map[r][c];
+      if (ch === "#" || ch === "X") solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch });
+      else if (ch === "E") exitTiles.push([c, r]);
+      else if (ch === "P") spawnTile = [c, r];
+      else if (ch === "V") vetSpawns.push([c, r]);
+    }
+    if (!spawnTile || !exitTiles.length || vetSpawns.length !== def.vets.length) throw new Error(`Mapa incompleto: ${def.title}`);
+    const [lifeMin, lifeMax] = def.extraLives;
+    if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) || lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations) {
+      throw new Error(`Rações inválidas: ${def.title}`);
+    }
+    const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
+    const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
+    return {
+      id: def.id, title: def.title, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets, rations: def.rations, lifeMin, lifeMax,
+      spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
+      exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
+    };
+  }
+  const BUILT = Object.create(null);
+  for (const def of LEVELS) BUILT[def.id] = buildLevel(def);
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("game");
@@ -63,12 +123,15 @@
 
   function safeStorage() { try { return window.localStorage; } catch { return null; } }
   const store = Records.createStore(safeStorage());
+  const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} });
 
   const keys = {};
   const touch = { left: false, right: false, up: false, down: false };
   let state = "menu"; // menu | playing | paused | won | lost
+  let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
-  let collected, score, time, lives, livesLost, invuln, hintTimer;
+  let collected, score, time, lives, livesLost, retries, invuln, hintTimer;
+  let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
   let noCatch = false;    // usado apenas em testes
@@ -84,9 +147,9 @@
     return a;
   }
 
-  // Sorteia onde ficam as rações: só em chão alcançável, longe do início do cachorro, do veterinário e da saída,
+  // Sorteia onde ficam `count` rações: só em chão alcançável, longe do início do cachorro, dos veterinários e da saída,
   // e espalhadas pelo mapa (a distância mínima entre elas diminui só se for preciso).
-  function placeItems(spawnTile, vetTiles, exitTiles) {
+  function placeItems(spawnTile, vetTiles, exitTiles, count) {
     const g = bfs(spawnTile), key = (c, r) => r * COLS + c;
     const exitKeys = new Set(exitTiles.map(([c, r]) => key(c, r)));
     const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -95,34 +158,39 @@
       const picked = [];
       for (const t of cand) {
         if (picked.every((p) => apart(p, t) >= gap)) picked.push(t);
-        if (picked.length === TOTAL_ITEMS) return picked;
+        if (picked.length === count) return picked;
       }
     }
-    return cand.slice(0, TOTAL_ITEMS);
+    return cand.slice(0, count);
   }
 
-  function reset() {
-    solids = []; items = []; vets = [];
-    collected = 0; score = 0; time = 0; lives = START_LIVES; livesLost = 0; invuln = 0; hintTimer = 0;
-    walk = MAP.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X"));
-    let ex1 = COLS, ey1 = ROWS, ex2 = 0, ey2 = 0;
-    const exitTiles = [], vetTiles = [];
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-      const ch = MAP[r][c], x = c * TILE, y = r * TILE;
-      if (ch === "#" || ch === "X") solids.push({ x, y, w: TILE, h: TILE, kind: ch });
-      else if (ch === "E") { exitTiles.push([c, r]); ex1 = Math.min(ex1, c); ey1 = Math.min(ey1, r); ex2 = Math.max(ex2, c); ey2 = Math.max(ey2, r); }
-      else if (ch === "P") { spawn = { x: x + 4, y: y + 4 }; player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false }; }
-      else if (ch === "V") {
-        const cfg = LEVEL.vets[vets.length] || LEVEL.vets[0];
-        const [cx, cy] = centerOf(c, r);
-        vets.push({ cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 2, dir: 1 });
-        vetTiles.push([c, r]);
-      }
-    }
-    exitRect = { x: ex1 * TILE, y: ey1 * TILE, w: (ex2 - ex1 + 1) * TILE, h: (ey2 - ey1 + 1) * TILE };
-    items = placeItems(tileOf(spawn.x + 12, spawn.y + 12), vetTiles, exitTiles)
-      .map(([c, r]) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life: false }));
-    if (items.length) items[Math.floor(rand() * items.length)].life = true; // uma ração traz uma vida extra
+  const tileItem = ([c, r], life) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life });
+
+  // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
+  function reset(id = levelId, o = {}) {
+    levelId = id; lv = BUILT[id];
+    solids = lv.solids; walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
+    collected = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0;
+    lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
+    retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
+    player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
+    vets = lv.vetSpawns.map(([c, r], i) => {
+      const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
+      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 2, dir: 1 };
+    });
+    items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations).map((t) => tileItem(t, false));
+    // Algumas rações trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fase 2: 1 ou 2).
+    const extra = lv.lifeMin + Math.floor(rand() * (lv.lifeMax - lv.lifeMin + 1));
+    shuffle(items.map((_, i) => i)).slice(0, extra).forEach((i) => { items[i].life = true; });
+    score = runningScore();
+  }
+
+  // Quando o cachorro perde uma vida, as rações que ainda não foram pegas mudam de lugar.
+  function relocateItems() {
+    const rest = items.filter((i) => !i.taken);
+    if (!rest.length) return;
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length);
+    rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life)); });
   }
 
   // ---------- Cachorro ----------
@@ -214,15 +282,18 @@
   }
 
   // ---------- Pontuação e vidas ----------
-  // Pontuação corrente: 100 por ração − 50 por vida perdida (o bônus de tempo entra ao terminar a fase).
-  const runningScore = () => Math.max(0, collected * Records.RATION_POINTS - livesLost * Records.LIFE_PENALTY);
+  // Pontuação corrente: 100 por ração − 50 por vida perdida − 100 por nova tentativa (o bônus de tempo entra ao terminar).
+  // PODE FICAR NEGATIVA.
+  const runningScore = () => collected * Records.RATION_POINTS - livesLost * Records.LIFE_PENALTY - retries * Records.RETRY_PENALTY;
 
   function giveLife() {
     if (lives < MAX_LIVES) { lives++; toast("Vida extra! +1 vida", 2.2); }
     else toast(`Esta ração tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).`, 2.8);
   }
 
-  function respawn() { // cachorro volta ao início, veterinário volta ao seu posto
+  // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
+  // O tempo NÃO zera: continua contando.
+  function respawn() {
     Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
       Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], idle: 2, cool: 3, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
@@ -235,7 +306,8 @@
     score = runningScore();
     if (lives <= 0) { gameOver(); return; }
     respawn();
-    toast(`Perdeu uma vida! −${Records.LIFE_PENALTY} pontos.`, 2);
+    relocateItems();
+    toast(`Perdeu uma vida! −${Records.LIFE_PENALTY} pontos. As rações mudaram de lugar.`, 2.6);
     saveNow();
   }
 
@@ -267,13 +339,13 @@
     else if (!noCatch && vets.some((v) => Math.hypot(v.cx - px, v.cy - py) < 22)) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
-      if (collected >= TOTAL_ITEMS) win();
+      if (collected >= lv.rations) win();
       else if (hintTimer <= 0) toast("Colete todas as rações antes de sair!", 1.5);
     }
   }
 
   // ---------- Estados e telas ----------
-  const SCREENS = ["menu", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "lose"].map($);
+  const SCREENS = ["menu", "levels", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "lose"].map($);
 
   function setState(s) {
     state = s;
@@ -318,7 +390,14 @@
     last = performance.now();
   }
 
-  function startGame() { reset(); beginPlay(); }
+  // Começa uma fase: do zero (vidas = 3), com as vidas que vieram da fase anterior, ou como nova tentativa.
+  function begin(id = levelId, o = {}) {
+    reset(id, o);
+    beginPlay();
+    const n = vets.length;
+    toast(o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
+      : `${lv.title}: ${n} ${n === 1 ? "veterinário" : "veterinários"}`, 2.8);
+  }
 
   // ---------- Jogo salvo ----------
   let autosaveT = 0, saveFlashTimer = null;
@@ -326,7 +405,7 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 2, l: LEVEL_ID, time: r2(time), lives, lost: livesLost, invuln: r2(Math.max(0, invuln)),
+      v: 3, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(Math.max(0, invuln)),
       items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0]),
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
@@ -337,29 +416,32 @@
   function parseSnapshot(sv) {
     try {
       const num = (n, lo, hi) => Number.isFinite(n) && n >= lo && n <= hi;
-      if (!sv || sv.v !== 2 || sv.l !== LEVEL_ID) return null;
+      if (!sv || sv.v !== 3 || !Number.isInteger(sv.l)) return null;
+      const L = BUILT[sv.l];
+      if (!L) return null;
       if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES || !num(sv.invuln, 0, INVULN)) return null;
       if (!Number.isInteger(sv.lost) || sv.lost < 0 || sv.lost > 999) return null;
-      if (!Array.isArray(sv.items) || sv.items.length !== TOTAL_ITEMS) return null;
+      if (!Number.isInteger(sv.rs) || sv.rs < 0 || sv.rs > MAX_RETRIES) return null;
+      if (!Array.isArray(sv.items) || sv.items.length !== L.rations) return null;
       const seen = new Set();
       let lifeItems = 0;
       for (const it of sv.items) {
         if (!Array.isArray(it) || it.length !== 4) return null;
         const [c, r, t, l] = it;
-        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1)) return null;
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= COLS || r >= ROWS || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1)) return null;
         if (seen.has(r * COLS + c)) return null;
         seen.add(r * COLS + c);
         lifeItems += l;
       }
-      if (lifeItems !== 1) return null; // sempre existe exatamente uma ração com vida extra
+      if (lifeItems < L.lifeMin || lifeItems > L.lifeMax) return null; // a fase tem de ter a quantidade prevista de rações com vida extra
       const p = sv.p;
       if (!p || !num(p.x, 0, WORLD_W - 24) || !num(p.y, 0, WORLD_H - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
-      if (solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
-      if (!Array.isArray(sv.vets) || sv.vets.length !== vets.length) return null;
+      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null;
+      if (!Array.isArray(sv.vets) || sv.vets.length !== L.vetSpawns.length) return null;
       for (const v of sv.vets) {
         if (!Array.isArray(v) || !num(v[0], 0, WORLD_W - 1) || !num(v[1], 0, WORLD_H - 1)) return null;
         const [c, r] = tileOf(v[0], v[1]);
-        if (!walk[r][c]) return null;
+        if (!L.walk[r][c]) return null;
       }
       return sv;
     } catch { return null; }
@@ -376,9 +458,9 @@
   }
 
   function applySnapshot(sv) {
-    reset();
-    items = sv.items.map(([c, r, t, l]) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: t === 1, life: l === 1 }));
-    time = sv.time; lives = sv.lives; livesLost = sv.lost;
+    reset(sv.l, { lives: sv.lives, retries: sv.rs });
+    items = sv.items.map(([c, r, t, l]) => Object.assign(tileItem([c, r], l === 1), { taken: t === 1 }));
+    time = sv.time; livesLost = sv.lost;
     collected = items.filter((i) => i.taken).length; score = runningScore();
     Object.assign(player, { x: sv.p.x, y: sv.p.y, facing: sv.p.f, moving: false });
     vets.forEach((v, i) => {
@@ -413,18 +495,42 @@
     return ok;
   }
 
-  // "Novo jogo": pede nome se ainda não há um e confirma antes de apagar um jogo salvo.
+  const levelTitle = (id) => BUILT[id]?.title || `Fase ${id}`;
+
+  function describeSave(sv) {
+    const got = sv.items.filter((i) => i[2] === 1).length;
+    return `${levelTitle(sv.l)} · ${fmt(sv.time * 1000)} · ${got}/${BUILT[sv.l].rations} rações · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
+  }
+
+  // "Novo jogo": pede nome se ainda não há um, confirma antes de apagar um jogo salvo e deixa escolher a fase liberada.
   function requestNewGame() {
     if (!store.player()) { openName(true); return; }
     const g = savedGame();
-    if (!g) { startGame(); return; }
+    if (!g) { chooseLevel(); return; }
     $("confirm-text").textContent = `${store.player()} já tem um jogo salvo (${describeSave(g.snap)}). Se você começar um novo jogo, esse progresso será apagado.`;
     showScreen("confirm");
   }
 
-  function describeSave(sv) {
-    const got = sv.items.filter((i) => i[2] === 1).length;
-    return `Fase ${sv.l} · ${fmt(sv.time * 1000)} · ${got}/${TOTAL_ITEMS} rações · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
+  function chooseLevel() {
+    const unlocked = store.progress(store.player()).unlocked;
+    if (LEVELS.filter((l) => l.id <= unlocked).length <= 1) { begin(LEVELS[0].id); return; }
+    renderLevels();
+    showScreen("levels");
+  }
+
+  function renderLevels() {
+    const me = store.player(), unlocked = store.progress(me).unlocked, list = $("levels-list");
+    list.replaceChildren();
+    for (const l of LEVELS) {
+      const open = l.id <= unlocked, best = store.personalBest(me, l.id);
+      const b = el("button", open ? "primary-ish" : "locked");
+      b.type = "button"; b.disabled = !open;
+      b.append(el("strong", null, l.title), el("span", "sub", open
+        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"} · ${best ? `sua melhor: ${best.p} pts` : "ainda não jogada"}`
+        : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
+      if (open) { b.dataset.autofocus = ""; b.addEventListener("click", () => begin(l.id)); }
+      list.append(b);
+    }
   }
 
   function pauseGame() {
@@ -443,17 +549,26 @@
     setState("won");
     const timeMs = officialTimeMs();
     const bonus = Records.timeBonus(timeMs);
-    const points = Records.levelPoints(collected, timeMs, livesLost); // rações + bônus de tempo − vidas perdidas
+    const points = Records.levelPoints(collected, timeMs, livesLost, retries); // rações + bônus − vidas perdidas − tentativas extras
     score = points;
+    carriedLives = lives;
+    const next = LEVELS.find((l) => l.id === levelId + 1);
+    $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
     $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS} + bônus de tempo: ${bonus}` +
-      (livesLost ? ` − vidas perdidas: ${livesLost * Records.LIFE_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
-    $("win-extra").textContent = `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}`;
+      (livesLost ? ` − vidas perdidas: ${livesLost * Records.LIFE_PENALTY}` : "") +
+      (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
+    $("win-extra").textContent = `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
+      (next ? ` · Você leva ${lives} ${lives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
+    $("btn-next").classList.toggle("hidden", !next);
+    $("btn-next").textContent = next ? `Próxima fase (${next.title})` : "";
+    $("btn-again").classList.toggle("primary", !next);
     let res = null;
     try {
-      res = store.addRun({ level: LEVEL_ID, timeMs, points });
+      res = store.addRun({ level: levelId, timeMs, points });
       const me = store.player();
-      if (me) { store.completeLevel(me, LEVEL_ID); store.clearGame(me); } // fase concluída: o jogo em andamento termina
+      if (me) { store.completeLevel(me, levelId); store.clearGame(me); } // fase concluída: o jogo em andamento termina
+      if (res && res.newPersonal) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
     } catch { /* seguem sem registrar */ }
     if (res) {
       const best = res.personalBest.p;
@@ -463,7 +578,7 @@
         : `Sua melhor pontuação nesta fase continua ${best}. Na mesma fase não soma: vale a maior.`;
       $("win-general").textContent = res.newGeneral ? "Novo recorde geral!"
         : `Recorde geral: ${res.generalBest.p} pontos (${res.generalBest.n})`;
-      $("win-total").textContent = `Pontuação total: ${store.totalScore(store.player(), LEVELS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
+      $("win-total").textContent = `Pontuação total: ${store.totalScore(store.player(), LEVEL_IDS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
     } else {
       $("win-personal").textContent = "Escolha um nome de usuário para guardar as suas pontuações.";
       $("win-general").textContent = "";
@@ -472,10 +587,18 @@
     showScreen("win");
   }
 
+  // Sem vidas: até 3 novas tentativas da mesma fase (do zero), cada uma custa 100 pontos.
   function gameOver() {
     setState("lost");
     if (store.player()) store.clearGame(store.player()); // acabaram as vidas: não há o que continuar
-    $("lose-text").textContent = `Rações coletadas: ${collected}/${TOTAL_ITEMS} · Pontos: ${score}`;
+    const left = MAX_RETRIES - retries;
+    $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations} · Pontos: ${score}`;
+    $("lose-chances").textContent = left > 0
+      ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
+      : `Acabaram as suas chances nesta fase (as ${MAX_RETRIES} novas tentativas já foram usadas).`;
+    $("btn-retry").classList.toggle("hidden", left <= 0);
+    $("btn-retry").textContent = left > 0 ? `Tentar novamente (−${Records.RETRY_PENALTY} pontos)` : "";
+    $("btn-lose-menu").classList.toggle("primary", left <= 0);
     showScreen("lose");
   }
 
@@ -491,10 +614,10 @@
     $("menu-player").textContent = me ? me + (store.hasAccount(me) ? " (conta com senha)" : "") : "ainda não escolhido";
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
     $("menu-note").classList.toggle("hidden", store.persistent);
-    const best = me ? store.personalBest(me, LEVEL_ID) : null;
-    $("menu-best").textContent = best ? `Sua melhor pontuação na Fase ${LEVEL_ID}: ${best.p}` : "";
-    const done = me ? store.progress(me).completed.filter((l) => LEVELS.includes(l)).length : 0;
-    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVELS)}` : "";
+    const bests = me ? LEVELS.map((l) => [l, store.personalBest(me, l.id)]).filter(([, b]) => b) : [];
+    $("menu-best").textContent = bests.length ? `Suas melhores: ${bests.map(([l, b]) => `${l.title} ${b.p}`).join(" · ")}` : "";
+    const done = me ? store.progress(me).completed.filter((l) => LEVEL_IDS.includes(l)).length : 0;
+    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVEL_IDS)}` : "";
     const g = savedGame();
     $("btn-continue").classList.toggle("hidden", !g);
     $("btn-start").classList.toggle("primary", !g);
@@ -502,61 +625,61 @@
     if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
   }
 
-  function fmtDate(w) {
-    try { return new Date(w).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+  // ---------- Pontuações: as suas (só você vê) e o ranking do jogo (todos veem; só a melhor de cada jogador) ----------
+  let scoresToken = 0;
+  const isMe = (n) => { const me = store.player(); return !!me && Records.nameKey(n) === Records.nameKey(me); };
+
+  function renderPublicRanking(data) {
+    const box = $("scores-public");
+    box.replaceChildren();
+    $("scores-source").textContent = data.shared
+      ? `Ranking compartilhado: jogadores de vários aparelhos (${data.label}).`
+      : "Ranking deste aparelho: só aparecem os jogadores que jogaram aqui. Para ver jogadores de outros aparelhos, o jogo precisa estar ligado a um servidor de ranking (veja o README).";
+
+    const tot = el("section", "score-level");
+    tot.append(el("h3", null, "Ranking geral (pontuação total)"));
+    if (data.totals.length) {
+      const ol = el("ol");
+      for (const r of data.totals) ol.append(el("li", isMe(r.n) ? "me" : "", `${r.n} — ${r.total} pontos`));
+      tot.append(ol);
+    } else tot.append(el("p", null, "Ninguém terminou uma fase ainda."));
+    box.append(tot);
+
+    for (const l of LEVELS) {
+      const sec = el("section", "score-level");
+      sec.append(el("h3", null, `Ranking da ${l.title}`));
+      const rows = data.levels[l.id] || [];
+      if (rows.length) {
+        const ol = el("ol");
+        for (const r of rows) ol.append(el("li", isMe(r.n) ? "me" : "", `${r.n} — ${r.p} pts (${fmt(r.t)})`));
+        sec.append(ol);
+      } else sec.append(el("p", null, "Ninguém terminou esta fase ainda."));
+      box.append(sec);
+    }
   }
 
   function renderScores() {
-    const body = $("scores-body"), me = store.player();
-    body.replaceChildren();
-
-    const sum = el("section", "score-level");
-    sum.append(el("h2", null, "Pontuação total"));
-    sum.append(el("p", "big-total", me ? `${store.totalScore(me, LEVELS)} pontos` : "—"));
-    sum.append(el("p", null, me ? `${me}: soma da melhor pontuação de cada fase.` : "Escolha um nome de usuário para guardar as suas pontuações."));
-    const tr = store.totalRanking(5, LEVELS);
-    if (tr.length) {
-      sum.append(el("h3", null, "Ranking geral"));
-      const ol = el("ol");
-      for (const r of tr) ol.append(el("li", me && Records.nameKey(r.n) === Records.nameKey(me) ? "me" : "", `${r.n} — ${r.total} pontos`));
-      sum.append(ol);
-    }
-    body.append(sum);
-
-    for (const lvl of LEVELS) {
-      const sec = el("section", "score-level");
-      sec.append(el("h2", null, `Fase ${lvl}`));
-      const pb = me ? store.personalBest(me, lvl) : null, gb = store.generalBest(lvl);
+    const me = store.player(), priv = $("scores-private");
+    priv.replaceChildren();
+    if (me) {
+      priv.append(el("h2", null, "Suas pontuações"));
+      priv.append(el("p", "big-total", `${store.totalScore(me, LEVEL_IDS)} pontos`));
+      priv.append(el("p", "muted", `${me}: soma da melhor pontuação de cada fase. Só você vê esta parte.`));
       const dl = el("dl");
-      dl.append(el("dt", null, me ? `Sua melhor pontuação (${me})` : "Sua melhor pontuação"), el("dd", null, pb ? `${pb.p} pts · ${fmt(pb.t)}` : "—"));
-      dl.append(el("dt", null, "Recorde geral"), el("dd", null, gb ? `${gb.p} pts — ${gb.n} (${fmt(gb.t)})` : "—"));
-      sec.append(dl);
-
-      const rank = store.ranking(lvl, 5);
-      if (rank.length) {
-        sec.append(el("h3", null, "Ranking da fase"));
-        const ol = el("ol");
-        for (const r of rank) ol.append(el("li", me && Records.nameKey(r.n) === Records.nameKey(me) ? "me" : "", `${r.n} — ${r.p} pts (${fmt(r.t)})`));
-        sec.append(ol);
+      for (const l of LEVELS) {
+        const pb = store.personalBest(me, l.id);
+        dl.append(el("dt", null, `Sua melhor na ${l.title}`), el("dd", null, pb ? `${pb.p} pts · ${fmt(pb.t)}` : "ainda não jogada"));
       }
-
-      sec.append(el("h3", null, "Seu histórico"));
-      const hist = me ? store.history(me, lvl, 10) : [];
-      if (hist.length) {
-        const ul = el("ul");
-        let starred = false;
-        for (const r of hist) {
-          const li = el("li", null, `${fmtDate(r.w)} — ${r.p} pts · ${fmt(r.t)}`);
-          if (!starred && pb && r.p === pb.p && r.t === pb.t) { li.append(" ", el("span", "star", "★ melhor")); starred = true; }
-          ul.append(li);
-        }
-        sec.append(ul);
-      } else {
-        sec.append(el("p", null, me ? "Você ainda não terminou esta fase. Termine para aparecer aqui." : "Escolha um nome de usuário para guardar o seu histórico."));
-      }
-      body.append(sec);
+      priv.append(dl);
+    } else {
+      priv.append(el("h2", null, "Suas pontuações"));
+      priv.append(el("p", "muted", "Escolha um nome de usuário para guardar as suas pontuações. Elas só aparecem para você."));
     }
     $("scores-note").classList.toggle("hidden", store.persistent);
+
+    const token = ++scoresToken;
+    renderPublicRanking(board.localAll()); // mostra já o que há neste aparelho
+    board.fetchAll().then((data) => { if (token === scoresToken && document.body.dataset.screen === "scores") renderPublicRanking(data); }).catch(() => {});
   }
 
   let nameThenStart = false;
@@ -709,6 +832,20 @@
     view.zoom = clamp(MIN_TILE_CSS / (r.width / COLS), 1, 2); // telas pequenas: aproxima e segue o cachorro
   }
 
+  // O placar ocupa 1, 2 ou mais linhas conforme a largura: o tamanho do jogo reserva a altura REAL dele (variável --hud-h),
+  // senão a página rolaria. Reservar mais deixa o jogo mais estreito, o que nunca faz o placar ficar mais baixo: a conta converge.
+  let hudReserve = 0, hudRaf = 0, hudTries = 0;
+  function syncHudHeight() {
+    hudRaf = 0;
+    const hud = $("hud"), r = hud.getBoundingClientRect();
+    if (!r.height) return;
+    const h = Math.ceil(r.height + (parseFloat(getComputedStyle(hud).marginBottom) || 0));
+    if (Math.abs(h - hudReserve) <= 1 || hudTries++ > 8) return;
+    hudReserve = h;
+    document.body.style.setProperty("--hud-h", `${h}px`);
+  }
+  function scheduleHudSync() { if (!hudRaf) hudRaf = requestAnimationFrame(syncHudHeight); }
+
   // ---------- Desenho do mundo ----------
   function ellipse(x, y, rx, ry, color, rot = 0) {
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
@@ -805,7 +942,7 @@
       ctx.fillStyle = (r + c) % 2 ? "#232a3a" : "#262e40";
       rect(c * TILE, r * TILE, TILE, TILE);
     }
-    ctx.fillStyle = collected >= TOTAL_ITEMS ? "#3ddc84" : "#7a4b4b";
+    ctx.fillStyle = collected >= lv.rations ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
     ctx.fillStyle = "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center";
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
@@ -824,15 +961,24 @@
   }
 
   // ---------- Placar (HTML) ----------
-  const hudEl = { items: $("hud-items"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")] };
+  const hudEl = {
+    level: $("hud-level"), items: $("hud-items"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"),
+    retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
+  };
   const hudCache = {};
   function setHud(key, node, value) { if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; } }
   function updateHud() {
     if (!solids) return;
-    setHud("i", hudEl.items, `${collected}/${TOTAL_ITEMS}`);
+    setHud("lv", hudEl.level, String(levelId));
+    setHud("i", hudEl.items, `${collected}/${lv.rations}`);
     setHud("p", hudEl.points, String(score));
     setHud("t", hudEl.time, fmt(time * 1000));
     setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs())}`);
+    if (hudCache.r !== retries) {
+      hudCache.r = retries;
+      hudEl.retryItem.classList.toggle("hidden", retries === 0);
+      hudEl.retry.textContent = `${retries}/${MAX_RETRIES}`;
+    }
     if (hudCache.l !== lives) {
       hudCache.l = lives;
       const slots = Math.max(START_LIVES, lives); // mostra 3 corações no começo; ganhar vidas mostra mais, até 5
@@ -927,9 +1073,11 @@
   on("btn-start", requestNewGame);
   on("btn-continue", continueGame);
   on("btn-confirm-keep", continueGame);
-  on("btn-confirm-new", () => { store.clearGame(store.player()); startGame(); });
+  on("btn-confirm-new", () => { store.clearGame(store.player()); chooseLevel(); });
   on("btn-confirm-back", goMenu);
+  on("btn-levels-back", goMenu);
   on("btn-save", () => { $("pause-msg").textContent = saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar."; });
+  on("btn-save-hud", () => { toast(saveNow() ? "Jogo salvo!" : "Salvo só nesta página: o navegador não permite guardar.", 1.8); });
   on("btn-howto", () => showScreen("howto"));
   on("btn-howto-back", goMenu);
   on("btn-scores", () => { renderScores(); showScreen("scores"); });
@@ -949,25 +1097,31 @@
   on("btn-pause", pauseGame);
   on("btn-resume", resumeGame);
   on("btn-pause-menu", goMenu);
-  on("btn-again", startGame);
+  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives }); }); // as vidas passam para a próxima fase
+  on("btn-again", () => begin(levelId));
   on("btn-win-scores", () => { renderScores(); showScreen("scores"); });
   on("btn-win-menu", goMenu);
-  on("btn-retry", startGame);
+  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1 }); });
   on("btn-lose-menu", goMenu);
 
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get lives() { return lives; }, get livesLost() { return livesLost; }, get maxLives() { return MAX_LIVES; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
+    get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
+    get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
-    start: startGame, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
+    start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
 
   reset();
   fitCanvas();
-  if (typeof ResizeObserver === "function") new ResizeObserver(fitCanvas).observe(canvas);
-  else window.addEventListener("resize", fitCanvas);
+  if (typeof ResizeObserver === "function") {
+    new ResizeObserver(() => { fitCanvas(); scheduleHudSync(); }).observe(canvas);
+    new ResizeObserver(() => { hudTries = 0; scheduleHudSync(); }).observe($("hud"));
+  } else window.addEventListener("resize", () => { fitCanvas(); hudTries = 0; syncHudHeight(); });
+  syncHudHeight();
   goMenu();
   requestAnimationFrame(loop);
 })();
