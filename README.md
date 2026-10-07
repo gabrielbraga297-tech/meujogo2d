@@ -5,7 +5,7 @@ Versão atual: **Fase 1, Fase 2 e Fase 3**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.5.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -54,10 +54,12 @@ Depois que o "!" liga, ele fica ligado enquanto o veterinário vê o cachorrinho
 
 **Na Fase 3** a **velocidade** de movimento ganha mais 10% (60,5 e 121 px/s); a duração das perseguições e o descanso são os da Fase 2.
 
+**Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
+
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5**; as vidas são **cumulativas**:
 
-- Pegar uma ração com vida extra dá **+1 vida**, até o máximo de 5.
+- Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo de 5.
 - As vidas que sobram ao terminar uma fase **passam para a fase seguinte** (pelo botão *Próxima fase*). Escolher uma fase no menu ou usar *Jogar novamente* começa com 3 vidas.
 - Se o veterinário encosta, você perde **1 vida** e **50 pontos**. O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
