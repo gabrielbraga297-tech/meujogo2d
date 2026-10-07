@@ -27,6 +27,13 @@ Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica ma
 
 A Fase 2 é liberada ao terminar a Fase 1. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer a Fase 1 há o botão **Próxima fase**.
 
+**Velocidade dos veterinários** (o cachorrinho anda a 180 px/s):
+
+| | sem o "!" (patrulhando) | com o "!" (perseguindo, +20%) |
+|---|---|---|
+| Fase 1 | **50** px/s | **60** px/s |
+| Fase 2 (+10% nos dois) | **55** px/s | **66** px/s |
+
 **Os veterinários da Fase 2 são 10% mais difíceis:** velocidade (patrulha e perseguição), distância de visão, chance de decidir perseguir, duração mínima e máxima da perseguição ×1,1; e o tempo entre "olhadas", o descanso depois de perseguir e as pausas ÷1,1.
 
 ## Vidas

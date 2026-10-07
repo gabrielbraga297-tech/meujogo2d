@@ -16,9 +16,11 @@
   // ---------- Fases ----------
   // Veterinário da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
   // ele acelera e persegue com mais empenho.
+  // Velocidades do veterinário da Fase 1 (px/s). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 55 e 66.
+  const VET_SPEED = 50, VET_CHASE_SPEED = VET_SPEED * 1.2;
   const BASE_VET = {
-    speed: 48,        // velocidade ao patrulhar
-    chaseSpeed: 100,  // velocidade ao perseguir (o cachorro, a 180, ainda é bem mais rápido)
+    speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 50 px/s
+    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 50 + 20% = 60 px/s (o cachorro anda a 180)
     sight: 112,       // distância máxima para notar o cachorro (px)
     chaseChance: 0.25,// chance de decidir perseguir a cada "olhada"
     thinkEvery: 0.6,  // intervalo entre "olhadas" (s)
@@ -29,7 +31,7 @@
   };
   // "Mais esperto" = 10% mais difícil: mais rápido, enxerga mais longe, decide perseguir mais vezes, insiste mais e descansa menos.
   const harder = (c, f) => ({
-    speed: c.speed * f, chaseSpeed: c.chaseSpeed * f, sight: c.sight * f, chaseChance: Math.min(1, c.chaseChance * f),
+    speed: Math.round(c.speed * f * 100) / 100, chaseSpeed: Math.round(c.chaseSpeed * f * 100) / 100, sight: c.sight * f, chaseChance: Math.min(1, c.chaseChance * f),
     thinkEvery: c.thinkEvery / f, chaseTime: c.chaseTime * f, chaseMax: c.chaseMax * f, restTime: c.restTime / f,
     idleMin: c.idleMin / f, idleMax: c.idleMax / f,
   });
