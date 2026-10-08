@@ -861,7 +861,7 @@ const PAGE_HELPERS = () => {
     const up = ["speed", "chaseSpeed", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
     ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
     ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
-    ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 180 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (180 px/s) continua mais rápido que eles");
+    ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 252 / 1.4 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (252 px/s) continua pelo menos 40% mais rápido que eles");
     ok(cfgs.f1.speed === 55 && cfgs.f1.chaseSpeed === 110 && cfgs.f2a.speed === 60.5 && cfgs.f2a.chaseSpeed === 121, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
     ok(close(cfgs.f1.chaseSpeed / cfgs.f1.speed, 2) && close(cfgs.f2a.chaseSpeed / cfgs.f2a.speed, 2), "em cada fase, perseguindo ele anda o dobro da velocidade de quando patrulha");
 
@@ -1010,9 +1010,9 @@ const PAGE_HELPERS = () => {
     const cf = await ev(page, () => { __game.start(2); const f2 = { ...__game.vets[0].cfg }; __game.start(3); return { f2, f3a: { ...__game.vets[0].cfg }, f3b: { ...__game.vets[1].cfg } }; });
     ok(cf.f3a.speed === 66.55 && cf.f3a.chaseSpeed === 133.1 && cf.f2.speed === 60.5 && cf.f2.chaseSpeed === 121, `Fase 3: veterinários a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
     ok(Math.abs(cf.f3a.speed / cf.f2.speed - 1.1) < 1e-9 && Math.abs(cf.f3a.chaseSpeed / cf.f2.chaseSpeed - 1.1) < 1e-9, "a velocidade de movimento da Fase 3 é exatamente 10% maior que a da Fase 2, nos dois modos");
-    ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 324, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 veterinários são iguais e o cachorro (324 px/s) segue mais rápido");
+    ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 226.8 / 1.4, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 veterinários são iguais e o cachorro (324 px/s) segue mais rápido");
 
-    // ---- cachorrinho: o dobro de antes (360 px/s), 10% mais lento na Fase 3 e +10% por osso ----
+    // ---- cachorrinho: 252 px/s (0,7 × os 360 da 0.6.0), 10% mais lento na Fase 3 e +10% por osso ----
     const run1s = (id, x, y, bones = 0) => ev(page, ([id, x, y, bones]) => { __game.start(id); __game.freezeVets = true; __game.noCatch = true; __game.player.x = x; __game.player.y = y; const x0 = __game.player.x; const first = __game.dogSpeed; for (let k = 0; k < bones; k++) { const b = __game.items.find((i) => i.bone && !i.taken); const px = __game.player.x, py = __game.player.y; __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); __game.player.x = px; __game.player.y = py; } __game.items.forEach((i) => { if (!i.taken) { i.x = -500; i.y = -500; } }); const x1 = __game.player.x; __t.hold("d", 60); return [first, __game.dogSpeed, __game.player.x - x1]; }, [id, x, y, bones]);
     const sp1 = await run1s(1, 36, 16 * 32 + 4), sp2 = await run1s(2, 36, 14 * 32 + 4), sp3 = await run1s(3, 36, 15 * 32 + 4);
     ok(sp1[0] === 252 && sp2[0] === 252 && Math.abs(sp3[0] - 226.8) < 1e-9, `velocidade do cachorrinho (0,7 × a da 0.6.0): ${sp1[0]} px/s nas Fases 1 e 2 e ${sp3[0]} px/s na Fase 3 (10% mais lento)`);
@@ -2054,6 +2054,34 @@ const PAGE_HELPERS = () => {
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
     });
     ok(!diffs.length, `os números da tabela das fases do README (condição, veterinários, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
+    // ---- a tabela "Fases 6 a 10" do README (mapa, alcance, peças móveis, pontos, renascer) também bate com o jogo ----
+    const sec6 = readme.slice(readme.indexOf("### Fases 6 a 10"), readme.indexOf("Nas **Fases 9 e 10**"));
+    const T6 = {};
+    for (const l of sec6.split("\n")) { if (!l.startsWith("| ") || /^\|[-| ]+\|$/.test(l)) continue; const c = l.split("|").slice(1, -1).map((x) => x.trim().replace(/\*\*/g, "")); T6[c[0]] = c.slice(1); }
+    const L6 = await ev(page, () => __game.levels.filter((l) => l.id >= 6).map((l) => {
+      const doors = l.blocks.filter((b) => !b.wall), walls = l.blocks.filter((b) => b.wall);
+      return { C: l.map[0].length, R: l.map.length, rations: l.rations, bones: l.bones, nv: l.vets.length, lives: l.extraLives, alert: l.alertTiles, nd: doors.length, nw: walls.length, rd: l.blockRange.door, rw: l.blockRange.wall,
+        de: doors.map((b) => b.every ?? 3), ds: doors.map((b) => b.speed ?? 120), we: walls.map((b) => b.every), ws: walls.map((b) => b.speed ?? 120), pen: l.lifePenalty, min: l.minPoints, power: l.bonePower, respawn: l.respawnInPlace };
+    }));
+    const d6 = [], fmtS = (x) => String(x).replace(".", ",");
+    const need = (name) => { if (!T6[name] || T6[name].length !== 5) d6.push(`linha "${name}" não encontrada`); return T6[name] || []; };
+    L6.forEach((l, i) => {
+      const id = l.id ?? i + 6, chk = (name, want, got) => { if (!new RegExp(`^${want}`).test(got || "")) d6.push(`Fase ${i + 6} ${name}: "${got}" ≠ "${want}"`); };
+      chk("mapa", `${l.C} × ${l.R}`, need("Mapa")[i]);
+      chk("rações/ossos", `${l.rations} / ${l.bones}`, need("Rações / ossos")[i]);
+      chk("veterinários", String(l.nv), need("Veterinários (no centro do mapa)")[i]);
+      chk("vidas escondidas", `${l.lives[0]} ou ${l.lives[1]}`, need("Vidas escondidas (sorteio por jogo)")[i]);
+      chk("alcance", String(l.alert), need('Alcance do "!"')[i]);
+      chk("peças", `${l.nd} / ${l.nw}`, need("Portas de bloco / paredes (definidas)")[i]);
+      chk("sorteio", `${l.rd[0]}–${l.rd[1]}; ${l.rw[0]}–${l.rw[1]}`, need("Sorteio por jogo (portas; paredes)")[i]);
+      chk("portas", `${fmtS(l.de[0])} s${l.ds[0] !== 120 ? ` \\(${l.ds[0]} px/s\\)` : ""}`, need("Portas mudam de lado a cada")[i]);
+      chk("paredes", `${fmtS(l.we[0])} s${l.ws[0] !== 120 ? ` \\(${l.ws[0]} px/s\\)` : ""}`, need("Paredes mudam de lado a cada")[i]);
+      if (new Set(l.de).size !== 1 || new Set(l.we).size !== 1 || new Set(l.ds).size !== 1 || new Set(l.ws).size !== 1) d6.push(`Fase ${i + 6}: peças do mesmo tipo com intervalos ou velocidades diferentes`);
+      chk("perda/pontos", `−${l.pen} / ${l.min}`, need("Perda por vida / pontos para passar")[i]);
+      chk("poder", `${l.power} s`, need("Poder do osso")[i]);
+      chk("renascer", l.respawn ? "renasce onde morreu" : "volta ao início", need("Ao ser pego ou esmagado")[i]);
+    });
+    ok(L6.length === 5 && !d6.length, `a tabela das Fases 6 a 10 do README (mapa, rações, ossos, veterinários, vidas escondidas, alcance, peças móveis, pontos, poder, renascer) bate com o jogo ${d6.join("; ")}`);
   });
 
   // =====================================================================
@@ -3196,6 +3224,15 @@ const PAGE_HELPERS = () => {
     }
     ok(Object.values(hudSizes).every(Boolean), `o tamanho do jogo não muda durante a partida (Fases 5, 8 e 10 em 3 telas: ${Object.keys(hudSizes).length} casos)`);
     await page.setViewportSize({ width: 1280, height: 720 });
+
+    // celular deitado e baixo (568 × 320): o placar das Fases 5 a 10 não quebra em 5 linhas, a página não rola e o jogo não encolhe para o mínimo
+    const lowL = await newPage({ viewport: { width: 568, height: 320 }, hasTouch: true, isMobile: true });
+    await fresh(lowL);
+    const lows = [];
+    for (const id of [1, 5, 10]) {
+      lows.push(await ev(lowL, async (id) => { __game.start(id); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 100)))); const de = document.documentElement; return { id, over: de.scrollHeight - innerHeight, hud: Math.round(document.getElementById("hud").getBoundingClientRect().height), w: Math.round(document.getElementById("game").getBoundingClientRect().width) }; }, id));
+    }
+    ok(lows.every((l) => l.over <= 1 && l.hud <= 80 && l.w >= 270), `celular deitado de 320 px de altura: sem rolagem, placar de até 80 px e jogo com 270 px ou mais (${lows.map((l) => `F${l.id}: sobra ${l.over}, placar ${l.hud}, jogo ${l.w}`).join(" | ")})`);
 
     // telas longas: o botão Voltar fica sempre à vista
     await ev(page, () => { sessionStorage.setItem("keepSave", ""); localStorage.removeItem("cachorrinho.save.v1"); const st = Records.createStore(localStorage); st.setPlayer("Totó"); for (let l = 1; l <= 9; l++) st.completeLevel("Totó", l); });

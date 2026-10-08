@@ -59,10 +59,10 @@
   const VET_GAP = 40;        // px: um veterinário que vai atrás de outro não chega mais perto que isso (eles não andam colados nem se sobrepõem)
   const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser veterinários, talvez bem do lado do cachorro)
   // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
-  // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6 (e, quando existirem, Fase 4 = 8 e Fase 5 = 10).
+  // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
   // Blocos que se movem (a partir da Fase 3): ficam parados num tile, e a cada BLOCK_EVERY segundos mudam de lado (deslizam até o outro tile da dupla), sem
-  // esperar ninguém chegar perto. Nas Fases 1 a 3 nunca esmagam (quem estiver no lugar para onde o bloco vai é empurrado para o lado); nas Fases 4 e 5 (`crush`) esmagam o cachorro sem o poder do osso.
+  // esperar ninguém chegar perto. Nas Fases 1 a 3 nunca esmagam (quem estiver no lugar para onde o bloco vai é empurrado para o lado); nas Fases 4 a 10 (`crush`) esmagam o cachorro sem o poder do osso.
   // `blockEvery` de cada fase pode mudar esse intervalo. Nos últimos BLOCK_WARN s antes de cada mudança, o trilho pisca em amarelo.
   const BLOCK_SPEED = 120, BLOCK_EVERY = 3, BLOCK_WARN = 0.6; // px/s ao deslizar (o dobro de antes), s entre as mudanças, s de aviso
 
@@ -394,7 +394,7 @@
     // extraLives = [mín, máx] de itens (rações ou ossos) que escondem uma vida extra, sorteado a cada jogo;
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
-    // dogSpeed = fração da velocidade do cachorrinho (1 = 360 px/s; a Fase 3 usa 0,9 = 324 px/s e as Fases 4 e 5 usam 0,945 = 340,2 px/s)
+    // dogSpeed = fração da velocidade do cachorrinho (1 = 252 px/s; a Fase 3 usa 0,9 = 226,8 px/s, as Fases 4 e 5 usam 0,945 = 238,14 px/s e as Fases 6 a 10 sobem de 0,96 a 1)
     // alertTiles = a que distância (em quadrados) o veterinário liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
     // lifePenalty = pontos perdidos por vida perdida (padrão 50); minPoints = pontos mínimos na fase para passar (padrão 0); bonePower = segundos do poder do osso (0 = sem poder);
     // crush = os blocos esmagam o cachorro (sem o poder do osso); note = frase curta na escolha de fase
@@ -705,9 +705,9 @@
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
     shuffle(items.map((_, i) => i)).slice(0, lv.bones).forEach((i) => { items[i].bone = true; });
-    // Alguns itens (ração ou osso) trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fase 2: 1 ou 2; Fase 3: 1, em ração OU osso).
+    // Alguns itens (ração ou osso) trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fases 2 e 3: 1 ou 2; Fases 4 e 5: 3 e 4; Fases 6 a 10: 3 ou 4).
     const extra = lv.lifeMin + Math.floor(rand() * (lv.lifeMax - lv.lifeMin + 1));
-    // (nunca nos dois ossos: no máximo 1 osso traz vida)
+    // (no máximo 1 osso traz vida; nunca nos dois ossos da Fase 3)
     let given = 0, onBones = 0;
     for (const i of shuffle(items.map((_, k) => k))) {
       if (given >= extra) break;
@@ -729,7 +729,7 @@
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone)); });
   }
 
-  // ---------- Blocos que se movem (Fase 3) ----------
+  // ---------- Blocos e paredes que se movem (Fases 3 a 10) ----------
   function refreshBlockTiles() {
     dynBlocked.clear();
     for (const b of blocks) {

@@ -198,6 +198,11 @@ body.touch[data-state="playing"] #touch { display: flex; }
 /* Celular deitado: o controle fica nas laterais, sem roubar altura do jogo */
 @media (orientation: landscape) and (max-height: 520px) {
   body.touch { --touch-h: 0px; --hud-h: 56px; }
+  /* o placar usa a largura da tela (até 520 px, o limite do placar compacto) em vez do tamanho do jogo, que aqui é pequeno: assim ele não quebra em 4 ou 5 linhas e não rouba a altura do jogo */
+  #stage { width: min(100%, 520px); }
+  #hud { font-size: 13px; }
+  #wrap { width: max(240px, min(100%, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); margin-inline: auto; }
+  @supports (height: 100dvh) { #wrap { width: max(240px, min(100%, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); } }
   body.touch[data-state="playing"] #touch { position: fixed; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; z-index: 5; }
   .rotate-tip { display: none !important; }
 }
