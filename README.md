@@ -1,6 +1,6 @@
 # Jogo 2D top-down (sem nome ainda)
 
-Versão atual: **Fase 1 a Fase 5**.
+Versão atual: **Fase 1 a Fase 10**.
 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
@@ -26,6 +26,11 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 3 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 66,55 / 133,1 px/s | 226,8 px/s |
 | 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
 | 5 | chegar a 1000 pontos na fase (a saída abre) e sair | 3 | 20 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
+| 6 | chegar a 1250 pontos na fase (a saída abre) e sair | 3 | 24 | 3 | 76,14 / 152,27 px/s | 241,92 px/s |
+| 7 | chegar a 1400 pontos na fase (a saída abre) e sair | 3 | 28 | 3 | 79,07 / 158,12 px/s | 244,44 px/s |
+| 8 | chegar a 1650 pontos na fase (a saída abre) e sair | 3 | 32 | 4 | 82 / 163,98 px/s | 246,96 px/s |
+| 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 3 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
+| 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 3 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os veterinários ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
@@ -44,6 +49,25 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | Blocos que se movem | — | — | de **1 a 2** portas (sorteado a cada jogo) | de **1 a 3** portas, e agora **esmagam** | de **1 a 3** portas que esmagam **+ de 1 a 3 paredes** que se movem a cada 10 s |
 | Pontos | 100 por ração; −50 por vida | idem, **+150 por osso** e **+100 por carteiro** | idem | idem, **−200 por vida** e **800 pontos** para passar | −200 por vida e **1000 pontos** para passar |
 | Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** | 0 a 200 (20 a cada 10 s) | 0 a 200 (20 a cada 10 s) |
+
+### Fases 6 a 10 (0.7.0)
+Labirintos cada vez maiores, a partir da Fase 5: mais rações, mais ossos, veterinários mais rápidos (+4% por fase sobre a Fase 5) e mais blocos e paredes que se movem (o número de peças de cada tipo é **sorteado a cada jogo** dentro de uma faixa). O cachorrinho sobe só um pouco de velocidade por fase para continuar mais rápido que o veterinário perseguindo (pelo menos 40% mais).
+
+| | Fase 6 | Fase 7 | Fase 8 | Fase 9 | Fase 10 |
+|---|---|---|---|---|---|
+| Mapa | 45 × 31 | 49 × 33 | 53 × 35 | 57 × 37 | 61 × 39 |
+| Rações / ossos | 24 / 3 | 28 / 3 | 32 / 4 | 36 / 4 | 40 / 5 |
+| Vidas escondidas | 5 (no máximo 1 num osso) | 5 | 5 | 5 | 5 |
+| Alcance do "!" | 11 quadrados | 12 | 13 | 14 | 15 |
+| Portas de bloco / paredes (definidas) | 4 / 4 | 5 / 4 | 5 / 5 | 6 / 6 | 6 / 6 |
+| Sorteio por jogo (portas; paredes) | 2–4; 2–4 | 3–5; 2–4 | 3–5; 3–5 | 4–6; 4–6 | 5–6; 5–6 |
+| Portas mudam de lado a cada | 3 s | 3 s | 3 s | **2,5 s** (160 px/s) | **2 s** (200 px/s) |
+| Paredes mudam de lado a cada | 10 s | 10 s | 10 s | **8 s** (140 px/s) | **6 s** (160 px/s) |
+| Perda por vida / pontos para passar | −250 / 1250 | −250 / 1400 | −250 / 1650 | −300 / 1800 | −300 / 2050 |
+| Poder do osso | 35 s | 35 s | 35 s | 35 s | 35 s |
+| Ao ser pego ou esmagado | volta ao início | volta ao início | volta ao início | **renasce onde morreu** | **renasce onde morreu** |
+
+Nas **Fases 9 e 10** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os veterinários voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
 
 Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**. No menu, **Jogar fases anteriores** (aparece depois de concluir alguma fase) leva às fases já concluídas para **melhorar o recorde** de cada uma: só a maior pontuação de cada fase vale, e a pontuação total é a soma do melhor de cada fase (jogar uma fase de novo ou pular para outra não soma partidas, só pode subir o recorde daquela fase).
 

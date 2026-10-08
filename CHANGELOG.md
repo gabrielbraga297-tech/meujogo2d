@@ -8,6 +8,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 - **Velocidades:** veterinários (e carteiros) **10% mais rápidos** em todas as fases (Fase 1: 55 / 110 px/s; Fase 2: 60,5 / 121; Fase 3: 66,55 / 133,1; Fases 4 e 5: 73,21 / 146,41). O cachorrinho ficou **mais lento: 252 px/s na base** (0,7 × os 360 da 0.6.0; Fase 3 = 226,8; Fases 4 e 5 = 238,14). *O pedido era −50%, mas a análise de equilíbrio mostrou que, com os veterinários +10%, o cachorrinho ficaria apenas 16% a 22% mais rápido que um veterinário perseguindo nas Fases 3 a 5; com −30% a folga é de ~60 a 70%.*
 - **Fase 3 com 1 a 2 vidas escondidas** (sorteado a cada jogo; no máximo 1 num osso).
 - **Vidas realmente escondidas:** o coração em cima do item foi retirado; só se descobre a vida extra ao pegar o item.
+- **Fases 6 a 10:** cinco labirintos novos e maiores (45 × 31 até 61 × 39), cada um mais difícil que o anterior a partir da Fase 5: rações 24 → 40, ossos 3 → 5, veterinários +4% de velocidade por fase, alcance do "!" 11 → 15, pontos mínimos 1250 → 2050 e mais portas de bloco e paredes que se movem (até 6 + 6, sorteadas a cada jogo). **Fases 9 e 10:** blocos e paredes **mais rápidos** (portas a cada 2,5 s / 2 s e paredes a cada 8 s / 6 s) e o cachorrinho **renasce onde morreu**.
 - **O tempo só começa a correr quando você começa a jogar** (em todas as fases): a fase espera o primeiro passo do cachorrinho; relógio, veterinários e blocos ficam parados até lá.
 
 ## 0.6.0 — 08/10/2026

@@ -44,6 +44,13 @@
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
   // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (73,21 e 146,41 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (238,14 px/s).
   const PHASE4_VET = { ...PHASE3_VET, speed: Math.round(PHASE3_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE3_VET.chaseSpeed * 1.1 * 100) / 100 };
+  // Fases 6 a 10: a partir da Fase 5 (= Fase 4), +4% de velocidade a cada fase (nos dois modos); o resto do comportamento é o mesmo.
+  const scaleVet = (c, f) => ({ ...c, speed: Math.round(c.speed * f * 100) / 100, chaseSpeed: Math.round(c.chaseSpeed * f * 100) / 100 });
+  const PHASE6_VET = scaleVet(PHASE4_VET, 1.04);
+  const PHASE7_VET = scaleVet(PHASE4_VET, 1.08);
+  const PHASE8_VET = scaleVet(PHASE4_VET, 1.12);
+  const PHASE9_VET = scaleVet(PHASE4_VET, 1.16);
+  const PHASE10_VET = scaleVet(PHASE4_VET, 1.2);
   const POSTMAN_SLOW = 0.5;  // carteiro atingido pelo cachorro com poder: volta ao centro e anda só 50% da velocidade que a fase dá a ele (até o poder acabar)
   const POSTMAN_STUN = 2;    // s em que o carteiro atingido não pode ser atingido de novo (e não pontua de novo)
   const VET_NEAR = 3;        // tiles: ao escolher o caminho de patrulha, o veterinário evita passar a menos disso de outro veterinário
@@ -191,6 +198,196 @@
     "#.............#...#...............#..EEE#",
     "#########################################",
   ];
+  // Fase 6: labirinto 45 × 31 (gerado e conferido por script: todo o chão fica ligado em qualquer posição das peças móveis)
+  const MAP_6 = [
+    "#############################################",
+    "#P..#...#...........#.........#.............#",
+    "#...#.#.###.###.###.#.#.###.#.#####.#######.#",
+    "#...#.....#.#.............#.#.....#.....#...#",
+    "#.###.###.#.#.#.#.......#.#.#####.#####.#.###",
+    "#.....#...#.#...#.........#.....#.#.....#.#.#",
+    "#######.###.#.###.......###.###.#.#.####..#.#",
+    "#.....#.#...#...............#...#.#.....#...#",
+    "#.###.#.#.##.######.#######.#####.#.###.###.#",
+    "#...#...#.#...#...#.#.#.....#.....#...#...#.#",
+    "###.#.###.#.#.#.#.#.#.#.####..#######.###.#.#",
+    "#...#.......#...#.....#.....#.....#.#...#...#",
+    "#.###.......#.###.#.#######.#####.#.###.###.#",
+    "#...........#......X.....X....#...#.#...#...#",
+    "#.###.......#.#####...V...###.#.###.#.###.#.#",
+    "#.#.........#.#......V.V....#.#.........#.#.#",
+    "#.#.#####.#.#.#.###.......#.#.#.......#.#.###",
+    "#.#...#.......#....X.....X#.#.#.........#...#",
+    "#.#.#.#.###.##..###.#.#.#.#.#.#.......#####.#",
+    "#.#.#.#.......#.#...#.#.#.#...#...........#.#",
+    "#.###.#.#####.#.#.#####.#.#####.#.#.###.###.#",
+    "#.............#.#.......#.......#.#.....#...#",
+    "#####.......#.#.#################.#######.#.#",
+    "#.............#.#...........#.....#.....#.#.#",
+    "#.###.......###.#.#########.#####.#.#####.#.#",
+    "#.#.........#...#...#.......#...#.#.#.....#.#",
+    "###.###.#.#.#.#####.#.#######.#.#.#.#.#.....#",
+    "#...#...#.#...#...#.#.#.......#.#...#.#.....#",
+    "#.###.###.#####.#.#.#.#######.#.#####.#..EEE#",
+    "#...............#...#.........#.......#..EEE#",
+    "#############################################",
+  ];
+  // Fase 7: labirinto 49 × 33 (gerado e conferido por script: todo o chão fica ligado em qualquer posição das peças móveis)
+  const MAP_7 = [
+    "#################################################",
+    "#P....#...............#...........#...#.....#...#",
+    "#...#.#.#####.#.#####.###.#######.#.#.#.###.#.#.#",
+    "#.....#.#...#.#.....#...........#.#.....#.#.#.#.#",
+    "#.#######.#.###.###.#.......###.#.#.#####.#.#.#.#",
+    "#.#.......#...#.....#.........#.#.#.#.....#...#.#",
+    "#.#.##.######.###.###.......#.#.#.#.###.#######.#",
+    "#.#...#...........#.#.........#...#.....#.....#.#",
+    "#.###.#.......#####.#.###.####..#######.#.###.#.#",
+    "#...#...............#...#.....#.......#.#.#.#...#",
+    "###.#.#.......###.#..##.#.###.#####.#.###.#.###.#",
+    "#...#.........#.....#...#...#.#...........#.#...#",
+    "#.###.#######.#.###.#.#####.#.#.###########.#.###",
+    "#.#.......#...#.#...#...#...#.#.#.....#.....#.#.#",
+    "#.#.###.#.#.###.#######.#####.#.#.#.###.###.#.#.#",
+    "#...#...#.#...#......X.....X....#.#.....#.#...#.#",
+    "#.#.#.##..###.#####.#...V...###.#.#######.#####.#",
+    "#.#.....#.........#.#..V.V......#.....#.......#.#",
+    "#.#.###.###.....#.#.#.......###.#.#.#.#.....#.#.#",
+    "#.#...#.#.......#...#X.....X..#.#.#.#.......#.#.#",
+    "#.###.#.#.#.....#.#.#######.#.###.#.###.....#.#.#",
+    "#...#.#.#.#.......#.#.......#.#...#.............#",
+    "#.#.#.#.#.#.....#.#.#.#######.#.#######.....###.#",
+    "#.#.#.#...#.....#.#.#...#.....#.#.............#.#",
+    "#.#.#.###.#####.#.#####.#.#####.#########.###.###",
+    "#.#.#...........#.#.....#...#...#.......#.#.#...#",
+    "#.#.#####.#######.#.#######.#.###.#####.#.#.###.#",
+    "#.#.....#...#.......#.#.....#.........#.#.....#.#",
+    "#.#.###.###.#.#######.#.###########.#.#..##.....#",
+    "#.#...#.....#.........#.#...........#...#.......#",
+    "#.###.###############.#.#.###.#.#.#.#####.#..EEE#",
+    "#...#.................#.........#.........#..EEE#",
+    "#################################################",
+  ];
+  // Fase 8: labirinto 53 × 35 (gerado e conferido por script: todo o chão fica ligado em qualquer posição das peças móveis)
+  const MAP_8 = [
+    "#####################################################",
+    "#P....#...#.........#...#.............#.......#.....#",
+    "#...#.#.#.#.#######.#.###.###.###.###.#.###.#.###.#.#",
+    "#.....#.#...#...#...#.#.....#.......#.#.#.......#.#.#",
+    "#.###.#.#.###.#.#.###.#.....####.####.#.#.#####.#.#.#",
+    "#.#...#.......#.#...#...........#.....#.#.#...#.#.#.#",
+    "#.#.###########.###.###.....###.#.#####.#.###.#.#.###",
+    "#.#.#...#.......#.#.........#...#.........#...#.#...#",
+    "#.#.#.#.#.#######.#####.....#.###.#.......#.###..##.#",
+    "#.#...#.#...#...............#...#.........#.....#...#",
+    "#.#####.###.#####.#####.###.###.###.......###.###.#.#",
+    "#.....#.....#...#.....#.....#.#.............#.#...#.#",
+    "###.###.....#.#.#.###.#####.#.#####.#.#####.#.#.###.#",
+    "#...#.........#.#.#.#.....#...#.....#.....#.#.#...#.#",
+    "#.###.#.....###.#.#.#####.#.###.#.#.###.###.#.###.#.#",
+    "#...#...........#.....#X.....X..#...#...#...#.#...#.#",
+    "###.###.....###########...V...###########.###.#.#.#.#",
+    "#.....#...........#...#..V.V..................#...#.#",
+    "#.#######.#.#####.#.#.#.......#########.......#.#.#.#",
+    "#.....#...#.....#...#.#X.....X....#...#.......#.#...#",
+    "#.###.#.#######.#####.#.#####.###.###.#.......#.###.#",
+    "#...#...#...#...#...........#.........#.........#...#",
+    "###.#####.#.###.#.#######.###.#.#######.#.###.##..###",
+    "#...#.....#.....#.#.......#...#...#.....#.....#.#...#",
+    "#.#.#.#.###.....#.###.#####.#.#####.#####.#####.###.#",
+    "#...#.#...#.....#...#.......#.#...#.#...........#.#.#",
+    "#.####.##.#.....###.#######.###.#.#.###########.#.#.#",
+    "#.#...............#.#.......#.....#.........#.....#.#",
+    "#.#.#.#.###.....#.#.#.#####.#.#.#.#########.#######.#",
+    "#.#.#.#.........#.#.#...#.#.#.#.#.........#.......#.#",
+    "#.###.###########.#.#.#.#.#.#.#.#####.#########.....#",
+    "#...#.......#...#...#.#.#...#.....#...#.............#",
+    "###.###.###.#.###.#.#.#.####.####.#.###.#######..EEE#",
+    "#...........#.......#.#...........#...........#..EEE#",
+    "#####################################################",
+  ];
+  // Fase 9: labirinto 57 × 37 (gerado e conferido por script: todo o chão fica ligado em qualquer posição das peças móveis)
+  const MAP_9 = [
+    "#########################################################",
+    "#P..............#.......#.....#...............#.........#",
+    "#...#####.#####.###.#####.###.#.#########.###.#####.###.#",
+    "#...#...#.....#...#...#...#.....#.........#.......#.#...#",
+    "#.#.###.#####.###..##.#.###.....#.#.#.#####.#####.###.###",
+    "#.#.......#...#...#...#.#.......#.#.#.#.....#...#...#...#",
+    "#.#######.#.###.###.###.#.#.....###.#.#######.#.###.#.#.#",
+    "#.......#.#...#.#...#...#.......#...#.............#.#...#",
+    "#######.#.###.#.###.#.##.##.....#.###.###.......#.#.###.#",
+    "#.....#.#.#...#...#...................#...........#.#...#",
+    "###.###.#.#.#####.###.###.#.#########.#.#.......###.#.###",
+    "#...#...#.#.........#...#.#.........#.#.#...........#...#",
+    "#.###.###.#.......#.###.#.#########.#.#.#.#######.#####.#",
+    "#.#...#...#.......#...#.#.....#.......#.....#...#.......#",
+    "#.#.#######.......###.#.###.#.#.#.#####.#.#.#.#.#######.#",
+    "#.#.......#...........#.......#.#.#.....#.#.#.#...#.....#",
+    "#.###.###.#.###.###############.#.#.###.#.#.###.#.#.#.#.#",
+    "#...#...#...#.#.#........X.....X..#.#.#.#.#.#...#.#.#...#",
+    "#.#.###.#####.#.#.###.###...V...##..#.#.###.#.#.#.#.#####",
+    "#.#.......#.....#...#......V.V....#...#.....#.#...#.#...#",
+    "#.####.####.#######.#####.......#.#.#.#######.###.#.###.#",
+    "#.#...#.....#............X.....X#...#.............#.#...#",
+    "#.#.#.#.#########.#####.###.#.#.#####.#.#.......###.#.###",
+    "#.#.#...#.......#.#.......#.#.#.#.....#.#.......#...#...#",
+    "#.#.#####.#.###.#.#.#####.#.#.#.#.#####.#.......#.###.#.#",
+    "#.#.#.............#.#...#.....#.#...#...#.......#.#...#.#",
+    "#.#.#.#.#.###.....#.#.#.#######.###.#.#######.#.#.###.#.#",
+    "#.#.#.#.#...#.....#...#...........#.#.#.........#...#.#.#",
+    "#.#.#.#.###.#.....####.##.#.....#.#.#.#############.#.#.#",
+    "#.#.#.....#.#.....#.....#.........#.#.....#.........#.#.#",
+    "#.#.##.##.#.#.....#.#.#.#.#.....###.#####.#.#######.###.#",
+    "#.#...#...#.#.........#.#...........#.....#...#.......#.#",
+    "#.###.#####.###.#######.###.....#####.#.#####.#.###.....#",
+    "#.#...#...#.....#.....#...#.......#...#.#...#...#.......#",
+    "#.#.###.#.###.#.#.###.###.###.###.#.#####.#.#####.#..EEE#",
+    "#.......#.................#.......#.......#..........EEE#",
+    "#########################################################",
+  ];
+  // Fase 10: labirinto 61 × 39 (gerado e conferido por script: todo o chão fica ligado em qualquer posição das peças móveis)
+  const MAP_10 = [
+    "#############################################################",
+    "#P....#...........#.....#.........#...................#.....#",
+    "#...#.###.#######.#.###.#.#######.#.#########.#.#####.#.###.#",
+    "#.......#...#.....#.#...#.#...#...#.#...............#...#...#",
+    "#######.#.#.#.#####.#.#.#.###.#.###.#.#####.......#.#####.###",
+    "#.......#.#.#.....#.#.#.#.....#...#.#.....#.......#.#...#...#",
+    "#.###.#####.###.#.#.#.#.#####.###.#.#####.#.......#.#.#.#####",
+    "#...........#...#.#.#.#.....#.#.#...#.....#.......#...#.....#",
+    "#############.###.#.#.#.#####.#.#####.#.##.################.#",
+    "#.........#.........#.#.#.......#...#...#.....#...........#.#",
+    "#.#.#####.#.#.......#.###.#.#.#.#.#.#.#.#.#.#.#.###.#######.#",
+    "#.#.........#.........#...#...#.#.#.#.....#.#...#...#.....#.#",
+    "#.#####.#####.......#.#.#.#.###.#.#..####.#.#####.#.#.###.#.#",
+    "#.....#.#.................#.....#.#.#...#...#.......#.#.#...#",
+    "#.#.#.#.#.#.###.#.###.###.#######.#.#.#.#.###.#.....#.#.###.#",
+    "#.#.#.#...#...#.#.......#...#.....#...#.#.#...#.....#.#...#.#",
+    "#.#.###.#.#.###.#.#########.#.###.#####.###.###.....#.#.###.#",
+    "#.#.....#.#...#.#..........X.....X#...#.....#.........#.....#",
+    "#.#######.###.#.###########...V...###.#####.#.#.....###.#####",
+    "#...#.......#...#...#........V.V....#.....#...#.....#...#...#",
+    "###.#######.#####.#.###.###.......#.#####.#.###.###.#.###.#.#",
+    "#.........#.......#.#......X.....X#...#...#.#...#...#...#.#.#",
+    "#.###.###..########.#.#######.###.###.#.###.#.###.#####.#.#.#",
+    "#.#...#...#.#.....#...#...#.....#.......#...#...#.....#...#.#",
+    "#.#.#.###.#.#.#.#########.#.###.#######.#.#####.###.#.#####.#",
+    "#...#...#.#...#...........#...#.......#...#.....#...#.......#",
+    "#.#####.#.#############.#.###.#######.#.###.#.###.#.#####.###",
+    "#.#.......#...........#.#...#.......#.#...#.#.#...#.#.....#.#",
+    "#.#.#.....#.#.#.......#.#####.###.#.#.###.#.#.#.####..#####.#",
+    "#...#.....#.#.#.......#...........#...#.......#.....#.#.....#",
+    "#####.....#.#.#.......#.###########.###.......#####.#.#.###.#",
+    "#.........#.#.........#.#...#.......#.............#...#...#.#",
+    "#.#.#.....#.#######.###.#.#.#.###.#.#.#.......###.#.###.#.#.#",
+    "#.#.......#...#...#.....#.#.#...#.#.#...........#.#.#...#.#.#",
+    "#.###.#.##.##.#.#.###.##..#.###.#.#.#.#.###.#####.#.###.....#",
+    "#...#.#.#.....#.#...#...#.......#.#...#.#.#.......#.........#",
+    "###.#.#.#.#####.###.###.#.###.#.#.#####.#.#############..EEE#",
+    "#...#.....#.......#.......#.....#.......#................EEE#",
+    "#############################################################",
+  ];
 
   const LEVELS = [
     // rations = quantas rações há na fase; bones = quantos ossos (150 pontos cada; nas Fases 1 a 3 é preciso pegar todos para sair);
@@ -232,6 +429,92 @@
         { from: [34, 18], to: [35, 18], phase: 0 },                        // porta 1 (bloco de 3 s)
         { from: [14, 24], to: [13, 24], phase: 1 },                        // porta 2 (bloco de 3 s)
         { from: [16, 4], to: [15, 4], phase: 2 },                        // porta 3 (bloco de 3 s)
+      ],
+    },
+    {
+      id: 6, title: "Fase 6", map: MAP_6, vets: [PHASE6_VET, PHASE6_VET, PHASE6_VET], rations: 24, bones: 3, extraLives: [5, 5], bonusStep: 20, dogSpeed: 0.96,
+      alertTiles: 11, lifePenalty: 250, minPoints: 1250, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [2, 4], wall: [2, 4] },
+      note: "labirinto maior, mais ossos e mais peças móveis",
+      blocks: [
+        { from: [8, 11], to: [8, 13], size: [1, 3], wall: true, every: 10, phase: 0 }, // parede 1
+        { from: [34, 15], to: [34, 17], size: [1, 3], wall: true, every: 10, phase: 3 }, // parede 2
+        { from: [8, 21], to: [8, 23], size: [1, 3], wall: true, every: 10, phase: 6 }, // parede 3
+        { from: [20, 3], to: [20, 5], size: [1, 3], wall: true, every: 10, phase: 9 }, // parede 4
+        { from: [12, 8], to: [12, 9], phase: 0 }, // porta 1
+        { from: [15, 18], to: [14, 18], phase: 1 }, // porta 2
+        { from: [28, 10], to: [29, 10], phase: 2 }, // porta 3
+        { from: [41, 6], to: [40, 6], phase: 0 }, // porta 4
+      ],
+    },
+    {
+      id: 7, title: "Fase 7", map: MAP_7, vets: [PHASE7_VET, PHASE7_VET, PHASE7_VET], rations: 28, bones: 3, extraLives: [5, 5], bonusStep: 20, dogSpeed: 0.97,
+      alertTiles: 12, lifePenalty: 250, minPoints: 1400, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [2, 4] },
+      note: "labirinto maior, mais rações e mais portas de bloco",
+      blocks: [
+        { from: [24, 3], to: [24, 5], size: [1, 3], wall: true, every: 10, phase: 0 }, // parede 1
+        { from: [39, 20], to: [41, 20], size: [3, 1], wall: true, every: 10, phase: 3 }, // parede 2
+        { from: [11, 20], to: [13, 20], size: [3, 1], wall: true, every: 10, phase: 6 }, // parede 3
+        { from: [10, 7], to: [10, 9], size: [1, 3], wall: true, every: 10, phase: 9 }, // parede 4
+        { from: [30, 8], to: [31, 8], phase: 0 }, // porta 1
+        { from: [6, 5], to: [6, 6], phase: 1 }, // porta 2
+        { from: [40, 28], to: [39, 28], phase: 2 }, // porta 3
+        { from: [19, 10], to: [20, 10], phase: 0 }, // porta 4
+        { from: [8, 16], to: [9, 16], phase: 1 }, // porta 5
+      ],
+    },
+    {
+      id: 8, title: "Fase 8", map: MAP_8, vets: [PHASE8_VET, PHASE8_VET, PHASE8_VET], rations: 32, bones: 4, extraLives: [5, 5], bonusStep: 20, dogSpeed: 0.98,
+      alertTiles: 13, lifePenalty: 250, minPoints: 1650, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [3, 5] },
+      note: "labirinto enorme, 4 ossos e muitas paredes que se movem",
+      blocks: [
+        { from: [42, 17], to: [42, 19], size: [1, 3], wall: true, every: 10, phase: 0 }, // parede 1
+        { from: [7, 14], to: [9, 14], size: [3, 1], wall: true, every: 10, phase: 3 }, // parede 2
+        { from: [23, 6], to: [25, 6], size: [3, 1], wall: true, every: 10, phase: 6 }, // parede 3
+        { from: [11, 26], to: [13, 26], size: [3, 1], wall: true, every: 10, phase: 9 }, // parede 4
+        { from: [38, 7], to: [38, 9], size: [1, 3], wall: true, every: 10, phase: 12 }, // parede 5
+        { from: [28, 32], to: [28, 33], phase: 0 }, // porta 1
+        { from: [47, 8], to: [48, 8], phase: 1 }, // porta 2
+        { from: [32, 4], to: [32, 3], phase: 2 }, // porta 3
+        { from: [49, 22], to: [48, 22], phase: 0 }, // porta 4
+        { from: [6, 26], to: [6, 27], phase: 1 }, // porta 5
+      ],
+    },
+    {
+      id: 9, title: "Fase 9", map: MAP_9, vets: [PHASE9_VET, PHASE9_VET, PHASE9_VET], rations: 36, bones: 4, extraLives: [5, 5], bonusStep: 20, dogSpeed: 0.99,
+      alertTiles: 14, lifePenalty: 300, minPoints: 1800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2.5, blockRange: { door: [4, 6], wall: [4, 6] },
+      note: "blocos e paredes mais rápidos; o cachorrinho renasce onde morreu",
+      blocks: [
+        { from: [44, 7], to: [44, 9], size: [1, 3], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
+        { from: [14, 11], to: [14, 13], size: [1, 3], wall: true, every: 8, speed: 140, phase: 3 }, // parede 2
+        { from: [44, 21], to: [44, 23], size: [1, 3], wall: true, every: 8, speed: 140, phase: 6 }, // parede 3
+        { from: [13, 28], to: [15, 28], size: [3, 1], wall: true, every: 8, speed: 140, phase: 9 }, // parede 4
+        { from: [27, 6], to: [29, 6], size: [3, 1], wall: true, every: 8, speed: 140, phase: 12 }, // parede 5
+        { from: [27, 30], to: [29, 30], size: [3, 1], wall: true, every: 8, speed: 140, phase: 15 }, // parede 6
+        { from: [6, 20], to: [6, 19], every: 2.5, speed: 160, phase: 0 }, // porta 1
+        { from: [35, 18], to: [34, 18], every: 2.5, speed: 160, phase: 1 }, // porta 2
+        { from: [22, 28], to: [22, 29], every: 2.5, speed: 160, phase: 2 }, // porta 3
+        { from: [17, 4], to: [18, 4], every: 2.5, speed: 160, phase: 0 }, // porta 4
+        { from: [6, 30], to: [6, 29], every: 2.5, speed: 160, phase: 1 }, // porta 5
+        { from: [24, 9], to: [24, 8], every: 2.5, speed: 160, phase: 2 }, // porta 6
+      ],
+    },
+    {
+      id: 10, title: "Fase 10", map: MAP_10, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [5, 5], bonusStep: 20, dogSpeed: 1.0,
+      alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
+      note: "a fase mais difícil: blocos e paredes muito rápidos; renasce onde morreu",
+      blocks: [
+        { from: [47, 16], to: [49, 16], size: [3, 1], wall: true, every: 6, speed: 160, phase: 0 }, // parede 1
+        { from: [18, 27], to: [18, 29], size: [1, 3], wall: true, every: 6, speed: 160, phase: 3 }, // parede 2
+        { from: [16, 9], to: [16, 11], size: [1, 3], wall: true, every: 6, speed: 160, phase: 6 }, // parede 3
+        { from: [42, 29], to: [42, 31], size: [1, 3], wall: true, every: 6, speed: 160, phase: 9 }, // parede 4
+        { from: [46, 3], to: [46, 5], size: [1, 3], wall: true, every: 6, speed: 160, phase: 0 }, // parede 5
+        { from: [5, 30], to: [7, 30], size: [3, 1], wall: true, every: 6, speed: 160, phase: 3 }, // parede 6
+        { from: [52, 28], to: [53, 28], every: 2, speed: 200, phase: 0 }, // porta 1
+        { from: [42, 9], to: [42, 8], every: 2, speed: 200, phase: 1 }, // porta 2
+        { from: [24, 34], to: [25, 34], every: 2, speed: 200, phase: 2 }, // porta 3
+        { from: [10, 35], to: [10, 34], every: 2, speed: 200, phase: 0 }, // porta 4
+        { from: [10, 22], to: [9, 22], every: 2, speed: 200, phase: 1 }, // porta 5
+        { from: [35, 12], to: [36, 12], every: 2, speed: 200, phase: 2 }, // porta 6
       ],
     },
   ];
@@ -296,7 +579,7 @@
       if (!(speed >= 30 && speed <= 600) || !(every >= slide + 0.5 && every <= 60)) throw new Error(`Intervalo dos blocos inválido: ${def.title}`);
       return { group: b.wall ? "wall" : "door", ax: ac * TILE, ay: ar * TILE, bx: bc * TILE, by: br * TILE, w: bw * TILE, h: bh * TILE, kind: b.wall ? "W" : "M", slide, every, warn: Math.max(BLOCK_WARN, Math.min(2, every * 0.2)), period: 2 * every, phase: b.phase, track };
     });
-    if (blockDefs.length > 8) throw new Error(`Blocos demais: ${def.title}`);
+    if (blockDefs.length > 12) throw new Error(`Blocos demais: ${def.title}`);
     // quantas peças móveis de cada tipo ("door" = blocos 1 × 1, "wall" = paredes) entram em cada jogo: sorteado entre mínimo e máximo (padrão: todas)
     const blockRange = {};
     for (const g of ["door", "wall"]) {
@@ -312,7 +595,7 @@
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
-      lifePenalty, minPoints, bonePower, crush, touchEase, note: def.note || "",
+      lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -439,7 +722,9 @@
     const rest = items.filter((i) => !i.taken);
     if (!rest.length) return;
     const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de um item já pego
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles]);
+    const near = []; // renascendo no lugar, nenhum item cai em cima do cachorro nem logo ao lado dele
+    if (lv.respawnInPlace) { const [pc, pr] = tileOf(player.x + player.w / 2, player.y + player.h / 2); for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) near.push([c, r]); }
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near]);
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone)); });
   }
 
@@ -697,8 +982,13 @@
 
   // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
   // O tempo NÃO zera: continua contando.
+  // Fases com `respawnInPlace` (9 e 10): o cachorro renasce ONDE MORREU (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto;
+  // se não houver lugar, volta ao início). Os veterinários voltam aos postos e ele ganha a proteção de sempre.
   function respawn() {
-    Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
+    let inPlace = lv.respawnInPlace;
+    if (inPlace) { for (const b of blocks) if (!shovePlayer(b.rect)) { inPlace = false; break; } }
+    if (inPlace) Object.assign(player, { moving: false });
+    else Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
       Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
@@ -1841,7 +2131,7 @@
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
