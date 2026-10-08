@@ -340,6 +340,7 @@
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
+  let pickupToastUntil = 0;    // até quando o aviso de um osso/vida (poder, vida extra) está na tela: o aviso da meta espera por ele
   let goalReached = false;     // (fases com pontos mínimos) já avisou que a meta foi atingida e a saída abriu
   let postmen = 0;             // carteiros que o cachorro já atingiu nesta fase (cada um vale 100 pontos)
   let crushed = false;         // um bloco acabou de alcançar o cachorro (nas fases em que ele esmaga): perde uma vida no fim do quadro
@@ -406,7 +407,7 @@
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; crushed = false; puffs = [];
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = [];
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -649,7 +650,7 @@
         // se a espera passa de 0,5 s numa patrulha (cara a cara num corredor), o de número maior volta ao tile de onde veio e escolhe outro destino.
         // Um veterinário parado de número maior (descansando ou esperando) só o faz esperar 1 s: depois disso ele passa (assim ninguém fica travado para sempre).
         const closer = (o) => Math.hypot(o.cx - mx, o.cy - my) < VET_GAP && Math.hypot(o.cx - mx, o.cy - my) < Math.hypot(o.cx - v.cx, o.cy - v.cy);
-        const lower = vets.find((o) => o !== v && o.idx < v.idx && closer(o));
+        const lower = vets.find((o) => o !== v && (o.idx < v.idx || (o.slow && !v.slow)) && closer(o)); // espera atrás de quem tem número menor e também de um carteiro lento
         const still = lower ? null : vets.find((o) => o !== v && (o.hold > 0 || o.stuck > 0 || !o.leg) && closer(o));
         if (lower || (still && v.wait < 1)) {
           v.hold += dt; if (!lower) v.wait += dt;
@@ -686,6 +687,7 @@
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected());
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
+    pickupToastUntil = time + 2.8;
     if (lives < MAX_LIVES) { lives++; toast(`Vida extra! +1 vida${extra}`, 2.6); }
     else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).${extra}`, 2.8);
   }
@@ -717,7 +719,7 @@
     power = lv.bonePower;
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
     for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.leg = null; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; }
-    toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6);
+    toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6); pickupToastUntil = time + 2.6;
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro veterinário (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -775,15 +777,15 @@
       if (!it.taken && overlap(player, it)) {
         it.taken = true;
         if (it.bone) { bonesGot++; if (lv.bonePower) startPower(); } else collected++;
-        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` Poder do osso por ${lv.bonePower} s!` : "");
+        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` · Poder do osso por ${lv.bonePower} s!` : "");
         score = runningScore(); saveNow();
       }
     }
 
     if (lv.minPoints) { // meta de pontos: avisa quando a saída abre (e de novo se a pontuação cair abaixo e voltar)
       const open = runningScore() >= lv.minPoints;
-      if (open && !goalReached) toast(`Meta de ${lv.minPoints} pontos atingida! A saída está aberta.`, 2.6);
-      goalReached = open;
+      if (open && !goalReached && time >= pickupToastUntil) { toast(`Meta de ${lv.minPoints} pontos atingida! A saída está aberta.`, 2.6); goalReached = true; } // espera outro aviso (vida, poder) terminar
+      else if (!open) goalReached = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
     if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
@@ -1493,6 +1495,7 @@
 
   // Carteiro (os veterinários enquanto dura o poder do osso): uniforme azul, boné com distintivo amarelo, bolsa de correspondência e uma carta.
   function drawPostman(v) {
+    if (v.slow) ctx.globalAlpha = 0.55; // carteiro já pego neste poder (não rende mais pontos): fica esmaecido
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
     ctx.fillStyle = "#1e3a6e"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);   // calça
@@ -1509,6 +1512,7 @@
       ctx.fillStyle = "#ffe066";
       for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y - 22 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
+    ctx.globalAlpha = 1;
   }
   function drawVet(v) {
     if (power > 0) { drawPostman(v); return; }

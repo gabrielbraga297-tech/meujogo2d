@@ -790,7 +790,7 @@ const PAGE_HELPERS = () => {
       return page.isVisible("#btn-continue");
     };
     const clone = (o) => JSON.parse(JSON.stringify(o));
-    const withLife = (snap, n) => { const c = clone(snap); c.items.forEach((it, i) => { it[3] = i < n ? 1 : 0; }); return c; };
+    const withLife = (snap, n) => { const c = clone(snap); let k = 0; c.items.forEach((it) => { it[3] = !it[4] && k < n ? (k++, 1) : 0; }); return c; }; // as vidas vão para as primeiras rações (nunca para os 2 ossos: no máximo 1 osso pode ter vida)
     ok(await accepts(withLife(s2, 2)), "save válido da Fase 2 com 2 vidas extras é aceito");
     await page.click("#btn-continue");
     ok(await ev(page, () => __game.level) === 2 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.life).length) === 2 && await ev(page, () => __game.vets.length) === 2, "e continua na Fase 2, com 9 itens (2 com vida extra) e 2 veterinários");
@@ -1407,6 +1407,7 @@ const PAGE_HELPERS = () => {
     // alcance do !: corredor livre na linha 27 (colunas 1 a 15); veterinário na coluna 9
     const probe = (dx) => ev(page, (dx) => {
       __game.start(4); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = false;
+      __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // nenhum osso (poder) no caminho da sonda
       const v = __game.vets[0], p = __game.player; __game.vets.forEach((o, i) => { if (i) o.cool = 999; });
       v.cx = 9 * 32 + 16; v.cy = 27 * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 99;
       p.x = v.cx + dx - 12; p.y = v.cy - 12;
@@ -1868,6 +1869,16 @@ const PAGE_HELPERS = () => {
       return document.getElementById("toast").textContent;
     });
     ok(/Vida extra/.test(tw) && /Poder do osso por 30 s/.test(tw), `osso com vida extra: o aviso mostra a vida e o poder (${tw})`);
+    // o osso que cruza a meta de pontos: primeiro o aviso da vida e do poder, depois (quando ele some) o da meta
+    const goalT = await ev(page, () => {
+      __game.start(4); __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; }); const b = __game.items.find((i) => i.bone); b.life = true; __game.setLives(2);
+      for (const it of __game.items.filter((i) => !i.bone).slice(0, 7)) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+      __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01);
+      const first = document.getElementById("toast").textContent;
+      for (let i = 0; i < 60; i++) __game.tick(0.05);
+      return { first, later: document.getElementById("toast").textContent, score: __game.score };
+    });
+    ok(/Vida extra/.test(goalT.first) && /Poder do osso/.test(goalT.first) && !/Meta/.test(goalT.first) && /Meta de 800 pontos atingida/.test(goalT.later) && goalT.score >= 800, `ao cruzar a meta com um osso, o aviso da vida e do poder não é apagado pelo da meta (${goalT.first} → ${goalT.later})`);
     ok(lb.level === 5 && lb.bt.length === 6 && lb.bt[0] > 10 && lb.bt[0] < 14, `continuar: a Fase 5 volta com as peças no mesmo ponto do ciclo (${lb.bt.join(", ")})`);
   });
 
@@ -1933,9 +1944,27 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); return out;
     });
-    ok([2, 3, 4, 5].every((l) => sep[l].overlap <= 120), `em 6 minutos simulados (2 sorteios) os veterinários quase nunca ficam um em cima do outro: no máximo 2 s sobrepostos em cada fase (quadros sobrepostos: ${[2, 3, 4, 5].map((l) => sep[l].overlap).join(", ")})`);
+    ok([2, 3, 4, 5].every((l) => sep[l].overlap <= 60), `em 6 minutos simulados (2 sorteios) os veterinários quase nunca ficam um em cima do outro: no máximo 1 s sobrepostos em cada fase (quadros sobrepostos: ${[2, 3, 4, 5].map((l) => sep[l].overlap).join(", ")})`);
     ok([2, 3, 4, 5].every((l) => sep[l].near / sep[l].pairs < 0.1), `e raramente andam juntos: tempo a menos de 3 tiles de distância ${[2, 3, 4, 5].map((l) => (100 * sep[l].near / sep[l].pairs).toFixed(1) + "%").join(", ")} (Fases 2 a 5)`);
-    ok([2, 3, 4, 5].every((l) => sep[l].maxStreak <= 20 * 60), `e nunca andam em fila por muito tempo: a maior sequência a menos de 3 tiles dura ${[2, 3, 4, 5].map((l) => (sep[l].maxStreak / 60).toFixed(1) + " s").join(", ")} (Fases 2 a 5)`);
+    ok([2, 3, 4, 5].every((l) => sep[l].maxStreak <= 15 * 60), `e nunca andam em fila por muito tempo: a maior sequência a menos de 3 tiles dura ${[2, 3, 4, 5].map((l) => (sep[l].maxStreak / 60).toFixed(1) + " s").join(", ")} (Fases 2 a 5)`);
+    // o carteiro atingido volta ao posto; se outro veterinário estiver nele, vai para o tile livre mais perto (nunca fica em cima de outro)
+    const post = await ev(page, () => {
+      __game.start(4); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      const bone = __game.items.find((i) => i.bone), p = __game.player, [v0, v1] = __game.vets;
+      p.x = bone.x - 4; p.y = bone.y - 4; __game.tick(0.01);
+      v1.cx = v0.sx + 4; v1.cy = v0.sy; // outro veterinário parado em cima do posto do 0
+      __game.freezeVets = false; for (const o of __game.vets) { o.idle = 99; o.leg = null; o.route = []; }
+      v0.cx = v0.sx + 5 * 32; v0.cy = v0.sy; // o 0 está longe do posto; o cachorro o atinge ali
+      p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.01);
+      return { d: Math.hypot(v0.cx - v1.cx, v0.cy - v1.cy), postmen: __game.postmen, atPost: Math.hypot(v0.cx - v0.sx, v0.cy - v0.sy) };
+    });
+    ok(post.postmen === 1 && post.d >= 32 && post.atPost <= 64, `com outro veterinário no posto, o carteiro atingido volta ao tile livre mais perto (${post.d.toFixed(0)} px do outro, ${post.atPost.toFixed(0)} px do posto)`);
+    // "Continuar jogo" separa dois veterinários que foram salvos no mesmo tile
+    await ev(page, () => { __game.start(4); __game.freezeVets = true; __game.save(); });
+    await ev(page, () => { const st = Records.createStore(localStorage), g = st.loadGame("Totó"); g.snap.vets[1] = g.snap.vets[2].slice(); st.saveGame("Totó", g.snap); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
+    const cont = await ev(page, () => { const [a, b, c] = __game.vets; return [Math.hypot(a.cx - b.cx, a.cy - b.cy), Math.hypot(b.cx - c.cx, b.cy - c.cy), Math.hypot(a.cx - c.cx, a.cy - c.cy)]; });
+    ok(cont.every((d) => d >= 32), `ao continuar um jogo salvo com dois veterinários no mesmo tile, eles voltam separados (${cont.map((d) => d.toFixed(0)).join(", ")} px)`);
     // Fase 3 jogada no toque: veterinários 10% mais lentos (só nela); nas outras fases nada muda
     const ease = await ev(page, () => {
       const run = (id, touchMode, row, c0) => {
@@ -2563,6 +2592,8 @@ const PAGE_HELPERS = () => {
     });
     ok(lay.zoom > 1.4, `tela estreita: o jogo aproxima (zoom ${lay.zoom.toFixed(2)}) para o cachorro não ficar minúsculo`);
     ok(lay.dogX >= 0 && lay.dogX <= lay.cw && lay.dogY >= 0 && lay.dogY <= lay.ch, "o cachorro fica dentro da área visível");
+    const ibPortrait = await ev(t, () => document.getElementById("btn-pause").getBoundingClientRect().width);
+    ok(ibPortrait === 44, `celular em pé: o botão de pausa tem ${ibPortrait} px (alvo de toque confortável)`);
     ok(lay.padTop >= lay.cvBottom && lay.padW >= 100, `controle fica abaixo do jogo e é grande o bastante (${lay.padW.toFixed(0)}px)`);
     ok(lay.scroll <= 0 && lay.vscroll <= 2, "tudo cabe na tela do celular sem rolar");
     ok(lay.back >= lay.cw * 1.9, `imagem nítida em tela de alta densidade (${lay.back}px para ${lay.cw.toFixed(0)}px)`);
@@ -2604,6 +2635,8 @@ const PAGE_HELPERS = () => {
     const l = await newPage({ viewport: { width: 740, height: 390 }, hasTouch: true, isMobile: true });
     await fresh(l); await l.tap("#btn-start");
     const ll = await ev(l, () => { const cv = document.getElementById("game").getBoundingClientRect(), pad = document.getElementById("pad").getBoundingClientRect(); return { cvTop: cv.top, cvBottom: cv.bottom, cvLeft: cv.left, cvW: cv.width, padRight: pad.right, padVisible: pad.width > 0, vscroll: document.documentElement.scrollHeight - innerHeight, ratio: cv.width / cv.height }; });
+    const ibLand = await ev(l, () => document.getElementById("btn-pause").getBoundingClientRect().width);
+    ok(ibLand === 32, `celular deitado: o botão de pausa fica com ${ibLand} px, para o placar não crescer nem o jogo encolher`);
     ok(ll.cvBottom <= 390 && ll.vscroll <= 2, `celular deitado: o jogo inteiro cabe na altura (${ll.cvW.toFixed(0)}px de largura)`);
     ok(ll.padVisible && ll.padRight <= ll.cvLeft + 2, "celular deitado: o controle fica ao lado, sem cobrir o jogo");
     ok(Math.abs(ll.ratio - 25 / 18) < 0.02, "proporção do jogo preservada");

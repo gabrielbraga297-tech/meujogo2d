@@ -1,10 +1,10 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.5.0 · 07/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 08/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
-## 0.6.0 — 07/10/2026 (em preparação)
+## 0.6.0 — 08/10/2026
 - **Fase 4:** labirinto grande (41 × 29, a câmera segue o cachorrinho), **15 rações + 2 ossos**, **3 veterinários** (+10% de velocidade sobre a Fase 3: 66,55 e 133,1 px/s, com o "!" a 8 quadrados), cachorrinho 5% mais rápido que na Fase 3 (340,2 px/s) e **3 vidas escondidas**. Para passar é preciso **chegar a 800 pontos** na fase.
 - **Fase 5:** outro labirinto grande, as mesmas velocidades da Fase 4, **20 rações + 2 ossos**, **4 vidas escondidas**, "!" a 10 quadrados, **poder do osso de 35 s**, **1000 pontos** para passar e, além dos blocos, **paredes que se movem a cada 10 s** (a abertura da sala muda de lugar; o trilho pisca 2 s antes; elas também esmagam).
 - **Passar de fase pelos pontos (Fases 4 e 5):** basta a pontuação da fase chegar ao mínimo — não é preciso pegar todas as rações e ossos. A saída fica verde e o jogo avisa quando a meta é atingida. Nas Fases 1 a 3 a saída continua abrindo só com tudo pego.
@@ -24,6 +24,7 @@ Para publicar uma atualização: troque `number` e `date` em `js/version.js` e a
 - **Textos:** o *Como jogar* e as *Pontuações* agora dizem 150 por osso, +100 por carteiro e a regra da saída pelos pontos mínimos.
 - **Jogos salvos:** partidas salvas da **Fase 2** em versões anteriores (sem ossos) não continuam na 0.6.0 (a fase ganhou 2 ossos); recordes, progresso e jogos salvos das Fases 1 e 3 continuam valendo.
 - **Tabela das fases** (condição de avanço, veterinários, rações, ossos, velocidades) no README, conferida por teste; ela é entregue a cada nova fase.
+- **Entrega contínua:** a 0.6.0 foi ao ar por partes, à medida que cada item ficou pronto e testado, e agora está 100% entregue (duas auditorias completas, com céticos por achado, e uma revisão final).
 
 ## 0.5.0 — 07/10/2026
 - **Fase 3:** 7 rações + **2 ossos** (50 pontos cada; é preciso pegar todos para sair), 2 veterinários, **2 blocos que deslizam** abrindo e fechando portas nos corredores (nunca esmagam, sempre sobra caminho) e **bônus de tempo de 20 pontos a cada 10 s** (de 0 a 200). Uma só vida escondida, numa ração **ou** num osso.

@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 5**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 07/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 08/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -53,7 +53,7 @@ Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a 
 
 **Fases 4 e 5, os blocos que esmagam:** se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e 200 pontos. Os veterinários continuam sendo empurrados, não esmagados. É `crush: true` da fase.
 
-**Fases 4 e 5, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo.
+**Fases 4 e 5, pontos mínimos:** cada vida perdida custa **200 pontos** (`lifePenalty`) e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo. Se todos os itens já foram pegos, o poder acabou e a pontuação ainda não chega à meta, não há mais como passar: a tentativa termina (*Os pontos não bastaram!*) e vale a regra das novas tentativas.
 
 **Fase 4, o mapa:** um labirinto de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho), com corredores de 1 tile, algumas salas e o salão central dos 3 veterinários. As portas de bloco ficam em passagens que têm caminho alternativo: o teste confere que, com os blocos em qualquer posição, todo o chão continua ligado.
 

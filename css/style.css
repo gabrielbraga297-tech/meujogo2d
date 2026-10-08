@@ -66,6 +66,8 @@ body.touch .icon-btn { width: 44px; height: 44px; }
   .icon-btn { width: 32px; height: 32px; }
   body.touch .icon-btn { width: 44px; height: 44px; } /* com toque o botão de pausa e o de salvar mantêm 44 px (alvo de toque confortável) */
 }
+/* celular deitado e baixo: os botões ficam em 32 px para o placar não crescer nem o jogo encolher */
+@media (orientation: landscape) and (max-height: 520px) { body.touch .icon-btn { width: 32px; height: 32px; } }
 .save-status { font-size: max(.75em, 10.5px); font-weight: 600; color: var(--green); opacity: 0; transition: opacity .3s; white-space: nowrap; }
 .save-status.on { opacity: 1; }
 .saved-info { padding: 8px 12px; border-radius: 10px; background: rgba(61, 220, 132, .12); border: 1px solid rgba(61, 220, 132, .4); font-size: clamp(15px, 2.2vw, 17px) !important; }
