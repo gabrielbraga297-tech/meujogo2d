@@ -29,6 +29,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (o dobro do que era: 180 → 360 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
+- **Fase 3 no celular:** quando se joga com o **controle de toque** (menos preciso que teclado), a Fase 3 fica um pouco mais fácil: os veterinários andam **10% mais devagar** (54,45 / 108,9 px/s) e o cachorrinho fica **5% mais rápido** (340,2 px/s). Com teclado ou controle de videogame valem os números da tabela (campo `touchEase` da fase, em `js/game.js`).
 - As fases são liberadas em ordem: cada uma abre ao terminar a anterior.
 
 ## Fases

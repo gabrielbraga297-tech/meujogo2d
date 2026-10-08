@@ -54,8 +54,8 @@
   // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6 (e, quando existirem, Fase 4 = 8 e Fase 5 = 10).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
-  // Blocos que se movem (Fase 3): ficam parados num tile, e a cada BLOCK_EVERY segundos mudam de lado (deslizam até o outro tile da dupla), sem
-  // esperar ninguém chegar perto. Nunca esmagam: se o cachorro ou um veterinário estiver no lugar para onde o bloco vai, ele é empurrado para o lado.
+  // Blocos que se movem (a partir da Fase 3): ficam parados num tile, e a cada BLOCK_EVERY segundos mudam de lado (deslizam até o outro tile da dupla), sem
+  // esperar ninguém chegar perto. Nas Fases 1 a 3 nunca esmagam (quem estiver no lugar para onde o bloco vai é empurrado para o lado); nas Fases 4 e 5 (`crush`) esmagam o cachorro sem o poder do osso.
   // `blockEvery` de cada fase pode mudar esse intervalo. Nos últimos BLOCK_WARN s antes de cada mudança, o trilho pisca em amarelo.
   const BLOCK_SPEED = 120, BLOCK_EVERY = 3, BLOCK_WARN = 0.6; // px/s ao deslizar (o dobro de antes), s entre as mudanças, s de aviso
 
@@ -205,6 +205,7 @@
     { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", blocks: [] },
     {
       id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
+      touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: veterinários 10% mais lentos e cachorrinho 5% mais rápido
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e na primeira mudança se recolhe ao nicho de cima
         { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e na primeira mudança fecha o corredor
@@ -303,12 +304,15 @@
       if (!Number.isInteger(mn) || !Number.isInteger(mx) || mn < Math.min(1, n) || mx < mn || mx > n) throw new Error(`Quantidade de blocos inválida: ${def.title}`);
       blockRange[g] = [mn, mx];
     }
+    const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos veterinários e do cachorro
+    if (te && !(te.vet > 0.5 && te.vet <= 1 && te.dog >= 1 && te.dog <= 1.25)) throw new Error(`Facilitação do toque inválida: ${def.title}`);
+    const touchEase = te ? { vet: te.vet, dog: te.dog } : null;
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
-      lifePenalty, minPoints, bonePower, crush, note: def.note || "",
+      lifePenalty, minPoints, bonePower, crush, touchEase, note: def.note || "",
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -329,6 +333,8 @@
 
   const keys = {};
   const touch = { left: false, right: false, up: false, down: false };
+  let touchInput = false; // a última direção veio do controle de toque (e não do teclado nem do controle)
+  const assist = () => !!(lv.touchEase && touchInput); // a fase tem facilitação para o toque e a pessoa está jogando com ele
   let state = "menu"; // menu | playing | paused | won | lost
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
@@ -406,7 +412,7 @@
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
-      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, from: null, slow: false, hitCool: 0 };
+      return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, from: null, slow: false, hitCool: 0 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
@@ -494,7 +500,7 @@
   }
 
   // ---------- Cachorro ----------
-  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot); // px/s: a da fase, mais 10% por osso pego
+  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
     for (const s of solids) {
@@ -581,6 +587,7 @@
     const cfg = v.cfg;
     if (v.hitCool > 0) v.hitCool -= dt;
     v.cool -= dt; v.think -= dt; v.modeT -= dt;
+    if (v.bounce > 0) v.bounce = Math.max(0, v.bounce - dt / 8);
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
       if (power <= 0 && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; }
@@ -605,7 +612,7 @@
 
     // Anda `budget` pixels neste quadro; ao chegar ao centro de um tile, decide o próximo passo e continua com o que sobrou
     // (assim a velocidade real é a da fase, e não depende da taxa de quadros).
-    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * dt, idled = false;
+    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * (assist() ? lv.touchEase.vet : 1) * dt, idled = false;
     for (let n = 0; n < 4 && budget > 1e-9; n++) {
       if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
         if (v.mode === "chase") {
@@ -650,6 +657,10 @@
           if (lower && v.hold > 0.5 && v.mode === "patrol" && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
           return;
         }
+        if (still && v.mode === "patrol" && v.from && v.bounce < 2) { // esperou 1 s atrás de um parado: em vez de passar por cima dele, volta e escolhe outro caminho (no máximo 2 vezes seguidas)
+          v.bounce++; v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.wait = 0; v.hold = 0;
+          return;
+        }
         if (!still) v.wait = 0;
         v.hold = 0;
         if (blocks.length && blocks.some((b) => overlap({ x: mx - 12, y: my - 12, w: 24, h: 24 }, b.rect))) { // bloco no caminho: espera; se demorar, volta ao tile de onde veio e escolhe outro caminho
@@ -667,7 +678,7 @@
   }
 
   // ---------- Pontuação e vidas ----------
-  // Pontuação corrente: 100 por ração − 50 por vida perdida − 100 por nova tentativa (o bônus de tempo entra ao terminar).
+  // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
@@ -684,7 +695,7 @@
   function respawn() {
     Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = INVULN;
   }
@@ -699,7 +710,7 @@
     saveNow();
   }
 
-  // ---------- Poder do osso (Fase 4 e 5) ----------
+  // ---------- Poder do osso (a partir da Fase 2) ----------
   // Pegar um osso dura `bonePower` segundos: os veterinários viram carteiros (não perseguem nem pegam o cachorro) e quem encosta num deles ganha dele.
   // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser veterinários.
   function startPower() {
@@ -708,9 +719,23 @@
     for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.leg = null; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; }
     toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6);
   }
+  // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro veterinário (dois não ficam um em cima do outro)
+  function freeSpotNear(v, x, y) {
+    const [vc, vr] = tileOf(x, y);
+    let best = null;
+    for (let r = vr - 4; r <= vr + 4; r++) for (let c = vc - 4; c <= vc + 4; c++) {
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
+      const [cx, cy] = centerOf(c, r), box = { x: cx - 12, y: cy - 12, w: 24, h: 24 };
+      if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < VET_GAP)) continue;
+      const d = Math.hypot(cx - x, cy - y);
+      if (!best || d < best.d) best = { cx, cy, d };
+    }
+    return best || { cx: x, cy: y };
+  }
   function defeatPostman(v) {
     puffs.push({ x: v.cx, y: v.cy, t: 0 });
-    Object.assign(v, { cx: v.sx, cy: v.sy, leg: null, route: [], goal: null, hold: 0, mode: "patrol", idle: 1.5, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN });
+    const post = freeSpotNear(v, v.sx, v.sy); // o posto dele; se outro veterinário estiver nele, o tile livre mais perto
+    Object.assign(v, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "patrol", idle: 1.5, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN });
     postmen++; score = runningScore();
     toast(`Você ganhou do carteiro! +${Records.POSTMAN_POINTS} pontos`, 1.6);
     saveNow();
@@ -734,7 +759,9 @@
     if (keys.ArrowUp || keys.w || touch.up) iy -= 1;
     if (keys.ArrowDown || keys.s || touch.down) iy += 1;
     if (ix && iy) { ix *= Math.SQRT1_2; iy *= Math.SQRT1_2; }
-    if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; } // sem teclado/toque: usa o controle (analógico ou direcional)
+    const byTouch = !!(touch.left || touch.right || touch.up || touch.down);
+    if (ix || iy) touchInput = byTouch && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.w || keys.s);
+    if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; if (ix || iy) touchInput = false; } // sem teclado/toque: usa o controle (analógico ou direcional)
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
@@ -930,6 +957,9 @@
     });
     power = sv.pw; postmen = sv.pk; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
+    vets.forEach((v, i) => { // dois veterinários que estavam no mesmo tile não voltam um em cima do outro
+      if (vets.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
+    });
     invuln = Math.max(sv.invuln, RESUME_GRACE);
   }
 
@@ -1378,7 +1408,7 @@
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
   }
 
-  function drawBone(it) { // osso: vale 50 pontos
+  function drawBone(it) { // osso: vale 150 pontos (50 + 100 de bônus)
     const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 7, 11, 3.5, "rgba(0,0,0,.25)");
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.45);
@@ -1542,7 +1572,7 @@
       for (const [dx, dy] of [[-8, -4], [8, -4], [0, 6], [0, -10]]) { ctx.beginPath(); ctx.arc(f.x + dx * (0.6 + f.t * 1.5), f.y + dy * (0.6 + f.t * 1.5), 5 + f.t * 8, 0, Math.PI * 2); ctx.fill(); }
     }
     if (power > 0) { // aura dourada do poder do osso (pisca nos últimos 5 s)
-      const fade = power > 5 || Math.floor(time * 6) % 2 === 0;
+      const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
     if (!(invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido
@@ -1566,7 +1596,7 @@
     if (hudCache.mp !== lv.minPoints) { hudCache.mp = lv.minPoints; hudEl.pointsItem.title = lv.minPoints ? `Para passar da ${lv.title} são necessários pelo menos ${lv.minPoints} pontos nesta fase` : ""; }
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
     if (hudCache.bp !== lv.bonePower) { hudCache.bp = lv.bonePower; hudEl.powerItem.classList.toggle("hidden", !lv.bonePower); }
-    if (lv.bonePower) setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—");
+    if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? `Poder do osso: ${Math.ceil(power)} segundos` : "Poder do osso: desligado"; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }
     setHud("t", hudEl.time, fmt(time * 1000));
     setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs(), lv.bonusStep)}`);
     if (hudCache.r !== retries) {
@@ -1803,10 +1833,10 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
+    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
   };
