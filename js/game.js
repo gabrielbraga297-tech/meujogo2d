@@ -6,7 +6,7 @@
   const VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE;
   // Tamanho do mapa da fase em jogo (cada fase tem o seu: veja `cols`/`rows` em buildLevel); mudam em reset().
   let COLS = VIEW_COLS, ROWS = VIEW_ROWS, WORLD_W = VIEW_W, WORLD_H = VIEW_H;
-  const SPEED = 360;        // cachorro, pixels do mundo por segundo (o dobro do que era; as Fases 3 a 5 usam uma fração disso: veja `dogSpeed` em LEVELS)
+  const SPEED = 252;        // cachorro, pixels do mundo por segundo (0,7 × os 360 da 0.6.0; as Fases 3 a 5 usam uma fração disso: veja `dogSpeed` em LEVELS)
   const BONE_SPEED_BONUS = 0.1; // cada osso pego deixa o cachorro 10% mais rápido até o fim da fase (soma: 2 ossos = +20%)
   const START_LIVES = 3;    // vidas ao começar uma fase do zero
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
@@ -20,11 +20,11 @@
   // ---------- Fases ----------
   // Veterinário da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
   // ele acelera e persegue com mais empenho.
-  // Velocidades do veterinário da Fase 1 (px/s). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 55 e 110.
-  const VET_SPEED = 50, VET_CHASE_SPEED = 100;
+  // Velocidades do veterinário da Fase 1 (px/s): 55 e 110 (a 0.7.0 aumentou em 10% as da 0.6.0, em todas as fases). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 60,5 e 121.
+  const VET_SPEED = 55, VET_CHASE_SPEED = 110;
   const BASE_VET = {
-    speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 50 px/s
-    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 100 px/s (o cachorro, a 360, ainda é bem mais rápido)
+    speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 55 px/s
+    chaseSpeed: VET_CHASE_SPEED,// velocidade com o "!" (perseguindo): 110 px/s (o cachorro, a 252, ainda é mais rápido)
     // O alcance para notar o cachorro ("sight", px) vem da fase: veja `alertTiles` em LEVELS.
     chaseChance: 1,   // chance de decidir perseguir a cada "olhada": 1 = o "!" liga na hora que o cachorro entra no alcance
     thinkEvery: 0.1,  // intervalo entre "olhadas" (s)
@@ -40,9 +40,9 @@
     idleMin: c.idleMin / f, idleMax: c.idleMax / f,
   });
   const PHASE2_VET = harder(BASE_VET, 1.1);
-  // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 60,5 e 121 px/s. O resto fica como na Fase 2.
+  // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 66,55 e 133,1 px/s. O resto fica como na Fase 2.
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
-  // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (66,55 e 133,1 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (340,2 px/s).
+  // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (73,21 e 146,41 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (238,14 px/s).
   const PHASE4_VET = { ...PHASE3_VET, speed: Math.round(PHASE3_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE3_VET.chaseSpeed * 1.1 * 100) / 100 };
   const POSTMAN_SLOW = 0.5;  // carteiro atingido pelo cachorro com poder: volta ao centro e anda só 50% da velocidade que a fase dá a ele (até o poder acabar)
   const POSTMAN_STUN = 2;    // s em que o carteiro atingido não pode ser atingido de novo (e não pontua de novo)
@@ -204,7 +204,7 @@
     { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(1), blocks: [] },
     { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 1], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
+      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: veterinários 10% mais lentos e cachorrinho 5% mais rápido
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e na primeira mudança se recolhe ao nicho de cima
@@ -340,6 +340,9 @@
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
+  let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os veterinários e os blocos ficam parados
+  let startHint = false;       // o aviso "mova-se para começar" está na tela
+  let autoStart = false;       // gancho dos testes: a fase começa a contar na hora (como antes da 0.7.0)
   let pickupToastUntil = 0;    // até quando o aviso de um osso/vida (poder, vida extra) está na tela: o aviso da meta espera por ele
   let goalReached = false;     // (fases com pontos mínimos) já avisou que a meta foi atingida e a saída abriu
   let postmen = 0;             // carteiros que o cachorro já atingiu nesta fase (cada um vale 100 pontos)
@@ -407,7 +410,7 @@
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = [];
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -752,7 +755,6 @@
   // ---------- Atualização ----------
   function update(dt) {
     if (!(dt > 0)) dt = 0; // o relógio nunca anda para trás (o tempo do quadro pode vir antes do instante em que a partida foi retomada)
-    time += dt;
     if (hintTimer > 0 && (hintTimer -= dt) <= 0) $("toast").classList.remove("show");
 
     let ix = 0, iy = 0;
@@ -764,6 +766,12 @@
     const byTouch = !!(touch.left || touch.right || touch.up || touch.down);
     if (ix || iy) touchInput = byTouch && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.w || keys.s);
     if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; if (ix || iy) touchInput = false; } // sem teclado/toque: usa o controle (analógico ou direcional)
+    if (!started) { // a fase só começa (relógio, veterinários e blocos) no primeiro passo do jogador
+      if (!(ix || iy)) { player.moving = false; return; }
+      started = true;
+      if (startHint) { startHint = false; hintTimer = 0; $("toast").classList.remove("show"); }
+    }
+    time += dt;
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
@@ -862,8 +870,10 @@
     reset(id, o);
     beginPlay();
     const n = vets.length;
-    toast(o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${lv.title}: ${n} ${n === 1 ? "veterinário" : "veterinários"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`, 2.8);
+    const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
+      : `${lv.title}: ${n} ${n === 1 ? "veterinário" : "veterinários"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+    if (started) toast(msg, 2.8);
+    else { toast(`${msg} · O tempo só começa quando você se mexer.`, 600); startHint = true; }
   }
 
   // ---------- Jogo salvo ----------
@@ -949,7 +959,7 @@
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
     blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
-    time = sv.time; livesLost = sv.lost;
+    time = sv.time; livesLost = sv.lost; started = autoStart || sv.time > 0;
     collected = items.filter((i) => i.taken && !i.bone).length; bonesGot = items.filter((i) => i.taken && i.bone).length; score = runningScore();
     Object.assign(player, { x: sv.p.x, y: sv.p.y, facing: sv.p.f, moving: false });
     vets.forEach((v, i) => {
@@ -1400,14 +1410,6 @@
     ctx.fillStyle = "#e5533d"; ctx.beginPath();
     ctx.moveTo(cx - 10, cy + 1); ctx.lineTo(cx + 10, cy + 1); ctx.lineTo(cx + 7, cy + 8); ctx.lineTo(cx - 7, cy + 8); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(cx - 8, cy + 3, 16, 1.5);
-    if (it.life) drawLifeHeart(cx, cy);
-  }
-
-  function drawLifeHeart(cx, cy) { // vida extra: coração vermelho em cima da ração ou do osso
-    const hy = cy - 12 - (calm ? 0 : Math.abs(Math.sin(time * 5)) * 2);
-    ctx.fillStyle = "#ff2d3d"; ctx.beginPath();
-    ctx.moveTo(cx, hy + 7); ctx.bezierCurveTo(cx - 9, hy + 1, cx - 5, hy - 5, cx, hy - 1); ctx.bezierCurveTo(cx + 5, hy - 5, cx + 9, hy + 1, cx, hy + 7); ctx.fill();
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
   }
 
   function drawBone(it) { // osso: vale 150 pontos (50 + 100 de bônus)
@@ -1419,7 +1421,6 @@
     for (const [x, y] of [[-8.5, -3], [-8.5, 3], [8.5, -3], [8.5, 3]]) { ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     ctx.fillRect(-8, -2, 16, 4); // esconde o contorno entre a haste e as pontas
     ctx.restore();
-    if (it.life) drawLifeHeart(cx, cy);
   }
 
   function drawBlocks() { // trilhos (todo o caminho que cada bloco ou parede percorre, de ponta a ponta) e os blocos que se movem
@@ -1837,7 +1838,7 @@
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
-    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
+    get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },

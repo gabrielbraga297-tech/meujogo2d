@@ -1,8 +1,14 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 08/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.7.0 · 08/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.7.0 — 08/10/2026 (em preparação)
+- **Velocidades:** veterinários (e carteiros) **10% mais rápidos** em todas as fases (Fase 1: 55 / 110 px/s; Fase 2: 60,5 / 121; Fase 3: 66,55 / 133,1; Fases 4 e 5: 73,21 / 146,41). O cachorrinho ficou **mais lento: 252 px/s na base** (0,7 × os 360 da 0.6.0; Fase 3 = 226,8; Fases 4 e 5 = 238,14). *O pedido era −50%, mas a análise de equilíbrio mostrou que, com os veterinários +10%, o cachorrinho ficaria apenas 16% a 22% mais rápido que um veterinário perseguindo nas Fases 3 a 5; com −30% a folga é de ~60 a 70%.*
+- **Fase 3 com 1 a 2 vidas escondidas** (sorteado a cada jogo; no máximo 1 num osso).
+- **Vidas realmente escondidas:** o coração em cima do item foi retirado; só se descobre a vida extra ao pegar o item.
+- **O tempo só começa a correr quando você começa a jogar** (em todas as fases): a fase espera o primeiro passo do cachorrinho; relógio, veterinários e blocos ficam parados até lá.
 
 ## 0.6.0 — 08/10/2026
 - **Fase 4:** labirinto grande (41 × 29, a câmera segue o cachorrinho), **15 rações + 2 ossos**, **3 veterinários** (+10% de velocidade sobre a Fase 3: 66,55 e 133,1 px/s, com o "!" a 8 quadrados), cachorrinho 5% mais rápido que na Fase 3 (340,2 px/s) e **3 vidas escondidas**. Para passar é preciso **chegar a 800 pontos** na fase.

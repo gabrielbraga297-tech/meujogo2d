@@ -5,14 +5,14 @@ Versão atual: **Fase 1 a Fase 5**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.6.0 · 08/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.7.0 · 08/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
 
 ## Objetivo
-Você é um cachorrinho. Pegue as tigelas de ração (e, a partir da Fase 2, os **ossos**) e chegue à saída. Nas Fases 1 a 3 a saída só abre quando você pegar **tudo**; nas **Fases 4 e 5** ela abre assim que a sua pontuação na fase chega aos **pontos mínimos** (800 e 1000), sem precisar pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (têm um coração em cima).
+Você é um cachorrinho. Pegue as tigelas de ração (e, a partir da Fase 2, os **ossos**) e chegue à saída. Nas Fases 1 a 3 a saída só abre quando você pegar **tudo**; nas **Fases 4 e 5** ela abre assim que a sua pontuação na fase chega aos **pontos mínimos** (800 e 1000), sem precisar pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (escondida: você só descobre ao pegar o item).
 
 Fuja do veterinário! Quando aparece um **!** vermelho em cima dele, ele fica mais rápido e persegue o cachorrinho com mais força (mas o cachorrinho é bem mais veloz). Os veterinários **não andam juntos**: cada um escolhe a patrulha longe dos outros, não ficam colados nem um em cima do outro, e, perseguindo, tentam caminhos diferentes até o cachorrinho.
 
@@ -21,15 +21,15 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 
 | Fase | Condição para avançar | Veterinários | Rações | Ossos | Velocidade dos veterinários (sem ! / com !) | Velocidade do cachorrinho |
 |---|---|---|---|---|---|---|
-| 1 | pegar as 5 rações e chegar à saída | 1 | 5 | 0 | 50 / 100 px/s | 360 px/s |
-| 2 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 55 / 110 px/s | 360 px/s |
-| 3 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 60,5 / 121 px/s | 324 px/s |
-| 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 66,55 / 133,1 px/s | 340,2 px/s |
-| 5 | chegar a 1000 pontos na fase (a saída abre) e sair | 3 | 20 | 2 | 66,55 / 133,1 px/s | 340,2 px/s |
+| 1 | pegar as 5 rações e chegar à saída | 1 | 5 | 0 | 55 / 110 px/s | 252 px/s |
+| 2 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 60,5 / 121 px/s | 252 px/s |
+| 3 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 66,55 / 133,1 px/s | 226,8 px/s |
+| 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
+| 5 | chegar a 1000 pontos na fase (a saída abre) e sair | 3 | 20 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
 
-- A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (o dobro do que era: 180 → 360 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%).
+- A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os veterinários ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
-- **Fase 3 no celular:** quando se joga com o **controle de toque** (menos preciso que teclado), a Fase 3 fica um pouco mais fácil: os veterinários andam **10% mais devagar** (54,45 / 108,9 px/s) e o cachorrinho fica **5% mais rápido** (340,2 px/s). Com teclado ou controle de videogame valem os números da tabela (campo `touchEase` da fase, em `js/game.js`).
+- **Fase 3 no celular:** quando se joga com o **controle de toque** (menos preciso que teclado), a Fase 3 fica um pouco mais fácil: os veterinários andam **10% mais devagar** (59,9 / 119,8 px/s) e o cachorrinho fica **5% mais rápido** (238,14 px/s). Com teclado ou controle de videogame valem os números da tabela (campo `touchEase` da fase, em `js/game.js`).
 - As fases são liberadas em ordem: cada uma abre ao terminar a anterior.
 
 ## Fases
@@ -38,7 +38,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | Mapa | o original | **outro mapa** (quatro salas nos cantos ligadas a um salão central) | **armazém** com corredores, nichos e portas de bloco | **labirinto grande** (41 × 29 tiles; a câmera segue o cachorrinho) | **outro labirinto grande**, com salas de paredes que se movem |
 | Rações | 5 | **7** | **7** | **15** | **20** |
 | Ossos | — | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de **35 s**) |
-| Vida extra escondida | 1 ração | **1 ou 2** itens (sorteado a cada jogo) | **1**, numa ração **ou** num osso | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
+| Vida extra escondida (sem aviso: só se descobre ao pegar o item) | 1 ração | **1 ou 2** itens (sorteado a cada jogo) | **1 ou 2** (no máximo 1 num osso) | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
 | Veterinários | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa | **3**, no **centro** do mapa | **3**, no **centro** do mapa |
 | Dificuldade dos veterinários | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 | igual à Fase 4 |
 | Blocos que se movem | — | — | de **1 a 2** portas (sorteado a cada jogo) | de **1 a 3** portas, e agora **esmagam** | de **1 a 3** portas que esmagam **+ de 1 a 3 paredes** que se movem a cada 10 s |
@@ -59,17 +59,17 @@ Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a 
 
 **Fase 5, as paredes que se movem:** além das portas de bloco, há **3 salas com uma parede de 3 tiles que desliza a cada 10 segundos** (cada parede começa o ciclo num ponto diferente: aos 10 s, 7 s e 4 s): a parede vai de uma parede fixa à outra da sala e a abertura de 2 tiles que sobra **muda de lugar**, formando um caminho novo. O trilho pisca em amarelo nos **2 s** antes de cada mudança. As paredes que se movem **esmagam** como os blocos (sem o poder do osso, quem estiver no lugar para onde a parede vai perde uma vida), e os veterinários são empurrados.
 
-**Velocidade do cachorrinho:** veja a tabela acima (360 px/s na base, 324 na Fase 3, 340,2 nas Fases 4 e 5, e +10% por osso).
+**Velocidade do cachorrinho:** veja a tabela acima (252 px/s na base, 226,8 na Fase 3, 238,14 nas Fases 4 e 5, e +10% por osso).
 
 **Velocidade dos veterinários:**
 
 | | sem o "!" (patrulhando) | com o "!" (perseguindo) |
 |---|---|---|
-| Fase 1 | **50** px/s | **100** px/s |
-| Fase 2 (+10% nos dois) | **55** px/s | **110** px/s |
-| Fase 3 (mais +10% sobre a Fase 2) | **60,5** px/s | **121** px/s |
-| Fase 4 (mais +10% sobre a Fase 3) | **66,55** px/s | **133,1** px/s |
-| Fase 5 (igual à Fase 4) | **66,55** px/s | **133,1** px/s |
+| Fase 1 | **55** px/s | **110** px/s |
+| Fase 2 (+10% nos dois) | **60,5** px/s | **121** px/s |
+| Fase 3 (mais +10% sobre a Fase 2) | **66,55** px/s | **133,1** px/s |
+| Fase 4 (mais +10% sobre a Fase 3) | **73,21** px/s | **146,41** px/s |
+| Fase 5 (igual à Fase 4) | **73,21** px/s | **146,41** px/s |
 
 **Alcance do "!":** o veterinário liga o "!" **na hora** (ele olha 10 vezes por segundo, sem sorteio) em que o cachorrinho está dentro do alcance e **à vista** (sem parede ou bloco fechado no meio). O alcance é medido em linha reta, do centro de um ao centro do outro, e cresce 2 quadrados a cada fase:
 
@@ -81,7 +81,7 @@ Depois que o "!" liga, ele fica ligado enquanto o veterinário vê o cachorrinho
 
 **Os veterinários da Fase 2 são 10% mais difíceis:** velocidade (patrulha e perseguição) e duração mínima e máxima da perseguição ×1,1; e o tempo entre "olhadas", o descanso depois de perseguir e as pausas ÷1,1.
 
-**Na Fase 3** a **velocidade** de movimento ganha mais 10% (60,5 e 121 px/s); a duração das perseguições e o descanso são os da Fase 2.
+**Na Fase 3** a **velocidade** de movimento ganha mais 10% (66,55 e 133,1 px/s); a duração das perseguições e o descanso são os da Fase 2.
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 

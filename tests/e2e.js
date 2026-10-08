@@ -61,7 +61,7 @@ async function section(title, fn) {
 
 // Roda dentro da página: simula teclado + tempo de forma síncrona e determinística.
 const PAGE_HELPERS = () => {
-  if (window.__game) __game.allBlocks = true; // os testes jogam com TODAS as peças móveis (o sorteio da quantidade tem testes próprios)
+  if (window.__game) { __game.allBlocks = true; __game.autoStart = true; } // os testes jogam com TODAS as peças móveis (o sorteio da quantidade tem testes próprios) e com o relógio contando desde o início (a espera pelo primeiro passo tem testes próprios)
   const press = (k, on, code = "") => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k, code }));
   window.__t = {
     press,
@@ -542,8 +542,8 @@ const PAGE_HELPERS = () => {
   await section("veterinário: patrulha, paredes e perseguição forte", async () => {
     await play(page);
     const cfg = await ev(page, () => __game.vets[0].cfg);
-    ok(cfg.speed === 50 && cfg.chaseSpeed === 100, `Fase 1: sem o "!" o veterinário anda a 50 px/s e com o "!" a 100 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
-    ok(cfg.chaseSpeed < 180 * 0.6 && cfg.speed < cfg.chaseSpeed, "o veterinário é mais lento que o cachorro (180 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
+    ok(cfg.speed === 55 && cfg.chaseSpeed === 110, `Fase 1: sem o "!" o veterinário anda a 55 px/s e com o "!" a 110 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
+    ok(cfg.chaseSpeed < 252 * 0.5 && cfg.speed < cfg.chaseSpeed, "o veterinário é mais lento que o cachorro (252 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
     ok(cfg.chaseSpeed >= cfg.speed * 1.8, `com o "!" ele fica bem mais rápido (${cfg.speed} → ${cfg.chaseSpeed} px/s)`);
     ok(cfg.chaseTime >= 3 && cfg.chaseMax > cfg.chaseTime, "persegue com empenho: no mínimo 3 s e insiste enquanto vê o cachorro");
     ok(await ev(page, () => __game.alertTiles) === 2 && cfg.sight === 64 && cfg.chaseChance === 1 && cfg.thinkEvery <= 0.1, `Fase 1: o "!" liga a 2 quadrados (${cfg.sight} px), sem sorteio e olhando 10 vezes por segundo`);
@@ -603,7 +603,7 @@ const PAGE_HELPERS = () => {
     await play(page);
     const stay = await scenario([20, 4], [22, 4], 30);
     ok(stay.dist0 <= stay.cfg.sight && stay.startedAt !== null && stay.startedAt <= 0.1, `com o cachorro a 2 quadrados e à vista, o "!" liga na hora (${stay.startedAt}s), mesmo com o sorteio no pior valor`);
-    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 100) <= 1, `durante a perseguição o veterinário anda a 100 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
+    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 110) <= 1, `durante a perseguição o veterinário anda a 110 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
     const dur = stay.endedAt - stay.startedAt;
     ok(Math.abs(dur - stay.cfg.chaseMax) <= 0.3, `enquanto vê o cachorro ele insiste até o limite (${dur.toFixed(1)}s de ${stay.cfg.chaseMax}s)`);
     ok(stay.restartAt === null || stay.restartAt - stay.endedAt >= stay.cfg.restTime - 0.1, `depois de perseguir descansa ${stay.cfg.restTime}s antes de tentar de novo`);
@@ -862,7 +862,7 @@ const PAGE_HELPERS = () => {
     ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
     ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
     ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 180 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (180 px/s) continua mais rápido que eles");
-    ok(cfgs.f1.speed === 50 && cfgs.f1.chaseSpeed === 100 && cfgs.f2a.speed === 55 && cfgs.f2a.chaseSpeed === 110, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
+    ok(cfgs.f1.speed === 55 && cfgs.f1.chaseSpeed === 110 && cfgs.f2a.speed === 60.5 && cfgs.f2a.chaseSpeed === 121, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
     ok(close(cfgs.f1.chaseSpeed / cfgs.f1.speed, 2) && close(cfgs.f2a.chaseSpeed / cfgs.f2a.speed, 2), "em cada fase, perseguindo ele anda o dobro da velocidade de quando patrulha");
 
     // jogo real na Fase 2: patrulha sem atravessar paredes
@@ -956,7 +956,7 @@ const PAGE_HELPERS = () => {
     ok(e3.length === 6 && [...e3, ...v3].every((t) => d3.has(t + "")), "Fase 3: saída (3x2) e veterinários alcançáveis a partir do cachorro");
 
     // ---- dados da fase ----
-    ok(L.rations === 7 && L.bones === 2 && L.extraLives.join() === "1,1" && L.bonusStep === 20, "Fase 3: 7 rações + 2 ossos, 1 vida escondida e bônus de 20 pontos por degrau");
+    ok(L.rations === 7 && L.bones === 2 && L.extraLives.join() === "1,2" && L.bonusStep === 20, "Fase 3: 7 rações + 2 ossos, 1 a 2 vidas escondidas e bônus de 20 pontos por degrau");
     await playLevel(page, 3, { done: [1, 2] });
     ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.bone).length) === 2 && await ev(page, () => __game.vets.length) === 2, "a Fase 3 começa com 9 itens (7 rações e 2 ossos) e 2 veterinários");
     ok(await hudIs(page, "#hud-level", "3") && await hudIs(page, "#hud-items", "0/7") && await hudIs(page, "#hud-bones", "0/2") && await page.isVisible("#hud-bones-item"), "placar mostra FASE 3, RAÇÕES 0/7 e OSSOS 0/2");
@@ -965,7 +965,7 @@ const PAGE_HELPERS = () => {
     for (const items of lay) {
       if (items.length !== 9 || new Set(items.map((i) => i[0] + "," + i[1])).size !== 9) bad = "quantidade/repetidos";
       if (items.filter((i) => i[2]).length !== 2) bad = "ossos";
-      if (items.filter((i) => i[3]).length !== 1) bad = "vida escondida (deve ser exatamente 1)";
+      if (![1, 2].includes(items.filter((i) => i[3]).length)) bad = "vida escondida (deve ser 1 ou 2)";
       for (const [c, r] of items) {
         if (!G3.free(c, r)) bad = "em parede/caixa";
         if (e3.some((t) => t[0] === c && t[1] === r)) bad = "na saída";
@@ -976,7 +976,7 @@ const PAGE_HELPERS = () => {
     }
     ok(!bad, `150 sorteios: sempre 7 rações + 2 ossos, em chão livre e alcançável, fora dos trilhos, longe do início/veterinários/saída ${bad && "(" + bad + ")"}`);
     ok(lay.some((items) => items.some((i) => i[3] && i[2])) && lay.some((items) => items.some((i) => i[3] && !i[2])), "a vida escondida cai às vezes num osso e às vezes numa ração");
-    ok(lay.every((items) => items.filter((i) => i[3]).length === 1), "e nunca nos dois ao mesmo tempo (sempre exatamente 1 vida escondida)");
+    ok(lay.every((items) => [1, 2].includes(items.filter((i) => i[3]).length)) && lay.every((items) => items.filter((i) => i[3] && i[4]).length <= 1), "e nunca nos dois ossos ao mesmo tempo (sempre 1 ou 2 vidas escondidas, no máximo 1 num osso)");
     ok(new Set(lay.map((items) => items.map((i) => i.slice(0, 2).join()).sort().join("|"))).size >= 140, "os lugares mudam a cada jogo");
     // a vida escondida num OSSO sobe de verdade a contagem de vidas (e a de uma ração também)
     const lifeBone = await ev(page, () => {
@@ -1008,18 +1008,18 @@ const PAGE_HELPERS = () => {
 
     // ---- veterinários: +10% de velocidade sobre a Fase 2 ----
     const cf = await ev(page, () => { __game.start(2); const f2 = { ...__game.vets[0].cfg }; __game.start(3); return { f2, f3a: { ...__game.vets[0].cfg }, f3b: { ...__game.vets[1].cfg } }; });
-    ok(cf.f3a.speed === 60.5 && cf.f3a.chaseSpeed === 121 && cf.f2.speed === 55 && cf.f2.chaseSpeed === 110, `Fase 3: veterinários a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
+    ok(cf.f3a.speed === 66.55 && cf.f3a.chaseSpeed === 133.1 && cf.f2.speed === 60.5 && cf.f2.chaseSpeed === 121, `Fase 3: veterinários a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
     ok(Math.abs(cf.f3a.speed / cf.f2.speed - 1.1) < 1e-9 && Math.abs(cf.f3a.chaseSpeed / cf.f2.chaseSpeed - 1.1) < 1e-9, "a velocidade de movimento da Fase 3 é exatamente 10% maior que a da Fase 2, nos dois modos");
     ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 324, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 veterinários são iguais e o cachorro (324 px/s) segue mais rápido");
 
     // ---- cachorrinho: o dobro de antes (360 px/s), 10% mais lento na Fase 3 e +10% por osso ----
     const run1s = (id, x, y, bones = 0) => ev(page, ([id, x, y, bones]) => { __game.start(id); __game.freezeVets = true; __game.noCatch = true; __game.player.x = x; __game.player.y = y; const x0 = __game.player.x; const first = __game.dogSpeed; for (let k = 0; k < bones; k++) { const b = __game.items.find((i) => i.bone && !i.taken); const px = __game.player.x, py = __game.player.y; __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); __game.player.x = px; __game.player.y = py; } __game.items.forEach((i) => { if (!i.taken) { i.x = -500; i.y = -500; } }); const x1 = __game.player.x; __t.hold("d", 60); return [first, __game.dogSpeed, __game.player.x - x1]; }, [id, x, y, bones]);
     const sp1 = await run1s(1, 36, 16 * 32 + 4), sp2 = await run1s(2, 36, 14 * 32 + 4), sp3 = await run1s(3, 36, 15 * 32 + 4);
-    ok(sp1[0] === 360 && sp2[0] === 360 && Math.abs(sp3[0] - 324) < 1e-9, `velocidade do cachorrinho (o dobro de antes): ${sp1[0]} px/s nas Fases 1 e 2 e ${sp3[0]} px/s na Fase 3 (10% mais lento)`);
-    ok(Math.abs(sp1[2] - 360) < 1.5 && Math.abs(sp2[2] - 360) < 1.5 && Math.abs(sp3[2] - 324) < 1.5, `andando 1 s de verdade: ${sp1[2].toFixed(0)} px, ${sp2[2].toFixed(0)} px e ${sp3[2].toFixed(0)} px`);
+    ok(sp1[0] === 252 && sp2[0] === 252 && Math.abs(sp3[0] - 226.8) < 1e-9, `velocidade do cachorrinho (0,7 × a da 0.6.0): ${sp1[0]} px/s nas Fases 1 e 2 e ${sp3[0]} px/s na Fase 3 (10% mais lento)`);
+    ok(Math.abs(sp1[2] - 252) < 1.5 && Math.abs(sp2[2] - 252) < 1.5 && Math.abs(sp3[2] - 226.8) < 1.5, `andando 1 s de verdade: ${sp1[2].toFixed(0)} px, ${sp2[2].toFixed(0)} px e ${sp3[2].toFixed(0)} px`);
     const b1 = await run1s(2, 36, 14 * 32 + 4, 1), b2 = await run1s(2, 36, 14 * 32 + 4, 2), b3 = await run1s(3, 36, 15 * 32 + 4, 2);
-    ok(Math.abs(b1[1] - 396) < 1e-6 && Math.abs(b2[1] - 432) < 1e-6 && Math.abs(b3[1] - 388.8) < 1e-6, `cada osso pego deixa o cachorrinho 10% mais rápido (Fase 2: 360 → ${b1[1]} com 1 osso → ${b2[1]} com 2; Fase 3 com 2 ossos: ${b3[1]})`);
-    ok(Math.abs(b1[2] - 396) < 2 && Math.abs(b2[2] - 432) < 2, `e andando 1 s de verdade ele percorre ${b1[2].toFixed(0)} px com 1 osso e ${b2[2].toFixed(0)} px com 2`);
+    ok(Math.abs(b1[1] - 277.2) < 1e-6 && Math.abs(b2[1] - 302.4) < 1e-6 && Math.abs(b3[1] - 272.16) < 1e-6, `cada osso pego deixa o cachorrinho 10% mais rápido (Fase 2: 252 → ${b1[1]} com 1 osso → ${b2[1]} com 2; Fase 3 com 2 ossos: ${b3[1]})`);
+    ok(Math.abs(b1[2] - 277.2) < 2 && Math.abs(b2[2] - 302.4) < 2, `e andando 1 s de verdade ele percorre ${b1[2].toFixed(0)} px com 1 osso e ${b2[2].toFixed(0)} px com 2`);
 
     // ---- blocos: ciclo fixo, mudam de lado a cada 3 s, sem esperar ninguém ----
     await ev(page, () => { __game.start(3); __game.freezeVets = true; __game.noCatch = true; });
@@ -1276,7 +1276,7 @@ const PAGE_HELPERS = () => {
     const t1 = cl(snap3); t1.items.forEach((i) => { i[4] = 0; });
     const t2 = cl(snap3); t2.items.forEach((i, k) => { i[4] = k < 3 ? 1 : 0; });
     const t3 = cl(snap3); t3.items.forEach((i) => { i[3] = 0; });
-    const t4 = cl(snap3); t4.items.forEach((i, k) => { i[3] = k < 2 ? 1 : 0; });
+    const t4 = cl(snap3); t4.items.forEach((i, k) => { i[3] = k < 3 ? 1 : 0; }); // 3 vidas escondidas (a Fase 3 tem 1 ou 2)
     const t5 = cl(snap3); delete t5.bl;
     const t6 = cl(snap3); t6.bl = [0];
     const t7 = cl(snap3); t7.items[0][0] = 7; t7.items[0][1] = 3;
@@ -1289,7 +1289,7 @@ const PAGE_HELPERS = () => {
     const t15 = cl(snap3); t15.time = -5;                                           // tempo negativo
     const rs = [];
     for (const t of [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t13, t14, t15]) rs.push(await parse(t));
-    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 2 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos, item na parede, veterinário na parede, tempo negativo): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
+    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 3 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos, item na parede, veterinário na parede, tempo negativo): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
     // um jogo salvo com o cachorro no lugar de um bloco (os blocos agora andam num ciclo novo) é aceito: ao carregar, ele é empurrado para fora
     const t12 = cl(snap3); t12.p = { x: 7 * 32 + 2, y: 3 * 32 + 4, f: "right" }; t12.bl = [0, 0];
     ok(await parse(t12), "um jogo salvo com o cachorro no lugar de um bloco é aceito (ele é empurrado para o lado ao carregar)");
@@ -1401,8 +1401,8 @@ const PAGE_HELPERS = () => {
       __game.freezeVets = true; __game.noCatch = true; __game.items.forEach((i) => { i.x = -500; i.y = -500; }); __game.player.x = 36; __game.player.y = 27 * 32 + 4; const x0 = __game.player.x; __t.hold("d", 60);
       return { f3, d3, f4, d4: __game.dogSpeed, moved: __game.player.x - x0 };
     });
-    ok(sp.f4.every((c) => c.speed === 66.55 && c.chaseSpeed === 133.1) && Math.abs(sp.f4[0].speed / sp.f3.speed - 1.1) < 1e-9 && Math.abs(sp.f4[0].chaseSpeed / sp.f3.chaseSpeed - 1.1) < 1e-9, `Fase 4: veterinários 10% mais rápidos que na Fase 3, nos dois modos (${sp.f3.speed} → ${sp.f4[0].speed} sem o ! e ${sp.f3.chaseSpeed} → ${sp.f4[0].chaseSpeed} com o !)`);
-    ok(Math.abs(sp.d4 / sp.d3 - 1.05) < 1e-9 && Math.abs(sp.d4 - 340.2) < 1e-9 && Math.abs(sp.moved - 340.2) < 2, `Fase 4: o cachorrinho fica 5% mais rápido que na Fase 3 (${sp.d3} → ${sp.d4} px/s; andou ${sp.moved.toFixed(1)} px em 1 s)`);
+    ok(sp.f4.every((c) => c.speed === 73.21 && c.chaseSpeed === 146.41) && Math.abs(sp.f4[0].speed / sp.f3.speed - 1.1) < 1e-3 && Math.abs(sp.f4[0].chaseSpeed / sp.f3.chaseSpeed - 1.1) < 1e-3,  `Fase 4: veterinários 10% mais rápidos que na Fase 3, nos dois modos (${sp.f3.speed} → ${sp.f4[0].speed} sem o ! e ${sp.f3.chaseSpeed} → ${sp.f4[0].chaseSpeed} com o !)`);
+    ok(Math.abs(sp.d4 / sp.d3 - 1.05) < 1e-9 && Math.abs(sp.d4 - 238.14) < 1e-9 && Math.abs(sp.moved - 238.14) < 2, `Fase 4: o cachorrinho fica 5% mais rápido que na Fase 3 (${sp.d3} → ${sp.d4} px/s; andou ${sp.moved.toFixed(1)} px em 1 s)`);
     ok(JSON.stringify(sp.f4[0]) === JSON.stringify(sp.f4[1]) && JSON.stringify(sp.f4[1]) === JSON.stringify(sp.f4[2]) && sp.f4[0].sight === 8 * 32 && sp.f4[0].chaseChance === 1, "os 3 veterinários são iguais; o ! liga a 8 quadrados, sem sorteio");
     // alcance do !: corredor livre na linha 27 (colunas 1 a 15); veterinário na coluna 9
     const probe = (dx) => ev(page, (dx) => {
@@ -1428,7 +1428,7 @@ const PAGE_HELPERS = () => {
       return { after, chased: modes.some((m) => m.includes("chase")), lost, state: __game.state };
     });
     ok(Math.abs(pw1.after.power - 30) < 0.05 && pw1.after.bones === 1 && /Poder do osso por 30 s/.test(pw1.after.toast), `pegar um osso liga o poder por 30 s (${pw1.after.power.toFixed(2)} s) e avisa`);
-    ok(pw1.after.score === 150 && Math.abs(pw1.after.speed - 340.2 * 1.1) < 1e-6, `o osso dá 150 pontos (50 + 100 de bônus) e deixa o cachorrinho 10% mais rápido (${pw1.after.speed.toFixed(1)} px/s)`);
+    ok(pw1.after.score === 150 && Math.abs(pw1.after.speed - 238.14 * 1.1) < 1e-6, `o osso dá 150 pontos (50 + 100 de bônus) e deixa o cachorrinho 10% mais rápido (${pw1.after.speed.toFixed(1)} px/s)`);
     ok(!pw1.chased && pw1.lost === 0 && pw1.state === "playing", "com o poder, os veterinários (carteiros) não perseguem nem pegam o cachorro, mesmo com ele à vista");
     await page.waitForTimeout(200);
     const hudP = await ev(page, () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve([document.getElementById("hud-power").textContent, __game.power])))));
@@ -1502,7 +1502,7 @@ const PAGE_HELPERS = () => {
       go(bones[0]); for (let i = 0; i < 200; i++) __game.tick(0.05); const mid = __game.power; go(bones[1]);
       return { mid, after: __game.power, bones: __game.bonesGot, speed: __game.dogSpeed };
     });
-    ok(Math.abs(refresh.mid - 20) < 0.3 && Math.abs(refresh.after - 30) < 0.05 && refresh.bones === 2 && Math.abs(refresh.speed - 340.2 * 1.2) < 1e-6, `pegar outro osso com o poder ligado recomeça a contagem (${refresh.mid.toFixed(1)} s → ${refresh.after.toFixed(1)} s), não soma; a velocidade sobe mais 10% (${refresh.speed.toFixed(1)} px/s)`);
+    ok(Math.abs(refresh.mid - 20) < 0.3 && Math.abs(refresh.after - 30) < 0.05 && refresh.bones === 2 && Math.abs(refresh.speed - 238.14 * 1.2) < 1e-6, `pegar outro osso com o poder ligado recomeça a contagem (${refresh.mid.toFixed(1)} s → ${refresh.after.toFixed(1)} s), não soma; a velocidade sobe mais 10% (${refresh.speed.toFixed(1)} px/s)`);
     const pause = await ev(page, () => { __game.start(4); __game.items.forEach((i) => { i.life = false; }); __game.freezeVets = true; const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01); const p0 = __game.power; document.getElementById("btn-pause").click(); return { p0 }; });
     await page.waitForTimeout(600);
     ok(Math.abs((await ev(page, () => __game.power)) - pause.p0) < 0.05, "com o jogo pausado o poder não diminui");
@@ -1714,7 +1714,7 @@ const PAGE_HELPERS = () => {
     // ---- dados da fase ----
     ok(L.rations === 20 && L.bones === 2 && L.extraLives.join() === "4,4" && L.alertTiles === 10 && L.lifePenalty === 200 && L.minPoints === 1000 && L.bonePower === 35 && L.crush === true && L.bonusStep === 20, "Fase 5: 20 rações + 2 ossos, 4 vidas escondidas (3 + 1), ! a 10 quadrados, −200 por vida, 1000 pontos para passar, poder de 35 s e blocos que esmagam");
     const cf = await ev(page, () => { __game.start(4); const a = { ...__game.vets[0].cfg }, da = __game.dogSpeed; __game.start(5); return { a, da, b: [0, 1, 2].map((i) => ({ ...__game.vets[i].cfg })), db: __game.dogSpeed, n: __game.vets.length }; });
-    ok(cf.n === 3 && cf.b.every((c) => c.speed === 66.55 && c.chaseSpeed === 133.1 && c.sight === 320 && c.chaseChance === 1) && cf.db === cf.da && cf.a.speed === cf.b[0].speed, "Fase 5: mantém as velocidades da Fase 4 (66,55 / 133,1 px/s e 340,2 do cachorro); o ! liga a 10 quadrados");
+    ok(cf.n === 3 && cf.b.every((c) => c.speed === 73.21 && c.chaseSpeed === 146.41 && c.sight === 320 && c.chaseChance === 1) && cf.db === cf.da && cf.a.speed === cf.b[0].speed, "Fase 5: mantém as velocidades da Fase 4 (73,21 / 146,41 px/s e 238,14 do cachorro); o ! liga a 10 quadrados");
     await playLevel(page, 5, { done: [1, 2, 3, 4] });
     ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.blocks.length].join()) === "5,22,2,3,6" && await hudIs(page, "#hud-points", "0 / 1000") && await hudIs(page, "#hud-items", "0/20") && await hudIs(page, "#hud-bones", "0/2"), "a Fase 5 começa com 20 rações + 2 ossos, 3 veterinários, 6 peças móveis e placar PONTOS 0 / 1000");
     const lay = await ev(page, () => { const out = []; for (let i = 0; i < 150; i++) { __game.start(5); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; });
@@ -1976,7 +1976,7 @@ const PAGE_HELPERS = () => {
       };
       const r = { f3k: run(3, false, 15, 1), f3t: run(3, true, 15, 1), f2t: run(2, true, 14, 1) }; __game.setRand(null); return r;
     });
-    ok(Math.abs(ease.f3k.speed - 60.5) < 0.5 && !ease.f3k.assist && Math.abs(ease.f3t.speed - 54.45) < 0.5 && ease.f3t.assist && Math.abs(ease.f2t.speed - 55) < 0.5 && !ease.f2t.assist, `Fase 3 no toque: veterinários a ${ease.f3t.speed.toFixed(1)} px/s em vez de ${ease.f3k.speed.toFixed(1)} (10% mais lentos); a Fase 2 no toque segue em ${ease.f2t.speed.toFixed(1)}`);
+    ok(Math.abs(ease.f3k.speed - 66.55) < 0.5 && !ease.f3k.assist && Math.abs(ease.f3t.speed - 59.9) < 0.5 && ease.f3t.assist && Math.abs(ease.f2t.speed - 60.5) < 0.5 && !ease.f2t.assist, `Fase 3 no toque: veterinários a ${ease.f3t.speed.toFixed(1)} px/s em vez de ${ease.f3k.speed.toFixed(1)} (10% mais lentos); a Fase 2 no toque segue em ${ease.f2t.speed.toFixed(1)}`);
     // a perseguição se espalha: dois veterinários atrás do cachorro, num mapa com dois caminhos, vêm por caminhos diferentes
     const flank = await ev(page, () => {
       __game.start(4); __game.noCatch = true; __game.setRand(() => 0.99); __game.freezeVets = false;
@@ -2047,7 +2047,7 @@ const PAGE_HELPERS = () => {
       if (num(rations) !== l.rations) diffs.push(`fase ${l.id}: rações ${rations} ≠ ${l.rations}`);
       if (num(bones) !== l.bones) diffs.push(`fase ${l.id}: ossos ${bones} ≠ ${l.bones}`);
       if (Math.abs(sp - l.speed) > 1e-9 || Math.abs(ch - l.chase) > 1e-9) diffs.push(`fase ${l.id}: velocidades ${vs} ≠ ${l.speed} / ${l.chase}`);
-      if (!(Math.abs(num(String(dog).replace(/ px\/s/, "")) - 360 * l.dog) < 1e-6)) diffs.push(`fase ${l.id}: cachorro ${dog} ≠ ${360 * l.dog}`);
+      if (!(Math.abs(num(String(dog).replace(/ px\/s/, "")) - 252 * l.dog) < 1e-6)) diffs.push(`fase ${l.id}: cachorro ${dog} ≠ ${252 * l.dog}`);
       if (l.minPoints) { if (!new RegExp(`chegar a ${l.minPoints} pontos`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" sem ${l.minPoints} pontos`); }
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
     });
@@ -2624,7 +2624,7 @@ const PAGE_HELPERS = () => {
     await release();
     await ev(t, () => { __t.press("d", true); __game.tick(0.05); __t.press("d", false); });
     const asKeys2 = await ev(t, () => ({ assist: __game.assist, dog: __game.dogSpeed }));
-    ok(!asKeys.assist && Math.abs(asKeys.dog - 324) < 1e-9 && asTouch.assist && Math.abs(asTouch.dog - 340.2) < 1e-9 && !asKeys2.assist && Math.abs(asKeys2.dog - 324) < 1e-9, `Fase 3 no toque: cachorro ${asKeys.dog} → ${asTouch.dog} px/s com o controle de toque, e volta a ${asKeys2.dog} com o teclado`);
+    ok(!asKeys.assist && Math.abs(asKeys.dog - 226.8) < 1e-9 && asTouch.assist && Math.abs(asTouch.dog - 238.14) < 1e-9 && !asKeys2.assist && Math.abs(asKeys2.dog - 226.8) < 1e-9, `Fase 3 no toque: cachorro ${asKeys.dog} → ${asTouch.dog} px/s com o controle de toque, e volta a ${asKeys2.dog} com o teclado`);
     await t.tap("#btn-pause");
     ok(await ev(t, () => __game.state) === "paused" && await t.isHidden("#touch"), "botão de pausa funciona no toque (e o controle some)");
     await t.tap("#btn-resume");
@@ -2927,6 +2927,61 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
+  // =====================================================================
+  await section("0.7.0: o tempo só começa ao jogar, vidas escondidas sem coração e Fase 3 com 1 a 2 vidas", async () => {
+    await play(page, { keepSave: true });
+    // ---- a fase espera o primeiro passo: relógio, veterinários e blocos parados ----
+    const w = await ev(page, () => {
+      __game.autoStart = false; __game.start(3); __game.noCatch = false;
+      const v0 = __game.vets[0], pos0 = [v0.cx, v0.cy], bt0 = __game.blocks.map((b) => b.bt), toast0 = document.getElementById("toast").textContent;
+      for (let i = 0; i < 400; i++) __game.tick(0.05); // 20 s sem se mexer
+      const waited = { started: __game.started, time: __game.time, moved: v0.cx !== pos0[0] || v0.cy !== pos0[1], blocks: __game.blocks.some((b, i) => b.bt !== bt0[i]), lives: __game.lives, hud: document.getElementById("hud-time").textContent, toast0 };
+      __t.press("d", true); __game.tick(0.05); __t.press("d", false);
+      const after = { started: __game.started, time: __game.time, toast: document.getElementById("toast").classList.contains("show") };
+      for (let i = 0; i < 100; i++) __game.tick(0.05);
+      const later = { time: __game.time, moved: v0.cx !== pos0[0] || v0.cy !== pos0[1], blocks: __game.blocks.some((b, i) => b.bt !== bt0[i]) };
+      __game.autoStart = true; return { waited, after, later };
+    });
+    ok(!w.waited.started && w.waited.time === 0 && !w.waited.moved && !w.waited.blocks && w.waited.lives === 3 && /^0,0 s$/.test(w.waited.hud) && /só começa quando você se mexer/.test(w.waited.toast0), `Fase 3: depois de 20 s parado o relógio segue em 0, os veterinários e os blocos não saíram do lugar e o aviso explica (${w.waited.hud}; "${w.waited.toast0.slice(-45)}")`);
+    ok(w.after.started && w.after.time > 0 && w.after.time <= 0.06 && !w.after.toast && w.later.time > 4.9 && (w.later.moved || w.later.blocks), `no primeiro passo o relógio começa a contar (${w.after.time.toFixed(2)} s), o aviso some e o resto do mundo anda (relógio ${w.later.time.toFixed(1)} s depois de 5 s)`);
+    // o jogo salvo antes do primeiro passo continua esperando; o salvo depois, continua direto
+    const sv = await ev(page, () => {
+      __game.autoStart = false; __game.start(2); __game.save(); const raw0 = JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves.toto.snap.time;
+      return raw0;
+    });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => { __game.autoStart = false; }); await page.click("#btn-continue");
+    const c0 = await ev(page, () => ({ started: __game.started, time: __game.time }));
+    ok(sv === 0 && !c0.started && c0.time === 0, "continuar um jogo salvo antes do primeiro passo: a fase segue esperando o primeiro passo");
+    await ev(page, () => { __t.press("d", true); __game.tick(0.05); __t.press("d", false); for (let i = 0; i < 40; i++) __game.tick(0.05); __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => { __game.autoStart = false; }); await page.click("#btn-continue");
+    const c1 = await ev(page, () => ({ started: __game.started, time: __game.time }));
+    ok(c1.started && c1.time > 1.5, `continuar um jogo salvo depois de começar: o relógio volta de onde parou, sem esperar de novo (${c1.time.toFixed(1)} s)`);
+    // tentar de novo / nova fase também esperam
+    const ret = await ev(page, () => { __game.autoStart = false; __game.start(2, { retries: 1 }); return { started: __game.started, time: __game.time, toast: document.getElementById("toast").textContent }; });
+    ok(!ret.started && ret.time === 0 && /Tentativa extra 1 de 3/.test(ret.toast) && /só começa quando você se mexer/.test(ret.toast), "uma nova tentativa também espera o primeiro passo (e o aviso das tentativas continua)");
+    await ev(page, () => { __game.autoStart = true; });
+    // ---- vidas escondidas: nenhum coração em cima dos itens ----
+    const heart = await ev(page, async () => {
+      __game.start(1); __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      const it = __game.items[0]; it.life = true;
+      __game.player.x = 700; __game.player.y = 500; // longe do item, para a câmera mostrar o item
+      const k = __game.view.k * __game.view.zoom;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const grab = () => { const c = document.getElementById("game").getContext("2d"), x = Math.round((it.x + 8 - __game.view.camX) * k), y = Math.round((it.y - 4 - __game.view.camY) * k); return Array.from(c.getImageData(x - 8, y - 14, 16, 14).data).join(","); };
+      await frame(); const withLife = grab(); it.life = false; await frame(); const without = grab();
+      return { same: withLife === without };
+    });
+    ok(heart.same, "um item com vida extra é desenhado igual a um item sem: nenhum coração à mostra");
+    // ---- Fase 3: 1 a 2 vidas, no máximo 1 num osso ----
+    const f3 = await ev(page, () => {
+      const counts = new Set(); let bonesBoth = 0, r = 0;
+      for (const rv of [0, 0.99]) { __game.setRand(() => rv); __game.start(3); const it = __game.items; counts.add(it.filter((i) => i.life).length); if (it.filter((i) => i.life && i.bone).length > 1) bonesBoth++; }
+      for (let k = 0; k < 60; k++) { __game.setRand(() => Math.random()); __game.start(3); const it = __game.items; counts.add(it.filter((i) => i.life).length); if (it.filter((i) => i.life && i.bone).length > 1) bonesBoth++; }
+      __game.setRand(null); return { counts: [...counts].sort(), bonesBoth };
+    });
+    ok(f3.counts.join() === "1,2" && f3.bonesBoth === 0, `Fase 3: o sorteio dá 1 ou 2 vidas escondidas (vistas: ${f3.counts.join(" e ")}) e nunca vida nos dois ossos`);
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };
