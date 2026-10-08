@@ -161,7 +161,7 @@ const PAGE_HELPERS = () => {
     const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
     ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
     const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
-    ok(gl.length === 10 && gl[5].vets === 3 && gl[9].vets === 3 && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as dez fases, as cinco primeiras com os mapas e veterinários esperados");
+    ok(gl.length === 10 && gl.slice(5).map((l) => l.vets).join() === "3,4,5,5,6" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as dez fases, as cinco primeiras com os mapas e veterinários esperados, e as Fases 6 a 10 com 3, 4, 5, 5 e 6 veterinários");
   });
 
   // =====================================================================
@@ -709,7 +709,7 @@ const PAGE_HELPERS = () => {
     const after = await ev(page, () => ({ items: __game.items.map((i) => [i.x, i.y, i.taken, i.life]), time: __game.time, lives: __game.lives, lost: __game.livesLost, collected: __game.collected, invuln: __game.invuln, state: __game.state }));
     ok(after.state === "playing" && JSON.stringify(after.items) === JSON.stringify(before.items), "continua com as mesmas rações nos mesmos lugares (e a que tem a vida extra)");
     ok(after.collected === 1 && after.lives === before.lives && after.lost === before.lost && after.time >= before.time - 0.1, "mantém rações coletadas, vidas, vidas perdidas e tempo");
-    ok(after.invuln >= 1.4, "ganha uma proteção curta ao retomar");
+    ok(after.invuln > 0.5 && after.invuln <= 1.5, `ganha uma proteção curta ao retomar (${after.invuln.toFixed(2)} s)`);
 
     // novo jogo com save existente pede confirmação
     await ev(page, () => __game.save());
@@ -1853,6 +1853,7 @@ const PAGE_HELPERS = () => {
         const r0 = [blk().x, blk().y]; for (let i = 0; i < 600 && blk().x === r0[0] && blk().y === r0[1]; i++) __game.tick(0.01);
         const dest = ends.sort((a, c) => Math.hypot(c[0] - blk().x, c[1] - blk().y) - Math.hypot(a[0] - blk().x, a[1] - blk().y))[0]; // o lado mais longe do bloco = para onde ele vai
         if (protectedDog) { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.freezeVets = false; __game.tick(0.001); __game.freezeVets = true; }
+        __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // (a perda de vida sorteia os itens de novo: nenhum pode estar no tile do teste, nem trazer uma vida extra)
         const before = __game.lives; __game.player.x = dest[0] + 4; __game.player.y = dest[1] + 4;
         for (let i = 0; i < 20; i++) __game.tick(0.03);
         return { before, after: __game.lives, invuln: +__game.invuln.toFixed(2) };
@@ -2729,7 +2730,8 @@ const PAGE_HELPERS = () => {
     a = await pos(); await ev(g, () => __t.hold("d", 12)); b = await pos();
     ok(b[0] > a[0] + 20, "o teclado continua funcionando com o controle conectado");
     // coleta e vitória com o controle
-    await ev(g, () => { __game.freezeVets = true; const it = __game.items[0]; __game.player.x = it.x - 20; __game.player.y = it.y - 4; __padSet({ axes: [1, 0, 0, 0] }); for (let i = 0; i < 12; i++) __game.tick(1 / 60); __padSet({ axes: [0, 0, 0, 0] }); });
+    // (o cachorro começa ao lado de um item que tem chão livre à esquerda: junto de uma parede ele sairia do mundo)
+    await ev(g, () => { __game.freezeVets = true; const M = __game.levels[0].map, it = __game.items.find((i) => M[Math.round((i.y - 8) / 32)][Math.round((i.x - 8) / 32) - 1] === ".") || __game.items[0]; __game.player.x = it.x - 20; __game.player.y = it.y - 4; __padSet({ axes: [1, 0, 0, 0] }); for (let i = 0; i < 12; i++) __game.tick(1 / 60); __padSet({ axes: [0, 0, 0, 0] }); });
 
     // Start pausa e continua; Y salva; B/A nos menus
     ok(await state() === "playing", "(antes) jogando");
@@ -2933,11 +2935,11 @@ const PAGE_HELPERS = () => {
     await play(page, { keepSave: true });
     // o que cada fase deve ter (a Tabela das fases do README é conferida em outra seção)
     const SPEC = {
-      6:  { cols: 45, rows: 31, rations: 24, bones: 3, pen: 250, min: 1250, alert: 11, doors: [2, 4, 4], walls: [2, 4, 4], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
-      7:  { cols: 49, rows: 33, rations: 28, bones: 3, pen: 250, min: 1400, alert: 12, doors: [3, 5, 5], walls: [2, 4, 4], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
-      8:  { cols: 53, rows: 35, rations: 32, bones: 4, pen: 250, min: 1650, alert: 13, doors: [3, 5, 5], walls: [3, 5, 5], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
-      9:  { cols: 57, rows: 37, rations: 36, bones: 4, pen: 300, min: 1800, alert: 14, doors: [4, 6, 6], walls: [4, 6, 6], dEvery: 2.5, wEvery: 8,  dSpeed: 160, wSpeed: 140, respawn: true },
-      10: { cols: 61, rows: 39, rations: 40, bones: 5, pen: 300, min: 2050, alert: 15, doors: [5, 6, 6], walls: [5, 6, 6], dEvery: 2,   wEvery: 6,  dSpeed: 200, wSpeed: 160, respawn: true },
+      6:  { nv: 3, lives: "3,4", cols: 45, rows: 31, rations: 24, bones: 3, pen: 250, min: 1250, alert: 11, doors: [2, 4, 4], walls: [2, 4, 4], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
+      7:  { nv: 4, lives: "3,4", cols: 49, rows: 33, rations: 28, bones: 3, pen: 250, min: 1400, alert: 12, doors: [3, 5, 5], walls: [2, 4, 4], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
+      8:  { nv: 5, lives: "3,4", cols: 53, rows: 35, rations: 32, bones: 4, pen: 250, min: 1650, alert: 13, doors: [3, 5, 5], walls: [3, 5, 5], dEvery: 3,   wEvery: 10, dSpeed: 120, wSpeed: 120, respawn: false },
+      9:  { nv: 5, lives: "3,4", cols: 57, rows: 37, rations: 36, bones: 4, pen: 300, min: 1800, alert: 14, doors: [4, 6, 6], walls: [4, 6, 6], dEvery: 2.5, wEvery: 8,  dSpeed: 160, wSpeed: 140, respawn: true },
+      10: { nv: 6, lives: "3,4", cols: 61, rows: 39, rations: 40, bones: 5, pen: 300, min: 2050, alert: 15, doors: [5, 6, 6], walls: [5, 6, 6], dEvery: 2,   wEvery: 6,  dSpeed: 200, wSpeed: 160, respawn: true },
     };
     const info = await ev(page, () => {
       const out = {};
@@ -2970,12 +2972,12 @@ const PAGE_HELPERS = () => {
     });
     for (const id of [6, 7, 8, 9, 10]) {
       const I = info[id], S = SPEC[id];
-      ok(I.C === S.cols && I.R === S.rows && I.border && I.nP === 1 && I.V.length === 3 && I.E === 6, `Fase ${id}: mapa de ${I.C} × ${I.R} tiles cercado por paredes, 1 início, 3 veterinários e saída 3 × 2`);
+      ok(I.C === S.cols && I.R === S.rows && I.border && I.nP === 1 && I.V.length === S.nv && I.E === 6, `Fase ${id}: mapa de ${I.C} × ${I.R} tiles cercado por paredes, 1 início, ${S.nv} veterinários e saída 3 × 2`);
       ok(I.vReach && I.exitD >= 60 && I.V.every(([c, r]) => Math.abs(c - (I.C >> 1)) <= 4 && Math.abs(r - (I.R >> 1)) <= 3), `Fase ${id}: saída (a ${I.exitD} passos) e veterinários alcançáveis, e eles começam no centro`);
       ok(I.doors === S.doors[2] && I.walls === S.walls[2] && I.wallShape && I.trackFree && I.blocksN === S.doors[2] + S.walls[2], `Fase ${id}: ${I.doors} portas de bloco e ${I.walls} paredes de 3 tiles, com os trilhos em chão livre`);
       ok(I.combos === 1 << I.blocksN && I.okAll === I.combos, `Fase ${id}: com as ${I.blocksN} peças em qualquer posição (${I.combos} combinações) todo o chão fora dos trilhos continua alcançável (${I.okAll})`);
       const c = I.cfg;
-      ok(c.rations === S.rations && c.bones === S.bones && c.lives === "5,5" && c.alert === S.alert && c.pen === S.pen && c.min === S.min && c.power === 35 && c.crush === true && c.respawn === S.respawn && c.nv === 3, `Fase ${id}: ${S.rations} rações + ${S.bones} ossos, ! a ${S.alert} quadrados, −${S.pen} por vida, ${S.min} pontos, poder de 35 s${S.respawn ? ", renasce onde morreu" : ""}`);
+      ok(c.rations === S.rations && c.bones === S.bones && c.lives === S.lives && c.alert === S.alert && c.pen === S.pen && c.min === S.min && c.power === 35 && c.crush === true && c.respawn === S.respawn && c.nv === S.nv, `Fase ${id}: ${S.rations} rações + ${S.bones} ossos, ! a ${S.alert} quadrados, −${S.pen} por vida, ${S.min} pontos, poder de 35 s${S.respawn ? ", renasce onde morreu" : ""}`);
       const dEv = c.every.filter((_, i) => !c.wallsFlag[i]), wEv = c.every.filter((_, i) => c.wallsFlag[i]);
       ok(dEv.every((e) => e === S.dEvery || (e === undefined && S.dEvery === 3)) && wEv.every((e) => e === S.wEvery) && c.range.door.join() === S.doors.slice(0, 2).join() && c.range.wall.join() === S.walls.slice(0, 2).join(), `Fase ${id}: portas mudam a cada ${S.dEvery} s, paredes a cada ${S.wEvery} s; sorteio de ${S.doors[0]} a ${S.doors[1]} portas e ${S.walls[0]} a ${S.walls[1]} paredes`);
     }
@@ -2993,15 +2995,17 @@ const PAGE_HELPERS = () => {
       const S = SPEC[id], lay = await ev(page, (id) => { const out = []; for (let i = 0; i < 40; i++) { __game.start(id); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; }, id);
       const I = info[id], trackSet = new Set(I.trackSet);
       let bad = "";
+      const seenLives = new Set();
       const L = await ev(page, (id) => __game.levels[id - 1].map, id);
       for (const items of lay) {
         if (items.length !== S.rations + S.bones || new Set(items.map((i) => i[0] + "," + i[1])).size !== items.length) bad = "quantidade/repetidos";
         if (items.filter((i) => i[2]).length !== S.bones) bad = "ossos";
-        if (items.filter((i) => i[3]).length !== 5) bad = "vidas escondidas (devem ser 5)";
+        if (items.filter((i) => i[3]).length < 3 || items.filter((i) => i[3]).length > 4) bad = "vidas escondidas (devem ser 3 ou 4)";
         if (items.filter((i) => i[3] && i[2]).length > 1) bad = "vida em mais de um osso";
+        seenLives.add(items.filter((i) => i[3]).length);
         for (const [c, r] of items) { if (L[r][c] === "#" || L[r][c] === "X") bad = "em parede/caixa"; if (L[r][c] === "E") bad = "na saída"; if (trackSet.has(c + "," + r)) bad = "no trilho"; if (I.V.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário"; }
       }
-      ok(!bad, `Fase ${id}: 40 sorteios de ${S.rations} rações + ${S.bones} ossos com 5 vidas escondidas, em chão livre, fora dos trilhos e longe dos veterinários ${bad && "(" + bad + ")"}`);
+      ok(!bad && seenLives.has(3) && seenLives.has(4), `Fase ${id}: 40 sorteios de ${S.rations} rações + ${S.bones} ossos com 3 ou 4 vidas escondidas (vistas: ${[...seenLives].sort().join(" e ")}), em chão livre, fora dos trilhos e longe dos veterinários ${bad && "(" + bad + ")"}`);
     }
     // todas as fases rodam 60 s com os veterinários soltos sem erro e sem mudar o número de veterinários
     const run = await ev(page, () => {
@@ -3013,7 +3017,29 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); __game.noCatch = false; return out;
     });
-    ok(run.every(([, n, st, b]) => n === 3 && st === "playing" && b), `as Fases 6 a 10 rodam 60 s com veterinários e peças móveis soltos sem problema (${run.map((r) => r[0] + ":" + r[1] + " vets").join(", ")})`);
+    const NV = { 6: 3, 7: 4, 8: 5, 9: 5, 10: 6 };
+    ok(run.every(([id, n, st, b]) => n === NV[id] && st === "playing" && b), `as Fases 6 a 10 rodam 60 s com veterinários e peças móveis soltos sem problema (${run.map((r) => r[0] + ":" + r[1] + " vets").join(", ")})`);
+    // 3 minutos simulados por fase (Fases 6 a 10, com 3 a 6 veterinários): quase nunca sobrepostos, raramente juntos e nunca em fila por muito tempo
+    const sep2 = await ev(page, () => {
+      const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const out = {};
+      for (const lvl of [6, 7, 8, 9, 10]) {
+        out[lvl] = { overlap: 0, near: 0, pairs: 0, maxStreak: 0 };
+        __game.start(lvl); __game.noCatch = true; __game.setRand(mulberry(lvl)); __game.start(lvl);
+        const n = __game.vets.length, streak = {};
+        for (let i = 0; i < 60 * 60 * 3; i++) {
+          __game.tick(1 / 60); const v = __game.vets;
+          for (let a = 0; a < n; a++) for (let c = a + 1; c < n; c++) {
+            const d = Math.hypot(v[a].cx - v[c].cx, v[a].cy - v[c].cy), k = a + "-" + c; out[lvl].pairs++;
+            if (d < 16) out[lvl].overlap++;
+            if (d < 96) { out[lvl].near++; streak[k] = (streak[k] || 0) + 1; out[lvl].maxStreak = Math.max(out[lvl].maxStreak, streak[k]); } else streak[k] = 0;
+          }
+        }
+      }
+      __game.setRand(null); __game.noCatch = false; return out;
+    });
+    ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 60), `Fases 6 a 10, 3 minutos simulados: os veterinários quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
+    ok([6, 7, 8, 9, 10].every((l) => sep2[l].near / sep2[l].pairs < 0.15 && sep2[l].maxStreak <= 15 * 60), `e raramente andam juntos nem em fila (tempo a menos de 3 tiles: ${[6, 7, 8, 9, 10].map((l) => (100 * sep2[l].near / sep2[l].pairs).toFixed(1) + "%").join(", ")}; maior sequência ${[6, 7, 8, 9, 10].map((l) => (sep2[l].maxStreak / 60).toFixed(1) + " s").join(", ")})`);
     // ---- depois da Fase 10 (a última) não há Próxima fase ----
     await playLevel(page, 10, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
     await finishNow(page, 10);
@@ -3186,6 +3212,152 @@ const PAGE_HELPERS = () => {
       await page.click("#btn-levels-back");
     }
     await page.setViewportSize({ width: 1280, height: 720 });
+  });
+
+  await section("0.7.0 (auditoria): primeiro passo por toque e controle, novas fases esperam, vida sem pista, renascer e peças", async () => {
+    await play(page, { keepSave: true });
+    // ---- toque: arrastar o controle redondo dá o primeiro passo ----
+    const t = await newPage({ viewport: { width: 390, height: 740 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    await fresh(t); await ev(t, () => { __game.autoStart = false; });
+    await t.tap("#btn-start");
+    await t.waitForTimeout(600);
+    const t0 = await ev(t, () => ({ started: __game.started, time: __game.time }));
+    await ev(t, () => {
+      const pad = document.getElementById("pad"), r = pad.getBoundingClientRect(), R = r.width / 2;
+      window.__ptr = (type, x, y) => pad.dispatchEvent(new PointerEvent(type, { pointerId: 7, pointerType: "touch", isPrimary: true, bubbles: true, cancelable: true, clientX: x, clientY: y }));
+      window.__c = [r.left + R, r.top + R, R]; __ptr("pointerdown", r.left + R + 0.9 * R, r.top + R);
+    });
+    await t.waitForTimeout(400);
+    const t1 = await ev(t, () => ({ started: __game.started, time: __game.time })); await ev(t, () => __ptr("pointerup", __c[0], __c[1]));
+    ok(!t0.started && t0.time === 0 && t1.started && t1.time > 0.1, `no celular a fase espera parada e o primeiro arrasto do controle redondo liga o relógio (${t0.time} s → ${t1.time.toFixed(2)} s)`);
+    // ---- controle de videogame: o analógico dá o primeiro passo ----
+    const g = await newPage();
+    await g.addInitScript(() => {
+      const pad = { id: "Controle de teste", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
+      navigator.getGamepads = () => [pad, null, null, null]; window.__pad = pad;
+    });
+    await fresh(g); await ev(g, () => { window.dispatchEvent(new Event("gamepadconnected")); __game.autoStart = false; __game.start(2); });
+    const g0 = await ev(g, () => { for (let i = 0; i < 60; i++) __game.tick(1 / 60); return { started: __game.started, time: __game.time }; });
+    const g1 = await ev(g, () => { __pad.axes = [1, 0, 0, 0]; for (let i = 0; i < 12; i++) __game.tick(1 / 60); __pad.axes = [0, 0, 0, 0]; return { started: __game.started, time: __game.time }; });
+    ok(!g0.started && g0.time === 0 && g1.started && g1.time > 0.1, `com o controle de videogame a fase espera e o analógico dá o primeiro passo (${g0.time} s → ${g1.time.toFixed(2)} s)`);
+    // ---- todas as fases (1 a 10) esperam o primeiro passo ----
+    const waits = await ev(page, () => {
+      const out = []; __game.autoStart = false;
+      for (let id = 1; id <= 10; id++) { __game.start(id); for (let i = 0; i < 40; i++) __game.tick(0.05); out.push([id, __game.started, __game.time, __game.vets.every((v) => Math.hypot(v.cx - v.sx, v.cy - v.sy) < 0.01)]); }
+      __game.autoStart = true; return out;
+    });
+    ok(waits.every(([, st, tm, still]) => !st && tm === 0 && still), `as Fases 1 a 10 esperam o primeiro passo (2 s parado: relógio em 0 e veterinários nos postos)`);
+    // ---- Próxima fase, Jogar novamente e Tentar novamente também esperam; a Próxima fase existe da Fase 1 à 9 ----
+    for (const id of [1, 5, 9]) {
+      await playLevel(page, id, { done: Array.from({ length: id - 1 }, (_, k) => k + 1) });
+      await finishNow(page, 10);
+      const nextShown = await page.isVisible("#btn-next");
+      await ev(page, () => { __game.autoStart = false; });
+      await page.click("#btn-next");
+      const n1 = await ev(page, () => { for (let i = 0; i < 40; i++) __game.tick(0.05); return { level: __game.level, started: __game.started, time: __game.time }; });
+      ok(nextShown && n1.level === id + 1 && !n1.started && n1.time === 0, `vitória da Fase ${id}: o botão Próxima fase aparece e a Fase ${id + 1} espera o primeiro passo`);
+      await ev(page, () => { __game.autoStart = true; });
+    }
+    for (const id of [4, 8]) {
+      await playLevel(page, id, { done: Array.from({ length: id - 1 }, (_, k) => k + 1) });
+      await finishNow(page, 10);
+      await ev(page, () => { __game.autoStart = false; });
+      await page.click("#btn-again");
+      const a1 = await ev(page, () => { for (let i = 0; i < 40; i++) __game.tick(0.05); return { level: __game.level, started: __game.started, time: __game.time }; });
+      ok(a1.level === id && !a1.started && a1.time === 0, `Jogar novamente a Fase ${id} também espera o primeiro passo`);
+      await ev(page, () => { __game.autoStart = true; });
+    }
+    {
+      await playLevel(page, 3, { done: [1, 2] });
+      const lost = await ev(page, () => { __game.setLives(1); __game.noCatch = false; for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return __game.state; });
+      await ev(page, () => { __game.autoStart = false; });
+      await page.click("#btn-retry");
+      const r1 = await ev(page, () => { for (let i = 0; i < 40; i++) __game.tick(0.05); return { started: __game.started, time: __game.time }; });
+      ok(lost === "lost" && !r1.started && r1.time === 0, "Tentar novamente também espera o primeiro passo");
+      await ev(page, () => { __game.autoStart = true; });
+    }
+
+    // ---- vidas escondidas: nada à vista em rações e ossos, nas Fases 1, 3 e 6 (o sprite inteiro, não só em cima) ----
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const bad = [];
+    for (const id of [1, 3, 6]) for (const bone of id === 1 ? [false] : [false, true]) {
+      await ev(page, ([id, bone]) => {
+        __game.autoStart = false; __game.start(id); __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+        const it = __game.items.find((i) => !!i.bone === bone); window.__it = it; __game.player.x = it.x + 70; __game.player.y = it.y - 4;
+      }, [id, bone]);
+      const grab = () => ev(page, () => { const it = __it, c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, cx = (it.x + 8 - __game.view.camX) * k, cy = (it.y + 8 - __game.view.camY) * k, R = Math.round(20 * k); return Array.from(c.getImageData(Math.round(cx) - R, Math.round(cy) - R, 2 * R, 2 * R).data).join(","); });
+      await frame(); const plain = await grab();
+      await ev(page, () => { __it.life = true; }); await frame(); const hidden = await grab();
+      if (plain !== hidden) bad.push(`F${id} ${bone ? "osso" : "ração"}`);
+    }
+    await ev(page, () => { __game.autoStart = true; });
+    ok(bad.length === 0, `um item com vida extra é desenhado pixel a pixel igual a um sem vida (ração e osso, Fases 1, 3 e 6)${bad.length ? ": diferem " + bad.join(", ") : ""}`);
+
+    // ---- renascer onde morreu: nenhum item cai a menos de 3 tiles do cachorrinho ----
+    const near = await ev(page, () => {
+      let worst = 99, trials = 0;
+      for (const id of [9, 10]) for (let k = 0; k < 12; k++) {
+        __game.setRand(() => Math.random()); __game.start(id); __game.noCatch = false; __game.freezeVets = true;
+        const M = __game.levels[id - 1].map, p = __game.player;
+        const c0 = 10 + k * 3, r0 = M.length - 6; let c = c0; while (M[r0][c] !== "." || M[r0][c + 1] !== ".") c++;
+        p.x = c * 32 + 4; p.y = r0 * 32 + 4;
+        for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.01);
+        const v = __game.vets[0]; v.cx = p.x + 12; v.cy = p.y + 12; __game.freezeVets = false; __game.tick(0.01); __game.freezeVets = true;
+        const dc = Math.floor((p.x + 12) / 32), dr = Math.floor((p.y + 12) / 32);
+        for (const it of __game.items) if (!it.taken) worst = Math.min(worst, Math.max(Math.abs(Math.round((it.x - 8) / 32) - dc), Math.abs(Math.round((it.y - 8) / 32) - dr)));
+        trials++;
+      }
+      __game.setRand(null); return { worst, trials };
+    });
+    ok(near.worst >= 3, `ao renascer no lugar (Fases 9 e 10, ${near.trials} sorteios) nenhum item cai a menos de 3 tiles do cachorrinho (o mais perto: ${near.worst} tiles)`);
+
+    // ---- pegar um osso com veterinários no meio de uma perseguição: eles terminam o trecho e não cortam a quina das paredes ----
+    const clip = await ev(page, () => {
+      const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      let worst = 0, runs = 0, chasing = 0;
+      for (const id of [6, 7, 8, 9, 10]) for (let k = 0; k < 24; k++) {
+        const rnd = mulberry(id * 1000 + k);
+        __game.setRand(rnd); __game.start(id); __game.noCatch = true; __game.freezeVets = false;
+        const M = __game.levels[id - 1].map, p = __game.player;
+        // o cachorrinho fica longe do salão (num chão livre sorteado): os veterinários atravessam corredores e esquinas atrás dele
+        let tile; for (let n = 0; n < 500; n++) { const c = 1 + Math.floor(rnd() * (M[0].length - 2)), r = 1 + Math.floor(rnd() * (M.length - 2)); if (M[r][c] === "." && Math.hypot(c * 32 - __game.vets[0].sx, r * 32 - __game.vets[0].sy) > 12 * 32) { tile = [c, r]; break; } }
+        p.x = tile[0] * 32 + 4; p.y = tile[1] * 32 + 4;
+        for (const v of __game.vets) { v.mode = "chase"; v.modeT = v.cfg.chaseTime; v.chaseAge = 0; v.cool = 0; }
+        for (let i = 0, n = 20 + Math.floor(rnd() * 400); i < n; i++) __game.tick(1 / 60);
+        chasing += __game.vets.filter((v) => v.mode === "chase").length;
+        const bone = __game.items.find((i) => i.bone && !i.taken); p.x = bone.x - 4; p.y = bone.y - 4; __game.tick(1 / 60);
+        for (let i = 0; i < 90; i++) {
+          __game.tick(1 / 60);
+          for (const v of __game.vets) {
+            const x0 = v.cx - 12, y0 = v.cy - 12;
+            for (let r = Math.floor(y0 / 32); r <= Math.floor((y0 + 23.99) / 32); r++) for (let c = Math.floor(x0 / 32); c <= Math.floor((x0 + 23.99) / 32); c++) {
+              if (!M[r] || (M[r][c] !== "#" && M[r][c] !== "X")) continue;
+              const px = Math.min(x0 + 24, (c + 1) * 32) - Math.max(x0, c * 32), py = Math.min(y0 + 24, (r + 1) * 32) - Math.max(y0, r * 32);
+              worst = Math.max(worst, Math.min(px, py));
+            }
+          }
+        }
+        runs++;
+      }
+      __game.setRand(null); __game.noCatch = false; return { worst, runs, chasing };
+    });
+    ok(clip.chasing >= 100 && clip.worst <= 1, `pegar um osso com veterinários perseguindo (${clip.chasing} perseguidores em ${clip.runs} sorteios, Fases 6 a 10): nenhum veterinário entra mais de 1 px numa parede (pior: ${clip.worst.toFixed(1)} px)`);
+
+    // ---- cada porta e cada parede das Fases 6 a 10 desliza na velocidade e no intervalo da tabela ----
+    const spec = { 6: [120, 120, 3, 10], 7: [120, 120, 3, 10], 8: [120, 120, 3, 10], 9: [160, 140, 2.5, 8], 10: [200, 160, 2, 6] };
+    const pieces = await ev(page, (spec) => {
+      const out = [];
+      for (const id of [6, 7, 8, 9, 10]) {
+        __game.start(id);
+        for (const b of __game.blocks) {
+          const d = b.def, dist = Math.hypot(d.bx - d.ax, d.by - d.ay), wall = d.kind === "W", [ds, ws, de, we] = spec[id];
+          const speed = dist / d.slide;
+          if (Math.abs(speed - (wall ? ws : ds)) > 0.6 || Math.abs(d.every - (wall ? we : de)) > 0.001) out.push(`F${id} ${wall ? "parede" : "porta"} ${b.i}: ${speed.toFixed(0)} px/s a cada ${d.every} s`);
+        }
+      }
+      return out;
+    }, spec);
+    ok(pieces.length === 0, `todas as portas e paredes das Fases 6 a 10 deslizam na velocidade e no intervalo da tabela${pieces.length ? " — fora: " + pieces.join("; ") : ""}`);
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {

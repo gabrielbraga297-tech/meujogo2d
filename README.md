@@ -29,10 +29,10 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
 | 5 | chegar a 1000 pontos na fase (a saída abre) e sair | 3 | 20 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
 | 6 | chegar a 1250 pontos na fase (a saída abre) e sair | 3 | 24 | 3 | 76,14 / 152,27 px/s | 241,92 px/s |
-| 7 | chegar a 1400 pontos na fase (a saída abre) e sair | 3 | 28 | 3 | 79,07 / 158,12 px/s | 244,44 px/s |
-| 8 | chegar a 1650 pontos na fase (a saída abre) e sair | 3 | 32 | 4 | 82 / 163,98 px/s | 246,96 px/s |
-| 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 3 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
-| 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 3 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
+| 7 | chegar a 1400 pontos na fase (a saída abre) e sair | 4 | 28 | 3 | 79,07 / 158,12 px/s | 244,44 px/s |
+| 8 | chegar a 1650 pontos na fase (a saída abre) e sair | 5 | 32 | 4 | 82 / 163,98 px/s | 246,96 px/s |
+| 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 5 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
+| 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os veterinários ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
@@ -53,13 +53,14 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | Bônus de tempo | 0 a 100 (10 a cada 10 s) | 0 a 100 (10 a cada 10 s) | **0 a 200 (20 a cada 10 s)** | 0 a 200 (20 a cada 10 s) | 0 a 200 (20 a cada 10 s) |
 
 ### Fases 6 a 10 (0.7.0)
-Labirintos cada vez maiores, a partir da Fase 5: mais rações, mais ossos, veterinários mais rápidos (+4% por fase sobre a Fase 5) e mais blocos e paredes que se movem (o número de peças de cada tipo é **sorteado a cada jogo** dentro de uma faixa). O cachorrinho sobe só um pouco de velocidade por fase para continuar mais rápido que o veterinário perseguindo (pelo menos 40% mais).
+Labirintos cada vez maiores, a partir da Fase 5: mais rações, mais ossos, **mais veterinários** (3, 4, 5, 5 e 6, proporcional ao tamanho do mapa), veterinários mais rápidos (+4% por fase sobre a Fase 5) e mais blocos e paredes que se movem (o número de peças de cada tipo é **sorteado a cada jogo** dentro de uma faixa). O cachorrinho sobe só um pouco de velocidade por fase para continuar mais rápido que o veterinário perseguindo (pelo menos 40% mais).
 
 | | Fase 6 | Fase 7 | Fase 8 | Fase 9 | Fase 10 |
 |---|---|---|---|---|---|
 | Mapa | 45 × 31 | 49 × 33 | 53 × 35 | 57 × 37 | 61 × 39 |
 | Rações / ossos | 24 / 3 | 28 / 3 | 32 / 4 | 36 / 4 | 40 / 5 |
-| Vidas escondidas | 5 (no máximo 1 num osso) | 5 | 5 | 5 | 5 |
+| Veterinários (no centro do mapa) | 3 | 4 | 5 | 5 | 6 |
+| Vidas escondidas (sorteio por jogo) | 3 ou 4 (no máximo 1 num osso) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
 | Alcance do "!" | 11 quadrados | 12 | 13 | 14 | 15 |
 | Portas de bloco / paredes (definidas) | 4 / 4 | 5 / 4 | 5 / 5 | 6 / 6 | 6 / 6 |
 | Sorteio por jogo (portas; paredes) | 2–4; 2–4 | 3–5; 2–4 | 3–5; 3–5 | 4–6; 4–6 | 5–6; 5–6 |
