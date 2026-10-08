@@ -623,6 +623,7 @@
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
+  const START_HINT = "O tempo só começa quando você se mexer.";
   let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os veterinários e os blocos ficam parados
   let startHint = false;       // o aviso "mova-se para começar" está na tela
   let autoStart = false;       // gancho dos testes: a fase começa a contar na hora (como antes da 0.7.0)
@@ -967,11 +968,11 @@
   }
 
   // ---------- Pontuação e vidas ----------
-  // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
+  // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
-  // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 e 5) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
+  // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected());
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
@@ -993,15 +994,16 @@
       Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = INVULN;
+    return inPlace;
   }
 
   function loseLife(why) {
     lives--; livesLost++;
     score = runningScore();
     if (lives <= 0) { gameOver(why); return; }
-    respawn();
+    const inPlace = respawn();
     relocateItems();
-    toast(`${why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!"} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
+    toast(`${why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!"} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.${inPlace ? " Você renasceu onde caiu, protegido por 2 s." : ""}`, 2.6);
     saveNow();
   }
 
@@ -1057,9 +1059,13 @@
     if (ix || iy) touchInput = byTouch && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.w || keys.s);
     if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; if (ix || iy) touchInput = false; } // sem teclado/toque: usa o controle (analógico ou direcional)
     if (!started) { // a fase só começa (relógio, veterinários e blocos) no primeiro passo do jogador
-      if (!(ix || iy)) { player.moving = false; return; }
+      if (!(ix || iy)) {
+        player.moving = false;
+        if (hintTimer <= 0) { toast(START_HINT, 600); startHint = true; } // pausar, "Continuar jogo" com tempo 0 e outros avisos apagam o aviso: ele volta enquanto o jogador não se mexe
+        return;
+      }
       started = true;
-      if (startHint) { startHint = false; hintTimer = 0; $("toast").classList.remove("show"); }
+      if (startHint) { startHint = false; if ($("toast").textContent.includes(START_HINT)) { hintTimer = 0; $("toast").classList.remove("show"); } } // (só some o aviso do primeiro passo; outro aviso na tela segue até o fim)
     }
     time += dt;
     player.moving = !!(ix || iy);
@@ -1126,7 +1132,7 @@
       const visible = (n) => n.offsetParent !== null;
       // telas longas (Como jogar, Pontuações): o foco fica na própria tela, para as setas, Espaço e PageDown rolarem o texto
       const f = el.hasAttribute("data-scroll") ? el : [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
-      if (f) f.focus({ preventScroll: true });
+      if (f) { f.focus({ preventScroll: true }); if (f !== el && id === "levels" && f.scrollIntoView) f.scrollIntoView({ block: "nearest" }); } // a lista de fases mostra o botão focado, mesmo abaixo da dobra
     }
   }
 
@@ -1163,7 +1169,7 @@
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
       : `${lv.title}: ${n} ${n === 1 ? "veterinário" : "veterinários"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     if (started) toast(msg, 2.8);
-    else { toast(`${msg} · O tempo só começa quando você se mexer.`, 600); startHint = true; }
+    else { toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
   }
 
   // ---------- Jogo salvo ----------
@@ -1324,6 +1330,7 @@
     list.replaceChildren();
     const shown = replay ? LEVELS.filter((l) => prog.completed.includes(l.id)) : LEVELS;
     if (replay && !shown.length) list.append(el("p", "muted", "Você ainda não concluiu nenhuma fase."));
+    const focusId = replay ? shown.length && shown[0].id : Math.min(unlocked, LEVELS.length); // o foco abre na fase que o jogador provavelmente quer: a última liberada (em "Jogar fases anteriores", a primeira da lista)
     for (const l of shown) {
       const open = l.id <= unlocked, best = store.personalBest(me, l.id);
       const b = el("button", open ? "primary-ish" : "locked");
@@ -1332,7 +1339,7 @@
         ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
-        b.dataset.autofocus = "";
+        if (l.id === focusId) b.dataset.autofocus = "";
         b.addEventListener("click", () => { // a lista pode estar velha (outra aba trocou o jogador): confere antes de começar
           if (store.progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1)}.`, 2.4); return; }
           begin(l.id);
@@ -1405,6 +1412,7 @@
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "O veterinário pegou o cachorrinho!";
+    $("lose-lead").textContent = why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -1870,7 +1878,7 @@
       const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
-    if (!(invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido
+    if (!(started && invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível)
   }
 
   // ---------- Placar (HTML) ----------
@@ -1884,6 +1892,17 @@
   function updateHud() {
     if (!solids) return;
     setHud("lv", hudEl.level, String(levelId));
+    if (hudCache.wl !== levelId) { // largura fixa dos números do placar (a do pior caso da fase): quando um valor ganha um dígito o placar não cresce no meio da partida
+      hudCache.wl = levelId;
+      const wide = (e, text) => { e.style.minWidth = `${text.length}ch`; };
+      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + vets.length * Records.POSTMAN_POINTS + lv.bonusStep * 10, low = lv.lifePenalty * MAX_LIVES + MAX_RETRIES * Records.RETRY_PENALTY;
+      wide(hudEl.items, `${lv.rations}/${lv.rations}`);
+      wide(hudEl.bones, `${lv.bones}/${lv.bones}`);
+      wide(hudEl.points, `${"0".repeat(Math.max(String(top).length, String(low).length + 1))}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
+      wide(hudEl.power, `${lv.bonePower} s`);
+      wide(hudEl.time, "0:00,0");
+      wide(hudEl.bonus, `+${lv.bonusStep * 10}`);
+    }
     setHud("i", hudEl.items, `${collected}/${lv.rations}`);
     if (hudCache.bn !== lv.bones) { hudCache.bn = lv.bones; hudEl.bonesItem.classList.toggle("hidden", !lv.bones); }
     if (lv.bones) setHud("o", hudEl.bones, `${bonesGot}/${lv.bones}`);

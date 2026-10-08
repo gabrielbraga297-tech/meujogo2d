@@ -1835,9 +1835,10 @@ const PAGE_HELPERS = () => {
       const lost = __game.livesLost; for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
       const mid = { state: __game.state, power: __game.power, score: __game.score };
       for (let i = 0; i < 700; i++) __game.tick(0.05);
-      return { lost, mid, state: __game.state, title: document.getElementById("lose-title").textContent, text: document.getElementById("lose-text").textContent };
+      return { lost, mid, state: __game.state, title: document.getElementById("lose-title").textContent, lead: document.getElementById("lose-lead").textContent, text: document.getElementById("lose-text").textContent };
     });
     ok(dead.lost === 4 && dead.mid.state === "playing" && dead.mid.score < 800 && dead.state === "lost" && /pontos não bastaram/i.test(dead.title) && /mínimo 800/.test(dead.text), `Fase 4 sem como chegar a 800: pegou tudo (${dead.mid.score} pontos), o poder acabou e a tentativa termina (${dead.title})`);
+    ok(/Você pegou tudo/.test(dead.lead) && !/Acabaram as suas vidas/.test(dead.lead), `a tela "Os pontos não bastaram!" não diz que as vidas acabaram (${dead.lead})`);
     // esmagamento: nas Fases 1 a 3 o bloco nunca esmaga (o cachorro é empurrado); na Fase 4 esmaga, mas não quem está na proteção depois de perder uma vida
     const crush = await ev(page, () => {
       const out = {};
@@ -3021,7 +3022,7 @@ const PAGE_HELPERS = () => {
     const rp = await ev(page, () => {
       const out = {};
       for (const id of [8, 9, 10]) {
-        __game.start(id); __game.freezeVets = true; __game.noCatch = false;
+        __game.start(id); __game.freezeVets = true; __game.noCatch = false; __game.items.forEach((i) => { i.life = false; }); // (um item com vida extra no lugar do teste anularia a vida perdida)
         const p = __game.player, spawn = [p.x, p.y], M = __game.levels[id - 1].map;
         // vai até um lugar livre bem longe do início (fora dos trilhos das peças móveis) e é pego por um veterinário
         const trk = new Set(__game.levels[id - 1].blocks.flatMap((b) => { const o = []; for (const w of ["from", "to"]) for (let i = 0; i < (b.size ? b.size[0] : 1); i++) for (let j = 0; j < (b.size ? b.size[1] : 1); j++) o.push((b[w][0] + i) + "," + (b[w][1] + j)); return o; }));
@@ -3034,6 +3035,7 @@ const PAGE_HELPERS = () => {
       return out;
     });
     ok(rp[8].lives === 1 && rp[8].at.join() === rp[8].spawn.join() && rp[8].vetsHome, "Fase 8: perdeu uma vida e o cachorrinho volta ao início (como sempre)");
+    if (![9, 10].every((id) => rp[id].lives === 1 && rp[id].at.join() === rp[id].here.join() && rp[id].invuln > 1.5 && rp[id].vetsHome)) console.log("   detalhe:", JSON.stringify(rp));
     ok([9, 10].every((id) => rp[id].lives === 1 && rp[id].at.join() === rp[id].here.join() && rp[id].invuln > 1.5 && rp[id].vetsHome), `Fases 9 e 10: ao ser pego o cachorrinho renasce onde morreu (${rp[9].at.map(Math.round).join(",")}), protegido por ${rp[9].invuln.toFixed(1)} s, e os veterinários voltam aos postos`);
     // esmagado por um bloco: renasce ao lado do bloco, nunca dentro dele
     const cr = await ev(page, () => {
@@ -3106,6 +3108,84 @@ const PAGE_HELPERS = () => {
       __game.setRand(null); return { counts: [...counts].sort(), bonesBoth };
     });
     ok(f3.counts.join() === "1,2" && f3.bonesBoth === 0, `Fase 3: o sorteio dá 1 ou 2 vidas escondidas (vistas: ${f3.counts.join(" e ")}) e nunca vida nos dois ossos`);
+  });
+
+  await section("0.7.0 (auditoria): Continuar com tempo 0, aviso do primeiro passo, placar estável, Voltar à vista", async () => {
+    await play(page, { keepSave: true });
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // "Continuar jogo" com o tempo em 0: o cachorrinho continua desenhado (o pisca da proteção não depende do relógio parado) e o aviso do primeiro passo volta depois do "Jogo carregado"
+    await ev(page, () => { __game.autoStart = false; __game.start(1); __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => { __game.autoStart = false; });
+    await page.click("#btn-continue"); await frame();
+    const dogShown = async () => {
+      const grab = () => ev(page, () => { const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, p = __game.player; return Array.from(c.getImageData(Math.round((p.x + 12 - __game.view.camX) * k) - 10, Math.round((p.y + 12 - __game.view.camY) * k) - 10, 20, 20).data).join(","); });
+      const withDog = await grab();
+      await ev(page, () => { __game.player.x += 300; }); await frame();
+      const grabAway = await ev(page, () => { const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, p = __game.player; return Array.from(c.getImageData(Math.round((p.x - 300 + 12 - __game.view.camX) * k) - 10, Math.round((p.y + 12 - __game.view.camY) * k) - 10, 20, 20).data).join(","); });
+      await ev(page, () => { __game.player.x -= 300; });
+      return withDog !== grabAway;
+    };
+    const c0 = await ev(page, () => ({ started: __game.started, time: __game.time, invuln: __game.invuln, toast: document.getElementById("toast").textContent }));
+    ok(!c0.started && c0.time === 0 && c0.invuln > 1 && await dogShown(), `Continuar jogo com tempo 0: o cachorrinho aparece na tela, mesmo protegido e com o relógio parado (proteção ${c0.invuln.toFixed(1)} s)`);
+    await ev(page, () => { for (let i = 0; i < 50; i++) __game.tick(0.05); }); // 2,5 s depois: o "Jogo carregado" já saiu
+    const c1 = await ev(page, () => ({ show: document.getElementById("toast").classList.contains("show"), text: document.getElementById("toast").textContent, started: __game.started, time: __game.time }));
+    ok(c1.show && /só começa quando você se mexer/.test(c1.text) && !c1.started && c1.time === 0, `Continuar jogo com tempo 0: depois do "Jogo carregado" o aviso do primeiro passo aparece e a fase segue parada ("${c1.text}")`);
+    // pausar antes do primeiro passo apaga o aviso (as telas escondem os avisos); ao voltar, ele reaparece
+    await page.keyboard.press("Escape"); await frame();
+    ok(await ev(page, () => __game.state) === "paused" && !(await ev(page, () => document.getElementById("toast").classList.contains("show"))), "a tela de pausa não mostra o aviso por trás");
+    await page.keyboard.press("Escape"); await ev(page, () => { __game.tick(0.05); __game.tick(0.05); });
+    const c2 = await ev(page, () => ({ show: document.getElementById("toast").classList.contains("show"), text: document.getElementById("toast").textContent, started: __game.started }));
+    ok(c2.show && /só começa quando você se mexer/.test(c2.text) && !c2.started, "depois de pausar e voltar, sem ter dado o primeiro passo, o aviso de que o tempo só começa ao se mexer reaparece");
+    await ev(page, () => { __t.press("d", true); __game.tick(0.05); __t.press("d", false); });
+    ok(await ev(page, () => __game.started && !document.getElementById("toast").classList.contains("show")), "no primeiro passo o aviso some de vez");
+    await ev(page, () => { __game.autoStart = true; });
+
+    // Fase 9 renasce no lugar: o aviso diz isso; nas outras fases não
+    const rb = await ev(page, () => {
+      const out = {};
+      for (const id of [8, 9]) { __game.start(id, { lives: 5 }); __game.freezeVets = true; const p0 = [__game.player.x, __game.player.y]; __game.player.x += 64; const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.freezeVets = false; __game.noCatch = false; __game.tick(0.01); out[id] = { lives: __game.lives, toast: document.getElementById("toast").textContent }; }
+      return out;
+    });
+    ok(/renasceu onde caiu/.test(rb[9].toast) && !/renasceu onde caiu/.test(rb[8].toast) && rb[9].lives === 4 && rb[8].lives === 4, `o aviso de perder a vida na Fase 9 diz que renasceu onde caiu e o da Fase 8 não ("${rb[9].toast}")`);
+
+    // placar: a largura dos números é fixa na fase, então o jogo não encolhe no meio da partida (Fases 5 a 10)
+    const hudSizes = {};
+    for (const [w, h] of [[1280, 720], [1024, 768], [568, 320]]) {
+      await page.setViewportSize({ width: w, height: h });
+      for (const id of [5, 8, 10]) {
+        const m = await ev(page, async (id) => {
+          __game.start(id); __game.freezeVets = true; __game.noCatch = true;
+          const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          await frame(); await frame();
+          const size = () => { const r = document.getElementById("game").getBoundingClientRect(); return [Math.round(r.width), Math.round(r.top)].join("x"); };
+          const first = size();
+          const seen = new Set([first]);
+          for (const it of __game.items.filter((i) => !i.taken).slice(0, 14)) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); await frame(); seen.add(size()); }
+          __game.tick(12); await frame(); seen.add(size());
+          return { first, seen: [...seen] };
+        }, id);
+        hudSizes[`${id}@${w}x${h}`] = m.seen.length === 1;
+        if (m.seen.length !== 1) console.log("   tamanho do jogo variou:", id, w, h, m.seen.join(" | "));
+      }
+    }
+    ok(Object.values(hudSizes).every(Boolean), `o tamanho do jogo não muda durante a partida (Fases 5, 8 e 10 em 3 telas: ${Object.keys(hudSizes).length} casos)`);
+    await page.setViewportSize({ width: 1280, height: 720 });
+
+    // telas longas: o botão Voltar fica sempre à vista
+    await ev(page, () => { sessionStorage.setItem("keepSave", ""); localStorage.removeItem("cachorrinho.save.v1"); const st = Records.createStore(localStorage); st.setPlayer("Totó"); for (let l = 1; l <= 9; l++) st.completeLevel("Totó", l); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    for (const [w, h] of [[320, 568], [1280, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.click("#btn-scores");
+      const sc = await ev(page, () => { const b = document.getElementById("btn-scores-back").getBoundingClientRect(); return { top: b.top, bottom: b.bottom, h: innerHeight, scroll: document.getElementById("scores").scrollHeight }; });
+      ok(sc.bottom <= sc.h + 1 && sc.top >= 0, `Pontuações com 10 fases (${sc.scroll} px de altura): o botão Voltar está à vista sem rolar em ${w}x${h}`);
+      await page.click("#btn-scores-back");
+      await page.click("#btn-start");
+      const lv = await ev(page, () => { const f = document.activeElement, r = f.getBoundingClientRect(), b = document.getElementById("btn-levels-back").getBoundingClientRect(); return { focus: f.textContent.slice(0, 7), fr: [r.top, r.bottom], h: innerHeight, backBottom: b.bottom, backTop: b.top }; });
+      ok(/Fase 10/.test(lv.focus) && lv.fr[0] >= 0 && lv.fr[1] <= lv.h + 1 && lv.backBottom <= lv.h + 1 && lv.backTop >= 0, `a lista de fases abre com o foco na última fase liberada (${lv.focus}), visível, e com o Voltar à vista em ${w}x${h}`);
+      await page.click("#btn-levels-back");
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {
