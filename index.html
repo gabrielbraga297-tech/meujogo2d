@@ -2,27 +2,287 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fase 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jogo do cachorrinho</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="wrap">
-    <canvas id="game" width="800" height="576"></canvas>
+  <noscript><p class="noscript">Este jogo precisa de JavaScript. Ative o JavaScript do navegador e recarregue a página.</p></noscript>
 
-    <div id="menu" class="screen">
-      <h1>Fase 1</h1>
-      <p>Colete os 5 itens e chegue à saída.</p>
-      <p class="hint">Mover: WASD ou setas</p>
-      <button id="btn-play">Jogar</button>
-    </div>
+  <main id="stage">
+    <header id="hud" aria-label="Placar">
+      <div class="hud-left">
+        <span class="hud-item">FASE <b id="hud-level">1</b></span>
+        <span class="hud-item">RAÇÕES <b id="hud-items">0/5</b></span>
+        <span id="hud-bones-item" class="hud-item hidden">OSSOS <b id="hud-bones">0/0</b></span>
+        <span id="hud-points-item" class="hud-item">PONTOS <b id="hud-points">0</b></span>
+        <span id="hud-power-item" class="hud-item hidden" role="group" aria-label="Poder do osso: desligado" title="Poder do osso: quanto falta para os carteiros voltarem a ser veterinários">PODER <b id="hud-power">—</b></span>
+        <span id="hud-lives" class="hearts" role="img" aria-label="3 vidas">
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        </span>
+      </div>
+      <div class="hud-right">
+        <span id="save-status" class="save-status" aria-hidden="true">✓ salvo</span>
+        <span id="hud-bonus-item" class="hud-item" title="Bônus de tempo: 100 pontos até 20 s, menos 10 a cada 10 s (0 depois de 110 s)">BÔNUS <b id="hud-bonus">+100</b></span>
+        <span class="hud-item">TEMPO <b id="hud-time">0,0 s</b></span>
+        <span id="hud-retry-item" class="hud-item hidden" title="Novas tentativas usadas nesta fase (cada uma custa 100 pontos)">TENTATIVAS <b id="hud-retry">0/3</b></span>
+        <button id="btn-save-hud" class="icon-btn" type="button" aria-label="Salvar jogo" title="Salvar jogo">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#fff" d="M5 3h11l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 2v5h9V5H7zm5 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+        </button>
+        <button id="btn-pause" class="icon-btn" type="button" aria-label="Pausar (tecla Esc)" title="Pausar (Esc)"><span></span><span></span></button>
+      </div>
+    </header>
 
-    <div id="win" class="screen hidden">
-      <h1>Fase 1 concluída!</h1>
-      <p id="win-text"></p>
-      <button id="btn-again">Jogar novamente</button>
+    <div id="wrap">
+      <canvas id="game" width="800" height="576" role="img" aria-label="Área do jogo: um cachorrinho coleta tigelas de ração e ossos e foge dos veterinários. Pegar um osso dá poder por alguns segundos: os veterinários viram carteiros e, ao encostar neles, você ganha pontos. Em algumas fases blocos e paredes deslizam e abrem e fecham as portas, e nas últimas podem esmagar o cachorrinho sem o poder do osso"></canvas>
+      <div id="toast" role="status" aria-live="polite"></div>
     </div>
+  </main>
+
+  <div id="touch" aria-label="Controle de toque">
+    <div id="pad" role="group" aria-label="Controle direcional: arraste o dedo para mover o cachorrinho">
+      <i class="arr up"></i><i class="arr down"></i><i class="arr left"></i><i class="arr right"></i>
+      <div id="pad-knob"></div>
+    </div>
+    <p class="rotate-tip">Dica: gire o aparelho para ver o jogo maior.</p>
   </div>
+
+  <!-- Menu inicial -->
+  <section id="menu" class="screen page" aria-labelledby="menu-title">
+    <div class="panel">
+      <h1 id="menu-title">Menu inicial</h1>
+      <p class="who">Jogador: <strong id="menu-player">ainda não escolhido</strong></p>
+      <p id="menu-best" class="muted"></p>
+      <p id="menu-progress" class="muted"></p>
+      <p id="menu-save" class="saved-info hidden"></p>
+      <p id="menu-note" class="note hidden">Este navegador não guarda dados: nome, contas e pontuações valem só até fechar a página.</p>
+      <nav class="menu-list" aria-label="Menu principal">
+        <button id="btn-continue" class="primary hidden" type="button" data-autofocus>Continuar jogo</button>
+        <button id="btn-start" class="primary" type="button" data-autofocus>Iniciar jogo</button>
+        <button id="btn-replay" type="button" class="hidden">Jogar fases anteriores</button>
+        <button id="btn-howto" type="button">Como jogar</button>
+        <button id="btn-scores" type="button">Pontuações</button>
+        <button id="btn-name" type="button">Escolher nome de usuário</button>
+        <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
+      </nav>
+    </div>
+    <footer class="menu-foot">
+      <p id="menu-version" class="version" aria-label="Versão do jogo"></p>
+      <p class="credit"><span>Criador do jogo</span><strong>GABRIEL BRAGA CAVALCANTE DE FRANÇA COSTA</strong></p>
+    </footer>
+  </section>
+
+  <!-- Escolher a fase -->
+  <section id="levels" class="screen page hidden" aria-labelledby="levels-title">
+    <div class="panel">
+      <h1 id="levels-title">Escolher a fase</h1>
+      <p id="levels-help" class="muted">Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.</p>
+      <div id="levels-list" class="level-list"></div>
+      <div class="menu-list"><button id="btn-levels-back" type="button">Voltar</button></div>
+    </div>
+  </section>
+
+  <!-- Como jogar -->
+  <section id="howto" class="screen page hidden" aria-labelledby="howto-title" tabindex="-1" data-scroll>
+    <div class="panel">
+      <h1 id="howto-title">Como jogar</h1>
+      <ol class="steps">
+        <li><strong>Objetivo:</strong> ajude o cachorrinho a pegar todas as tigelas de ração (e os <strong>ossos</strong>, nas fases em que eles aparecem) e depois chegar à <strong>SAÍDA</strong>. A saída abre quando você pegar tudo; nas fases com <strong>pontos mínimos</strong> (o placar mostra <strong>PONTOS n / meta</strong>), ela abre assim que a sua pontuação na fase chega a essa meta.</li>
+        <li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio, os veterinários e os blocos ficam parados.</li>
+        <li><strong>Cuidado com o veterinário!</strong> Quando aparecer um <span class="red">!</span> vermelho em cima dele, ele fica bem mais rápido e vai atrás do cachorrinho. Se ele encostar no cachorrinho, você perde 1 vida e o cachorrinho volta ao início da fase (nas Fases 9 e 10 ele renasce onde caiu); o tempo continua contando. As rações que ainda não foram pegas <strong>mudam de lugar</strong>, e elas também ficam em lugares novos a cada jogo.</li>
+        <li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5. Alguns itens escondem uma <strong>vida extra</strong> (você só descobre ao pegar o item): cada uma dá +1 vida, até o máximo de 5. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>
+        <li><strong>Sem vidas?</strong> Você tem até <strong>3 novas tentativas</strong> da fase em que está: ela recomeça do zero, com 3 vidas. Cada nova tentativa custa <strong>100 pontos</strong>.</li>
+        <li><strong>Pontuação:</strong> cada ração vale 100 pontos, cada osso vale 150 e cada carteiro que você pegar com o poder do osso vale mais 100. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam. Para melhorar o recorde de uma fase, use <strong>Jogar fases anteriores</strong> no menu.</li>
+        <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
+        <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou <kbd>P</kbd>, o botão <strong>Start</strong> do controle, ou toque no botão de pausa no topo do jogo.</li>
+        <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>
+        <li><strong>Controle (gamepad):</strong> conecte um controle (Bluetooth ou cabo) e aperte qualquer botão para ele ser reconhecido. O <strong>analógico esquerdo</strong> ou o <strong>direcional</strong> movem o cachorrinho; <strong>Start</strong> pausa e continua; <strong>Y</strong> salva; nos menus, o direcional escolhe, <strong>A</strong> confirma e <strong>B</strong> volta.</li>
+        <li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos os jogadores deste aparelho e mostra apenas a melhor pontuação de cada um.</li>
+        <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome neste aparelho.</li>
+      </ol>
+      <div class="menu-list"><button id="btn-howto-back" type="button" class="primary" data-autofocus>Voltar</button></div>
+    </div>
+  </section>
+
+  <!-- Pontuações -->
+  <section id="scores" class="screen page hidden" aria-labelledby="scores-title" tabindex="-1" data-scroll>
+    <div class="panel wide">
+      <h1 id="scores-title">Pontuações</h1>
+      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + 150 por osso + 100 por carteiro + bônus de tempo − pontos por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
+      <div id="scores-private" class="score-private"></div>
+      <h2>Ranking do jogo</h2>
+      <p id="scores-source" class="muted" role="status" aria-live="polite"></p>
+      <div id="scores-public"></div>
+      <p id="scores-note" class="note hidden">Não foi possível guardar dados neste navegador. Seus recordes valem só até fechar a página.</p>
+      <div class="menu-list"><button id="btn-scores-back" type="button" class="primary" data-autofocus>Voltar</button></div>
+    </div>
+  </section>
+
+  <!-- Escolher nome de usuário -->
+  <section id="name" class="screen page hidden" aria-labelledby="name-title">
+    <div class="panel">
+      <h1 id="name-title">Escolher nome de usuário</h1>
+      <p class="tip"><strong>Dica:</strong> o nome pode ser o nome de um cachorrinho! Por exemplo: <strong>Totó</strong>.</p>
+      <p id="name-why" class="muted hidden">Antes de começar, escolha um nome para guardar as suas pontuações.</p>
+      <ol class="steps">
+        <li>Pense em um nome. Pode ser o do seu cachorrinho.</li>
+        <li>Escreva o nome no campo abaixo (até 16 letras).</li>
+        <li>Toque em <strong>Salvar nome</strong>. O jogo vai lembrar dele nas próximas vezes.</li>
+      </ol>
+      <form id="name-form" autocomplete="off" novalidate>
+        <label for="name-input">Nome do jogador</label>
+        <input id="name-input" name="player" type="text" maxlength="16" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Ex.: Totó" data-autofocus>
+        <p id="name-error" class="error" role="alert"></p>
+        <div class="row">
+          <button type="submit" class="primary">Salvar nome</button>
+          <button type="button" id="btn-name-back">Voltar</button>
+        </div>
+      </form>
+      <div id="name-saved" class="hidden">
+        <p class="muted">Ou escolha um nome que já foi usado neste aparelho:</p>
+        <div id="name-chips" class="chips"></div>
+      </div>
+      <div class="account-box">
+        <p class="muted">Quer proteger o seu nome com uma senha?</p>
+        <div class="row">
+          <button id="btn-open-register" type="button">Criar conta</button>
+          <button id="btn-open-login" type="button">Entrar</button>
+        </div>
+      </div>
+      <p id="name-note" class="note hidden">Não foi possível guardar dados neste navegador. O nome vale só até fechar a página.</p>
+    </div>
+  </section>
+
+  <!-- Criar conta -->
+  <section id="register" class="screen page hidden" aria-labelledby="register-title">
+    <div class="panel">
+      <h1 id="register-title">Criar conta</h1>
+      <p class="muted">Cadastro simples: um nome de usuário e uma senha. Depois é só entrar para jogar com as suas pontuações.</p>
+      <form id="register-form" autocomplete="on" novalidate>
+        <label for="reg-user">Nome de usuário</label>
+        <input id="reg-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <p class="hint">Pode ser o nome de um cachorrinho! Até 16 letras ou números.</p>
+        <label for="reg-pass">Senha</label>
+        <input id="reg-pass" name="password" type="password" autocomplete="new-password" aria-describedby="pass-rules" spellcheck="false">
+        <p id="pass-rules" class="hint">De 4 a 20 caracteres. Pode usar letras minúsculas e MAIÚSCULAS, números e símbolos (! @ # $ …). Números e símbolos são opcionais. <span id="reg-count" class="count">0/20</span></p>
+        <label for="reg-pass2">Repita a senha</label>
+        <input id="reg-pass2" name="password2" type="password" autocomplete="new-password" spellcheck="false">
+        <label class="check"><input id="reg-show" type="checkbox"> Mostrar senha</label>
+        <p id="reg-error" class="error" role="alert"></p>
+        <div class="row">
+          <button id="btn-register-submit" type="submit" class="primary">Criar conta</button>
+          <button id="btn-register-back" type="button">Voltar</button>
+        </div>
+      </form>
+      <p class="note-soft">A senha não é guardada: o jogo guarda só uma "impressão" dela, e tudo fica neste aparelho. Não dá para entrar em outro celular ou computador, e a senha esquecida não pode ser recuperada.</p>
+    </div>
+  </section>
+
+  <!-- Entrar -->
+  <section id="login" class="screen page hidden" aria-labelledby="login-title">
+    <div class="panel">
+      <h1 id="login-title">Entrar</h1>
+      <form id="login-form" autocomplete="on" novalidate>
+        <label for="login-user">Nome de usuário</label>
+        <input id="login-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
+        <label for="login-pass">Senha</label>
+        <input id="login-pass" name="password" type="password" autocomplete="current-password" spellcheck="false">
+        <label class="check"><input id="login-show" type="checkbox"> Mostrar senha</label>
+        <p id="login-error" class="error" role="alert"></p>
+        <div class="row">
+          <button id="btn-login-submit" type="submit" class="primary">Entrar</button>
+          <button id="btn-login-back" type="button">Voltar</button>
+        </div>
+      </form>
+      <div class="row">
+        <button id="btn-login-to-register" type="button" class="linky">Ainda não tenho conta</button>
+        <button id="btn-forgot" type="button" class="linky">Esqueci a senha</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Esqueci a senha -->
+  <section id="forgot" class="screen page hidden" aria-labelledby="forgot-title">
+    <div class="panel">
+      <h1 id="forgot-title">Esqueci a senha</h1>
+      <p id="forgot-text">Este jogo guarda tudo só neste aparelho e não tem como recuperar uma senha. Você pode apagar a conta (com as pontuações e o jogo salvo dela) e criar uma nova.</p>
+      <div class="menu-list">
+        <button id="btn-forgot-back" type="button" class="primary" data-autofocus>Voltar</button>
+        <button id="btn-forgot-delete" type="button" class="danger">Apagar a conta e começar de novo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confirmar novo jogo (já existe um jogo salvo) -->
+  <section id="confirm" class="screen page hidden" aria-labelledby="confirm-title">
+    <div class="panel">
+      <h1 id="confirm-title">Começar um novo jogo?</h1>
+      <p id="confirm-text">Já existe um jogo salvo. Se você começar um novo jogo, o progresso salvo será apagado.</p>
+      <div class="menu-list">
+        <button id="btn-confirm-keep" class="primary" type="button" data-autofocus>Continuar o jogo salvo</button>
+        <button id="btn-confirm-new" class="danger" type="button">Apagar e começar de novo</button>
+        <button id="btn-confirm-back" type="button">Voltar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pausa -->
+  <section id="pause" class="screen hidden" aria-labelledby="pause-title">
+    <div class="panel">
+      <h1 id="pause-title">Jogo pausado</h1>
+      <div class="menu-list">
+        <button id="btn-resume" type="button" class="primary" data-autofocus>Continuar</button>
+        <button id="btn-save" type="button">Salvar jogo</button>
+        <button id="btn-pause-menu" type="button">Voltar ao menu</button>
+      </div>
+      <p id="pause-msg" class="muted" role="status" aria-live="polite"></p>
+      <p class="hint controls-help">Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl+S salva.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta.</p>
+    </div>
+  </section>
+
+  <!-- Vitória -->
+  <section id="win" class="screen hidden" aria-labelledby="win-title">
+    <div class="panel">
+      <h1 id="win-title">Fase 1 concluída!</h1>
+      <p class="label">Pontuação da fase</p>
+      <p id="win-points" class="big-time"></p>
+      <p id="win-breakdown" class="muted"></p>
+      <p id="win-personal" class="record"></p>
+      <p id="win-general" class="record"></p>
+      <p id="win-total" class="muted"></p>
+      <p id="win-extra" class="muted"></p>
+      <div class="menu-list">
+        <button id="btn-next" type="button" class="primary hidden" data-autofocus>Próxima fase</button>
+        <button id="btn-again" type="button" data-autofocus>Jogar novamente</button>
+        <button id="btn-win-scores" type="button">Pontuações</button>
+        <button id="btn-win-menu" type="button">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fim das vidas -->
+  <section id="lose" class="screen hidden" aria-labelledby="lose-title">
+    <div class="panel">
+      <h1 id="lose-title" class="bad">O veterinário pegou o cachorrinho!</h1>
+      <p id="lose-lead">Acabaram as suas vidas.</p>
+      <p id="lose-text" class="muted"></p>
+      <p id="lose-chances" class="muted"></p>
+      <div class="menu-list">
+        <button id="btn-retry" type="button" class="primary" data-autofocus>Tentar novamente</button>
+        <button id="btn-lose-menu" type="button">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/auth.js"></script>
+  <script src="js/records.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/version.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

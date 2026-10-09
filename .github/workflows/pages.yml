@@ -26,6 +26,9 @@ jobs:
         run: |
           mkdir _site
           cp -r index.html css js _site/
+          # carimba o código curto do commit na versão mostrada no menu (js/version.js: build "dev" -> "abc1234")
+          sed -i "s/build: \"dev\"/build: \"${GITHUB_SHA::7}\"/" _site/js/version.js
+          grep -q "build: \"${GITHUB_SHA::7}\"" _site/js/version.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

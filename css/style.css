@@ -1,26 +1,261 @@
-* { box-sizing: border-box; }
-body {
-  margin: 0; min-height: 100vh; padding: 16px; display: flex; align-items: center; justify-content: center;
-  background: #0f1117; font-family: system-ui, sans-serif; color: #fff;
+:root {
+  --bg: #0f1117;
+  --panel: #1b2030;
+  --panel-2: #2a3145;
+  --ink: #fff;
+  --muted: #aeb6c8;
+  --gold: #ffd54a;
+  --green: #3ddc84;
+  --green-hi: #6df0a5;
+  --red: #e5303c;
+  --pad: 16px;
+  --touch-h: 0px;  /* altura reservada para o controle de toque */
+  --hud-h: 48px;   /* altura reservada para o placar (barra + espaço abaixo) */
+  color-scheme: dark;
 }
-#wrap { position: relative; width: 100%; max-width: 800px; aspect-ratio: 25 / 18; }
-canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-radius: 6px; }
-.screen {
-  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 8px; background: rgba(10, 12, 18, 0.85); border-radius: 6px; text-align: center;
-}
-.screen h1 { margin: 0 0 8px; font-size: 42px; color: #ffd54a; }
-.screen p { margin: 0; font-size: 18px; }
-.hint { opacity: .7; font-size: 15px !important; }
-button {
-  margin-top: 16px; padding: 12px 32px; font-size: 20px; font-weight: 700; cursor: pointer;
-  border: 0; border-radius: 8px; background: #3ddc84; color: #08210f;
-}
-button:hover, button:focus-visible { background: #6df0a5; outline: none; }
-.hidden { display: none; }
+body.touch { --touch-h: 192px; --hud-h: 56px; }
 
-@media (max-width: 560px) {
-  .screen h1 { font-size: 28px; }
-  .screen p { font-size: 15px; }
-  button { padding: 10px 24px; font-size: 17px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh; padding: var(--pad); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+@supports (height: 100dvh) { body { min-height: 100dvh; } }
+.noscript { padding: 24px; font-size: 18px; text-align: center; }
+
+/* ---------- Área do jogo: ocupa o máximo possível mantendo a proporção 25:18 ---------- */
+#stage {
+  width: max(240px, min(100%, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18)));
+  user-select: none; -webkit-user-select: none; container-type: inline-size;
+}
+@supports (height: 100dvh) {
+  #stage { width: max(240px, min(100%, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+}
+#wrap { position: relative; width: 100%; aspect-ratio: 25 / 18; }
+canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-radius: 6px; touch-action: none; }
+
+/* ---------- Placar (HTML, nítido em qualquer tamanho) ---------- */
+#hud {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px;
+  min-height: 36px; margin-bottom: 8px; padding: 2px 4px; font-size: clamp(13px, 1.9vw, 20px); font-size: clamp(13px, 2.3cqw, 20px); font-weight: 700; letter-spacing: .02em;
+}
+.hud-left, .hud-right { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
+.hud-item { color: var(--muted); font-size: max(.8em, 10.5px); text-transform: uppercase; }
+.hud-item b { display: inline-block; color: var(--ink); font-size: 1.25em; margin-left: .2em; font-variant-numeric: tabular-nums; text-transform: none; } /* a largura mínima de cada número vem do jogo (updateHud) */
+.hearts { display: inline-flex; gap: 3px; align-items: center; min-width: calc(5 * 1.6em + 4 * 3px); } /* sempre com lugar para 5 vidas: ganhar uma vida não aumenta o placar no meio da partida */
+.heart { width: 1.6em; height: 1.6em; fill: var(--red); filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .45)); transition: fill .2s; }
+.heart.lost { fill: #343a4b; }
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 36px; height: 36px; min-height: 0; margin: 0; padding: 0;
+  border-radius: 8px; background: var(--panel-2);
+}
+.icon-btn span { display: block; width: 4px; height: 14px; border-radius: 2px; background: #fff; }
+body.touch .icon-btn { width: 44px; height: 44px; }
+
+/* placar compacto quando a área do jogo é estreita */
+@container (max-width: 520px) {
+  #hud { gap: 2px 8px; letter-spacing: 0; }
+  .hud-left, .hud-right { gap: 2px 8px; }
+  .hud-item { font-size: max(.85em, 10.5px); }   /* rótulos de pelo menos 11 px e números de 14 px, mesmo com o jogo estreito */
+  .hud-item b { font-size: 1.3em; margin-left: .15em; }
+  .save-status { display: none; }
+  .hearts { gap: 1px; min-width: calc(5 * 1.25em + 4px); }
+  .heart { width: 1.25em; height: 1.25em; }
+  .icon-btn { width: 32px; height: 32px; }
+  body.touch .icon-btn { width: 44px; height: 44px; } /* com toque o botão de pausa e o de salvar mantêm 44 px (alvo de toque confortável) */
+}
+/* celular deitado e baixo: os botões ficam em 32 px para o placar não crescer nem o jogo encolher */
+@media (orientation: landscape) and (max-height: 520px) { body.touch .icon-btn { width: 32px; height: 32px; } }
+.save-status { font-size: max(.75em, 10.5px); font-weight: 600; color: var(--green); opacity: 0; transition: opacity .3s; white-space: nowrap; }
+.save-status.on { opacity: 1; }
+.saved-info { padding: 8px 12px; border-radius: 10px; background: rgba(61, 220, 132, .12); border: 1px solid rgba(61, 220, 132, .4); font-size: clamp(15px, 2.2vw, 17px) !important; }
+#toast {
+  position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: max-content; max-width: 92%; padding: 6px 14px; border-radius: 999px;
+  background: rgba(0, 0, 0, .7); color: var(--gold); font-weight: 700; font-size: clamp(14px, 2.2vw, 22px); text-align: center;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+#toast.show { opacity: 1; }
+
+/* ---------- Telas (menu, como jogar, pontuações, nome, pausa, vitória, derrota) ---------- */
+.screen {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: var(--pad);
+  padding-top: calc(var(--pad) + env(safe-area-inset-top, 0px)); padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom, 0px));
+  background: rgba(10, 12, 18, .94);
+}
+.screen:focus { outline: none; }
+.screen.page { background: radial-gradient(ellipse at 50% 20%, #1d2436 0%, var(--bg) 70%); }
+.panel { margin: auto; width: min(100%, 520px); display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.panel.wide { width: min(100%, 640px); }
+.screen h1 { margin: 0 0 4px; font-size: clamp(28px, 6vw, 46px); line-height: 1.1; color: var(--gold); text-wrap: balance; }
+.screen h1.bad { color: #ff7a6b; }
+.screen h2 { margin: 0; font-size: clamp(20px, 3.4vw, 26px); color: var(--gold); }
+.screen h3 { margin: 12px 0 4px; font-size: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.screen p { margin: 0; font-size: clamp(16px, 2.4vw, 19px); line-height: 1.45; }
+.muted { color: var(--muted); }
+.who { font-size: clamp(17px, 2.6vw, 21px) !important; }
+.label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 14px !important; }
+.big-time { font-size: clamp(40px, 9vw, 64px) !important; font-weight: 800; color: var(--green); line-height: 1; font-variant-numeric: tabular-nums; }
+.record { font-weight: 700; color: var(--gold); }
+.big-total { font-size: clamp(30px, 6vw, 40px) !important; font-weight: 800; color: var(--green); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tip { padding: 10px 14px; border-radius: 10px; background: rgba(255, 213, 74, .12); border: 1px solid rgba(255, 213, 74, .4); }
+.steps { margin: 0; padding-left: 1.4em; text-align: left; font-size: clamp(16px, 2.4vw, 19px); line-height: 1.5; display: flex; flex-direction: column; gap: 10px; }
+.red { color: var(--red); font-weight: 800; letter-spacing: .1em; }
+kbd { padding: 1px 7px; border-radius: 5px; background: var(--panel-2); border: 1px solid rgba(255, 255, 255, .25); font: inherit; font-weight: 700; }
+.note { font-size: 14px !important; color: #ffb4a8; }
+.error { min-height: 1.4em; color: #ff9d90; font-weight: 700; }
+
+/* Créditos: canto inferior direito do menu inicial */
+.menu-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; margin-top: 16px; }
+.version { margin: 0; font-size: clamp(13px, 1.8vw, 15px) !important; color: var(--muted); font-variant-numeric: tabular-nums; }
+.credit {
+  align-self: flex-end; margin: 0 0 0 auto; max-width: min(100%, 460px); text-align: right; display: flex; flex-direction: column; gap: 2px;
+  font-size: clamp(14px, 1.9vw, 17px) !important; line-height: 1.3 !important; color: #cfd6e6;
+}
+.credit span { font-size: max(.85em, 10.5px); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.credit strong { font-weight: 700; letter-spacing: .03em; }
+
+/* ---------- Botões ---------- */
+button {
+  margin: 0; padding: 12px 28px; min-height: 48px; font: inherit; font-size: 19px; font-weight: 700; cursor: pointer;
+  border: 0; border-radius: 10px; background: var(--panel-2); color: var(--ink); touch-action: manipulation;
+}
+button:hover { filter: brightness(1.15); }
+button.primary { background: var(--green); color: #08210f; }
+button.primary:hover { background: var(--green-hi); filter: none; }
+button.danger { background: #8a2f2f; }
+button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.menu-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+/* telas longas (Como jogar, Pontuações, lista de fases): o Voltar fica sempre à vista, colado no fim da tela, sem precisar rolar até o final */
+#howto, #scores, #levels { scroll-padding-bottom: 76px; } /* o botão focado (Tab, setas, a fase aberta na lista) nunca fica atrás do Voltar fixo */
+#howto .menu-list, #scores .menu-list, #levels .menu-list:last-child { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
+.row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chips button { min-height: 40px; padding: 6px 16px; font-size: 17px; border-radius: 999px; }
+label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 15px; text-align: left; }
+input {
+  width: 100%; padding: 12px 14px; font: inherit; font-size: 22px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .3);
+  background: #0c0f16; color: var(--ink);
+}
+#name-form, #register-form, #login-form { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+#name-form .row, #register-form .row, #login-form .row { margin-top: 6px; }
+input[type="checkbox"] { width: 22px; height: 22px; padding: 0; margin: 0; accent-color: var(--green); flex: none; }
+label.check { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; color: var(--ink); font-size: 17px; cursor: pointer; }
+.hint { margin: 2px 0 8px; font-size: 14px !important; color: var(--muted); line-height: 1.35 !important; text-align: left; }
+.count { display: inline-block; margin-left: 4px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
+.count.over { color: #ff9d90; }
+.controls-help { text-align: center !important; margin: 0 !important; }
+.note-soft { font-size: 14px !important; color: var(--muted); line-height: 1.4 !important; }
+.account-box { padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); display: flex; flex-direction: column; gap: 8px; }
+button.linky { background: transparent; color: var(--gold); text-decoration: underline; min-height: 40px; padding: 6px 10px; font-size: 16px; font-weight: 600; }
+.hidden { display: none !important; }
+
+/* ---------- Pontuações ---------- */
+.score-level { padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, .05); text-align: left; display: flex; flex-direction: column; gap: 6px; }
+.score-level dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: clamp(16px, 2.4vw, 19px); }
+.score-level dt { color: var(--muted); }
+.score-level dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score-level ol, .score-level ul { margin: 0; padding-left: 1.4em; font-size: clamp(15px, 2.2vw, 18px); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.score-level li.me { color: var(--gold); font-weight: 700; }
+.score-level li .star { color: var(--gold); font-weight: 700; }
+.score-level p { font-size: 16px !important; color: var(--muted); }
+
+.score-private { padding: 14px; border-radius: 12px; background: rgba(61, 220, 132, .08); border: 1px solid rgba(61, 220, 132, .35); display: flex; flex-direction: column; gap: 6px; }
+.score-private dl { margin: 6px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; text-align: left; font-size: clamp(16px, 2.4vw, 19px); }
+.score-private dt { color: var(--muted); }
+.score-private dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+#scores-public { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Escolher a fase ---------- */
+.level-list { display: flex; flex-direction: column; gap: 10px; }
+.level-list button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 20px; text-align: center; }
+.level-list button strong { font-size: 1.1em; }
+.level-list .sub { font-size: .75em; font-weight: 600; opacity: .85; }
+.level-list .primary-ish { background: var(--green); color: #08210f; }
+.level-list .primary-ish:hover { background: var(--green-hi); filter: none; }
+.level-list .locked { background: #232838; color: #7d8599; cursor: not-allowed; }
+.level-list .locked:hover { filter: none; }
+
+/* ---------- Controle de toque (celular/tablet) ---------- */
+#touch { display: none; width: 100%; flex-direction: column; align-items: center; gap: 6px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body.touch[data-state="playing"] #touch { display: flex; }
+#pad {
+  position: relative; width: clamp(120px, 24vmin, 176px); aspect-ratio: 1; border-radius: 50%; touch-action: none;
+  background: radial-gradient(circle, rgba(255, 255, 255, .14) 0%, rgba(255, 255, 255, .06) 70%); border: 2px solid rgba(255, 255, 255, .28);
+}
+#pad-knob {
+  position: absolute; left: 50%; top: 50%; width: 42%; aspect-ratio: 1; margin: -21% 0 0 -21%; border-radius: 50%;
+  background: rgba(255, 255, 255, .38); border: 2px solid rgba(255, 255, 255, .7); pointer-events: none; will-change: transform;
+}
+.arr { position: absolute; width: 0; height: 0; border: 7px solid transparent; opacity: .65; pointer-events: none; }
+.arr.up { top: 5px; left: 50%; margin-left: -7px; border-top-width: 0; border-bottom-color: #fff; }
+.arr.down { bottom: 5px; left: 50%; margin-left: -7px; border-bottom-width: 0; border-top-color: #fff; }
+.arr.left { left: 5px; top: 50%; margin-top: -7px; border-left-width: 0; border-right-color: #fff; }
+.arr.right { right: 5px; top: 50%; margin-top: -7px; border-right-width: 0; border-left-color: #fff; }
+.rotate-tip { display: none; margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+@media (orientation: portrait) and (max-width: 600px) { .rotate-tip { display: block; } }
+
+/* Celular deitado: o controle fica nas laterais, sem roubar altura do jogo */
+@media (orientation: landscape) and (max-height: 520px) {
+  body.touch { --touch-h: 0px; --hud-h: 56px; }
+  /* o placar usa a largura da tela (pelo menos 520 px, o limite do placar compacto) em vez do tamanho do jogo, que aqui pode ser pequeno: assim ele não quebra em 4 ou 5 linhas e não rouba a altura do jogo */
+  #stage { width: min(100%, max(520px, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+  #hud { font-size: 13px; }
+  #wrap { width: max(240px, min(100%, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); margin-inline: auto; }
+  @supports (height: 100dvh) {
+    #stage { width: min(100%, max(520px, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+    #wrap { width: max(240px, min(100%, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+  }
+  body.touch[data-state="playing"] #touch { position: fixed; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; z-index: 5; }
+  .rotate-tip { display: none !important; }
+}
+
+/* Telas baixas (celular deitado): menus, vitória, derrota e pausa mais compactos, para tudo caber sem rolar */
+@media (max-height: 520px) {
+  .screen { padding-block: 8px; }
+  .screen { padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .panel { gap: 6px; }
+  .screen h1 { margin: 0; font-size: clamp(22px, 7vh, 32px); }
+  .screen h2 { font-size: 18px; }
+  .screen p { font-size: 14px; line-height: 1.3; }
+  .who { font-size: 15px !important; }
+  .big-time { font-size: 34px !important; }
+  .label { font-size: 12px !important; }
+  .menu-list { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 2px; }
+  .menu-list button { flex: 1 1 42%; min-height: 40px; padding: 6px 14px; font-size: 16px; }
+  .level-list { flex-direction: row; flex-wrap: wrap; }
+  .level-list button { flex: 1 1 42%; }
+  .menu-foot { margin-top: 4px; }
+  .credit, .version { font-size: 12px !important; line-height: 1.2 !important; }
+  .saved-info { padding: 4px 10px; font-size: 13px !important; }
+}
+
+/* Celular estreito em pé: telas um pouco mais compactas (menu com jogo salvo e vitória cabem melhor) */
+@media (max-width: 380px) and (min-height: 521px) {
+  .panel { gap: 8px; }
+  .screen h1 { font-size: 30px; }
+  .screen p { font-size: 15px; line-height: 1.35; }
+  .big-time { font-size: 44px !important; }
+  .menu-list { gap: 8px; margin-top: 4px; }
+  .menu-list button { min-height: 44px; padding: 8px 16px; font-size: 17px; }
+  .menu-foot { margin-top: 8px; }
+}
+
+/* Celular pequeno em pé (320x568): com o botão "Jogar fases anteriores" o menu com jogo salvo ficava um pouco alto; botões e espaços mais enxutos */
+@media (max-width: 380px) and (min-height: 521px) and (max-height: 640px) {
+  .panel { gap: 6px; }
+  .screen h1 { font-size: 26px; }
+  .screen p { font-size: 14px; line-height: 1.3; }
+  .menu-list { gap: 6px; margin-top: 2px; }
+  .menu-list button { min-height: 40px; padding: 6px 14px; font-size: 16px; }
+  .menu-foot { margin-top: 4px; }
+}
+
+@media (max-width: 420px) {
+  :root, body.touch { --hud-h: 84px; } /* o placar pode quebrar em duas linhas */
+  button { padding: 10px 20px; font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .heart, #toast, .save-status { transition: none; }
 }
