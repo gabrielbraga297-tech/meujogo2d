@@ -44,7 +44,7 @@ canvas { display: block; width: 100%; height: 100%; background: #1d2330; border-
 .hud-left, .hud-right { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; }
 .hud-item { color: var(--muted); font-size: max(.8em, 10.5px); text-transform: uppercase; }
 .hud-item b { display: inline-block; color: var(--ink); font-size: 1.25em; margin-left: .2em; font-variant-numeric: tabular-nums; text-transform: none; } /* a largura mínima de cada número vem do jogo (updateHud) */
-.hearts { display: inline-flex; gap: 3px; align-items: center; }
+.hearts { display: inline-flex; gap: 3px; align-items: center; min-width: calc(5 * 1.6em + 4 * 3px); } /* sempre com lugar para 5 vidas: ganhar uma vida não aumenta o placar no meio da partida */
 .heart { width: 1.6em; height: 1.6em; fill: var(--red); filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .45)); transition: fill .2s; }
 .heart.lost { fill: #343a4b; }
 .icon-btn {
@@ -61,7 +61,7 @@ body.touch .icon-btn { width: 44px; height: 44px; }
   .hud-item { font-size: max(.85em, 10.5px); }   /* rótulos de pelo menos 11 px e números de 14 px, mesmo com o jogo estreito */
   .hud-item b { font-size: 1.3em; margin-left: .15em; }
   .save-status { display: none; }
-  .hearts { gap: 1px; }
+  .hearts { gap: 1px; min-width: calc(5 * 1.25em + 4px); }
   .heart { width: 1.25em; height: 1.25em; }
   .icon-btn { width: 32px; height: 32px; }
   body.touch .icon-btn { width: 44px; height: 44px; } /* com toque o botão de pausa e o de salvar mantêm 44 px (alvo de toque confortável) */
@@ -128,6 +128,7 @@ button.danger { background: #8a2f2f; }
 button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .menu-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
 /* telas longas (Como jogar, Pontuações, lista de fases): o Voltar fica sempre à vista, colado no fim da tela, sem precisar rolar até o final */
+#howto, #scores, #levels { scroll-padding-bottom: 76px; } /* o botão focado (Tab, setas, a fase aberta na lista) nunca fica atrás do Voltar fixo */
 #howto .menu-list, #scores .menu-list, #levels .menu-list:last-child { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
 .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -198,11 +199,14 @@ body.touch[data-state="playing"] #touch { display: flex; }
 /* Celular deitado: o controle fica nas laterais, sem roubar altura do jogo */
 @media (orientation: landscape) and (max-height: 520px) {
   body.touch { --touch-h: 0px; --hud-h: 56px; }
-  /* o placar usa a largura da tela (até 520 px, o limite do placar compacto) em vez do tamanho do jogo, que aqui é pequeno: assim ele não quebra em 4 ou 5 linhas e não rouba a altura do jogo */
-  #stage { width: min(100%, 520px); }
+  /* o placar usa a largura da tela (pelo menos 520 px, o limite do placar compacto) em vez do tamanho do jogo, que aqui pode ser pequeno: assim ele não quebra em 4 ou 5 linhas e não rouba a altura do jogo */
+  #stage { width: min(100%, max(520px, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
   #hud { font-size: 13px; }
   #wrap { width: max(240px, min(100%, calc((100vh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); margin-inline: auto; }
-  @supports (height: 100dvh) { #wrap { width: max(240px, min(100%, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); } }
+  @supports (height: 100dvh) {
+    #stage { width: min(100%, max(520px, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+    #wrap { width: max(240px, min(100%, calc((100dvh - 2 * var(--pad) - var(--touch-h) - var(--hud-h)) * 25 / 18))); }
+  }
   body.touch[data-state="playing"] #touch { position: fixed; left: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: auto; z-index: 5; }
   .rotate-tip { display: none !important; }
 }

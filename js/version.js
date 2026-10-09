@@ -5,4 +5,4 @@
 // apague a linha (ou deixe "") quando a versão estiver 100% entregue. O CHANGELOG marca o mesmo na entrada do topo.
 // `build` vale "dev" no código; ao publicar no GitHub Pages o workflow troca "dev" pelo código curto do commit,
 // para saber exatamente qual versão está no ar.
-window.GAME_VERSION = { number: "0.7.0", stage: "em preparação", date: "2026-10-08", build: "dev" };
+window.GAME_VERSION = { number: "0.7.0", date: "2026-10-09", build: "dev" };

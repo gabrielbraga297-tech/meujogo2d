@@ -3200,7 +3200,7 @@ const PAGE_HELPERS = () => {
       for (const id of [8, 9]) { __game.start(id, { lives: 5 }); __game.freezeVets = true; const p0 = [__game.player.x, __game.player.y]; __game.player.x += 64; const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.freezeVets = false; __game.noCatch = false; __game.tick(0.01); out[id] = { lives: __game.lives, toast: document.getElementById("toast").textContent }; }
       return out;
     });
-    ok(/renasceu onde caiu/.test(rb[9].toast) && !/renasceu onde caiu/.test(rb[8].toast) && rb[9].lives === 4 && rb[8].lives === 4, `o aviso de perder a vida na Fase 9 diz que renasceu onde caiu e o da Fase 8 não ("${rb[9].toast}")`);
+    ok(/Renasceu aqui/.test(rb[9].toast) && !/Renasceu aqui/.test(rb[8].toast) && rb[9].lives === 4 && rb[8].lives === 4, `o aviso de perder a vida na Fase 9 diz que renasceu aqui e o da Fase 8 não ("${rb[9].toast}")`);
 
     // placar: a largura dos números é fixa na fase, então o jogo não encolhe no meio da partida (Fases 5 a 10)
     const hudSizes = {};
@@ -3232,6 +3232,10 @@ const PAGE_HELPERS = () => {
     for (const id of [1, 5, 10]) {
       lows.push(await ev(lowL, async (id) => { __game.start(id); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 100)))); const de = document.documentElement; return { id, over: de.scrollHeight - innerHeight, hud: Math.round(document.getElementById("hud").getBoundingClientRect().height), w: Math.round(document.getElementById("game").getBoundingClientRect().width) }; }, id));
     }
+    const deskLow = await newPage({ viewport: { width: 1000, height: 500 } });
+    await fresh(deskLow);
+    const dl = await ev(deskLow, async () => { __game.start(10); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 100)))); return { over: document.documentElement.scrollHeight - innerHeight, w: Math.round(document.getElementById("game").getBoundingClientRect().width) }; });
+    ok(dl.over <= 1 && dl.w >= 500, `janela de computador baixa (1000 x 500): o jogo continua grande (${dl.w} px) e a página não rola (sobra ${dl.over})`);
     ok(lows.every((l) => l.over <= 1 && l.hud <= 80 && l.w >= 270), `celular deitado de 320 px de altura: sem rolagem, placar de até 80 px e jogo com 270 px ou mais (${lows.map((l) => `F${l.id}: sobra ${l.over}, placar ${l.hud}, jogo ${l.w}`).join(" | ")})`);
 
     // telas longas: o botão Voltar fica sempre à vista
@@ -3245,7 +3249,7 @@ const PAGE_HELPERS = () => {
       await page.click("#btn-scores-back");
       await page.click("#btn-start");
       const lv = await ev(page, () => { const f = document.activeElement, r = f.getBoundingClientRect(), b = document.getElementById("btn-levels-back").getBoundingClientRect(); return { focus: f.textContent.slice(0, 7), fr: [r.top, r.bottom], h: innerHeight, backBottom: b.bottom, backTop: b.top }; });
-      ok(/Fase 10/.test(lv.focus) && lv.fr[0] >= 0 && lv.fr[1] <= lv.h + 1 && lv.backBottom <= lv.h + 1 && lv.backTop >= 0, `a lista de fases abre com o foco na última fase liberada (${lv.focus}), visível, e com o Voltar à vista em ${w}x${h}`);
+      ok(/Fase 10/.test(lv.focus) && lv.fr[0] >= 0 && lv.fr[1] <= lv.backTop + 1 && lv.backBottom <= lv.h + 1 && lv.backTop >= 0, `a lista de fases abre com o foco na última fase liberada (${lv.focus}), inteira à vista e sem ficar atrás do Voltar, em ${w}x${h}`);
       await page.click("#btn-levels-back");
     }
     await page.setViewportSize({ width: 1280, height: 720 });

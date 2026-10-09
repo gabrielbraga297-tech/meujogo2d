@@ -249,11 +249,11 @@
     "#.###.#######.#.###.#.#####.#.#.###########.#.###",
     "#.#.......#...#.#...#...#...#.#.#.....#.....#.#.#",
     "#.#.###.#.#.###.#######.#####.#.#.#.###.###.#.#.#",
-    "#...#...#.#...#......XV....X....#.#.....#.#...#.#",
+    "#...#...#.#...#......X.....X....#.#.....#.#...#.#",
     "#.#.#.##..###.#####.#...V...###.#.#######.#####.#",
     "#.#.....#.........#.#..V.V......#.....#.......#.#",
     "#.#.###.###.....#.#.#.......###.#.#.#.#.....#.#.#",
-    "#.#...#.#.......#...#X.....X..#.#.#.#.......#.#.#",
+    "#.#...#.#.......#...#XV....X..#.#.#.#.......#.#.#",
     "#.###.#.#.#.....#.#.#######.#.###.#.###.....#.#.#",
     "#...#.#.#.#.......#.#.......#.#...#.............#",
     "#.#.#.#.#.#.....#.#.#.#######.#.#######.....###.#",
@@ -285,11 +285,11 @@
     "###.###.....#.#.#.###.#####.#.#####.#.#####.#.#.###.#",
     "#...#.........#.#.#.#.....#...#.....#.....#.#.#...#.#",
     "#.###.#.....###.#.#.#####.#.###.#.#.###.###.#.###.#.#",
-    "#...#...........#.....#XV...VX..#...#...#...#.#...#.#",
+    "#...#...........#.....#X.....X..#...#...#...#.#...#.#",
     "###.###.....###########...V...###########.###.#.#.#.#",
     "#.....#...........#...#..V.V..................#...#.#",
     "#.#######.#.#####.#.#.#.......#########.......#.#.#.#",
-    "#.....#...#.....#...#.#X.....X....#...#.......#.#...#",
+    "#.....#...#.....#...#.#XV...VX....#...#.......#.#...#",
     "#.###.#.#######.#####.#.#####.###.###.#.......#.###.#",
     "#...#...#...#...#...........#.........#.........#...#",
     "###.#####.#.###.#.#######.###.#.#######.#.###.##..###",
@@ -501,7 +501,7 @@
     {
       id: 10, title: "Fase 10", map: MAP_10, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
-      note: "a fase mais difícil: blocos e paredes muito rápidos; renasce onde morreu",
+      note: "a última fase: o maior labirinto, 6 veterinários e blocos muito rápidos; renasce onde morreu",
       blocks: [
         { from: [47, 16], to: [49, 16], size: [3, 1], wall: true, every: 6, speed: 160, phase: 0 }, // parede 1
         { from: [18, 27], to: [18, 29], size: [1, 3], wall: true, every: 6, speed: 160, phase: 3 }, // parede 2
@@ -1003,7 +1003,9 @@
     if (lives <= 0) { gameOver(why); return; }
     const inPlace = respawn();
     relocateItems();
-    toast(`${why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!"} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.${inPlace ? " Você renasceu onde caiu, protegido por 2 s." : ""}`, 2.6);
+    const what = why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!";
+    toast(inPlace ? `${what} −${lv.lifePenalty} pontos. Renasceu aqui, protegido por 2 s. ${lv.bones ? "Itens trocaram" : "Rações trocaram"} de lugar.`
+      : `${what} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
     saveNow();
   }
 
@@ -1895,10 +1897,10 @@
     if (hudCache.wl !== levelId) { // largura fixa dos números do placar (a do pior caso da fase): quando um valor ganha um dígito o placar não cresce no meio da partida
       hudCache.wl = levelId;
       const wide = (e, text) => { e.style.minWidth = `${text.length}ch`; };
-      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + vets.length * Records.POSTMAN_POINTS + lv.bonusStep * 10, low = lv.lifePenalty * MAX_LIVES + MAX_RETRIES * Records.RETRY_PENALTY;
+      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + vets.length * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
       wide(hudEl.items, `${lv.rations}/${lv.rations}`);
       wide(hudEl.bones, `${lv.bones}/${lv.bones}`);
-      wide(hudEl.points, `${"0".repeat(Math.max(String(top).length, String(low).length + 1))}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
+      wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
       wide(hudEl.power, `${lv.bonePower} s`);
       wide(hudEl.time, "0:00,0");
       wide(hudEl.bonus, `+${lv.bonusStep * 10}`);
