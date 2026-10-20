@@ -642,6 +642,7 @@
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
+  let gpNavLock = false; // o direcional/analógico segurado ao abrir uma tela só vale depois de voltar ao neutro (não corre pelos botões)
   let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
   const START_HINT = "O tempo só começa quando você se mexer.";
   let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os veterinários e os blocos ficam parados
@@ -1155,6 +1156,7 @@
     if (id !== "login") clearAuthFields(["login-user", "login-pass"], "login-show");
     for (const el of SCREENS) el.classList.toggle("hidden", el.id !== id);
     document.body.dataset.screen = id || "";
+    gpNavLock = true;
     $("stage").inert = !!id; $("touch").inert = !!id;
     const el = id && $(id);
     if (el) {
@@ -1443,7 +1445,9 @@
       const chosen = b.dataset.id === id;
       b.disabled = !chosen; b.classList.toggle("chosen", chosen); b.setAttribute("aria-pressed", chosen ? "true" : "false");
     }
-    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} (${r.text}). Ele vale a partir da ${next.title}.`;
+    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} — ${r.text}. Ele vale a partir da ${next.title}.`;
+    const chosenSub = $("reinforce-list").querySelector(`button[data-id="${id}"] .sub`);
+    if (chosenSub) chosenSub.textContent = `${r.text} · ${id === "life" ? `você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}` : `agora ${nextUp[id]}/${r.max}`}`;
     $("win-extra").textContent = winExtraText(next);
     $("btn-reinforce-go").disabled = false;
     $("btn-reinforce-go").focus({ preventScroll: true });
@@ -2114,6 +2118,7 @@
       if (dir) longScreen.scrollTop += dir * 520 * Math.min(dt, 0.05);
       return;
     }
+    if (gpNavLock) { if (dir) { gpNavDir = dir; return; } gpNavLock = false; }
     if (dir !== gpNavDir) { gpNavDir = dir; gpNavT = 0.4; if (dir) moveFocus(dir); }
     else if (dir && (gpNavT -= dt) <= 0) { gpNavT = 0.12; moveFocus(dir); }
   }
@@ -2158,8 +2163,12 @@
       keys[k] = true;
       if (k === "p") { if (!e.repeat) pauseGame(); return; }
       if (k.startsWith("Arrow") || (k === " " && !(e.target instanceof HTMLButtonElement))) e.preventDefault(); // não rola a página
+    } else if (e.repeat && (k === "Enter" || k.startsWith("Arrow")) && document.body.dataset.screen && e.target instanceof HTMLButtonElement) {
+      e.preventDefault(); // segurar a tecla não repete o clique nem corre pelos botões (a escolha do reforço vale uma vez e não se desfaz)
     } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen && !document.querySelector(".screen:not(.hidden)")?.hasAttribute("data-scroll")) {
       e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
+    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#reinforce-list")) {
+      e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // a grade de reforços tem duas colunas
     }
   });
   window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });

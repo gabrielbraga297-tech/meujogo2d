@@ -184,7 +184,8 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .reinforce-opt.chosen, .reinforce-opt.chosen:disabled { background: var(--green); color: #08210f; opacity: 1; }
 .reinforce-opt.locked { background: #232838; color: #7d8599; cursor: not-allowed; }
 button:disabled { cursor: not-allowed; }
-#btn-reinforce-go:disabled { opacity: .55; }
+.reinforce-opt:disabled:not(.chosen):not(.locked) { opacity: .45; }
+#btn-reinforce-go:disabled { background: #232838; color: #7d8599; opacity: 1; }
 @media (max-width: 480px) { .reinforce-list { grid-template-columns: 1fr; } }
 /* celular deitado e baixo: 3 colunas e botões compactos, para a escolha caber sem rolar */
 @media (max-height: 520px) and (min-width: 481px) {
