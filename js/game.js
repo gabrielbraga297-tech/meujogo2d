@@ -913,20 +913,31 @@
   // de preferência um que ele alcança antes do cachorrinho; null se não há para onde ir.
   function fleeStep(v) {
     const from = tileOf(v.cx, v.cy), dg = dogDistances().dist, key = (c, r) => r * COLS + c;
-    const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return key(c, r); }));
+    // não conta como caminho o tile de outro agente nem os tiles a menos de VET_GAP dele: ali o carteiro nunca conseguiria entrar (ficaria parado esperando)
+    const taken = new Set();
+    for (const o of vets) {
+      if (o === v) continue;
+      const [oc, or] = tileOf(o.cx, o.cy);
+      for (let r = or - 2; r <= or + 2; r++) for (let c = oc - 2; c <= oc + 2; c++) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
+        const [cx, cy] = centerOf(c, r);
+        if (Math.hypot(cx - o.cx, cy - o.cy) < VET_GAP && !(c === from[0] && r === from[1])) taken.add(key(c, r));
+      }
+    }
     const g = bfs(from, false, taken);
     let best = null, safe = null;
     for (const [c, r] of g.q) {
       const mine = g.dist.get(key(c, r));
-      if (mine < 1 || mine > FLEE_DEPTH) continue;
+      if (mine > FLEE_DEPTH) continue; // (o próprio tile também é candidato: no ponto mais longe ele fica parado em vez de ir e voltar)
       const theirs = dg.get(key(c, r)) ?? 99;
       let open = 0; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (c + dc >= 0 && r + dr >= 0 && c + dc < COLS && r + dr < ROWS && walk[r + dr][c + dc]) open++;
-      const score = theirs - mine * 0.4 + open * 0.3 + rand() * 0.4; // longe do cachorrinho, perto dele mesmo, e de preferência não num beco
+      const tie = ((((c * 73856093) ^ (r * 19349663) ^ ((v.idx + 1) * 83492791)) >>> 0) % 1000) / 1000 * 0.4; // desempate fixo por tile e por agente (com sorteio novo a cada olhada o carteiro tremeria)
+      const score = theirs - mine * 0.4 + open * 0.3 + tie + (mine === 0 ? 0.4 : 0); // longe do cachorrinho, perto dele mesmo, e de preferência não num beco (+0,4 para ficar onde está se já é bom)
       if (!best || score > best.score) best = { c, r, score };
       if (mine < theirs - 1 && (!safe || score > safe.score)) safe = { c, r, score };
     }
     const goal = safe || best;
-    return goal ? pathTo(g, [goal.c, goal.r])[0] || null : null;
+    return goal && !(goal.c === from[0] && goal.r === from[1]) ? pathTo(g, [goal.c, goal.r])[0] || null : null; // null = fica parado onde está (já é o melhor lugar)
   }
   function updateVet(v, dt) {
     const cfg = v.cfg;
@@ -1003,7 +1014,7 @@
         if (lower || (still && v.wait < 1)) {
           v.hold += dt; if (!lower) v.wait += dt;
           if (still && v.wait > 0.5 && still.idle > 0.2) still.idle = 0.2; // o que está parado na frente descansa menos se há outro esperando atrás dele
-          if (lower && v.hold > 0.5 && v.mode === "patrol" && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
+          if (lower && v.hold > 0.5 && (v.mode === "patrol" || v.mode === "flee") && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
           return;
         }
         if (still && v.mode === "patrol" && v.from && v.bounce < 2) { // esperou 1 s atrás de um parado: em vez de passar por cima dele, volta e escolhe outro caminho (no máximo 2 vezes seguidas)
