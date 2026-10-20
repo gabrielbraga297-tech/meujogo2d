@@ -136,7 +136,7 @@ const PAGE_HELPERS = () => {
   const catchOnce = (page, i = 0) => ev(page, (i) => {
     for (const v of __game.vets) v.cool = 99; // sem perseguição por conta própria
     __game.items.forEach((it) => { it.life = false; }); // (uma vida extra sorteada em cima do cachorrinho anularia a vida perdida)
-    for (let k = 0; k < 45; k++) __game.tick(0.05); // passa a proteção
+    for (let k = 0; k < 45 || (k < 200 && __game.invuln > 0); k++) __game.tick(0.05); // passa a proteção (o reforço Pelo grosso a alonga)
     const v = __game.vets[i], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01);
     __game.items.forEach((it) => { it.life = false; }); // (a perda de vida sorteia os itens de novo)
     return [__game.lives, __game.state];
