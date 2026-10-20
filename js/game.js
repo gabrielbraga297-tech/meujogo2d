@@ -12,6 +12,26 @@
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
   const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
+  // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre 6; o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
+  // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
+  const REINFORCE_SPEED = 0.05, REINFORCE_BONE = 5, REINFORCE_SHIELD = 1, REINFORCE_SLOW = 0.05; // por nível: +5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos
+  const REINFORCEMENTS = [
+    { id: "speed", name: "Patas ligeiras", text: "+5% de velocidade do cachorrinho", max: 4 },
+    { id: "bone", name: "Osso poderoso", text: "+5 s no poder do osso", max: 4 },
+    { id: "life", name: "Vida extra", text: "+1 vida agora" },
+    { id: "heart", name: "Coração maior", text: "+1 vida no máximo (e +1 vida agora)", max: 3 },
+    { id: "shield", name: "Pelo grosso", text: "+1 s de proteção depois de perder uma vida", max: 3 },
+    { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 5% mais lentos", max: 4 },
+  ];
+  const UP_KEYS = ["speed", "bone", "heart", "shield", "slow"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
+  const UP_MAX = { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4 };
+  const noUp = () => ({ speed: 0, bone: 0, heart: 0, shield: 0, slow: 0 });
+  const cleanUp = (u) => { // reforços válidos (inteiros de 0 ao máximo de cada um) ou null
+    if (!u || typeof u !== "object") return null;
+    const out = noUp();
+    for (const k of UP_KEYS) { const n = u[k] ?? 0; if (!Number.isInteger(n) || n < 0 || n > UP_MAX[k]) return null; out[k] = n; }
+    return out;
+  }
   const MIN_TILE_CSS = 24;  // abaixo disso (telas pequenas) a câmera dá zoom e segue o cachorro
   const MAX_BACKING_W = 2400; // limite de resolução interna do canvas (desempenho)
   const AUTOSAVE_EVERY = 5; // segundos entre salvamentos automáticos
@@ -637,6 +657,13 @@
   let gameIsAccount = false; // a partida começou com uma conta: se ela for apagada em outra aba, nada mais é gravado em nome dela
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
+  let up = noUp();         // reforços desta partida (valem até o fim da sequência de fases)
+  let nextUp = null;       // na tela de vitória: reforços que a próxima fase receberá (já com o escolhido); null = ainda não escolheu
+  let chosenReinforce = null; // id do reforço escolhido nesta vitória
+  const maxLivesNow = () => MAX_LIVES + up.heart;
+  const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
+  const bonePowerNow = () => (lv.bonePower ? lv.bonePower + REINFORCE_BONE * up.bone : 0);
+  const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
   let noCatch = false;    // usado apenas em testes
@@ -695,7 +722,8 @@
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
-    lives = clamp(Math.round(o.lives ?? START_LIVES), 1, MAX_LIVES);
+    up = cleanUp(o.upgrades) || noUp();
+    lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
@@ -790,7 +818,7 @@
   }
 
   // ---------- Cachorro ----------
-  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego
+  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
     for (const s of solids) {
@@ -902,7 +930,7 @@
 
     // Anda `budget` pixels neste quadro; ao chegar ao centro de um tile, decide o próximo passo e continua com o que sobrou
     // (assim a velocidade real é a da fase, e não depende da taxa de quadros).
-    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * (assist() ? lv.touchEase.vet : 1) * dt, idled = false;
+    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * (assist() ? lv.touchEase.vet : 1) * vetSlowNow() * dt, idled = false;
     for (let n = 0; n < 4 && budget > 1e-9; n++) {
       if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
         if (v.mode === "chase") {
@@ -977,8 +1005,8 @@
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
     pickupToastUntil = time + 2.8;
-    if (lives < MAX_LIVES) { lives++; toast(`Vida extra! +1 vida${extra}`, 2.6); }
-    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${MAX_LIVES} vidas).${extra}`, 2.8);
+    if (lives < maxLivesNow()) { lives++; toast(`Vida extra! +1 vida${extra}`, 2.6); }
+    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${maxLivesNow()} vidas).${extra}`, 2.8);
   }
 
   // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
@@ -993,7 +1021,7 @@
     for (const v of vets) {
       Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
-    invuln = INVULN;
+    invuln = invulnNow();
     return inPlace;
   }
 
@@ -1004,7 +1032,7 @@
     const inPlace = respawn();
     relocateItems();
     const what = why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!";
-    toast(inPlace ? `${what} −${lv.lifePenalty} pontos. Renasceu aqui, protegido por 2 s. ${lv.bones ? "Itens trocaram" : "Rações trocaram"} de lugar.`
+    toast(inPlace ? `${what} −${lv.lifePenalty} pontos. Renasceu aqui, protegido por ${invulnNow()} s. ${lv.bones ? "Itens trocaram" : "Rações trocaram"} de lugar.`
       : `${what} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
     saveNow();
   }
@@ -1013,10 +1041,10 @@
   // Pegar um osso dura `bonePower` segundos: os veterinários viram carteiros (não perseguem nem pegam o cachorro) e quem encosta num deles ganha dele.
   // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser veterinários.
   function startPower() {
-    power = lv.bonePower;
+    power = bonePowerNow();
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
     for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; } // (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
-    toast(`Poder do osso por ${lv.bonePower} s: os veterinários viram carteiros!`, 2.6); pickupToastUntil = time + 2.6;
+    toast(`Poder do osso por ${bonePowerNow()} s: os veterinários viram carteiros!`, 2.6); pickupToastUntil = time + 2.6;
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro veterinário (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -1083,7 +1111,7 @@
       if (!it.taken && overlap(player, it)) {
         it.taken = true;
         if (it.bone) { bonesGot++; if (lv.bonePower) startPower(); } else collected++;
-        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` · Poder do osso por ${lv.bonePower} s!` : "");
+        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` · Poder do osso por ${bonePowerNow()} s!` : "");
         score = runningScore(); saveNow();
       }
     }
@@ -1180,7 +1208,7 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 4, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, INVULN)),
+      v: 4, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
       items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 : 0]), // coluna, linha, pego, vida extra, osso
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
@@ -1199,7 +1227,13 @@
       const L = BUILT[sv.l];
       if (!L) return null;
       if (sv.v === 3 && (L.bones || L.blockDefs.length)) return null; // o formato antigo não tem ossos nem blocos
-      if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES || !num(sv.invuln, 0, INVULN)) return null;
+      let upv = noUp(); // reforços (campo novo da 0.8.0; jogos salvos antigos não têm: começam sem nenhum)
+      if (sv.up !== undefined) {
+        if (!Array.isArray(sv.up) || sv.up.length !== UP_KEYS.length) return null;
+        upv = cleanUp(Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])));
+        if (!upv) return null;
+      }
+      if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES + upv.heart || !num(sv.invuln, 0, INVULN + REINFORCE_SHIELD * upv.shield)) return null;
       if (!Number.isInteger(sv.lost) || sv.lost < 0 || sv.lost > 999) return null;
       if (!Number.isInteger(sv.rs) || sv.rs < 0 || sv.rs > MAX_RETRIES) return null;
       if (!Array.isArray(sv.items) || sv.items.length !== L.rations + L.bones) return null;
@@ -1218,7 +1252,7 @@
       if (lifeItems < L.lifeMin || lifeItems > L.lifeMax || boneItems !== L.bones) return null; // a fase tem de ter a quantidade prevista de vidas extras e de ossos
       if (items4.filter((it) => it[3] === 1 && it[4] === 1).length > 1) return null; // no máximo 1 osso traz vida
       const pw = sv.pw === undefined ? 0 : sv.pw, vd = sv.vd === undefined ? L.vetSpawns.map(() => 0) : sv.vd;
-      if (!num(pw, 0, 120) || pw > L.bonePower || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
+      if (!num(pw, 0, 120) || pw > (L.bonePower ? L.bonePower + REINFORCE_BONE * upv.bone : 0) || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
       let bl = [], ba = [];
       if (L.blockDefs.length) {
         ba = sv.ba === undefined ? L.blockDefs.map((_, i) => i) : sv.ba; // (saves antigos: todas as peças)
@@ -1238,7 +1272,7 @@
       }
       const pk = sv.pk === undefined ? 0 : sv.pk;
       if (!Number.isInteger(pk) || pk < 0 || pk > 999 || (pk > 0 && !L.bonePower)) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk };
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, up: UP_KEYS.map((k) => upv[k]) };
     } catch { return null; }
   }
 
@@ -1253,7 +1287,7 @@
   }
 
   function applySnapshot(sv) {
-    reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba });
+    reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba, upgrades: Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])) });
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
     blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
@@ -1357,6 +1391,7 @@
     saveNow(); // pausar também salva
     setState("paused");
     $("pause-msg").textContent = "";
+    $("pause-up").textContent = upSummary(up) ? `Reforços: ${upSummary(up)}.` : "";
     showScreen("pause");
   }
   function resumeGame() { if (state !== "paused") return; setState("playing"); showScreen(null); last = performance.now(); }
@@ -1364,23 +1399,74 @@
   // Tempo oficial: arredondado ao décimo de segundo (é o que aparece na tela e o que conta para o bônus).
   const officialTimeMs = () => Math.round(time * 10) * 100;
 
+  // ---------- Reforços: a tela de vitória deixa escolher 1 deles para a próxima fase ----------
+  const winExtraText = (next) => `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
+    (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
+  function reinforceAvailable(r, u, curLives) { return r.id === "life" ? curLives < MAX_LIVES + u.heart : u[r.id] < UP_MAX[r.id]; }
+  function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
+    return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
+  }
+  // Monta os botões; devolve true se há algum para escolher (a Próxima fase fica desligada até a escolha).
+  function renderReinforce(next) {
+    const box = $("reinforce");
+    box.classList.toggle("hidden", !next);
+    if (!next) return false;
+    const list = $("reinforce-list");
+    list.replaceChildren();
+    let any = false;
+    for (const r of REINFORCEMENTS) {
+      const ok = reinforceAvailable(r, up, lives);
+      const b = el("button", ok ? "reinforce-opt" : "reinforce-opt locked");
+      b.type = "button"; b.disabled = !ok; b.dataset.id = r.id;
+      const state = r.id === "life" ? (ok ? `você tem ${lives} de ${MAX_LIVES + up.heart}` : "vidas no máximo") : (ok ? `agora ${up[r.id]}/${r.max}` : "já no máximo");
+      b.append(el("strong", null, r.name), el("span", "sub", `${r.text} · ${state}`));
+      if (ok) {
+        if (!any) b.dataset.autofocus = ""; // o primeiro disponível já vem escolhido: Enter/Espaço escolhem, Tab passa para os outros
+        any = true;
+        b.addEventListener("click", () => chooseReinforcement(r.id));
+      }
+      list.append(b);
+    }
+    const have = upSummary(up);
+    $("reinforce-msg").textContent = any ? (have ? `Reforços que você já tem: ${have}.` : "Você ainda não tem reforços.") : "Todos os reforços já estão no máximo: siga para a próxima fase.";
+    return any;
+  }
+  function chooseReinforcement(id) {
+    if (state !== "won" || nextUp) return; // um reforço por fase
+    const r = REINFORCEMENTS.find((x) => x.id === id), next = LEVELS.find((l) => l.id === levelId + 1);
+    if (!r || !next || !reinforceAvailable(r, up, lives)) return;
+    nextUp = { ...up };
+    chosenReinforce = id;
+    if (id === "life") carriedLives = Math.min(maxLivesNow(), lives + 1);
+    else { nextUp[id]++; if (id === "heart") carriedLives = Math.min(MAX_LIVES + nextUp.heart, lives + 1); }
+    for (const b of $("reinforce-list").querySelectorAll("button")) {
+      const chosen = b.dataset.id === id;
+      b.disabled = !chosen; b.classList.toggle("chosen", chosen); b.setAttribute("aria-pressed", chosen ? "true" : "false");
+    }
+    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} (${r.text}). Ele vale a partir da ${next.title}.`;
+    $("win-extra").textContent = winExtraText(next);
+    $("btn-next").disabled = false;
+    $("btn-next").focus({ preventScroll: true });
+    if ($("btn-next").scrollIntoView) $("btn-next").scrollIntoView({ block: "nearest" }); // a Próxima fase fica à vista (a lista de reforços é longa)
+  }
+
   function win() {
     const timeMs = officialTimeMs();
     const bonus = Records.timeBonus(timeMs, lv.bonusStep);
     const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
     setState("won");
-    carriedLives = lives;
+    carriedLives = lives; nextUp = null; chosenReinforce = null;
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
     $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + carteiros: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
-    $("win-extra").textContent = `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
-      (next ? ` · Você leva ${lives} ${lives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
+    $("win-extra").textContent = winExtraText(next);
     $("btn-next").classList.toggle("hidden", !next);
     $("btn-next").textContent = next ? `Próxima fase (${next.title})` : "";
+    $("btn-next").disabled = renderReinforce(next); // com reforços para escolher, a Próxima fase espera a escolha
     $("btn-again").classList.toggle("primary", !next);
     let res = null;
     const gone = accountGone();
@@ -1884,7 +1970,12 @@
   }
 
   // ---------- Placar (HTML) ----------
+  { // o placar tem corações para o máximo possível (5 + 3 do reforço "Coração maior"): o HTML traz 5, o resto é copiado
+    const box = $("hud-lives"), h0 = box.querySelector(".heart");
+    for (let n = box.querySelectorAll(".heart").length; n < MAX_LIVES + UP_MAX.heart; n++) box.appendChild(h0.cloneNode(true));
+  }
   const hudEl = {
+    upItem: $("hud-up-item"), up: $("hud-up"),
     level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
     pointsItem: $("hud-points-item"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
@@ -1894,17 +1985,22 @@
   function updateHud() {
     if (!solids) return;
     setHud("lv", hudEl.level, String(levelId));
-    if (hudCache.wl !== levelId) { // largura fixa dos números do placar (a do pior caso da fase): quando um valor ganha um dígito o placar não cresce no meio da partida
-      hudCache.wl = levelId;
+    const wkey = `${levelId}|${UP_KEYS.map((k) => up[k]).join(",")}`;
+    if (hudCache.wl !== wkey) { // largura fixa dos números do placar (a do pior caso da fase): quando um valor ganha um dígito o placar não cresce no meio da partida
+      hudCache.wl = wkey;
+      hudEl.lives.style.setProperty("--hearts", String(maxLivesNow())); // lugar para todos os corações possíveis: ganhar uma vida não aumenta o placar
       const wide = (e, text) => { e.style.minWidth = `${text.length}ch`; };
       const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + vets.length * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
       wide(hudEl.items, `${lv.rations}/${lv.rations}`);
       wide(hudEl.bones, `${lv.bones}/${lv.bones}`);
       wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
-      wide(hudEl.power, `${lv.bonePower} s`);
+      wide(hudEl.power, `${bonePowerNow()} s`);
       wide(hudEl.time, "0:00,0");
       wide(hudEl.bonus, `+${lv.bonusStep * 10}`);
     }
+    const nUp = UP_KEYS.reduce((a, k) => a + up[k], 0);
+    if (hudCache.nup !== nUp) { hudCache.nup = nUp; hudEl.upItem.classList.toggle("hidden", nUp === 0); }
+    if (nUp) { setHud("up", hudEl.up, String(nUp)); const t = `Reforços ativos: ${upSummary(up)}`; if (hudCache.upt !== t) { hudCache.upt = t; hudEl.upItem.title = t; hudEl.upItem.setAttribute("aria-label", t); } }
     setHud("i", hudEl.items, `${collected}/${lv.rations}`);
     if (hudCache.bn !== lv.bones) { hudCache.bn = lv.bones; hudEl.bonesItem.classList.toggle("hidden", !lv.bones); }
     if (lv.bones) setHud("o", hudEl.bones, `${bonesGot}/${lv.bones}`);
@@ -2131,11 +2227,11 @@
   on("btn-pause", pauseGame);
   on("btn-resume", resumeGame);
   on("btn-pause-menu", goMenu);
-  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, player: gamePlayer }); }); // as vidas passam para a próxima fase
+  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1) && !$("btn-next").disabled) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp || up, player: gamePlayer }); }); // as vidas e os reforços passam para a próxima fase
   on("btn-again", () => begin(levelId, { player: gamePlayer }));
   on("btn-win-scores", () => openScores("win"));
   on("btn-win-menu", goMenu);
-  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1, player: gamePlayer }); });
+  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1, upgrades: up, player: gamePlayer }); });
   on("btn-lose-menu", goMenu);
 
   // outra aba mudou os dados guardados (pontuações, contas, jogo salvo): a tela aberta se atualiza
@@ -2150,11 +2246,11 @@
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
-    get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return MAX_LIVES; },
+    get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, blocks: l.blocks.map((b) => ({ ...b })) })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
-    padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, MAX_LIVES); },
+    padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
   reset();

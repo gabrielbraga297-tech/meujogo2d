@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.7.0 · 09/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.8.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -112,10 +112,26 @@ Depois que o "!" liga, ele fica ligado enquanto o veterinário vê o cachorrinho
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 
-## Vidas
-Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5**; as vidas são **cumulativas**:
+## Reforços (0.8.0)
+Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 6**, e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**, e a *Próxima fase* só libera depois da escolha. Os reforços empilham em níveis até um máximo:
 
-- Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo de 5.
+| Reforço | Efeito por nível | Máximo |
+|---|---|---|
+| **Patas ligeiras** | +5% de velocidade do cachorrinho | 4 níveis (+20%) |
+| **Osso poderoso** | +5 s no poder do osso | 4 níveis (+20 s) |
+| **Vida extra** | +1 vida agora (some se as vidas já estão no máximo) | — |
+| **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
+| **Pelo grosso** | +1 s de proteção depois de perder uma vida (2 s → até 5 s) | 3 níveis |
+| **Carrocinha lenta** | agentes 5% mais lentos (patrulha e perseguição) | 4 níveis (−20%) |
+
+- Começar uma fase pelo menu ou usar *Jogar novamente* começa **sem reforços** (como começa com 3 vidas). *Tentar novamente* e *Continuar jogo* mantêm os reforços da partida (eles ficam no jogo salvo, campo `up`).
+- O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.
+- Os valores estão em `REINFORCEMENTS`/`UP_MAX` de `js/game.js`; o teste `0.8.0: reforços` confere cada efeito.
+
+## Vidas
+Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*); as vidas são **cumulativas**:
+
+- Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo de 5 (mais os níveis de *Coração maior*).
 - As vidas que sobram ao terminar uma fase **passam para a fase seguinte** (pelo botão *Próxima fase*). Escolher uma fase no menu ou usar *Jogar novamente* começa com 3 vidas.
 - Se o veterinário encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 e 10). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **nas Fases 9 e 10 ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.

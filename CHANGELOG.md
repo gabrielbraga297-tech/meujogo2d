@@ -1,8 +1,12 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.7.0 · 09/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.8.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.8.0 — 20/10/2026 (em preparação)
+- **Reforços:** ao vencer uma fase (menos a última) o jogador escolhe **1 reforço entre 6**, e ele fica com você nas fases seguintes da mesma sequência (*Próxima fase*): **Patas ligeiras** (+5% de velocidade, até 4 vezes), **Osso poderoso** (+5 s de poder do osso, até 4), **Vida extra** (+1 vida agora), **Coração maior** (+1 vida no máximo e +1 vida agora, até 3), **Pelo grosso** (+1 s de proteção depois de perder uma vida, até 3) e **Carrocinha lenta** (agentes 5% mais lentos, até 4). A *Próxima fase* só libera depois da escolha; começar uma fase pelo menu ou *Jogar novamente* começa sem reforços (como começa com 3 vidas); *Tentar novamente* e *Continuar jogo* mantêm os da partida.
+- Os reforços aparecem no placar (REFORÇOS n, com a lista ao passar o mouse), na pausa e no jogo salvo; o teto de vidas passa de 5 até 8 (o placar mostra todos os corações).
 
 ## 0.7.0 — 09/10/2026
 - **Velocidades:** veterinários (e carteiros) **10% mais rápidos** em todas as fases (Fase 1: 55 / 110 px/s; Fase 2: 60,5 / 121; Fase 3: 66,55 / 133,1; Fases 4 e 5: 73,21 / 146,41). O cachorrinho ficou **mais lento: 252 px/s na base** (0,7 × os 360 da 0.6.0; Fase 3 = 226,8; Fases 4 e 5 = 238,14). *O pedido era −50%, mas a análise de equilíbrio mostrou que, com os veterinários +10%, o cachorrinho ficaria apenas 16% a 22% mais rápido que um veterinário perseguindo nas Fases 3 a 5; com −30% a folga é de ~60 a 70%.*
