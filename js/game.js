@@ -12,7 +12,7 @@
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
   const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
-  // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre 6; o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
+  // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
   const REINFORCE_SPEED = 0.05, REINFORCE_BONE = 5, REINFORCE_SHIELD = 1, REINFORCE_SLOW = 0.05; // por nível: +5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos
   const REINFORCEMENTS = [
@@ -23,6 +23,7 @@
     { id: "shield", name: "Pelo grosso", text: "+1 s de proteção depois de perder uma vida", max: 3 },
     { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 5% mais lentos", max: 4 },
   ];
+  const REINFORCE_OFFER = 3; // quantas opções de reforço aparecem por fase
   const UP_KEYS = ["speed", "bone", "heart", "shield", "slow"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
   const UP_MAX = { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4 };
   const noUp = () => ({ speed: 0, bone: 0, heart: 0, shield: 0, slow: 0 });
@@ -1459,29 +1460,37 @@
     return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
   }
   // Monta os botões da tela de reforços; devolve true se há algum para escolher.
-  let reinforceOffered = false;
+  let reinforceOffered = false, offerIds = [];
+  let offerFixed = null; // só para testes: ids que entram primeiro na oferta (se ainda valem); o resto é sorteado
+  // As opções desta vitória: no máximo REINFORCE_OFFER, sorteadas entre as que ainda valem (se há 3 ou menos, são todas), sempre na ordem de REINFORCEMENTS.
+  function pickOffer() {
+    const avail = REINFORCEMENTS.filter((r) => reinforceAvailable(r, up, lives));
+    if (avail.length <= REINFORCE_OFFER) return avail;
+    const first = (offerFixed || []).map((id) => avail.find((r) => r.id === id)).filter(Boolean);
+    const rest = shuffle(avail.filter((r) => !first.includes(r)));
+    const chosen = [...first, ...rest].slice(0, REINFORCE_OFFER);
+    return REINFORCEMENTS.filter((r) => chosen.includes(r));
+  }
   function renderReinforce(next) {
     $("btn-reinforce-go").disabled = true;
+    offerIds = [];
     if (!next) return false;
     const list = $("reinforce-list");
     list.replaceChildren();
-    let any = false;
-    for (const r of REINFORCEMENTS) {
-      const ok = reinforceAvailable(r, up, lives);
-      const b = el("button", ok ? "reinforce-opt" : "reinforce-opt locked");
-      b.type = "button"; b.disabled = !ok; b.dataset.id = r.id;
-      const state = r.id === "life" ? (ok ? `você tem ${lives} de ${MAX_LIVES + up.heart}` : "vidas no máximo") : (ok ? `agora ${up[r.id]}/${r.max}` : "já no máximo");
+    const offer = pickOffer();
+    for (const r of offer) {
+      const b = el("button", "reinforce-opt");
+      b.type = "button"; b.dataset.id = r.id;
+      const state = r.id === "life" ? `você tem ${lives} de ${MAX_LIVES + up.heart}` : `agora ${up[r.id]}/${r.max}`;
       b.append(el("strong", null, r.name), el("span", "sub", `${r.text} · ${state}`));
-      if (ok) {
-        if (!any) b.dataset.autofocus = ""; // o primeiro disponível já vem escolhido: Enter/Espaço escolhem, Tab passa para os outros
-        any = true;
-        b.addEventListener("click", () => chooseReinforcement(r.id));
-      }
+      if (!offerIds.length) b.dataset.autofocus = ""; // o primeiro já vem escolhido: Enter/Espaço escolhem, Tab e as setas passam para os outros
+      offerIds.push(r.id);
+      b.addEventListener("click", () => chooseReinforcement(r.id));
       list.append(b);
     }
     const have = upSummary(up);
-    $("reinforce-msg").textContent = any ? (have ? `Reforços que você já tem: ${have}.` : "Você ainda não tem reforços.") : "Todos os reforços já estão no máximo: siga para a próxima fase.";
-    return any;
+    $("reinforce-msg").textContent = offer.length ? `${offer.length === REINFORCE_OFFER ? "Estas são as 3 opções desta fase. " : ""}${have ? `Reforços que você já tem: ${have}.` : "Você ainda não tem reforços."}` : "Todos os reforços já estão no máximo: siga para a próxima fase.";
+    return offer.length > 0;
   }
   function chooseReinforcement(id) {
     if (state !== "won" || nextUp) return; // um reforço por fase
@@ -2372,6 +2381,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
+    get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get sounds() { return sound.events; }, get sound() { return sound; }, // os pedidos de som (nome, quando, se tocou) e o tocador, para os testes
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },

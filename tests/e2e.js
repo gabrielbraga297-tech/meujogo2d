@@ -80,7 +80,7 @@ async function section(title, fn) {
 
 // Roda dentro da página: simula teclado + tempo de forma síncrona e determinística.
 const PAGE_HELPERS = () => {
-  if (window.__game) { __game.allBlocks = true; __game.autoStart = true; } // os testes jogam com TODAS as peças móveis (o sorteio da quantidade tem testes próprios) e com o relógio contando desde o início (a espera pelo primeiro passo tem testes próprios)
+  if (window.__game) { __game.allBlocks = true; __game.autoStart = true; __game.offerFixed = ["shield", "speed", "bone"]; } // (offerFixed: os testes sempre recebem estas 3 opções de reforço; o sorteio tem teste próprio) // os testes jogam com TODAS as peças móveis (o sorteio da quantidade tem testes próprios) e com o relógio contando desde o início (a espera pelo primeiro passo tem testes próprios)
   const press = (k, on, code = "") => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k, code }));
   window.__t = {
     press,
@@ -3454,18 +3454,18 @@ const PAGE_HELPERS = () => {
   await section("0.8.0: reforços (1 por fase, que ficam para as próximas)", async () => {
     const UPS = (o = {}) => ({ speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, ...o });
     const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-    // ---- a Próxima fase abre a tela de reforços (6 opções) e só começa depois da escolha ----
+    // ---- a Próxima fase abre a tela de reforços (3 opções) e só começa depois da escolha ----
     await playLevel(page, 1); await finishNow(page, 10);
     ok(await page.isVisible("#win") && await page.isHidden("#reinforce") && !(await page.isDisabled("#btn-next")), "a tela de vitória continua como era (a escolha do reforço fica numa tela própria)");
     await page.click("#btn-next");
     const opts = await page.$$eval("#reinforce-list button", (bs) => bs.map((b) => ({ id: b.dataset.id, off: b.disabled, name: b.querySelector("strong").textContent })));
-    ok(await page.isVisible("#reinforce") && await page.isHidden("#win") && opts.map((o) => o.id).join() === "speed,bone,life,heart,shield,slow" && opts.every((o) => !o.off), `Próxima fase (depois da Fase 1) abre a escolha de 6 reforços (${opts.map((o) => o.name).join(", ")})`);
+    ok(await page.isVisible("#reinforce") && await page.isHidden("#win") && opts.map((o) => o.id).join() === "speed,bone,shield" && opts.every((o) => !o.off), `Próxima fase (depois da Fase 1) abre a escolha de 3 reforços (${opts.map((o) => o.name).join(", ")})`);
     ok(await page.isDisabled("#btn-reinforce-go") && /Começar a Fase 2/.test(await page.textContent("#btn-reinforce-go")) && await ev(page, () => document.activeElement.dataset.id) === "speed", "o botão Começar a Fase 2 fica desligado até escolher, e o primeiro reforço já vem escolhido");
     ok(await ev(page, () => __game.nextUpgrades) === null && await ev(page, () => __game.chosenReinforce) === null, "antes da escolha ainda não há reforço escolhido");
     await page.click('#reinforce-list button[data-id="bone"]');
     const after1 = await ev(page, () => ({ chosen: __game.chosenReinforce, next: __game.nextUpgrades, cur: __game.upgrades, offs: [...document.querySelectorAll("#reinforce-list button")].map((b) => [b.dataset.id, b.disabled, b.classList.contains("chosen")].join(":")), focus: document.activeElement.id }));
     ok(after1.chosen === "bone" && after1.next.bone === 1 && after1.cur.bone === 0 && !(await page.isDisabled("#btn-reinforce-go")) && after1.focus === "btn-reinforce-go", "escolher o Osso poderoso liga o botão Começar (já focado) e guarda o reforço para a próxima fase (a fase atual não muda)");
-    ok(after1.offs.filter((x) => x.endsWith(":false:true")).length === 1 && after1.offs.filter((x) => x.endsWith(":true:false")).length === 5, `só o escolhido fica marcado e os outros ficam desligados (${after1.offs.join(" ")})`);
+    ok(after1.offs.filter((x) => x.endsWith(":false:true")).length === 1 && after1.offs.filter((x) => x.endsWith(":true:false")).length === 2, `só o escolhido fica marcado e os outros ficam desligados (${after1.offs.join(" ")})`);
     await ev(page, () => document.querySelector('#reinforce-list button[data-id="speed"]').click()); // (botão desligado: o clique não faz nada)
     ok(await ev(page, () => __game.chosenReinforce) === "bone" && await ev(page, () => __game.nextUpgrades.speed) === 0, "um segundo reforço na mesma fase não é aceito");
     ok(/Reforço escolhido: Osso poderoso/.test(await page.textContent("#reinforce-msg")), "a tela diz qual reforço foi escolhido");
@@ -3525,7 +3525,7 @@ const PAGE_HELPERS = () => {
 
     // ---- escolher cada um na vitória: vida extra e coração maior valem na hora ----
     const lifeFlow = async (id) => {
-      await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; __game.setLives(2); __game.items.forEach((i) => { i.life = false; }); });
+      await playLevel(page, 1); await ev(page, (id) => { __game.freezeVets = true; __game.setLives(2); __game.items.forEach((i) => { i.life = false; }); __game.offerFixed = [id, "speed", "bone"]; }, id);
       await finishNow(page, 10);
       const before = await ev(page, () => __game.lives);
       await page.click("#btn-next");
@@ -3541,10 +3541,11 @@ const PAGE_HELPERS = () => {
     ok(hudHearts === 6, `o placar mostra os 6 corações do Coração maior (${hudHearts})`);
     // os reforços "no máximo" e as vidas cheias desligam a opção
     await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; __game.setLives(5); __game.items.forEach((i) => { i.life = false; }); });
+    await ev(page, () => { __game.offerFixed = ["life", "heart", "speed"]; });
     await finishNow(page, 10); await page.click("#btn-next");
-    ok(await page.isDisabled('#reinforce-list button[data-id="life"]') && /vidas no máximo/.test(await page.textContent('#reinforce-list button[data-id="life"]')), "com as vidas no máximo, a Vida extra não pode ser escolhida");
+    ok(!(await ev(page, () => __game.reinforceOffer)).includes("life") && await page.locator('#reinforce-list button[data-id="life"]').count() === 0, "com as vidas no máximo, a Vida extra nem aparece entre as opções");
     const maxed = await ev(page, () => { __game.start(3, { upgrades: { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4 }, lives: 8 }); __game.freezeVets = true; for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); return { state: __game.state, offs: [...document.querySelectorAll("#reinforce-list button")].filter((b) => b.disabled).length, nextOff: document.getElementById("btn-next").disabled, msg: document.getElementById("reinforce-msg").textContent }; });
-    ok(maxed.state === "won" && maxed.offs === 6 && !maxed.nextOff && /no máximo/.test(maxed.msg), "com todos os reforços no máximo não há o que escolher");
+    ok(maxed.state === "won" && maxed.offs === 0 && !maxed.nextOff && /no máximo/.test(maxed.msg), "com todos os reforços no máximo não há o que escolher (nenhuma opção)");
     await page.click("#btn-next");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 4 && await page.isHidden("#reinforce") && await ev(page, () => __game.upgrades.speed) === 4, "e a Próxima fase começa a Fase 4 direto, sem passar pela escolha e mantendo os reforços");
 
@@ -3552,7 +3553,7 @@ const PAGE_HELPERS = () => {
     await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; });
     await finishNow(page, 10); await nextPhase(page, "speed");
     await ev(page, () => { __game.freezeVets = true; }); await finishNow(page, 10); await nextPhase(page, "speed");
-    await ev(page, () => { __game.freezeVets = true; }); await finishNow(page, 10); await nextPhase(page, "slow");
+    await ev(page, () => { __game.freezeVets = true; __game.offerFixed = ["slow", "shield", "speed"]; }); await finishNow(page, 10); await nextPhase(page, "slow");
     const seq = await ev(page, () => ({ level: __game.level, up: __game.upgrades, dog: __game.dogSpeed }));
     ok(seq.level === 4 && seq.up.speed === 2 && seq.up.slow === 1 && seq.up.bone === 0, `3 fases, 3 reforços: a Fase 4 começa com Patas ligeiras 2 e Carrocinha lenta 1 (${JSON.stringify(seq.up)})`);
     ok(await page.isVisible("#hud-up-item") && (await page.textContent("#hud-up")).trim() === "3" && /Patas ligeiras 2\/4/.test(await page.getAttribute("#hud-up-item", "title")), "o placar mostra REFORÇOS 3 e a lista no balãozinho");
@@ -3609,6 +3610,26 @@ const PAGE_HELPERS = () => {
     ok(bad.length === 0, `a tela de reforços cabe em ${fit.length} tamanhos (sem rolagem lateral, Começar à vista, deitado sem rolar, botões de 36 px ou mais, letras de 10,5 px ou mais)${bad.length ? ": problema em " + bad.map((f) => `${f.w}x${f.h} (scroll ${f.scroll}, lateral ${f.overflowX}, botão ${f.goVisible}, menor ${f.minH.toFixed(0)}px, letra miúda ${f.tinyText})`).join("; ") : ""}`);
     await page.setViewportSize({ width: 1280, height: 720 });
 
+    // ---- 0.13.0: no máximo 3 opções por fase, sorteadas entre os reforços que ainda valem ----
+    await fresh(page);
+    const offers = [];
+    for (let i = 0; i < 40; i++) {
+      await ev(page, () => { __game.start(1); __game.freezeVets = true; __game.offerFixed = null; __game.setLives(3); });
+      await finishNow(page, 10);
+      offers.push(await ev(page, () => ({ ids: __game.reinforceOffer, dom: [...document.querySelectorAll("#reinforce-list button")].map((b) => b.dataset.id) })));
+    }
+    const seen = new Set(offers.flatMap((o) => o.ids));
+    ok(offers.every((o) => o.ids.length === 3 && new Set(o.ids).size === 3 && o.dom.join() === o.ids.join()), `toda vitória mostra exatamente 3 opções diferentes, e a tela mostra as mesmas (40 vitórias: ${offers.slice(0, 3).map((o) => o.ids.join("/")).join(" · ")} …)`);
+    ok(["speed", "bone", "life", "heart", "shield", "slow"].every((id) => seen.has(id)) && new Set(offers.map((o) => o.ids.join())).size >= 6, `o sorteio varia: nas 40 vitórias apareceram os 6 reforços e ${new Set(offers.map((o) => o.ids.join())).size} combinações diferentes`);
+    ok(offers.every((o) => o.ids.join() === ["speed", "bone", "life", "heart", "shield", "slow"].filter((id) => o.ids.includes(id)).join()), "as 3 opções aparecem sempre na mesma ordem da lista de reforços");
+    // só entram os que ainda valem: com 4 reforços no máximo e as vidas cheias sobram menos de 3 opções
+    const few = await ev(page, () => {
+      __game.start(3, { upgrades: { speed: 4, bone: 4, heart: 3, shield: 0, slow: 4 }, lives: 8 }); __game.freezeVets = true; __game.offerFixed = null;
+      for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+      return { state: __game.state, ids: __game.reinforceOffer, lives: __game.lives, max: __game.maxLives };
+    });
+    ok(few.state === "won" && few.ids.join() === "shield", `só entram reforços que ainda valem: com quase tudo no máximo e as vidas cheias (${few.lives}/${few.max}) sobra só ${few.ids.join(", ")}`);
+    await ev(page, () => { __game.offerFixed = ["shield", "speed", "bone"]; });
     // ---- teclas seguradas e setas na grade de reforços (a escolha vale uma vez e não se desfaz) ----
     ok(/até 8 com o reforço Coração maior/.test(await page.textContent("#howto")), "o Como jogar diz que o Coração maior leva o máximo de vidas a 8");
     ok(/Reforços ativos/.test(await page.getAttribute("#hud-up-item", "aria-label") || "") && await page.getAttribute("#hud-up-item", "role") === "group", "o item REFORÇOS do placar é um grupo com rótulo para leitor de tela");
@@ -3621,7 +3642,7 @@ const PAGE_HELPERS = () => {
     await page.keyboard.press("Enter");
     ok(await page.isVisible("#reinforce") && await fid() === "speed", "Enter na Próxima fase abre os reforços com o primeiro focado");
     await page.keyboard.press("ArrowRight"); const r1 = await fid(); await page.keyboard.press("ArrowRight"); const r2 = await fid(); await page.keyboard.press("ArrowLeft"); const r3 = await fid();
-    ok(r1 === "bone" && r2 === "life" && r3 === "bone", `← e → passam pelos reforços da grade (${r1}, ${r2}, ${r3})`);
+    ok(r1 === "bone" && r2 === "shield" && r3 === "bone", `← e → passam pelos reforços (${r1}, ${r2}, ${r3})`);
     await page.keyboard.press("ArrowLeft");
     await page.keyboard.down("Enter"); await page.keyboard.down("Enter"); await page.keyboard.down("Enter");
     ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#reinforce") && await ev(page, () => __game.chosenReinforce) === "speed" && await fid() === "btn-reinforce-go", "segurar Enter escolhe o reforço uma vez e não começa a fase sem o jogador soltar e apertar de novo");

@@ -1,8 +1,12 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.12.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.13.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.13.0 — 20/10/2026 (em preparação)
+- **No máximo 3 opções de reforço por fase:** a tela *Escolha um reforço* mostra **3 opções sorteadas** entre os reforços que ainda valem (antes eram 6 de uma vez). Reforços já no máximo e a *Vida extra* com as vidas cheias não entram no sorteio; se sobram 3 ou menos, aparecem todos; se não sobra nenhum, a *Próxima fase* começa direto. As 3 opções aparecem sempre na mesma ordem da lista (Patas ligeiras, Osso poderoso, Vida extra, Coração maior, Pelo grosso, Carrocinha lenta) e a mensagem diz que são as 3 desta fase. A escolha continua valendo uma vez por fase e só começa a fase seguinte depois dela.
+- **Testes:** 40 vitórias sorteadas (sempre 3 opções diferentes, iguais na tela e no jogo; os 6 reforços aparecem; só entram os que ainda valem) e os testes de reforços e de teclado/controle adaptados (os testes usam um gancho que fixa as opções).
 
 ## 0.12.0 — 20/10/2026 (em preparação)
 - **Agente da carrocinha em todas as fases:** varredura de tudo o que mostra o inimigo (desenho, carteiro, textos, avisos, lista de fases, telas de vitória e derrota). Um teste novo confere **por pixels, nas Fases 1 a 10**, que o agente aparece de colete laranja, boné e uniforme verde e que, com o poder do osso, vira carteiro azul sem o colete; outro confere que nenhum texto do jogo fala mais em veterinário.
