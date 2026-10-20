@@ -113,7 +113,7 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 
 ## Reforços (0.8.0)
-Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 6**, e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**, e a *Próxima fase* só libera depois da escolha. Os reforços empilham em níveis até um máximo:
+Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 6**, e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**: o botão *Próxima fase* da vitória abre a tela **Escolha um reforço**, e a fase seguinte só começa depois da escolha (com *Voltar* ou Esc se volta ao resultado). Os reforços empilham em níveis até um máximo:
 
 | Reforço | Efeito por nível | Máximo |
 |---|---|---|
