@@ -69,6 +69,7 @@
         <button id="btn-scores" type="button">Pontuações</button>
         <button id="btn-name" type="button">Escolher nome de usuário</button>
         <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
+        <button id="btn-sound" type="button" aria-pressed="true">Som: ligado</button>
       </nav>
     </div>
     <footer class="menu-foot">
@@ -102,7 +103,7 @@
         <li><strong>Pontuação:</strong> cada ração vale 100 pontos, cada osso vale 150 e cada carteiro que você pegar com o poder do osso vale mais 100. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam. Para melhorar o recorde de uma fase, use <strong>Jogar fases anteriores</strong> no menu.</li>
         <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou <kbd>P</kbd>, o botão <strong>Start</strong> do controle, ou toque no botão de pausa no topo do jogo.</li>
-        <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>
+        <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva; <kbd>M</kbd> liga e desliga o som. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>
         <li><strong>Controle (gamepad):</strong> conecte um controle (Bluetooth ou cabo) e aperte qualquer botão para ele ser reconhecido. O <strong>analógico esquerdo</strong> ou o <strong>direcional</strong> movem o cachorrinho; <strong>Start</strong> pausa e continua; <strong>Y</strong> salva; nos menus, o direcional escolhe, <strong>A</strong> confirma e <strong>B</strong> volta.</li>
         <li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos os jogadores deste aparelho e mostra apenas a melhor pontuação de cada um.</li>
         <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome neste aparelho.</li>
@@ -240,11 +241,12 @@
       <div class="menu-list">
         <button id="btn-resume" type="button" class="primary" data-autofocus>Continuar</button>
         <button id="btn-save" type="button">Salvar jogo</button>
+        <button id="btn-sound-pause" type="button" aria-pressed="true">Som: ligado</button>
         <button id="btn-pause-menu" type="button">Voltar ao menu</button>
       </div>
       <p id="pause-msg" class="muted" role="status" aria-live="polite"></p>
       <p id="pause-up" class="muted"></p>
-      <p class="hint controls-help">Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl+S salva.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta.</p>
+      <p class="hint controls-help">Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl+S salva · M liga e desliga o som.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta.</p>
     </div>
   </section>
 
@@ -296,6 +298,7 @@
     </div>
   </section>
 
+  <script src="js/sound.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/records.js"></script>
   <script src="js/config.js"></script>

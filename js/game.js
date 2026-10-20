@@ -635,6 +635,9 @@
 
   function safeStorage() { try { return window.localStorage; } catch { return null; } }
   const store = Records.createStore(safeStorage());
+  // Efeitos sonoros (sintetizados na hora, sem arquivos): o navegador só libera o som depois do primeiro gesto do jogador; a preferência (mudo/volume) fica em "cachorrinho.som.v1".
+  const sound = Sound.create({ storage: safeStorage() });
+  sound.bindUnlock();
   const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} });
 
   const keys = {};
@@ -1049,7 +1052,7 @@
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
     pickupToastUntil = time + 2.8;
-    if (lives < maxLivesNow()) { lives++; toast(`Vida extra! +1 vida${extra}`, 2.6); }
+    if (lives < maxLivesNow()) { lives++; sound.play("life", { delay: it && it.bone ? 0.8 : 0.15 }); toast(`Vida extra! +1 vida${extra}`, 2.6); } // (depois do som do osso ou da ração)
     else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${maxLivesNow()} vidas).${extra}`, 2.8);
   }
 
@@ -1072,7 +1075,9 @@
   function loseLife(why) {
     lives--; livesLost++;
     score = runningScore();
+    if (why !== "crush") sound.play("capture"); // o agente da carrocinha pegou o cachorrinho
     if (lives <= 0) { gameOver(why); return; }
+    sound.play("lifelost", { delay: why === "crush" ? 0 : 0.5 }); // depois do som da captura
     const inPlace = respawn();
     relocateItems();
     const what = why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!";
@@ -1104,6 +1109,7 @@
     return best || { cx: x, cy: y };
   }
   function defeatPostman(v) {
+    sound.play("postman");
     puffs.push({ x: v.cx, y: v.cy, t: 0 });
     const post = freeSpotNear(v, v.sx, v.sy); // o posto dele; se outro agente estiver nele, o tile livre mais perto
     Object.assign(v, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "flee", idle: 0, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN }); // fica tonto (parado) por POSTMAN_STUN s e depois volta a fugir, 50% mais lento
@@ -1154,7 +1160,10 @@
     for (const it of items) {
       if (!it.taken && overlap(player, it)) {
         it.taken = true;
-        if (it.bone) { bonesGot++; if (lv.bonePower) startPower(); } else collected++;
+        if (it.bone) {
+          bonesGot++; sound.play("bone");
+          if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play("transform", { delay: 0.3 }); } // os agentes viram carteiros
+        } else { collected++; sound.play("ration"); }
         if (it.life) giveLife(it, it.bone && lv.bonePower ? ` · Poder do osso por ${bonePowerNow()} s!` : "");
         score = runningScore(); saveNow();
       }
@@ -1480,6 +1489,7 @@
     if (state !== "won" || nextUp) return; // um reforço por fase
     const r = REINFORCEMENTS.find((x) => x.id === id), next = LEVELS.find((l) => l.id === levelId + 1);
     if (!r || !next || !reinforceAvailable(r, up, lives)) return;
+    sound.play("pick");
     nextUp = { ...up };
     chosenReinforce = id;
     if (id === "life") carriedLives = Math.min(maxLivesNow(), lives + 1);
@@ -1503,6 +1513,7 @@
     const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
     setState("won");
+    sound.play("levelup");
     carriedLives = lives; nextUp = null; chosenReinforce = null;
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
@@ -1543,7 +1554,9 @@
 
   // Sem vidas: até 3 novas tentativas da mesma fase (do zero), cada uma custa 100 pontos.
   function gameOver(why) {
+    if (state === "lost") return; // (só uma vez: nada de repetir o som nem a tela se a checagem de pontos rodar de novo)
     setState("lost");
+    sound.play("gameover", { delay: why ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
@@ -2212,6 +2225,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
     const k = keyName(e);
     if (k === "Escape") { if (!e.repeat) onEscape(); return; } // segurar a tecla não fica pausando e continuando
+    if (k === "m" && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { toggleSound(); return; } // M liga e desliga o som (não atrapalha quem digita nome ou senha)
     if (k === "p" && !e.repeat && state === "paused") { resumeGame(); return; }
     if (state === "playing") {
       keys[k] = true;
@@ -2263,6 +2277,13 @@
 
   // ---------- Botões e formulário ----------
   const on = (id, fn) => $(id).addEventListener("click", fn);
+  function renderSound() { // os botões do menu e da pausa mostram se o som está ligado
+    const off = sound.isMuted();
+    for (const id of ["btn-sound", "btn-sound-pause"]) { const b = $(id); b.textContent = off ? "Som: desligado" : "Som: ligado"; b.setAttribute("aria-pressed", off ? "false" : "true"); }
+  }
+  function toggleSound() { const off = sound.toggleMuted(); renderSound(); if (!off) sound.play("pick"); } // ao ligar, um toque de confirmação
+  renderSound();
+  on("btn-sound", toggleSound); on("btn-sound-pause", toggleSound);
   on("btn-start", () => { levelsMode = "play"; requestNewGame(); });
   on("btn-replay", () => { levelsMode = "replay"; requestNewGame(); });
   on("btn-continue", continueGame);
@@ -2319,6 +2340,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
+    get sounds() { return sound.events; }, get sound() { return sound; }, // os pedidos de som (nome, quando, se tocou) e o tocador, para os testes
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },

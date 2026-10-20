@@ -3766,6 +3766,90 @@ const PAGE_HELPERS = () => {
     ok(idle.every((m) => m.rev / Math.max(1, m.moves) < 0.4 && /flee/.test(m.mode)), `e não tremem (voltas ao tile anterior em ${idle.map((m) => `F${m.id}: ${m.rev} de ${m.moves} passos`).join(", ")})`);
   });
 
+  // =====================================================================
+  await section("0.11.0: efeitos sonoros (osso, ração, captura, carteiro, fase, vidas) e botão de som", async () => {
+    await play(page, { keepSave: true });
+    const heard = () => ev(page, () => __game.sounds.map((e) => e.name));
+    const clear = () => ev(page, () => __game.sound.reset());
+    const takeItem = (pick) => ev(page, (pick) => { const it = __game.items.find(pick === "bone" ? (i) => i.bone : (i) => !i.bone && !i.taken); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }, pick);
+    ok(await ev(page, () => __game.sound.supported), "o navegador tem Web Audio (o módulo de sons está carregado)");
+    // ---- ração e osso ----
+    await playLevel(page, 2, { done: [1] }); await ev(page, () => { __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; }); }); await page.mouse.click(5, 5); // um gesto do jogador libera o áudio
+    await clear(); await takeItem("ration");
+    ok(JSON.stringify(await heard()) === '["ration"]', `pegar a ração toca só o som da ração (${(await heard()).join()})`);
+    ok(await ev(page, () => __game.sounds.every((e) => e.played)), "depois de um gesto do jogador o som toca de verdade (o primeiro clique liberou o áudio)");
+    await clear(); await takeItem("bone");
+    ok(JSON.stringify(await heard()) === '["bone","transform"]' && await ev(page, () => __game.power) > 0, `pegar o osso toca o som do osso e o da transformação dos agentes em carteiros (${(await heard()).join()})`);
+    await clear(); await ev(page, () => { const b = __game.items.filter((i) => i.bone && !i.taken)[0]; if (b) { __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); } });
+    ok(JSON.stringify(await heard()) === '["bone"]', `um segundo osso com o poder ligado só toca o som do osso, sem outra transformação (${(await heard()).join()})`);
+    // ---- carteiro ----
+    await clear(); await ev(page, () => { __game.noCatch = false; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; v.hitCool = 0; __game.tick(0.01); });
+    ok((await heard()).join() === "postman" && await ev(page, () => __game.postmen) === 1, `pegar um carteiro toca o som do carteiro (${(await heard()).join()})`);
+    // ---- captura e perda de vida ----
+    await playLevel(page, 2, { done: [1] }); await ev(page, () => { __game.items.forEach((i) => { i.life = false; }); });
+    await clear(); await catchOnce(page);
+    ok(JSON.stringify(await heard()) === '["capture","lifelost"]', `ser pego pelo agente toca a captura e, logo depois, o som de perder vida (${(await heard()).join()})`);
+    await clear(); await ev(page, () => { __game.setLives(1); }); await catchOnce(page);
+    ok(JSON.stringify(await heard()) === '["capture","gameover"]' && await ev(page, () => __game.state) === "lost", `na última vida toca a captura e o fim de jogo, sem o som de perder vida (${(await heard()).join()})`);
+    // esmagado por um bloco (sem agente): só o som de perder vida, sem captura
+    await ev(page, () => { __game.start(4, { lives: 3 }); __game.freezeVets = true; __game.noCatch = false; __game.items.forEach((i) => { i.life = false; }); });
+    await clear();
+    await ev(page, () => { __t.run(150); const to0 = __game.levels[3].blocks[0].to; __game.player.x = to0[0] * 32 + 4; __game.player.y = to0[1] * 32 + 4; for (let i = 0; i < 120; i++) __game.tick(1 / 60); });
+    ok(JSON.stringify(await heard()) === '["lifelost"]' && await ev(page, () => __game.lives) === 2, `esmagado por um bloco toca só o som de perder vida (${(await heard()).join()})`);
+    // "os pontos não bastaram" (sem agente): só o fim de jogo
+    await ev(page, () => {
+      __game.start(4, { lives: 5, retries: 3 }); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      for (let k = 0; k < 4; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.items.forEach((i) => { i.life = false; }); }
+      __game.sound.reset(); __game.noCatch = true;
+      for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+      for (let i = 0; i < 700; i++) __game.tick(0.05);
+    });
+    const shortSnd = await heard(); const shortState = await ev(page, () => __game.state);
+    ok(shortState === "lost" && shortSnd[shortSnd.length - 1] === "gameover" && shortSnd.filter((n) => n === "gameover").length === 1 && !shortSnd.includes("capture") && !shortSnd.includes("lifelost"), `"os pontos não bastaram" toca só o fim de jogo, sem captura nem perda de vida (${shortState}: ${shortSnd.join(",")})`);
+    // ---- passar de fase ----
+    await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; }); await clear(); await finishNow(page, 10);
+    const wonSnd = await heard();
+    ok(wonSnd[wonSnd.length - 1] === "levelup" && wonSnd.filter((n) => n === "levelup").length === 1 && await ev(page, () => __game.state) === "won", `passar de fase toca o som de vitória uma vez, depois dos itens (${wonSnd.length} sons, o último: ${wonSnd[wonSnd.length - 1]})`);
+    // ---- escolha do reforço ----
+    await clear(); await page.click("#btn-next"); await page.click('#reinforce-list button[data-id="bone"]');
+    ok((await heard()).join() === "pick", `escolher um reforço toca um toque curto (${(await heard()).join()})`);
+    await ev(page, () => document.querySelector('#reinforce-list button[data-id="speed"]').click());
+    ok((await heard()).join() === "pick", "um segundo reforço na mesma fase não toca nada");
+    // ---- vida nova ----
+    await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; __game.setLives(2); const it = __game.items.find((i) => !i.bone); it.life = true; });
+    await clear(); await takeItem("ration");
+    ok(JSON.stringify(await heard()) === '["ration","life"]' && await ev(page, () => __game.lives) === 3, `pegar uma ração com vida extra toca a ração e a vida nova (${(await heard()).join()})`);
+    await ev(page, () => { __game.setLives(5); const it = __game.items.find((i) => !i.bone && !i.taken); it.life = true; }); await clear(); await takeItem("ration");
+    ok(JSON.stringify(await heard()) === '["ration"]', "com as vidas no máximo, o item com vida extra toca só o som da ração (não houve vida nova)");
+    // ---- menu, pausa e jogo salvo não tocam nada ----
+    await ev(page, () => { __game.save(); }); await clear();
+    await page.keyboard.press("Escape"); await page.click("#btn-resume");
+    ok((await heard()).length === 0, "pausar e continuar não tocam nada");
+    // ---- botão de som e tecla M ----
+    ok(await page.getAttribute("#btn-sound-pause", "aria-pressed") === "true" && /Som: ligado/.test(await page.textContent("#btn-sound-pause")), "o botão de som da pausa começa ligado");
+    await page.keyboard.press("Escape"); await page.click("#btn-sound-pause");
+    const st = await ev(page, () => ({ muted: __game.sound.isMuted(), stored: localStorage.getItem("cachorrinho.som.v1"), label: document.getElementById("btn-sound-pause").textContent, menuLabel: document.getElementById("btn-sound").textContent }));
+    ok(st.muted && /"m":1/.test(st.stored) && st.label === "Som: desligado" && st.menuLabel === "Som: desligado" && await page.getAttribute("#btn-sound-pause", "aria-pressed") === "false", `o botão desliga o som: preferência guardada ${st.stored} e rótulos "${st.label}" / "${st.menuLabel}"`);
+    await page.click("#btn-resume"); await clear(); await takeItem("ration");
+    ok(JSON.stringify(await ev(page, () => __game.sounds.map((e) => [e.name, e.played]))) === '[["ration",false]]', "mudo: o jogo ainda pede o som da ração, mas ele não toca");
+    await page.keyboard.press("m");
+    ok(!(await ev(page, () => __game.sound.isMuted())) && (await page.evaluate(() => localStorage.getItem("cachorrinho.som.v1"))).includes('"m":0'), "a tecla M liga o som de novo (e guarda a escolha)");
+    await clear(); await page.keyboard.press("Escape"); await page.keyboard.press("m"); await page.keyboard.press("m");
+    ok(!(await ev(page, () => __game.sound.isMuted())), "M duas vezes volta ao que estava");
+    await page.keyboard.press("Escape");
+    // a preferência vale depois de recarregar a página
+    await page.keyboard.press("Escape"); await page.click("#btn-sound-pause"); await ev(page, () => { __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await ev(page, () => __game.sound.isMuted()) && /desligado/.test(await page.textContent("#btn-sound")) && await page.getAttribute("#btn-sound", "aria-pressed") === "false", "depois de recarregar a página o som continua desligado (e o botão do menu diz isso)");
+    await page.click("#btn-sound");
+    ok(!(await ev(page, () => __game.sound.isMuted())) && /ligado/.test(await page.textContent("#btn-sound")) && (await heard()).includes("pick"), "o botão do menu liga o som e toca um toque de confirmação");
+    // digitar um "m" no nome não liga nem desliga o som
+    await page.click("#btn-name"); await page.fill("#name-input", "Mimi");
+    ok(!(await ev(page, () => __game.sound.isMuted())), "digitar a letra m num campo de texto não mexe no som");
+    await page.click("#btn-name-back");
+    await page.evaluate(() => localStorage.removeItem("cachorrinho.som.v1"));
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };
