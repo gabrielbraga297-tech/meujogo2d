@@ -1080,7 +1080,7 @@ const PAGE_HELPERS = () => {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const c = document.getElementById("game").getContext("2d"), k = __game.view.k;
         const d = c.getImageData(Math.round(236 * k), Math.round(82 * k), Math.round(8 * k), Math.round(12 * k)).data; let n = 0; // o trilho da porta 1, na parte que o bloco fechado não cobre
-        for (let i = 0; i < d.length; i += 4) if (d[i] > 80 && d[i + 2] < 95) n++;
+        for (let i = 0; i < d.length; i += 4) if (d[i] > 60 && d[i + 1] > d[i + 2] * 2.4) n++; // amarelo do aviso (o chão de madeira da Casa é marrom: verde/azul menor que 2,4)
         resolve(n);
       }));
     }), secs);
@@ -3937,7 +3937,7 @@ const PAGE_HELPERS = () => {
     const p4 = await px(4), p3 = await px(3);
     const near = (a, b, t = 3) => a && a.every((v, i) => Math.abs(v - b[i]) <= t);
     ok(near(p4.roof, [71, 81, 111]) && p4.street !== null && (near(p4.street, [42, 47, 60]) || near(p4.street, [45, 51, 66])), `na Fase 4 os prédios têm telhado (${p4.roof}) e as ruas são de asfalto (${p4.street})`);
-    ok(near(p3.roof, [74, 84, 112]), `a Fase 3 continua com o visual de antes (parede ${p3.roof})`);
+    ok(near(p3.roof, [233, 222, 199], 40) && !near(p3.roof, p4.roof, 20), `a Fase 3 (Casa) tem paredes de papel de parede e não os telhados da cidade (${p3.roof})`);
   });
 
   // =====================================================================
@@ -3981,10 +3981,66 @@ const PAGE_HELPERS = () => {
       }
       return out;
     });
-    ok([4, 5, 6, 7, 8, 9, 10].every((id) => vans[id].n === 4 && vans[id].vanLike === 4) && [1, 2, 3].every((id) => vans[id].n === 2 && vans[id].crateLike === 2), `nas Fases 4 a 10 os 4 cantos do pátio da praça são vans da carrocinha (claras) e nas Fases 1 a 3 as caixas continuam de madeira (${[1, 2, 3, 4, 7, 10].map((id) => `F${id}: ${vans[id].vanLike} vans/${vans[id].crateLike} caixas`).join(", ")})`);
+    ok([4, 5, 6, 7, 8, 9, 10].every((id) => vans[id].n === 4 && vans[id].vanLike === 4) && [1, 2, 3].every((id) => vans[id].n === 2 && vans[id].vanLike === 0), `nas Fases 4 a 10 os 4 cantos do pátio da praça são vans da carrocinha (claras) e nas Fases 1 a 3 as "caixas" são do ambiente (vasos, fardos, pufes), não vans (${[1, 2, 3, 4, 7, 10].map((id) => `F${id}: ${vans[id].vanLike} vans`).join(", ")})`);
     // nenhum texto do jogo fala em veterinário (menu, Como jogar, lista de fases, avisos de cada fase, telas de derrota e vitória)
     const texts = await ev(page, () => { const out = [document.body.innerText]; for (let id = 1; id <= 10; id++) { __game.start(id); out.push(document.getElementById("toast").textContent); } return out.join("\n"); });
     ok(!/veterin/i.test(texts) && !/veterin/i.test(await page.evaluate(() => document.documentElement.outerHTML.replace(/<script[\s\S]*?<\/script>/g, ""))), "nenhum texto nem rótulo do jogo fala em veterinário");
+  });
+
+  // =====================================================================
+  await section("0.14.0: cada fase é um lugar que o cachorrinho conhece (campo, rua, casa, condomínio, parque...)", async () => {
+    await fresh(page);
+    const PLACES = ["Quintal", "Campo", "Casa", "Rua do bairro", "Condomínio", "Praça", "Parque canino", "Feira", "Praia", "Central da carrocinha"];
+    // ---- nomes: o hook, o aviso de começar, a lista de fases e a tela de vitória ----
+    const info = await ev(page, () => {
+      const out = [];
+      for (let id = 1; id <= 10; id++) { __game.start(id); __game.autoStart = true; out.push({ id, place: __game.theme.place, blurb: __game.theme.blurb, toast: document.getElementById("toast").textContent }); }
+      return out;
+    });
+    ok(info.map((i) => i.place).join("|") === PLACES.join("|") && new Set(info.map((i) => i.blurb)).size === 10, `as 10 fases são 10 lugares diferentes: ${info.map((i) => i.place).join(", ")}`);
+    ok(info.every((i) => i.toast.startsWith(i.place + " — Fase " + i.id)), `o aviso de começar cada fase diz o lugar (${info[2].toast})`);
+    await fresh(page, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] }); await page.click("#btn-start");
+    const list = await page.$$eval("#levels-list button strong", (bs) => bs.map((b) => b.textContent));
+    ok(list.length === 10 && list.every((t, i) => t === `Fase ${i + 1} · ${PLACES[i]}`), `a lista de fases mostra o lugar de cada uma (${list.slice(0, 3).join(", ")}...)`);
+    await page.click("#levels-list button:nth-child(3)"); await ev(page, () => { __game.freezeVets = true; });
+    await finishNow(page, 10);
+    ok(/^Casa · Vidas restantes/.test(await page.textContent("#win-extra")), "a vitória diz em que lugar a fase aconteceu");
+    // ---- o desenho: a cor média do chão de cada fase é diferente das outras (e o jogo desenha as paredes de cada ambiente) ----
+    const looks = await ev(page, async () => {
+      const out = [];
+      for (let id = 1; id <= 10; id++) {
+        __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
+        const L = __game.levels[id - 1], M = L.map;
+        // a maior área quadrada de chão livre (até 5 x 5 tiles; nos labirintos pequenos das Fases 1 a 3 sobram 3 x 3 ou menos)
+        let spot = null, size = 5;
+        for (; size >= 2 && !spot; size--) for (let r = 2; r < M.length - size - 1 && !spot; r++) for (let c = 2; c < M[0].length - size - 1 && !spot; c++) { let ok = true; for (let dr = 0; dr < size && ok; dr++) for (let dc = 0; dc < size; dc++) if (M[r + dr][c + dc] !== ".") { ok = false; break; } if (ok) spot = [c, r]; }
+        size++;
+        __game.player.x = (spot[0] + (size >> 1)) * 32 + 4; __game.player.y = (spot[1] + (size >> 1)) * 32 + 4; __game.tick(0.01);
+        await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+        const k = __game.view.k * __game.view.zoom, ctx = document.getElementById("game").getContext("2d");
+        const d = ctx.getImageData(Math.round((spot[0] * 32 - __game.view.camX) * k), Math.round((spot[1] * 32 - __game.view.camY) * k), Math.round(32 * size * k), Math.round(32 * size * k)).data;
+        let rr = 0, g = 0, b = 0, n = 0; for (let i = 0; i < d.length; i += 4) { rr += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+        out.push([Math.round(rr / n), Math.round(g / n), Math.round(b / n)]);
+      }
+      return out;
+    });
+    const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    let minD = 1e9, pair = ""; for (let i = 0; i < 10; i++) for (let j = i + 1; j < 10; j++) { const d = dist(looks[i], looks[j]); if (d < minD) { minD = d; pair = `${PLACES[i]} × ${PLACES[j]}`; } }
+    ok(minD >= 18, `o chão de cada lugar tem cor própria: as duas mais parecidas (${pair}) diferem ${minD.toFixed(0)} no RGB (${looks.map((c) => c.join(",")).join(" | ")})`);
+    // grama nos três primeiros... e o mar no anel de fora da Praia
+    ok(looks[0][1] > looks[0][0] && looks[0][1] > looks[0][2] && looks[1][1] > looks[1][2] && looks[8][0] > 190 && looks[2][0] > looks[2][2], "o Quintal e o Campo são verdes, a Casa é de madeira e a Praia é de areia clara");
+    const sea = await ev(page, async () => {
+      __game.start(9); __game.freezeVets = true; __game.noCatch = true; __game.autoStart = true;
+      const L = __game.levels[8], P = [...L.map.join("\n")].length; // (só para usar L)
+      __game.player.x = 1 * 32 + 4; __game.player.y = 1 * 32 + 4; __game.tick(0.01);
+      await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const k = __game.view.k * __game.view.zoom, ctx = document.getElementById("game").getContext("2d");
+      const d = ctx.getImageData(Math.round((0 * 32 + 6 - __game.view.camX) * k), Math.round((0 * 32 + 6 - __game.view.camY) * k), 2, 2).data;
+      return [d[0], d[1], d[2]];
+    });
+    ok(sea[2] > sea[0] + 60, `na Praia o anel de fora do mapa é o mar (azul: ${sea})`);
+    // ---- o desenho não muda nada do jogo: mesmas regras, só o visual ----
+    ok(await ev(page, () => { __game.start(4); return __game.items.length === 17 && __game.vets.length === 3 && __game.minPoints === 800; }), "mudar o visual não mexe nas regras (Fase 4: 17 itens, 3 agentes, 800 pontos)");
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {

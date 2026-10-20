@@ -1,8 +1,13 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.13.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.14.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.14.0 — 20/10/2026 (em preparação)
+- **Cada fase é um lugar que o cachorrinho conhece:** 1 **Quintal**, 2 **Campo**, 3 **Casa**, 4 **Rua do bairro**, 5 **Condomínio**, 6 **Praça**, 7 **Parque canino**, 8 **Feira**, 9 **Praia** e 10 **Central da carrocinha**. Cada ambiente tem chão, paredes e "caixas" próprios (grama e cerca de madeira com vasos; pasto, muros de pedra e fardos de feno; tábua corrida, papel de parede e pufes; asfalto, calçadas e telhados; concreto com jardins e prédios com janelas; pedras claras, canteiros e bancos; grama, cerca branca e cones de agilidade; paralelepípedo, barracas de toldo listrado e caixas de frutas; areia, quiosques de palha, guarda-sóis e o mar no anel de fora; concreto com faixas de alerta, paredes de aço com grades e jaulas). As portas e paredes que se movem também ganham o estilo do lugar (portão de madeira, grade de ferro, aço...), mantendo os cantos amarelos de aviso.
+- O **nome do lugar** aparece no aviso de começar a fase (*Casa — Fase 3: …*), na lista de fases (*Fase 3 · Casa*) e na vitória. As regras, os mapas, as velocidades e os pontos de cada fase **não mudaram**.
+- **Testes:** os 10 lugares e nomes, o aviso, a lista, a vitória, a cor média do chão de cada lugar (todas diferentes), o mar da Praia, e os testes de cor antigos ficaram independentes do ambiente (aviso amarelo do trilho, visual da Casa, vans nos pátios).
 
 ## 0.13.0 — 20/10/2026 (em preparação)
 - **No máximo 3 opções de reforço por fase:** a tela *Escolha um reforço* mostra **3 opções sorteadas** entre os reforços que ainda valem (antes eram 6 de uma vez). Reforços já no máximo e a *Vida extra* com as vidas cheias não entram no sorteio; se sobram 3 ou menos, aparecem todos; se não sobra nenhum, a *Próxima fase* começa direto. As 3 opções aparecem sempre na mesma ordem da lista (Patas ligeiras, Osso poderoso, Vida extra, Coração maior, Pelo grosso, Carrocinha lenta) e a mensagem diz que são as 3 desta fase. A escolha continua valendo uma vez por fase e só começa a fase seguinte depois dela.

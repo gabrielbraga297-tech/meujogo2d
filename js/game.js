@@ -647,6 +647,8 @@
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
+  let theme = Themes.of(1); // o ambiente (lugar) da fase atual: js/themes.js
+  const themeG = { ctx: null, rect: null, x: 0, y: 0, c: 0, r: 0, free: false, border: false, solid: null, h: (k) => Themes.hash(themeG.c, themeG.r, k) }; // o que cada função de desenho do ambiente recebe
   let gpNavLock = false; // o direcional/analógico segurado ao abrir uma tela só vale depois de voltar ao neutro (não corre pelos botões)
   let power = 0;               // segundos que faltam do poder do osso (os agentes viram carteiros e o cachorro ganha deles); 0 = sem poder
   const START_HINT = "O tempo só começa quando você se mexer.";
@@ -722,7 +724,7 @@
 
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
-    levelId = id; lv = BUILT[id]; COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
+    levelId = id; lv = BUILT[id]; theme = Themes.of(id); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
@@ -1250,7 +1252,7 @@
     beginPlay();
     const n = vets.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     if (started) toast(msg, 2.8);
     else { toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
   }
@@ -1424,7 +1426,7 @@
       const open = l.id <= unlocked, best = store.personalBest(me, l.id);
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
-      b.append(el("strong", null, l.title), el("span", "sub", open
+      b.append(el("strong", null, `${l.title} · ${Themes.of(l.id).place}`), el("span", "sub", open
         ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
@@ -1453,7 +1455,7 @@
   const officialTimeMs = () => Math.round(time * 10) * 100;
 
   // ---------- Reforços: a tela de vitória deixa escolher 1 deles para a próxima fase ----------
-  const winExtraText = (next) => `Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
+  const winExtraText = (next) => `${theme.place} · Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
     (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
   function reinforceAvailable(r, u, curLives) { return r.id === "life" ? curLives < MAX_LIVES + u.heart : u[r.id] < UP_MAX[r.id]; }
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
@@ -1882,31 +1884,33 @@
       const d = b.d, vertical = d.ax === d.bx;
       const x1 = vertical ? d.ax + d.w / 2 : Math.min(d.ax, d.bx), x2 = vertical ? x1 : Math.max(d.ax, d.bx) + d.w;
       const y1 = vertical ? Math.min(d.ay, d.by) : d.ay + d.h / 2, y2 = vertical ? Math.max(d.ay, d.by) + d.h : y1;
-      ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = theme.rail[0]; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       const warn = blockWarn(d, b.bt); // aviso: o trilho pisca em amarelo logo antes de o bloco mudar de lado (com "reduzir movimento": amarelo fixo, sem piscar)
-      ctx.strokeStyle = warn ? `rgba(242,194,48,${(calm ? 0.8 : 0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : "#10131c";
+      ctx.strokeStyle = warn ? `rgba(242,194,48,${(calm ? 0.8 : 0.35 + 0.5 * Math.abs(Math.sin(time * 18))).toFixed(2)})` : theme.rail[1];
       ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
   }
 
   // Parede que se move (Fase 5): pedra como as paredes, com faixas amarelas nas pontas para avisar que ela anda.
   function drawMovingWall(s) {
-    ctx.fillStyle = "#4a5470"; ctx.fillRect(s.x, s.y, s.w, s.h);
-    ctx.fillStyle = "#5d6a8c"; ctx.fillRect(s.x, s.y, s.w, 4);
+    const m = theme.mover.wall; // [corpo, topo, borda] no estilo do ambiente (portão de madeira, grade de ferro, aço...)
+    ctx.fillStyle = m[0]; ctx.fillRect(s.x, s.y, s.w, s.h);
+    ctx.fillStyle = m[1]; ctx.fillRect(s.x, s.y, s.w, 4);
     ctx.fillStyle = "#f2c230";
     const vertical = s.h >= s.w, n = Math.round((vertical ? s.h : s.w) / TILE);
     for (let i = 0; i < n; i++) {
       const x = s.x + (vertical ? 0 : i * TILE), y = s.y + (vertical ? i * TILE : 0);
       ctx.fillRect(x + 3, y + 3, 5, 5); ctx.fillRect(x + TILE - 8, y + TILE - 8, 5, 5);
     }
-    ctx.strokeStyle = "#2c3347"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
+    ctx.strokeStyle = m[2]; ctx.lineWidth = 2; ctx.strokeRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
   }
   function drawMovingBlock(s) {
-    ctx.fillStyle = "#6b7794"; ctx.fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
-    ctx.fillStyle = "#aeb8d0"; ctx.fillRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
+    const m = theme.mover.door; // [corpo, miolo, borda]
+    ctx.fillStyle = m[0]; ctx.fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
+    ctx.fillStyle = m[1]; ctx.fillRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
     ctx.fillStyle = "#f2c230"; // faixas amarelas de aviso nos cantos
     for (const [dx, dy] of [[4, 4], [s.w - 12, 4], [4, s.h - 12], [s.w - 12, s.h - 12]]) ctx.fillRect(s.x + dx, s.y + dy, 8, 8);
-    ctx.strokeStyle = "#3b4663"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
+    ctx.strokeStyle = m[2]; ctx.lineWidth = 2; ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
   }
 
   function drawDog(p) {
@@ -2026,19 +2030,11 @@
     const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
 
     const c0 = Math.max(0, Math.floor(camX / TILE)), c1 = Math.min(COLS - 1, Math.floor((camX + vw) / TILE)), r0 = Math.max(0, Math.floor(camY / TILE)), r1 = Math.min(ROWS - 1, Math.floor((camY + vh) / TILE));
-    const street = lv.id >= 4; // a partir da Fase 4 o mapa é uma cidade: asfalto, calçadas e telhados de prédios
-    const bld = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
+    // o ambiente da fase (js/themes.js) desenha o chão, as paredes e as "caixas"; as paredes vizinhas se juntam num bloco só
+    const g = themeG; g.ctx = ctx; g.rect = rect; g.solid = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
-      ctx.fillStyle = street ? ((r + c) % 2 ? "#2a2f3c" : "#2d3342") : ((r + c) % 2 ? "#232a3a" : "#262e40");
-      rect(c * TILE, r * TILE, TILE, TILE);
-      if (street && lv.walk[r][c]) { // calçada: uma faixa clara junto de cada prédio
-        ctx.fillStyle = "#3d4559";
-        const x = c * TILE, y = r * TILE;
-        if (bld(c, r - 1)) rect(x, y, TILE, 4);
-        if (bld(c, r + 1)) rect(x, y + TILE - 4, TILE, 4);
-        if (bld(c - 1, r)) rect(x, y, 4, TILE);
-        if (bld(c + 1, r)) rect(x + TILE - 4, y, 4, TILE);
-      }
+      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.walk[r][c];
+      theme.floor(g);
     }
     ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
@@ -2049,21 +2045,11 @@
       if (s.x + s.w < camX || s.x > camX + vw || s.y + s.h < camY || s.y > camY + vh) continue; // fora da tela
       if (s.kind === "M") drawMovingBlock(s);
       else if (s.kind === "W") drawMovingWall(s);
-      else if (s.kind === "#" && street) { // telhado: o prédio é um bloco só (a borda aparece só do lado da rua)
+      else if (s.van) drawVan(s);
+      else { // parede ("#") ou caixa ("X") no estilo do ambiente
         const c = s.x / TILE, r = s.y / TILE;
-        ctx.fillStyle = "#47516f"; rect(s.x, s.y, s.w, s.h);
-        ctx.fillStyle = "#5d6a8c"; if (!bld(c, r - 1)) rect(s.x, s.y, s.w, 4);
-        ctx.fillStyle = "#333b55"; if (!bld(c, r + 1)) rect(s.x, s.y + s.h - 4, s.w, 4);
-        if (!bld(c - 1, r)) rect(s.x, s.y, 3, s.h);
-        if (!bld(c + 1, r)) rect(s.x + s.w - 3, s.y, 3, s.h);
-        if ((c * 7 + r * 13) % 8 === 0 && bld(c - 1, r) && bld(c + 1, r) && bld(c, r - 1) && bld(c, r + 1)) { ctx.fillStyle = "#5a6688"; rect(s.x + 9, s.y + 9, 14, 14); ctx.fillStyle = "#3d4663"; rect(s.x + 12, s.y + 12, 8, 8); } // claraboia
-      } else if (s.kind === "#") {
-        ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
-        ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);
-      } else if (s.van) drawVan(s);
-      else {
-        ctx.fillStyle = "#8a5a2b"; rect(s.x + 2, s.y + 2, s.w - 4, s.h - 4);
-        ctx.strokeStyle = "#5e3b17"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
+        g.x = s.x; g.y = s.y; g.c = c; g.r = r; g.free = false; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;
+        if (s.kind === "#") theme.wall(g); else theme.crate(g);
       }
     }
     for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
@@ -2382,6 +2368,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
+    get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
     get sounds() { return sound.events; }, get sound() { return sound; }, // os pedidos de som (nome, quando, se tocou) e o tocador, para os testes
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },

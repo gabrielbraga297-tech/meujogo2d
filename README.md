@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.13.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.14.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -113,6 +113,24 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 **Na Fase 3** a **velocidade** de movimento ganha mais 10% (66,55 e 133,1 px/s); a duração das perseguições e o descanso são os da Fase 2.
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
+
+## Ambientes (0.14.0)
+Cada fase é um **lugar que o cachorrinho conhece**, com chão, paredes e "caixas" desenhados no estilo do ambiente (`js/themes.js`; as regras, os mapas e os números de cada fase não mudam):
+
+| Fase | Lugar | Chão | Paredes | "Caixas" | Peças que se movem |
+|---|---|---|---|---|---|
+| 1 | **Quintal** | grama com florzinhas | cerca de madeira | vasos de planta | — |
+| 2 | **Campo** | pasto claro com flores | muros de pedra | fardos de feno | — |
+| 3 | **Casa** | tábua corrida | papel de parede e rodapé | pufes | portas de madeira |
+| 4 | **Rua do bairro** | asfalto e calçadas | telhados dos prédios | lixeiras | blocos de aço |
+| 5 | **Condomínio** | concreto com jardins | blocos de apartamentos com janelas | jardineiras | blocos de aço |
+| 6 | **Praça** | pedras claras | canteiros (cerca viva) | bancos | grades de ferro |
+| 7 | **Parque canino** | grama com trilhas de terra | cerca viva e cerca branca | cones de agilidade | cancelas verdes |
+| 8 | **Feira** | paralelepípedo | barracas de toldo listrado | caixas de frutas | cancelas de madeira |
+| 9 | **Praia** | areia (o anel de fora é o mar) | quiosques de palha | guarda-sóis | tábuas |
+| 10 | **Central da carrocinha** | concreto com faixas de alerta | paredes de aço com grades | jaulas | blocos de aço |
+
+O aviso de começar cada fase diz o lugar (*Casa — Fase 3: 2 agentes da carrocinha*), a lista de fases mostra **Fase 3 · Casa** e a vitória começa por *Casa · Vidas restantes…*. Nas cidades (Fases 4 a 10) as 4 caixas dos cantos do pátio da praça central são **vans da carrocinha**. O teste `0.14.0` confere os 10 nomes, o aviso, a lista, a vitória, que a cor média do chão de cada lugar é diferente das outras e o mar da Praia.
 
 ## Reforços (0.8.0)
 Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 opções**, sorteadas a cada vitória entre os 6 que ainda valem (se sobram 3 ou menos, aparecem todos; sempre na mesma ordem da tabela abaixo), e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**: o botão *Próxima fase* da vitória abre a tela **Escolha um reforço**, e a fase seguinte só começa depois da escolha (com *Voltar* ou Esc se volta ao resultado). Os reforços empilham em níveis até um máximo:
@@ -280,6 +298,7 @@ index.html            canvas, placar (HTML) e todas as telas (menu, fases, como 
 css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
+js/themes.js          ambientes das fases (chão, paredes e caixas de cada lugar)
 js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
