@@ -615,7 +615,7 @@
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
-      id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
+      id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
@@ -1981,9 +1981,19 @@
     const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
 
     const c0 = Math.max(0, Math.floor(camX / TILE)), c1 = Math.min(COLS - 1, Math.floor((camX + vw) / TILE)), r0 = Math.max(0, Math.floor(camY / TILE)), r1 = Math.min(ROWS - 1, Math.floor((camY + vh) / TILE));
+    const street = lv.id >= 4; // a partir da Fase 4 o mapa é uma cidade: asfalto, calçadas e telhados de prédios
+    const bld = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
-      ctx.fillStyle = (r + c) % 2 ? "#232a3a" : "#262e40";
+      ctx.fillStyle = street ? ((r + c) % 2 ? "#2a2f3c" : "#2d3342") : ((r + c) % 2 ? "#232a3a" : "#262e40");
       rect(c * TILE, r * TILE, TILE, TILE);
+      if (street && lv.walk[r][c]) { // calçada: uma faixa clara junto de cada prédio
+        ctx.fillStyle = "#3d4559";
+        const x = c * TILE, y = r * TILE;
+        if (bld(c, r - 1)) rect(x, y, TILE, 4);
+        if (bld(c, r + 1)) rect(x, y + TILE - 4, TILE, 4);
+        if (bld(c - 1, r)) rect(x, y, 4, TILE);
+        if (bld(c + 1, r)) rect(x + TILE - 4, y, 4, TILE);
+      }
     }
     ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
@@ -1991,9 +2001,18 @@
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
     drawBlocks();
     for (const s of solids) {
+      if (s.x + s.w < camX || s.x > camX + vw || s.y + s.h < camY || s.y > camY + vh) continue; // fora da tela
       if (s.kind === "M") drawMovingBlock(s);
       else if (s.kind === "W") drawMovingWall(s);
-      else if (s.kind === "#") {
+      else if (s.kind === "#" && street) { // telhado: o prédio é um bloco só (a borda aparece só do lado da rua)
+        const c = s.x / TILE, r = s.y / TILE;
+        ctx.fillStyle = "#47516f"; rect(s.x, s.y, s.w, s.h);
+        ctx.fillStyle = "#5d6a8c"; if (!bld(c, r - 1)) rect(s.x, s.y, s.w, 4);
+        ctx.fillStyle = "#333b55"; if (!bld(c, r + 1)) rect(s.x, s.y + s.h - 4, s.w, 4);
+        if (!bld(c - 1, r)) rect(s.x, s.y, 3, s.h);
+        if (!bld(c + 1, r)) rect(s.x + s.w - 3, s.y, 3, s.h);
+        if ((c * 7 + r * 13) % 8 === 0 && bld(c - 1, r) && bld(c + 1, r) && bld(c, r - 1) && bld(c, r + 1)) { ctx.fillStyle = "#5a6688"; rect(s.x + 9, s.y + 9, 14, 14); ctx.fillStyle = "#3d4663"; rect(s.x + 12, s.y + 12, 8, 8); } // claraboia
+      } else if (s.kind === "#") {
         ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
         ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);
       } else {
