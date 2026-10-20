@@ -136,7 +136,7 @@ const PAGE_HELPERS = () => {
   const catchOnce = (page, i = 0) => ev(page, (i) => {
     for (const v of __game.vets) v.cool = 99; // sem perseguição por conta própria
     __game.items.forEach((it) => { it.life = false; }); // (uma vida extra sorteada em cima do cachorrinho anularia a vida perdida)
-    for (let k = 0; k < 45; k++) __game.tick(0.05); // passa a proteção
+    for (let k = 0; k < 45 || (k < 200 && __game.invuln > 0); k++) __game.tick(0.05); // passa a proteção (o reforço Pelo grosso a alonga)
     const v = __game.vets[i], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01);
     __game.items.forEach((it) => { it.life = false; }); // (a perda de vida sorteia os itens de novo)
     return [__game.lives, __game.state];
@@ -2833,6 +2833,18 @@ const PAGE_HELPERS = () => {
     ok(["btn-resume", "btn-save", "btn-pause-menu"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
     await padHit(9);
 
+    // o direcional já apertado ao abrir uma tela não corre pelos botões (só vale depois de voltar ao neutro)
+    await ev(g, () => { __padSet({ press: [13] }); __game.padPoll(0.016); });
+    await g.keyboard.press("Escape");
+    ok(await state() === "paused" && await focusId() === "btn-resume", "(trava) pausar com o direcional apertado abre a pausa no primeiro botão");
+    await ev(g, () => { for (let i = 0; i < 30; i++) __game.padPoll(0.016); }); // (sem a trava o foco andaria 2 botões nesse tempo: 1º passo e uma repetição)
+    ok(await focusId() === "btn-resume", "o direcional segurado ao abrir a tela não corre pelos botões");
+    await ev(g, () => { __padSet({ release: [13] }); __game.padPoll(0.016); __padSet({ press: [13] }); __game.padPoll(0.016); });
+    ok(await focusId() === "btn-save", "depois de soltar, apertar de novo move o foco");
+    await ev(g, () => { __padSet({ release: [13] }); __game.padPoll(0.016); });
+    await g.keyboard.press("Escape");
+    ok(await state() === "playing", "(trava) Esc retoma o jogo");
+
     // controle desconectado no meio do jogo: nada quebra e o teclado segue valendo
     await ev(g, () => { __game.freezeVets = true; __padOn(false); __game.padPoll(); });
     a = await pos(); await ev(g, () => __t.hold("d", 12)); b = await pos();
@@ -3574,6 +3586,26 @@ const PAGE_HELPERS = () => {
     const bad = fit.filter((f) => f.overflowX > 1 || !f.goVisible || (f.landscape && f.scroll > 1) || f.minH < 36 || f.tinyText);
     ok(bad.length === 0, `a tela de reforços cabe em ${fit.length} tamanhos (sem rolagem lateral, Começar à vista, deitado sem rolar, botões de 36 px ou mais, letras de 10,5 px ou mais)${bad.length ? ": problema em " + bad.map((f) => `${f.w}x${f.h} (scroll ${f.scroll}, lateral ${f.overflowX}, botão ${f.goVisible}, menor ${f.minH.toFixed(0)}px, letra miúda ${f.tinyText})`).join("; ") : ""}`);
     await page.setViewportSize({ width: 1280, height: 720 });
+
+    // ---- teclas seguradas e setas na grade de reforços (a escolha vale uma vez e não se desfaz) ----
+    ok(/até 8 com o reforço Coração maior/.test(await page.textContent("#howto")), "o Como jogar diz que o Coração maior leva o máximo de vidas a 8");
+    ok(/Reforços ativos/.test(await page.getAttribute("#hud-up-item", "aria-label") || "") && await page.getAttribute("#hud-up-item", "role") === "group", "o item REFORÇOS do placar é um grupo com rótulo para leitor de tela");
+    await playLevel(page, 1); await finishNow(page, 10);
+    const fid = () => ev(page, () => document.activeElement.id || document.activeElement.dataset.id);
+    await page.keyboard.down("ArrowDown"); const h1 = await fid(); await page.keyboard.down("ArrowDown"); await page.keyboard.down("ArrowDown"); const h2 = await fid(); await page.keyboard.up("ArrowDown");
+    ok(h1 === "btn-again" && h2 === "btn-again", `segurar a seta ↓ move o foco só uma vez, sem correr pelos botões (${h1} → ${h2})`);
+    await page.keyboard.press("ArrowUp");
+    ok(await fid() === "btn-next", "↑ volta para a Próxima fase");
+    await page.keyboard.press("Enter");
+    ok(await page.isVisible("#reinforce") && await fid() === "speed", "Enter na Próxima fase abre os reforços com o primeiro focado");
+    await page.keyboard.press("ArrowRight"); const r1 = await fid(); await page.keyboard.press("ArrowRight"); const r2 = await fid(); await page.keyboard.press("ArrowLeft"); const r3 = await fid();
+    ok(r1 === "bone" && r2 === "life" && r3 === "bone", `← e → passam pelos reforços da grade (${r1}, ${r2}, ${r3})`);
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.down("Enter"); await page.keyboard.down("Enter"); await page.keyboard.down("Enter");
+    ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#reinforce") && await ev(page, () => __game.chosenReinforce) === "speed" && await fid() === "btn-reinforce-go", "segurar Enter escolhe o reforço uma vez e não começa a fase sem o jogador soltar e apertar de novo");
+    await page.keyboard.up("Enter");
+    await page.keyboard.press("Enter");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2, "soltar e apertar Enter de novo começa a Fase 2");
   });
 
   // =====================================================================
