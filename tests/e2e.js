@@ -120,7 +120,7 @@ const PAGE_HELPERS = () => {
   const hudIs = (page, sel, text) => page.waitForFunction(([sel, text]) => document.querySelector(sel).textContent === text, [sel, text], { timeout: 2000 }).then(() => true, () => false);
   const lostHearts = (page, n) => page.waitForFunction((n) => document.querySelectorAll("#hud-lives .heart.lost").length === n, n, { timeout: 2000 }).then(() => true, () => false);
   const itemTiles = (page) => ev(page, () => __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken]));
-  // joga `seconds` s de relógio (sem veterinários) e termina a fase teletransportando o cachorro para as rações e depois para a saída
+  // joga `seconds` s de relógio (sem agentes da carrocinha) e termina a fase teletransportando o cachorro para as rações e depois para a saída
   const finishNow = (page, seconds = 10) => ev(page, (n) => {
     __game.freezeVets = true;
     for (let i = 0; i < n; i++) __game.tick(0.05);
@@ -132,11 +132,13 @@ const PAGE_HELPERS = () => {
     await pg.click("#btn-next");
     if (await pg.isVisible("#reinforce")) { await pg.click(`#reinforce-list button[data-id="${id}"]`); await pg.click("#btn-reinforce-go"); }
   };
-  // o veterinário `i` encosta no cachorro (perde 1 vida, se não estiver protegido); espera a proteção passar antes
+  // o agente da carrocinha `i` encosta no cachorro (perde 1 vida, se não estiver protegido); espera a proteção passar antes
   const catchOnce = (page, i = 0) => ev(page, (i) => {
     for (const v of __game.vets) v.cool = 99; // sem perseguição por conta própria
+    __game.items.forEach((it) => { it.life = false; }); // (uma vida extra sorteada em cima do cachorrinho anularia a vida perdida)
     for (let k = 0; k < 45; k++) __game.tick(0.05); // passa a proteção
     const v = __game.vets[i], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01);
+    __game.items.forEach((it) => { it.life = false; }); // (a perda de vida sorteia os itens de novo)
     return [__game.lives, __game.state];
   }, i);
 
@@ -146,27 +148,27 @@ const PAGE_HELPERS = () => {
   // =====================================================================
   await section("mapa", async () => {
     ok(find("I").length === 0, "o mapa não tem rações fixas (elas são sorteadas)");
-    ok(vetStarts.length === 1, "Fase 1 tem exatamente 1 veterinário");
+    ok(vetStarts.length === 1, "Fase 1 tem exatamente 1 agente da carrocinha");
     const d = distances(dogStart);
-    ok(d.size > 250 && [...find("E"), ...vetStarts].every((t) => d.has(t + "")), "todo o chão é alcançável a partir do cachorro, incluindo saída e veterinário");
+    ok(d.size > 250 && [...find("E"), ...vetStarts].every((t) => d.has(t + "")), "todo o chão é alcançável a partir do cachorro, incluindo saída e agente da carrocinha");
 
-    // Fase 2: mapa próprio, 2 veterinários no centro
+    // Fase 2: mapa próprio, 2 agentes da carrocinha no centro
     const m1 = G1.MAP.join("\n"), m2 = G2.MAP.join("\n");
     ok(m1 !== m2, "o mapa da Fase 2 é diferente do da Fase 1");
     const diff = G1.MAP.reduce((n, row, r) => n + [...row].filter((ch, c) => ch !== G2.MAP[r][c]).length, 0);
     ok(diff > 80, `os mapas são bem diferentes (${diff} tiles distintos)`);
     const v2 = G2.find("V"), p2 = G2.find("P")[0], e2 = G2.find("E");
-    ok(v2.length === 2, "Fase 2 tem exatamente 2 veterinários");
-    ok(v2.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 veterinários começam no centro do mapa (${v2.join(" e ")})`);
+    ok(v2.length === 2, "Fase 2 tem exatamente 2 agentes da carrocinha");
+    ok(v2.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 agentes da carrocinha começam no centro do mapa (${v2.join(" e ")})`);
     const d2 = G2.distances(p2);
-    ok([...e2, ...v2].every((t) => d2.has(t + "")), "Fase 2: saída e veterinários são alcançáveis a partir do cachorro");
+    ok([...e2, ...v2].every((t) => d2.has(t + "")), "Fase 2: saída e agentes da carrocinha são alcançáveis a partir do cachorro");
     let floor2 = 0; for (let r = 0; r < 18; r++) for (let c = 0; c < 25; c++) if (G2.free(c, r)) floor2++;
     ok(d2.size === floor2, `Fase 2: todo o chão é conectado (${d2.size}/${floor2} tiles), sem cantos presos`);
     ok(G2.find("I").length === 0 && G2.MAP.length === 18 && G2.MAP.every((row) => row.length === 25), "Fase 2: mapa 25x18 sem rações fixas");
     const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
     ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
     const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
-    ok(gl.length === 10 && gl.slice(5).map((l) => l.vets).join() === "3,4,5,5,6" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as dez fases, as cinco primeiras com os mapas e veterinários esperados, e as Fases 6 a 10 com 3, 4, 5, 5 e 6 veterinários");
+    ok(gl.length === 10 && gl.slice(5).map((l) => l.vets).join() === "3,4,5,5,6" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as dez fases, as cinco primeiras com os mapas e agentes da carrocinha esperados, e as Fases 6 a 10 com 3, 4, 5, 5 e 6 agentes da carrocinha");
   });
 
   // =====================================================================
@@ -212,8 +214,8 @@ const PAGE_HELPERS = () => {
     ok(/bônus de tempo/i.test(how) && /diminui a cada 10 segundos/.test(how) && /até chegar a 0/.test(how) && /maior/.test(how) && /não soma/.test(how) && /Fases diferentes se somam/.test(how), "Como jogar explica o bônus de tempo (diminui a cada 10 s), que vale a maior pontuação da fase e que fases diferentes somam");
     ok(/desconta pontos/.test(how) && /negativa/.test(how) && /mudam de lugar/.test(how) && /1 a 5/.test(how) && /passam para a fase seguinte/.test(how), "Como jogar explica o desconto por vida perdida, pontuação negativa, rações que mudam de lugar e vidas de 1 a 5 que passam de fase");
     ok(/3 novas tentativas/.test(how) && /Cada nova tentativa custa 100 pontos/.test(how) && /do zero/.test(how), "Como jogar explica as 3 novas tentativas (do zero, cada uma custa 100 pontos)");
-    ok(!/Fase 2:|Fase 3:|Fase 1 e/.test(how) && !/20 pontos a cada 10 segundos|2 veterinários|blocos deslizam|10% mais/.test(how), "Como jogar não traz as instruções detalhadas de cada fase (só o básico)");
-    ok(["Objetivo:", "Mover:", "Cuidado com o veterinário!", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):"].every((h) => how.includes(h)), "Como jogar mantém o básico: objetivo, mover, veterinário, vidas, sem vidas, pontuação, salvar, pausar, teclado, controle, pontuações e conta");
+    ok(!/Fase 2:|Fase 3:|Fase 1 e/.test(how) && !/20 pontos a cada 10 segundos|2 agentes da carrocinha|blocos deslizam|10% mais/.test(how), "Como jogar não traz as instruções detalhadas de cada fase (só o básico)");
+    ok(["Objetivo:", "Mover:", "Cuidado com a carrocinha!", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):"].every((h) => how.includes(h)), "Como jogar mantém o básico: objetivo, mover, a carrocinha, vidas, sem vidas, pontuação, salvar, pausar, teclado, controle, pontuações e conta");
     ok(/Suas pontuações/.test(how) && /só você vê/.test(how) && /ranking do jogo/i.test(how) && /para todos/.test(how), "Como jogar explica a pontuação individual (só você) e o ranking do jogo (todos)");
     ok(/Menu inicial/.test(await page.textContent("#menu-title")), "o menu inicial se chama Menu inicial");
     await page.click("#btn-howto-back");
@@ -279,10 +281,10 @@ const PAGE_HELPERS = () => {
           if (ex.has([c, r] + "")) bad = "na saída";
           if (!d.has([c, r] + "")) bad = "inalcançável";
           else if (d.get([c, r] + "") < 4) bad = "perto demais do início";
-          if (vs.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto demais de um veterinário";
+          if (vs.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto demais de um agente da carrocinha";
         }
       }
-      ok(!bad, `Fase ${id}: 80 sorteios: sempre ${count} itens (rações e ossos) em chão livre, alcançável e longe de início/veterinários/saída ${bad && "(" + bad + ")"}`);
+      ok(!bad, `Fase ${id}: 80 sorteios: sempre ${count} itens (rações e ossos) em chão livre, alcançável e longe de início/agentes da carrocinha/saída ${bad && "(" + bad + ")"}`);
       const distinct = new Set(layouts.map((L) => L.map(String).sort().join("|"))).size;
       ok(distinct >= 70, `Fase ${id}: os lugares mudam a cada jogo (${distinct} disposições diferentes em 80)`);
       const lifeCounts = await ev(page, () => { const out = []; for (let i = 0; i < 200; i++) { __game.start(); const f = __game.items.map((it) => it.life); out.push([f.filter(Boolean).length, f.indexOf(true)]); } return out; });
@@ -456,7 +458,7 @@ const PAGE_HELPERS = () => {
     ok(await hudIs(page, "#hud-points", "100"), "PONTOS mostra 100 depois de uma ração");
     const catchNow = () => ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return __game.lives; });
     const pre = await ev(page, () => ({ time: __game.time, items: __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken, i.life]) }));
-    ok(await catchNow() === 2, "veterinário captura: perde 1 vida (3 → 2)");
+    ok(await catchNow() === 2, "agente da carrocinha captura: perde 1 vida (3 → 2)");
     const post = await ev(page, () => ({ time: __game.time, items: __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken, i.life]) }));
     ok(post.time >= pre.time && post.time - pre.time < 0.6, `o tempo não zera ao perder a vida: continua contando (${pre.time.toFixed(2)} → ${post.time.toFixed(2)})`);
     ok(post.items.every((it, i) => it[2] === pre.items[i][2] && it[3] === pre.items[i][3]), "ao perder a vida, quem já foi pega continua pega e as rações com vida extra continuam sendo as mesmas");
@@ -467,12 +469,12 @@ const PAGE_HELPERS = () => {
     ok(rest.every(([c, r]) => free(c, r) && distances(dogStart).has([c, r] + "")) && new Set(rest.map(String)).size === rest.length, "as rações que mudaram de lugar ficam em chão livre, alcançável e sem se sobrepor");
     const afterLoss = await ev(page, () => { const p = __game.player, v = __game.vets[0]; return { x: p.x, y: p.y, invuln: __game.invuln, vx: v.cx, vy: v.cy, sx: v.sx, sy: v.sy, got: __game.collected }; });
     ok(afterLoss.x === dogStart[0] * 32 + 4 && afterLoss.y === dogStart[1] * 32 + 4, "cachorro volta ao início depois de perder a vida");
-    ok(afterLoss.vx === afterLoss.sx && afterLoss.vy === afterLoss.sy, "veterinário volta ao seu posto");
+    ok(afterLoss.vx === afterLoss.sx && afterLoss.vy === afterLoss.sy, "agente da carrocinha volta ao seu posto");
     ok(afterLoss.invuln > 1.5 && afterLoss.got === 1, "fica protegido por uns segundos e mantém as rações coletadas");
     ok(await lostHearts(page, 1) && await page.getAttribute("#hud-lives", "aria-label") === "2 vidas", "um coração apaga (restam 2)");
     ok(await hudIs(page, "#hud-points", "50") && await ev(page, () => __game.livesLost) === 1, "perder a vida custa 50 pontos (100 → 50)");
     ok(/−50 pontos/.test(await page.textContent("#toast")), "aviso mostra −50 pontos");
-    ok(await catchNow() === 2, "durante a proteção o veterinário não captura de novo");
+    ok(await catchNow() === 2, "durante a proteção o agente da carrocinha não captura de novo");
     await ev(page, () => { for (let i = 0; i < 45; i++) __game.tick(0.05); });
     await ev(page, () => { __game.vets[0].cool = 99; });
     ok(await catchNow() === 1, "depois da proteção, nova captura (2 → 1)");
@@ -544,11 +546,11 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("veterinário: patrulha, paredes e perseguição forte", async () => {
+  await section("agente da carrocinha: patrulha, paredes e perseguição forte", async () => {
     await play(page);
     const cfg = await ev(page, () => __game.vets[0].cfg);
-    ok(cfg.speed === 55 && cfg.chaseSpeed === 110, `Fase 1: sem o "!" o veterinário anda a 55 px/s e com o "!" a 110 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
-    ok(cfg.chaseSpeed < 252 * 0.5 && cfg.speed < cfg.chaseSpeed, "o veterinário é mais lento que o cachorro (252 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
+    ok(cfg.speed === 55 && cfg.chaseSpeed === 110, `Fase 1: sem o "!" o agente da carrocinha anda a 55 px/s e com o "!" a 110 px/s (${cfg.speed} e ${cfg.chaseSpeed})`);
+    ok(cfg.chaseSpeed < 252 * 0.5 && cfg.speed < cfg.chaseSpeed, "o agente da carrocinha é mais lento que o cachorro (252 px/s) nos dois modos, e com o \"!\" fica bem mais rápido");
     ok(cfg.chaseSpeed >= cfg.speed * 1.8, `com o "!" ele fica bem mais rápido (${cfg.speed} → ${cfg.chaseSpeed} px/s)`);
     ok(cfg.chaseTime >= 3 && cfg.chaseMax > cfg.chaseTime, "persegue com empenho: no mínimo 3 s e insiste enquanto vê o cachorro");
     ok(await ev(page, () => __game.alertTiles) === 2 && cfg.sight === 64 && cfg.chaseChance === 1 && cfg.thinkEvery <= 0.1, `Fase 1: o "!" liga a 2 quadrados (${cfg.sight} px), sem sorteio e olhando 10 vezes por segundo`);
@@ -564,7 +566,7 @@ const PAGE_HELPERS = () => {
       }
       return { tiles: seen.size, maxSpeed, chased };
     });
-    ok(patrol.tiles >= 25, `veterinário percorre o mapa (${patrol.tiles} tiles distintos)`);
+    ok(patrol.tiles >= 25, `agente da carrocinha percorre o mapa (${patrol.tiles} tiles distintos)`);
     ok(patrol.maxSpeed <= cfg.speed + 0.5 && patrol.maxSpeed >= cfg.speed - 1, `velocidade de patrulha respeitada: 50 px/s (${patrol.maxSpeed.toFixed(1)} px/s)`);
     ok(patrol.chased === 0, "sem chance de perseguir → nunca persegue");
     const wallHits = await ev(page, (M) => {
@@ -578,7 +580,7 @@ const PAGE_HELPERS = () => {
       }
       return hits;
     }, MAP);
-    ok(wallHits === 0, "veterinário nunca atravessa paredes nem caixas");
+    ok(wallHits === 0, "agente da carrocinha nunca atravessa paredes nem caixas");
 
     // cenários de perseguição: cada um roda dentro de UM evaluate (o loop real não intercala frames)
     // o sorteio fica no valor MAIS desfavorável (0,99): o "!" não depende de sorte
@@ -608,7 +610,7 @@ const PAGE_HELPERS = () => {
     await play(page);
     const stay = await scenario([20, 4], [22, 4], 30);
     ok(stay.dist0 <= stay.cfg.sight && stay.startedAt !== null && stay.startedAt <= 0.1, `com o cachorro a 2 quadrados e à vista, o "!" liga na hora (${stay.startedAt}s), mesmo com o sorteio no pior valor`);
-    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 110) <= 1, `durante a perseguição o veterinário anda a 110 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
+    ok(stay.chaseSpeedMax > stay.cfg.speed * 1.8 && Math.abs(stay.chaseSpeedMax - 110) <= 1, `durante a perseguição o agente da carrocinha anda a 110 px/s, o dobro de quando patrulha (${stay.chaseSpeedMax.toFixed(1)} px/s)`);
     const dur = stay.endedAt - stay.startedAt;
     ok(Math.abs(dur - stay.cfg.chaseMax) <= 0.3, `enquanto vê o cachorro ele insiste até o limite (${dur.toFixed(1)}s de ${stay.cfg.chaseMax}s)`);
     ok(stay.restartAt === null || stay.restartAt - stay.endedAt >= stay.cfg.restTime - 0.1, `depois de perseguir descansa ${stay.cfg.restTime}s antes de tentar de novo`);
@@ -625,7 +627,7 @@ const PAGE_HELPERS = () => {
     ok(info[1].tiles === 2 && info[2].tiles === 4 && info[3].tiles === 6 && info[1].lv === 2 && info[2].lv === 4 && info[3].lv === 6, "o alcance do ! é 2 quadrados na Fase 1, 4 na Fase 2 e 6 na Fase 3 (2 × número da fase, como será nas fases 4 e 5: 8 e 10)");
     ok([1, 2, 3].every((id) => info[id].sight.every((s) => s === info[id].tiles * 32) && info[id].chance.every((c) => c === 1)), "em todas as fases o alcance em pixels é quadrados × 32 e o ! liga sempre (sem sorteio)");
 
-    // Um veterinário parado numa linha livre; o cachorro a `dx` px dele (centro a centro). Retorna se o "!" ligou e quando.
+    // Um agente da carrocinha parado numa linha livre; o cachorro a `dx` px dele (centro a centro). Retorna se o "!" ligou e quando.
     const probe = (level, vet, dx, dy, secs) => ev(page, ([level, vet, dx, dy, secs]) => {
       __game.start(level); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = false;
       __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // nenhum osso (poder) nem ração no caminho do teste
@@ -639,7 +641,7 @@ const PAGE_HELPERS = () => {
       return at;
     }, [level, vet, dx, dy, secs]);
 
-    // linhas livres: Fase 1 linha 13 (colunas 9 a 23), Fase 2 linha 14 (1 a 23), Fase 3 linha 15 (1 a 20); o veterinário fica no meio delas
+    // linhas livres: Fase 1 linha 13 (colunas 9 a 23), Fase 2 linha 14 (1 a 23), Fase 3 linha 15 (1 a 20); o agente da carrocinha fica no meio delas
     const setups = [[1, [14, 13], 2], [2, [12, 14], 4], [3, [10, 15], 6]];
     for (const [level, vet, n] of setups) {
       const edge = n * 32;
@@ -657,10 +659,10 @@ const PAGE_HELPERS = () => {
     // distância é em linha reta (diagonal conta): 2 quadrados na diagonal = 45 px em cada eixo (63,6 px)
     const diag = [await probe(1, [10, 14], 44, 44, 1), await probe(1, [10, 14], 50, 50, 1)];
     ok(diag[0] !== null && diag[1] === null, `na diagonal vale a distância em linha reta (44+44 px liga, 50+50 px não) (${diag.join(", ")})`);
-    // a parede impede de ver, mesmo dentro do alcance: Fase 1, veterinário em (7,5) e cachorro em (9,5), com a parede da coluna 8 no meio
+    // a parede impede de ver, mesmo dentro do alcance: Fase 1, agente da carrocinha em (7,5) e cachorro em (9,5), com a parede da coluna 8 no meio
     const wall = await probe(1, [7, 5], 60, 0, 2);
     ok(wall === null, "uma parede entre os dois impede o ! mesmo dentro do alcance");
-    // e o veterinário volta a ficar "calmo": depois de perder o cachorro de vista a perseguição acaba (já coberto acima), e o descanso vale
+    // e o agente da carrocinha volta a ficar "calmo": depois de perder o cachorro de vista a perseguição acaba (já coberto acima), e o descanso vale
     const rest = await ev(page, () => {
       __game.start(1); __game.setRand(() => 0.99); __game.noCatch = true;
       const v = __game.vets[0], p = __game.player; v.cx = 14 * 32 + 16; v.cy = 13 * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 99;
@@ -764,7 +766,7 @@ const PAGE_HELPERS = () => {
     const tampers = {
       "ração dentro de uma parede": (s) => { s.items[0][0] = 0; s.items[0][1] = 0; },
       "cachorro dentro de uma parede": (s) => { s.p.x = 0; s.p.y = 0; },
-      "veterinário dentro de uma parede": (s) => { s.vets[0] = [10, 10]; },
+      "agente da carrocinha dentro de uma parede": (s) => { s.vets[0] = [10, 10]; },
       "tempo negativo": (s) => { s.time = -5; },
       "vidas demais": (s) => { s.lives = 9; },
       "formato antigo sem a versão certa": (s) => { s.v = 1; },
@@ -798,7 +800,7 @@ const PAGE_HELPERS = () => {
     const withLife = (snap, n) => { const c = clone(snap); let k = 0; c.items.forEach((it) => { it[3] = !it[4] && k < n ? (k++, 1) : 0; }); return c; }; // as vidas vão para as primeiras rações (nunca para os 2 ossos: no máximo 1 osso pode ter vida)
     ok(await accepts(withLife(s2, 2)), "save válido da Fase 2 com 2 vidas extras é aceito");
     await page.click("#btn-continue");
-    ok(await ev(page, () => __game.level) === 2 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.life).length) === 2 && await ev(page, () => __game.vets.length) === 2, "e continua na Fase 2, com 9 itens (2 com vida extra) e 2 veterinários");
+    ok(await ev(page, () => __game.level) === 2 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.life).length) === 2 && await ev(page, () => __game.vets.length) === 2, "e continua na Fase 2, com 9 itens (2 com vida extra) e 2 agentes da carrocinha");
     ok(await accepts(withLife(s2, 1)) && await accepts(withLife(s1, 1)), "saves válidos com 1 vida extra são aceitos nas duas fases");
     ok(!(await accepts(withLife(s2, 0))), "Fase 2 sem nenhuma vida extra é recusado");
     ok(!(await accepts(withLife(s2, 3))), "Fase 2 com 3 vidas extras é recusado");
@@ -841,32 +843,32 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("Fase 2: 7 rações, 2 veterinários 10% mais espertos, jogo e vitória", async () => {
+  await section("Fase 2: 7 rações, 2 agentes da carrocinha 10% mais espertos, jogo e vitória", async () => {
     await fresh(page, { name: "Totó" });
     await page.click("#btn-start");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1, "só com a Fase 1 liberada, Iniciar jogo vai direto para a Fase 1");
 
     await fresh(page, { name: "Totó", done: [1] });
     await page.click("#btn-start");
-    ok(await page.isVisible("#levels") && /Fase 1/.test(await page.textContent("#levels-list button:nth-child(1)")) && /1 veterinário/.test(await page.textContent("#levels-list button:nth-child(1)")), "Fase 1 concluída: Iniciar jogo abre a escolha de fase");
-    ok(/2 veterinários/.test(await page.textContent("#levels-list button:nth-child(2)")) && await page.isEnabled("#levels-list button:nth-child(2)"), "a Fase 2 está liberada e mostra os 2 veterinários");
+    ok(await page.isVisible("#levels") && /Fase 1/.test(await page.textContent("#levels-list button:nth-child(1)")) && /1 agente da carrocinha/.test(await page.textContent("#levels-list button:nth-child(1)")), "Fase 1 concluída: Iniciar jogo abre a escolha de fase");
+    ok(/2 agentes da carrocinha/.test(await page.textContent("#levels-list button:nth-child(2)")) && await page.isEnabled("#levels-list button:nth-child(2)"), "a Fase 2 está liberada e mostra os 2 agentes da carrocinha");
     await page.click("#btn-levels-back");
     ok(await page.isVisible("#menu"), "Voltar na escolha de fase retorna ao menu");
     await page.click("#btn-start"); await page.click("#levels-list button:nth-child(2)");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2, "escolher a Fase 2 começa a Fase 2");
-    ok(/Fase 2: 2 veterinários/.test(await page.textContent("#toast")), "aviso de início mostra a Fase 2 e os 2 veterinários");
+    ok(/Fase 2: 2 agentes da carrocinha/.test(await page.textContent("#toast")), "aviso de início mostra a Fase 2 e os 2 agentes da carrocinha");
     ok(await hudIs(page, "#hud-level", "2") && await hudIs(page, "#hud-items", "0/7") && await hudIs(page, "#hud-points", "0"), "placar mostra FASE 2 e RAÇÕES 0/7");
     ok(await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.bone).length) === 2 && await ev(page, () => __game.lives) === 3, "a Fase 2 tem 7 rações + 2 ossos e começa com 3 vidas");
 
-    // veterinários: no centro, 10% mais espertos
+    // agentes da carrocinha: no centro, 10% mais espertos
     const vs = await ev(page, () => __game.vets.map((v) => [Math.floor(v.cx / 32), Math.floor(v.cy / 32)]));
-    ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 veterinários começam no centro do mapa (${vs.join(" e ")})`);
+    ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 agentes da carrocinha começam no centro do mapa (${vs.join(" e ")})`);
     const cfgs = await ev(page, () => { const a = { ...__game.vets[0].cfg }, b = { ...__game.vets[1].cfg }; __game.start(1); return { f2a: a, f2b: b, f1: { ...__game.vets[0].cfg } }; });
     const close = (a, b) => Math.abs(a - b) < 1e-9;
     const up = ["speed", "chaseSpeed", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
     ok(up.every((k) => close(cfgs.f2a[k], cfgs.f1[k] * 1.1)), `Fase 2: velocidade e insistência da perseguição 10% maiores (${up.map((k) => `${k} ${cfgs.f1[k].toFixed(2)}→${cfgs.f2a[k].toFixed(2)}`).join(", ")})`);
     ok(down.every((k) => close(cfgs.f2a[k], cfgs.f1[k] / 1.1)), "Fase 2: ele pensa, descansa e para 10% menos tempo");
-    ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 252 / 1.4 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 veterinários são iguais, e o cachorro (252 px/s) continua pelo menos 40% mais rápido que eles");
+    ok(JSON.stringify(cfgs.f2a) === JSON.stringify(cfgs.f2b) && cfgs.f2a.chaseSpeed < 252 / 1.4 && cfgs.f2a.speed < cfgs.f2a.chaseSpeed, "os 2 agentes da carrocinha são iguais, e o cachorro (252 px/s) continua pelo menos 40% mais rápido que eles");
     ok(cfgs.f1.speed === 55 && cfgs.f1.chaseSpeed === 110 && cfgs.f2a.speed === 60.5 && cfgs.f2a.chaseSpeed === 121, `velocidades exatas (px/s): Fase 1 = ${cfgs.f1.speed} sem "!" e ${cfgs.f1.chaseSpeed} com "!"; Fase 2 = ${cfgs.f2a.speed} e ${cfgs.f2a.chaseSpeed} (os valores da Fase 1 + 10% nos dois modos)`);
     ok(close(cfgs.f1.chaseSpeed / cfgs.f1.speed, 2) && close(cfgs.f2a.chaseSpeed / cfgs.f2a.speed, 2), "em cada fase, perseguindo ele anda o dobro da velocidade de quando patrulha");
 
@@ -884,7 +886,7 @@ const PAGE_HELPERS = () => {
       }
       return { tiles: seen.map((x) => x.size), hits };
     }, G2.MAP);
-    ok(patrol.hits === 0 && patrol.tiles.every((n) => n >= 25), `na Fase 2 os 2 veterinários patrulham (${patrol.tiles.join(" e ")} tiles) sem atravessar paredes nem caixas`);
+    ok(patrol.hits === 0 && patrol.tiles.every((n) => n >= 25), `na Fase 2 os 2 agentes da carrocinha patrulham (${patrol.tiles.join(" e ")} tiles) sem atravessar paredes nem caixas`);
     // os dois perseguem: cachorro à vista, sorteio favorável
     const chase = await ev(page, () => {
       __game.start(2); __game.setRand(() => 0); __game.noCatch = true;
@@ -896,11 +898,11 @@ const PAGE_HELPERS = () => {
       __game.setRand(null);
       return both;
     });
-    ok(chase, "na Fase 2 os dois veterinários conseguem perseguir ao mesmo tempo");
+    ok(chase, "na Fase 2 os dois agentes da carrocinha conseguem perseguir ao mesmo tempo");
 
     // percorre a Fase 2 de verdade (colisões nos corredores): pega as 7 rações e chega à saída
     await playLevel(page, 2, { done: [1] });
-    await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; }); // o corredor central passa perto dos veterinários parados
+    await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; }); // o corredor central passa perto dos agentes da carrocinha parados
     const cur = () => tileOfPlayer(page);
     for (let guard = 0; guard < 10; guard++) {
       const left = (await itemTiles(page)).filter((i) => !i[2]).map((i) => [i[0], i[1]]);
@@ -929,7 +931,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("Fase 3: ossos, blocos que se movem, 2 veterinários, bônus de 20", async () => {
+  await section("Fase 3: ossos, blocos que se movem, 2 agentes da carrocinha, bônus de 20", async () => {
     const L = await (async () => { await fresh(page); return ev(page, () => __game.levels[2]); })();
     const m3 = G3.MAP.join("\n");
 
@@ -937,7 +939,7 @@ const PAGE_HELPERS = () => {
     ok(m3 !== G1.MAP.join("\n") && m3 !== G2.MAP.join("\n"), "o mapa da Fase 3 é diferente dos da Fase 1 e da Fase 2");
     ok(G3.MAP.length === 18 && G3.MAP.every((row) => row.length === 25) && [...G3.MAP[0], ...G3.MAP[17], ...G3.MAP.map((r) => r[0]), ...G3.MAP.map((r) => r[24])].every((ch) => ch === "#"), "Fase 3: mapa 25x18 cercado por paredes");
     const v3 = G3.find("V"), p3 = G3.find("P")[0], e3 = G3.find("E");
-    ok(v3.length === 2 && v3.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `Fase 3: 2 veterinários, no centro do mapa (${v3.join(" e ")})`);
+    ok(v3.length === 2 && v3.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `Fase 3: 2 agentes da carrocinha, no centro do mapa (${v3.join(" e ")})`);
     ok(L.blocks.length === 2, "Fase 3: no máximo 2 blocos se movem (são exatamente 2)");
     // cada bloco desliza em linha reta por chão livre; todos os tiles do trilho são livres
     const track = new Set(), ends = [];
@@ -958,12 +960,12 @@ const PAGE_HELPERS = () => {
     }
     ok(comboOk.every(Boolean), `blocos mudam o caminho, mas nunca o fecham: com os 2 blocos em qualquer ponta (${comboOk.length} combinações) todo o chão fora dos trilhos continua alcançável`);
     const d3 = G3.distances(p3);
-    ok(e3.length === 6 && [...e3, ...v3].every((t) => d3.has(t + "")), "Fase 3: saída (3x2) e veterinários alcançáveis a partir do cachorro");
+    ok(e3.length === 6 && [...e3, ...v3].every((t) => d3.has(t + "")), "Fase 3: saída (3x2) e agentes da carrocinha alcançáveis a partir do cachorro");
 
     // ---- dados da fase ----
     ok(L.rations === 7 && L.bones === 2 && L.extraLives.join() === "1,2" && L.bonusStep === 20, "Fase 3: 7 rações + 2 ossos, 1 a 2 vidas escondidas e bônus de 20 pontos por degrau");
     await playLevel(page, 3, { done: [1, 2] });
-    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.bone).length) === 2 && await ev(page, () => __game.vets.length) === 2, "a Fase 3 começa com 9 itens (7 rações e 2 ossos) e 2 veterinários");
+    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.bone).length) === 2 && await ev(page, () => __game.vets.length) === 2, "a Fase 3 começa com 9 itens (7 rações e 2 ossos) e 2 agentes da carrocinha");
     ok(await hudIs(page, "#hud-level", "3") && await hudIs(page, "#hud-items", "0/7") && await hudIs(page, "#hud-bones", "0/2") && await page.isVisible("#hud-bones-item"), "placar mostra FASE 3, RAÇÕES 0/7 e OSSOS 0/2");
     const lay = await ev(page, () => { const out = []; for (let i = 0; i < 150; i++) { __game.start(3); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; });
     let bad = "";
@@ -976,10 +978,10 @@ const PAGE_HELPERS = () => {
         if (e3.some((t) => t[0] === c && t[1] === r)) bad = "na saída";
         if (track.has(c + "," + r)) bad = "no trilho de um bloco";
         if (!d3.has([c, r] + "")) bad = "inalcançável"; else if (d3.get([c, r] + "") < 4) bad = "perto do início";
-        if (v3.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário";
+        if (v3.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um agente da carrocinha";
       }
     }
-    ok(!bad, `150 sorteios: sempre 7 rações + 2 ossos, em chão livre e alcançável, fora dos trilhos, longe do início/veterinários/saída ${bad && "(" + bad + ")"}`);
+    ok(!bad, `150 sorteios: sempre 7 rações + 2 ossos, em chão livre e alcançável, fora dos trilhos, longe do início/agentes da carrocinha/saída ${bad && "(" + bad + ")"}`);
     ok(lay.some((items) => items.some((i) => i[3] && i[2])) && lay.some((items) => items.some((i) => i[3] && !i[2])), "a vida escondida cai às vezes num osso e às vezes numa ração");
     ok(lay.every((items) => [1, 2].includes(items.filter((i) => i[3]).length)) && lay.every((items) => items.filter((i) => i[3] && i[4]).length <= 1), "e nunca nos dois ossos ao mesmo tempo (sempre 1 ou 2 vidas escondidas, no máximo 1 num osso)");
     ok(new Set(lay.map((items) => items.map((i) => i.slice(0, 2).join()).sort().join("|"))).size >= 140, "os lugares mudam a cada jogo");
@@ -1011,11 +1013,11 @@ const PAGE_HELPERS = () => {
     });
     ok(reloc.bad === 0, `em ${reloc.n} trocas de lugar na Fase 3 nenhum item caiu no trilho de um bloco nem em cima de outro item (${reloc.bad})`);
 
-    // ---- veterinários: +10% de velocidade sobre a Fase 2 ----
+    // ---- agentes da carrocinha: +10% de velocidade sobre a Fase 2 ----
     const cf = await ev(page, () => { __game.start(2); const f2 = { ...__game.vets[0].cfg }; __game.start(3); return { f2, f3a: { ...__game.vets[0].cfg }, f3b: { ...__game.vets[1].cfg } }; });
-    ok(cf.f3a.speed === 66.55 && cf.f3a.chaseSpeed === 133.1 && cf.f2.speed === 60.5 && cf.f2.chaseSpeed === 121, `Fase 3: veterinários a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
+    ok(cf.f3a.speed === 66.55 && cf.f3a.chaseSpeed === 133.1 && cf.f2.speed === 60.5 && cf.f2.chaseSpeed === 121, `Fase 3: agentes da carrocinha a ${cf.f3a.speed} px/s sem o "!" e ${cf.f3a.chaseSpeed} com o "!" (Fase 2: ${cf.f2.speed} e ${cf.f2.chaseSpeed}, +10%)`);
     ok(Math.abs(cf.f3a.speed / cf.f2.speed - 1.1) < 1e-9 && Math.abs(cf.f3a.chaseSpeed / cf.f2.chaseSpeed - 1.1) < 1e-9, "a velocidade de movimento da Fase 3 é exatamente 10% maior que a da Fase 2, nos dois modos");
-    ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 226.8 / 1.4, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 veterinários são iguais e o cachorro (324 px/s) segue mais rápido");
+    ok(["chaseChance", "chaseTime", "chaseMax", "thinkEvery", "restTime", "idleMin", "idleMax"].every((k) => cf.f3a[k] === cf.f2[k]) && JSON.stringify(cf.f3a) === JSON.stringify(cf.f3b) && cf.f3a.chaseSpeed < 226.8 / 1.4, "o resto do comportamento é o da Fase 2 (menos o alcance do !, que é de 6 quadrados), os 2 agentes da carrocinha são iguais e o cachorro (324 px/s) segue mais rápido");
 
     // ---- cachorrinho: 252 px/s (0,7 × os 360 da 0.6.0), 10% mais lento na Fase 3 e +10% por osso ----
     const run1s = (id, x, y, bones = 0) => ev(page, ([id, x, y, bones]) => { __game.start(id); __game.freezeVets = true; __game.noCatch = true; __game.player.x = x; __game.player.y = y; const x0 = __game.player.x; const first = __game.dogSpeed; for (let k = 0; k < bones; k++) { const b = __game.items.find((i) => i.bone && !i.taken); const px = __game.player.x, py = __game.player.y; __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); __game.player.x = px; __game.player.y = py; } __game.items.forEach((i) => { if (!i.taken) { i.x = -500; i.y = -500; } }); const x1 = __game.player.x; __t.hold("d", 60); return [first, __game.dogSpeed, __game.player.x - x1]; }, [id, x, y, bones]);
@@ -1099,7 +1101,7 @@ const PAGE_HELPERS = () => {
       __t.run(260); const v = __game.vets[0], o = __game.vets[1];
       for (const x of __game.vets) { x.cool = 999; x.idle = 99; x.leg = null; x.route = []; }
       o.cx = 12 * 32 + 16; o.cy = 9 * 32 + 16; __game.player.x = 3 * 32 + 4; __game.player.y = 1 * 32 + 4;
-      v.cx = 7 * 32 + 16; v.cy = 3 * 32 + 16; // o veterinário parado onde o bloco da porta 1 vai descer
+      v.cx = 7 * 32 + 16; v.cy = 3 * 32 + 16; // o agente da carrocinha parado onde o bloco da porta 1 vai descer
       let overlap = 0, arrivedAt = null, t = 4.33;
       for (let i = 0; i < 60 * 3; i++) {
         __game.tick(1 / 60); t += 1 / 60; const b = __game.blocks[0];
@@ -1109,8 +1111,8 @@ const PAGE_HELPERS = () => {
       __game.setRand(null);
       return { overlap, arrivedAt, cx: v.cx, cy: v.cy, leg: v.leg };
     });
-    ok(shoveVet.overlap === 0 && shoveVet.arrivedAt !== null && shoveVet.arrivedAt < 6.35, `um veterinário no caminho também não faz o bloco esperar nem é esmagado (fechou aos ${shoveVet.arrivedAt && shoveVet.arrivedAt.toFixed(2)} s)`);
-    ok((shoveVet.cx === 6 * 32 + 16 || shoveVet.cx === 8 * 32 + 16) && shoveVet.cy === 3 * 32 + 16, `o veterinário foi empurrado para o centro do tile livre mais perto (agora em ${shoveVet.cx},${shoveVet.cy})`);
+    ok(shoveVet.overlap === 0 && shoveVet.arrivedAt !== null && shoveVet.arrivedAt < 6.35, `um agente da carrocinha no caminho também não faz o bloco esperar nem é esmagado (fechou aos ${shoveVet.arrivedAt && shoveVet.arrivedAt.toFixed(2)} s)`);
+    ok((shoveVet.cx === 6 * 32 + 16 || shoveVet.cx === 8 * 32 + 16) && shoveVet.cy === 3 * 32 + 16, `o agente da carrocinha foi empurrado para o centro do tile livre mais perto (agora em ${shoveVet.cx},${shoveVet.cy})`);
     // sem nenhum lugar para empurrar (cachorro dentro do nicho, com o bloco logo abaixo): o bloco fica parado em vez de esmagar
     const stuck = await ev(page, () => {
       __game.start(3); __game.freezeVets = true; __game.noCatch = true;
@@ -1131,7 +1133,7 @@ const PAGE_HELPERS = () => {
       const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
       const spots = [[6, 3], [7, 3], [8, 3], [7, 2], [16, 3], [17, 3], [18, 3], [17, 4], [9, 3], [15, 3]];
       for (let i = 0; i < 60 * 150; i++) {
-        if (i % 7 === 0) { // o cachorro e os veterinários são colocados perto das portas, em lugares livres de bloco naquele instante
+        if (i % 7 === 0) { // o cachorro e os agentes da carrocinha são colocados perto das portas, em lugares livres de bloco naquele instante
           const [c, r] = spots[Math.floor(Math.random() * spots.length)], body = { x: c * 32 + 4, y: r * 32 + 4, w: 24, h: 24 };
           if (!rects().some((b) => hit(b, body))) { __game.player.x = body.x; __game.player.y = body.y; }
           const v = __game.vets[i % 2], [c2, r2] = spots[Math.floor(Math.random() * spots.length)], vb = { x: c2 * 32 + 4, y: r2 * 32 + 4, w: 24, h: 24 };
@@ -1145,15 +1147,15 @@ const PAGE_HELPERS = () => {
       __game.setRand(null);
       return { bad, ticks };
     });
-    ok(fuzz.bad === 0, `em ${fuzz.ticks} quadros (150 s) com o cachorro e os veterinários jogados nas portas, nenhum bloco sobrepôs ninguém (${fuzz.bad} sobreposições)`);
+    ok(fuzz.bad === 0, `em ${fuzz.ticks} quadros (150 s) com o cachorro e os agentes da carrocinha jogados nas portas, nenhum bloco sobrepôs ninguém (${fuzz.bad} sobreposições)`);
 
-    // ---- veterinários e blocos ----
+    // ---- agentes da carrocinha e blocos ----
     const vetDoor = await ev(page, () => {
       __game.start(3); __game.noCatch = true; __game.freezeVets = false;
       const v = __game.vets[0], p = __game.player; for (const x of __game.vets) { x.cool = 99; }
       __game.setRand(() => 0);
       const place = () => { v.cx = 6 * 32 + 16; v.cy = 3 * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 5; v.cfg = { ...v.cfg, chaseChance: 1 };
-        __game.vets[1].cx = 12 * 32 + 16; __game.vets[1].cy = 9 * 32 + 16; p.x = 9 * 32 + 4; p.y = 3 * 32 + 4; }; // o veterinário de um lado da porta 1 e o cachorro do outro
+        __game.vets[1].cx = 12 * 32 + 16; __game.vets[1].cy = 9 * 32 + 16; p.x = 9 * 32 + 4; p.y = 3 * 32 + 4; }; // o agente da carrocinha de um lado da porta 1 e o cachorro do outro
       place();
       let chased = false; for (let i = 0; i < 90; i++) { __game.tick(1 / 60); if (v.mode === "chase") chased = true; } // 1,5 s com a porta fechada
       const closedWall = { chased, x: v.cx };
@@ -1163,9 +1165,9 @@ const PAGE_HELPERS = () => {
       __game.setRand(null);
       return { closedWall, chasedAfter };
     });
-    ok(!vetDoor.closedWall.chased && vetDoor.closedWall.x < 7 * 32, "o bloco fechado tapa a visão: o veterinário não vê o cachorro do outro lado da porta nem passa");
+    ok(!vetDoor.closedWall.chased && vetDoor.closedWall.x < 7 * 32, "o bloco fechado tapa a visão: o agente da carrocinha não vê o cachorro do outro lado da porta nem passa");
     ok(vetDoor.chasedAfter, "com a porta aberta ele vê o cachorro e passa a perseguir");
-    // um veterinário que vai passar pela porta fechada ESPERA diante dela (sem entrar no bloco)
+    // um agente da carrocinha que vai passar pela porta fechada ESPERA diante dela (sem entrar no bloco)
     const vetWait = await ev(page, () => {
       __game.start(3); __game.noCatch = true; __game.freezeVets = false; __game.setRand(() => 0.99);
       for (const x of __game.vets) { x.cool = 999; x.idle = 99; x.leg = null; x.route = []; }
@@ -1176,7 +1178,7 @@ const PAGE_HELPERS = () => {
       __game.setRand(null);
       return { x: v.cx, overlap, minGap, closed: b().y === 96 };
     });
-    ok(vetWait.closed && vetWait.overlap === 0 && vetWait.minGap >= -0.01 && vetWait.x > 6 * 32 + 16 && vetWait.x <= 7 * 32 - 12 + 0.01, `o veterinário que vai para a porta fechada anda até encostar e ESPERA diante dela (parou em x=${vetWait.x.toFixed(1)}, sem entrar no bloco que começa em x=224)`);
+    ok(vetWait.closed && vetWait.overlap === 0 && vetWait.minGap >= -0.01 && vetWait.x > 6 * 32 + 16 && vetWait.x <= 7 * 32 - 12 + 0.01, `o agente da carrocinha que vai para a porta fechada anda até encostar e ESPERA diante dela (parou em x=${vetWait.x.toFixed(1)}, sem entrar no bloco que começa em x=224)`);
     const vetsWalk = await ev(page, () => {
       __game.start(3); __game.noCatch = true; __game.freezeVets = false;
       const crossed = new Set(); let overlaps = 0, waits = 0; const prev = __game.vets.map((v) => [v.cx, v.cy]);
@@ -1193,7 +1195,7 @@ const PAGE_HELPERS = () => {
       }
       return { crossed: [...crossed], overlaps, waits };
     });
-    ok(vetsWalk.crossed.length >= 1 && vetsWalk.overlaps === 0 && vetsWalk.waits >= 1, `em 20 minutos simulados de patrulha os veterinários atravessam os corredores das portas (${vetsWalk.crossed.join(" e ") || "nenhum"}), esperaram diante de bloco fechado ${vetsWalk.waits} vezes e nunca sobrepuseram um bloco (${vetsWalk.overlaps})`);
+    ok(vetsWalk.crossed.length >= 1 && vetsWalk.overlaps === 0 && vetsWalk.waits >= 1, `em 20 minutos simulados de patrulha os agentes da carrocinha atravessam os corredores das portas (${vetsWalk.crossed.join(" e ") || "nenhum"}), esperaram diante de bloco fechado ${vetsWalk.waits} vezes e nunca sobrepuseram um bloco (${vetsWalk.overlaps})`);
 
     // ---- pontuação: osso vale 150 (50 + 100 de bônus); bônus de 20 por degrau; todos os itens para sair ----
     await playLevel(page, 3, { done: [1, 2] });
@@ -1238,9 +1240,9 @@ const PAGE_HELPERS = () => {
     await fresh(page, { done: [1] }); await page.click("#btn-start");
     ok(await page.isDisabled("#levels-list button:nth-child(3)") && /bloqueada: termine a Fase 2/.test(await page.textContent("#levels-list button:nth-child(3)")), "só com a Fase 1 concluída, a Fase 3 está bloqueada (termine a Fase 2)");
     await fresh(page, { done: [1, 2] }); await page.click("#btn-start");
-    ok(await page.isEnabled("#levels-list button:nth-child(3)") && /2 veterinários · ossos, poder e blocos móveis/.test(await page.textContent("#levels-list button:nth-child(3)")), "com a Fase 2 concluída, a Fase 3 está liberada e avisa dos ossos, do poder e dos blocos móveis");
+    ok(await page.isEnabled("#levels-list button:nth-child(3)") && /2 agentes da carrocinha · ossos, poder e blocos móveis/.test(await page.textContent("#levels-list button:nth-child(3)")), "com a Fase 2 concluída, a Fase 3 está liberada e avisa dos ossos, do poder e dos blocos móveis");
     await page.click("#levels-list button:nth-child(3)");
-    ok(await ev(page, () => __game.level) === 3 && /Fase 3: 2 veterinários/.test(await page.textContent("#toast")), "escolher a Fase 3 começa a Fase 3");
+    ok(await ev(page, () => __game.level) === 3 && /Fase 3: 2 agentes da carrocinha/.test(await page.textContent("#toast")), "escolher a Fase 3 começa a Fase 3");
     await playLevel(page, 2, { done: [1] }); await ev(page, () => { __game.freezeVets = true; __game.setLives(2); });
     const f2extra = await ev(page, () => __game.items.filter((i) => i.life).length);
     await finishNow(page, 10);
@@ -1290,11 +1292,11 @@ const PAGE_HELPERS = () => {
     const t10 = cl(snap3); t10.bl = [-1, 0];
     const t11 = cl(snap3); t11.items = t11.items.slice(0, 8);
     const t13 = cl(snap3); t13.items[0][0] = 0; t13.items[0][1] = 0;                 // item dentro de uma parede
-    const t14 = cl(snap3); t14.vets[0] = [10, 10];                                  // veterinário dentro de uma parede
+    const t14 = cl(snap3); t14.vets[0] = [10, 10];                                  // agente da carrocinha dentro de uma parede
     const t15 = cl(snap3); t15.time = -5;                                           // tempo negativo
     const rs = [];
     for (const t of [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t13, t14, t15]) rs.push(await parse(t));
-    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 3 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos, item na parede, veterinário na parede, tempo negativo): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
+    ok(rs.every((r) => r === false), `saves adulterados da Fase 3 são recusados (0 ossos, 3 ossos, sem vida escondida, 3 vidas, sem blocos, bloco a menos, item no trilho, cachorro dentro da parede, formato antigo, relógio negativo, item a menos, item na parede, agente da carrocinha na parede, tempo negativo): ${rs.map((r) => (r ? "V" : "x")).join("")}`);
     // um jogo salvo com o cachorro no lugar de um bloco (os blocos agora andam num ciclo novo) é aceito: ao carregar, ele é empurrado para fora
     const t12 = cl(snap3); t12.p = { x: 7 * 32 + 2, y: 3 * 32 + 4, f: "right" }; t12.bl = [0, 0];
     ok(await parse(t12), "um jogo salvo com o cachorro no lugar de um bloco é aceito (ele é empurrado para o lado ao carregar)");
@@ -1348,18 +1350,18 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("Fase 4: labirinto grande, 3 veterinários, poder do osso, blocos que esmagam, 800 pontos", async () => {
+  await section("Fase 4: labirinto grande, 3 agentes da carrocinha, poder do osso, blocos que esmagam, 800 pontos", async () => {
     const L = await (async () => { await fresh(page); return ev(page, () => __game.levels[3]); })();
     const v4 = G4.find("V"), p4 = G4.find("P")[0], e4 = G4.find("E");
     // ---- mapa ----
     ok(G4.MAP.length === 29 && G4.MAP.every((row) => row.length === 41) && [...G4.MAP[0], ...G4.MAP[28], ...G4.MAP.map((r) => r[0]), ...G4.MAP.map((r) => r[40])].every((ch) => ch === "#"), "Fase 4: mapa de 41 × 29 tiles (maior que a tela), cercado por paredes");
-    ok(v4.length === 3 && v4.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2), `Fase 4: 3 veterinários, no centro do mapa (${v4.join(" e ")})`);
+    ok(v4.length === 3 && v4.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2), `Fase 4: 3 agentes da carrocinha, no centro do mapa (${v4.join(" e ")})`);
     ok(e4.length === 6 && G4.find("P").length === 1, "Fase 4: saída de 3 × 2 tiles e um só início");
     let corridors = 0, floors = 0;
     for (let r = 1; r < 28; r++) for (let c = 1; c < 40; c++) if (G4.free(c, r)) { floors++; const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => G4.free(c + dc, r + dr)).length; if (n <= 2) corridors++; }
     ok(floors > 450 && corridors / floors > 0.55, `Fase 4: é um labirinto (${corridors} dos ${floors} tiles livres são corredores, curvas ou pontas)`);
     const d4 = G4.distances(p4);
-    ok([...e4, ...v4].every((t) => d4.has(t + "")) && d4.get(e4[0] + "") >= 60, `Fase 4: saída e veterinários alcançáveis; o caminho do início à saída tem ${d4.get(e4[0] + "")} passos`);
+    ok([...e4, ...v4].every((t) => d4.has(t + "")) && d4.get(e4[0] + "") >= 60, `Fase 4: saída e agentes da carrocinha alcançáveis; o caminho do início à saída tem ${d4.get(e4[0] + "")} passos`);
     ok(L.blocks.length === 3, "Fase 4: 3 blocos se movem");
     const ends = L.blocks.map((b) => [b.from, b.to]), track = new Set(ends.flat().map((e) => e + ""));
     ok(ends.every(([a, b]) => (a[0] === b[0] || a[1] === b[1]) && Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1 && G4.free(...a) && G4.free(...b)), "Fase 4: cada bloco desliza 1 tile entre duas casas livres (a porta e o nicho)");
@@ -1378,8 +1380,8 @@ const PAGE_HELPERS = () => {
     // ---- dados da fase ----
     ok(L.rations === 15 && L.bones === 2 && L.extraLives.join() === "3,3" && L.bonusStep === 20 && L.alertTiles === 8 && L.lifePenalty === 200 && L.minPoints === 800 && L.bonePower === 30 && L.crush === true, "Fase 4: 15 rações + 2 ossos, 3 vidas escondidas, ! a 8 quadrados, −200 por vida, mínimo de 800 pontos, poder do osso de 30 s e blocos que esmagam");
     await playLevel(page, 4, { done: [1, 2, 3] });
-    ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.lives, __game.blocks.length].join()) === "4,17,2,3,3,3", "a Fase 4 começa com 17 itens (15 rações e 2 ossos), 3 veterinários, 3 vidas e 3 blocos");
-    ok(/Fase 4: 3 veterinários · mínimo de 800 pontos/.test(await page.textContent("#toast")), "o aviso do começo fala dos 3 veterinários e dos 800 pontos");
+    ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.lives, __game.blocks.length].join()) === "4,17,2,3,3,3", "a Fase 4 começa com 17 itens (15 rações e 2 ossos), 3 agentes da carrocinha, 3 vidas e 3 blocos");
+    ok(/Fase 4: 3 agentes da carrocinha · mínimo de 800 pontos/.test(await page.textContent("#toast")), "o aviso do começo fala dos 3 agentes da carrocinha e dos 800 pontos");
     ok(await hudIs(page, "#hud-level", "4") && await hudIs(page, "#hud-items", "0/15") && await hudIs(page, "#hud-bones", "0/2") && await hudIs(page, "#hud-points", "0 / 800") && await page.isVisible("#hud-power-item") && await hudIs(page, "#hud-power", "—"), "placar: FASE 4, RAÇÕES 0/15, OSSOS 0/2, PONTOS 0 / 800 e PODER —");
     const lay = await ev(page, () => { const out = []; for (let i = 0; i < 150; i++) { __game.start(4); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; });
     let bad = "";
@@ -1393,10 +1395,10 @@ const PAGE_HELPERS = () => {
         if (e4.some((t) => t[0] === c && t[1] === r)) bad = "na saída";
         if (track.has(c + "," + r)) bad = "no trilho de um bloco";
         if (!d4.has([c, r] + "")) bad = "inalcançável"; else if (d4.get([c, r] + "") < 4) bad = "perto do início";
-        if (v4.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário";
+        if (v4.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um agente da carrocinha";
       }
     }
-    ok(!bad, `150 sorteios: sempre 15 rações + 2 ossos e exatamente 3 vidas escondidas (no máximo 1 num osso), em chão livre e alcançável, fora dos trilhos, longe do início/veterinários/saída ${bad && "(" + bad + ")"}`);
+    ok(!bad, `150 sorteios: sempre 15 rações + 2 ossos e exatamente 3 vidas escondidas (no máximo 1 num osso), em chão livre e alcançável, fora dos trilhos, longe do início/agentes da carrocinha/saída ${bad && "(" + bad + ")"}`);
     ok(lay.some((items) => items.some((i) => i[3] && i[2])) && lay.some((items) => items.every((i) => !(i[3] && i[2]))), "às vezes um osso traz vida, às vezes só rações");
     ok(new Set(lay.map((items) => items.map((i) => i.slice(0, 2).join()).sort().join("|"))).size >= 140, "os lugares mudam a cada jogo");
 
@@ -1406,10 +1408,10 @@ const PAGE_HELPERS = () => {
       __game.freezeVets = true; __game.noCatch = true; __game.items.forEach((i) => { i.x = -500; i.y = -500; }); __game.player.x = 36; __game.player.y = 27 * 32 + 4; const x0 = __game.player.x; __t.hold("d", 60);
       return { f3, d3, f4, d4: __game.dogSpeed, moved: __game.player.x - x0 };
     });
-    ok(sp.f4.every((c) => c.speed === 73.21 && c.chaseSpeed === 146.41) && Math.abs(sp.f4[0].speed / sp.f3.speed - 1.1) < 1e-3 && Math.abs(sp.f4[0].chaseSpeed / sp.f3.chaseSpeed - 1.1) < 1e-3,  `Fase 4: veterinários 10% mais rápidos que na Fase 3, nos dois modos (${sp.f3.speed} → ${sp.f4[0].speed} sem o ! e ${sp.f3.chaseSpeed} → ${sp.f4[0].chaseSpeed} com o !)`);
+    ok(sp.f4.every((c) => c.speed === 73.21 && c.chaseSpeed === 146.41) && Math.abs(sp.f4[0].speed / sp.f3.speed - 1.1) < 1e-3 && Math.abs(sp.f4[0].chaseSpeed / sp.f3.chaseSpeed - 1.1) < 1e-3,  `Fase 4: agentes da carrocinha 10% mais rápidos que na Fase 3, nos dois modos (${sp.f3.speed} → ${sp.f4[0].speed} sem o ! e ${sp.f3.chaseSpeed} → ${sp.f4[0].chaseSpeed} com o !)`);
     ok(Math.abs(sp.d4 / sp.d3 - 1.05) < 1e-9 && Math.abs(sp.d4 - 238.14) < 1e-9 && Math.abs(sp.moved - 238.14) < 2, `Fase 4: o cachorrinho fica 5% mais rápido que na Fase 3 (${sp.d3} → ${sp.d4} px/s; andou ${sp.moved.toFixed(1)} px em 1 s)`);
-    ok(JSON.stringify(sp.f4[0]) === JSON.stringify(sp.f4[1]) && JSON.stringify(sp.f4[1]) === JSON.stringify(sp.f4[2]) && sp.f4[0].sight === 8 * 32 && sp.f4[0].chaseChance === 1, "os 3 veterinários são iguais; o ! liga a 8 quadrados, sem sorteio");
-    // alcance do !: corredor livre na linha 27 (colunas 1 a 15); veterinário na coluna 9
+    ok(JSON.stringify(sp.f4[0]) === JSON.stringify(sp.f4[1]) && JSON.stringify(sp.f4[1]) === JSON.stringify(sp.f4[2]) && sp.f4[0].sight === 8 * 32 && sp.f4[0].chaseChance === 1, "os 3 agentes da carrocinha são iguais; o ! liga a 8 quadrados, sem sorteio");
+    // alcance do !: corredor livre na linha 27 (colunas 1 a 15); agente da carrocinha na coluna 9
     const probe = (dx) => ev(page, (dx) => {
       __game.start(4); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = false;
       __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // nenhum osso (poder) no caminho da sonda
@@ -1434,7 +1436,7 @@ const PAGE_HELPERS = () => {
     });
     ok(Math.abs(pw1.after.power - 30) < 0.05 && pw1.after.bones === 1 && /Poder do osso por 30 s/.test(pw1.after.toast), `pegar um osso liga o poder por 30 s (${pw1.after.power.toFixed(2)} s) e avisa`);
     ok(pw1.after.score === 150 && Math.abs(pw1.after.speed - 238.14 * 1.1) < 1e-6, `o osso dá 150 pontos (50 + 100 de bônus) e deixa o cachorrinho 10% mais rápido (${pw1.after.speed.toFixed(1)} px/s)`);
-    ok(!pw1.chased && pw1.lost === 0 && pw1.state === "playing", "com o poder, os veterinários (carteiros) não perseguem nem pegam o cachorro, mesmo com ele à vista");
+    ok(!pw1.chased && pw1.lost === 0 && pw1.state === "playing", "com o poder, os agentes da carrocinha (carteiros) não perseguem nem pegam o cachorro, mesmo com ele à vista");
     await page.waitForTimeout(200);
     const hudP = await ev(page, () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve([document.getElementById("hud-power").textContent, __game.power])))));
     ok(/^\d+ s$/.test(hudP[0]) && parseInt(hudP[0]) === Math.ceil(hudP[1]), `o placar mostra o poder que falta, em segundos (${hudP[0]})`);
@@ -1475,7 +1477,7 @@ const PAGE_HELPERS = () => {
       for (let i = 0; i < 180; i++) { __game.tick(1 / 60); const s = Math.hypot(v0.cx - px, v0.cy - py) * 60; if (s > 0.01 && s < 200) slow.push(s); px = v0.cx; py = v0.cy; }
       return { normalMax: Math.max(...normal), slowMax: Math.max(...slow), cfg: v0.cfg.speed };
     });
-    ok(Math.abs(slowSpeed.normalMax - slowSpeed.cfg) < 0.6 && Math.abs(slowSpeed.slowMax - slowSpeed.cfg / 2) < 0.4, `o carteiro atingido anda 50% mais devagar que a velocidade da fase (${slowSpeed.normalMax.toFixed(1)} → ${slowSpeed.slowMax.toFixed(1)} px/s; a fase dá ${slowSpeed.cfg})`);
+    ok(Math.abs(slowSpeed.normalMax - slowSpeed.cfg * 1.25) < 0.8 && Math.abs(slowSpeed.slowMax - slowSpeed.cfg * 1.25 / 2) < 0.5, `o carteiro foge a 1,25 × a patrulha da fase e, atingido, anda 50% mais devagar (${slowSpeed.normalMax.toFixed(1)} → ${slowSpeed.slowMax.toFixed(1)} px/s; a patrulha da fase é ${slowSpeed.cfg})`);
     const end1 = await ev(page, () => {
       __game.start(4); __game.items.forEach((i) => { i.life = false; }); __game.setRand(() => 0.99); __game.freezeVets = false;
       const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
@@ -1486,21 +1488,21 @@ const PAGE_HELPERS = () => {
       o.power = __game.power; o.slowAfter = __game.vets.some((v) => v.slow); o.t = __game.time; o.invuln = __game.invuln; o.toast = document.getElementById("toast").textContent; o.lives = __game.lives; o.score = __game.score;
       return o;
     });
-    ok(end1.slowBefore && Math.abs(end1.mid[0] - 15) < 0.4 && end1.power === 0 && !end1.slowAfter && Math.abs(end1.t - 30) < 0.2, `aos 30 s o poder acaba e os carteiros voltam a ser veterinários na velocidade normal (meio do poder: ${end1.mid[0].toFixed(1)} s)`);
+    ok(end1.slowBefore && Math.abs(end1.mid[0] - 15) < 0.4 && end1.power === 0 && !end1.slowAfter && Math.abs(end1.t - 30) < 0.2, `aos 30 s o poder acaba e os carteiros voltam a ser agentes da carrocinha na velocidade normal (meio do poder: ${end1.mid[0].toFixed(1)} s)`);
     ok(/O poder acabou/.test(end1.toast) && end1.invuln > 0.5, "o fim do poder avisa e dá proteção ao cachorrinho");
     const grace = await ev(page, () => {
       __game.start(4); __game.items.forEach((i) => { i.life = false; }); __game.setRand(() => 0.99); __game.freezeVets = false;
       const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
       for (let i = 0; i < 595; i++) __game.tick(0.05); // faltam ~0,2 s
       for (const v of __game.vets) { v.idle = 99; v.leg = null; v.route = []; v.hitCool = 99; }
-      const v1 = __game.vets[1], p = __game.player; v1.cx = p.x + 12; v1.cy = p.y + 12; // um veterinário (ainda carteiro) em cima do cachorro
+      const v1 = __game.vets[1], p = __game.player; v1.cx = p.x + 12; v1.cy = p.y + 12; // um agente da carrocinha (ainda carteiro) em cima do cachorro
       for (let i = 0; i < 12; i++) { __game.tick(0.05); }
       const r = { power: __game.power, lives: __game.lives, inv: __game.invuln };
       for (let i = 0; i < 40; i++) __game.tick(0.05);
       r.lives3 = __game.lives;
       return r;
     });
-    ok(grace.lives === 3 && grace.power === 0 && grace.inv > 0, "quando o poder acaba com um veterinário em cima do cachorro, ele não é pego na hora (1 s de proteção)");
+    ok(grace.lives === 3 && grace.power === 0 && grace.inv > 0, "quando o poder acaba com um agente da carrocinha em cima do cachorro, ele não é pego na hora (1 s de proteção)");
     const refresh = await ev(page, () => {
       __game.start(4); __game.items.forEach((i) => { i.life = false; }); __game.setRand(() => 0.99); __game.freezeVets = true;
       const bones = __game.items.filter((i) => i.bone), go = (b) => { __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); };
@@ -1522,7 +1524,7 @@ const PAGE_HELPERS = () => {
       const before = v.mode; const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
       return { before, after: v.mode, power: __game.power };
     });
-    ok(chase0.before === "chase" && chase0.after === "patrol" && chase0.power > 29, "pegar o osso com um veterinário perseguindo faz ele largar a perseguição (vira carteiro)");
+    ok(chase0.before === "chase" && chase0.after === "flee" && chase0.power > 29, "pegar o osso com um agente da carrocinha perseguindo faz ele largar a perseguição e fugir (vira carteiro)");
 
     // ---- blocos esmagam ----
     const squash = await ev(page, () => {
@@ -1550,7 +1552,7 @@ const PAGE_HELPERS = () => {
       __t.run(120);
       return { lives: __game.lives, vx: v.cx, vy: v.cy, blockY: __game.blocks[0].y };
     });
-    ok(vetSafe.lives === 3 && vetSafe.blockY === 96 && (vetSafe.vx === 31 * 32 + 16 || vetSafe.vx === 33 * 32 + 16) && vetSafe.vy === 3 * 32 + 16, "um veterinário no caminho do bloco é empurrado (não esmagado) e o bloco chega no horário");
+    ok(vetSafe.lives === 3 && vetSafe.blockY === 96 && (vetSafe.vx === 31 * 32 + 16 || vetSafe.vx === 33 * 32 + 16) && vetSafe.vy === 3 * 32 + 16, "um agente da carrocinha no caminho do bloco é empurrado (não esmagado) e o bloco chega no horário");
     const fuzz = await ev(page, () => {
       __game.start(4); __game.freezeVets = false; __game.noCatch = true; __game.setRand(() => Math.random());
       let bad = 0; const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -1560,7 +1562,7 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); return bad;
     });
-    ok(fuzz === 0, `em 90 s de jogo de verdade com 3 veterinários patrulhando, nenhum bloco sobrepôs um veterinário (${fuzz})`);
+    ok(fuzz === 0, `em 90 s de jogo de verdade com 3 agentes da carrocinha patrulhando, nenhum bloco sobrepôs um agente da carrocinha (${fuzz})`);
 
     // ---- pontos: −200 por vida; a saída abre ao chegar a 800 pontos na fase ----
     await playLevel(page, 4, { done: [1, 2, 3] });
@@ -1604,7 +1606,7 @@ const PAGE_HELPERS = () => {
     // sem vidas: tela de fim de jogo e Tentar novamente (−100)
     await playLevel(page, 4, { done: [1, 2, 3] });
     for (let k = 0; k < 3; k++) await catchOnce(page);
-    ok(await ev(page, () => __game.state) === "lost" && /O veterinário pegou o cachorrinho/.test(await page.textContent("#lose-title")) && /Acabaram as suas vidas/.test(await page.textContent("#lose-lead")) && /\(mínimo 800\)/.test(await page.textContent("#lose-text")), "sem vidas, a tela de fim de jogo diz o mínimo de pontos da fase");
+    ok(await ev(page, () => __game.state) === "lost" && /A carrocinha pegou o cachorrinho/.test(await page.textContent("#lose-title")) && /Acabaram as suas vidas/.test(await page.textContent("#lose-lead")) && /\(mínimo 800\)/.test(await page.textContent("#lose-text")), "sem vidas, a tela de fim de jogo diz o mínimo de pontos da fase");
     await page.click("#btn-retry");
     ok(await ev(page, () => [__game.level, __game.retries, __game.score, __game.items.length].join()) === "4,1,-100,17" && /Tentativa extra 1 de 3/.test(await page.textContent("#toast")), "Tentar novamente recomeça a Fase 4 do zero com −100 pontos");
     // esmagado na última vida
@@ -1621,7 +1623,7 @@ const PAGE_HELPERS = () => {
     ok(b4.disabled && /bloqueada: termine a Fase 3/.test(b4.text), "a Fase 4 está bloqueada até terminar a Fase 3");
     await fresh(page, { done: [1, 2, 3] }); await page.click("#btn-start");
     const b4b = await page.evaluate(() => { const b = document.querySelector("#levels-list button:nth-child(4)"); return { disabled: b.disabled, text: b.textContent }; });
-    ok(!b4b.disabled && /3 veterinários · labirinto grande, poder dos ossos e blocos que esmagam/.test(b4b.text), `com a Fase 3 concluída a Fase 4 abre (${b4b.text})`);
+    ok(!b4b.disabled && /3 agentes da carrocinha · labirinto grande, poder dos ossos e blocos que esmagam/.test(b4b.text), `com a Fase 3 concluída a Fase 4 abre (${b4b.text})`);
     await page.click("#levels-list button:nth-child(4)");
     ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 4, "escolher a Fase 4 começa a Fase 4");
     await playLevel(page, 4, { done: [1, 2, 3] }); await finishNow(page, 10);
@@ -1695,9 +1697,9 @@ const PAGE_HELPERS = () => {
     // ---- mapa ----
     ok(G5.MAP.length === 29 && G5.MAP.every((row) => row.length === 41) && [...G5.MAP[0], ...G5.MAP[28], ...G5.MAP.map((r) => r[0]), ...G5.MAP.map((r) => r[40])].every((ch) => ch === "#"), "Fase 5: mapa de 41 × 29 tiles, cercado por paredes");
     ok(G5.MAP.join("\n") !== G4.MAP.join("\n"), "o mapa da Fase 5 é outro");
-    ok(v5.length === 3 && v5.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2) && e5.length === 6 && G5.find("P").length === 1, `Fase 5: 3 veterinários no centro (${v5.join(" e ")}), saída 3 × 2 e um só início`);
+    ok(v5.length === 3 && v5.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2) && e5.length === 6 && G5.find("P").length === 1, `Fase 5: 3 agentes da carrocinha no centro (${v5.join(" e ")}), saída 3 × 2 e um só início`);
     const d5 = G5.distances(p5);
-    ok([...e5, ...v5].every((t) => d5.has(t + "")) && d5.get(e5[0] + "") >= 60, `Fase 5: saída e veterinários alcançáveis (caminho de ${d5.get(e5[0] + "")} passos)`);
+    ok([...e5, ...v5].every((t) => d5.has(t + "")) && d5.get(e5[0] + "") >= 60, `Fase 5: saída e agentes da carrocinha alcançáveis (caminho de ${d5.get(e5[0] + "")} passos)`);
     const walls = L.blocks.filter((b) => b.wall), doors = L.blocks.filter((b) => !b.wall);
     ok(L.blocks.length === 6 && walls.length === 3 && doors.length === 3, "Fase 5: 3 paredes que se movem e 3 portas de bloco");
     ok(walls.every((w) => w.size && w.size.join() === (w.from[0] === w.to[0] ? "1,3" : "3,1") && w.every === 10), "cada parede tem 3 tiles de comprimento e muda de lugar a cada 10 s");
@@ -1721,7 +1723,7 @@ const PAGE_HELPERS = () => {
     const cf = await ev(page, () => { __game.start(4); const a = { ...__game.vets[0].cfg }, da = __game.dogSpeed; __game.start(5); return { a, da, b: [0, 1, 2].map((i) => ({ ...__game.vets[i].cfg })), db: __game.dogSpeed, n: __game.vets.length }; });
     ok(cf.n === 3 && cf.b.every((c) => c.speed === 73.21 && c.chaseSpeed === 146.41 && c.sight === 320 && c.chaseChance === 1) && cf.db === cf.da && cf.a.speed === cf.b[0].speed, "Fase 5: mantém as velocidades da Fase 4 (73,21 / 146,41 px/s e 238,14 do cachorro); o ! liga a 10 quadrados");
     await playLevel(page, 5, { done: [1, 2, 3, 4] });
-    ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.blocks.length].join()) === "5,22,2,3,6" && await hudIs(page, "#hud-points", "0 / 1000") && await hudIs(page, "#hud-items", "0/20") && await hudIs(page, "#hud-bones", "0/2"), "a Fase 5 começa com 20 rações + 2 ossos, 3 veterinários, 6 peças móveis e placar PONTOS 0 / 1000");
+    ok(await ev(page, () => [__game.level, __game.items.length, __game.items.filter((i) => i.bone).length, __game.vets.length, __game.blocks.length].join()) === "5,22,2,3,6" && await hudIs(page, "#hud-points", "0 / 1000") && await hudIs(page, "#hud-items", "0/20") && await hudIs(page, "#hud-bones", "0/2"), "a Fase 5 começa com 20 rações + 2 ossos, 3 agentes da carrocinha, 6 peças móveis e placar PONTOS 0 / 1000");
     const lay = await ev(page, () => { const out = []; for (let i = 0; i < 150; i++) { __game.start(5); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; });
     let bad = "";
     for (const items of lay) {
@@ -1734,7 +1736,7 @@ const PAGE_HELPERS = () => {
         if (e5.some((t) => t[0] === c && t[1] === r)) bad = "na saída";
         if (track.has(c + "," + r)) bad = "no trilho de uma peça móvel";
         if (!d5.has([c, r] + "")) bad = "inalcançável"; else if (d5.get([c, r] + "") < 4) bad = "perto do início";
-        if (v5.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário";
+        if (v5.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um agente da carrocinha";
       }
     }
     ok(!bad, `150 sorteios: 20 rações + 2 ossos, exatamente 4 vidas escondidas (no máximo 1 num osso), em chão livre e alcançável, fora dos trilhos ${bad && "(" + bad + ")"}`);
@@ -1795,7 +1797,7 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); return bad;
     });
-    ok(fz === 0, `em 130 s com 3 veterinários patrulhando, nenhuma peça móvel sobrepôs um veterinário (${fz})`);
+    ok(fz === 0, `em 130 s com 3 agentes da carrocinha patrulhando, nenhuma peça móvel sobrepôs um agente da carrocinha (${fz})`);
 
     // ---- pontos: a saída abre com 1000 pontos na fase (a regra está testada na seção da Fase 4) ----
     await playLevel(page, 5, { done: [1, 2, 3, 4] });
@@ -1810,7 +1812,7 @@ const PAGE_HELPERS = () => {
     ok(await page.evaluate(() => document.querySelector("#levels-list button:nth-child(5)").disabled && /bloqueada: termine a Fase 4/.test(document.querySelector("#levels-list button:nth-child(5)").textContent)), "a Fase 5 está bloqueada até terminar a Fase 4");
     await fresh(page, { done: [1, 2, 3, 4] }); await page.click("#btn-start");
     const b5 = await page.evaluate(() => { const b = document.querySelector("#levels-list button:nth-child(5)"); return { disabled: b.disabled, text: b.textContent }; });
-    ok(!b5.disabled && /3 veterinários · paredes que se movem, poder do osso de 35 s e 1000 pontos/.test(b5.text), `com a Fase 4 concluída a Fase 5 abre (${b5.text})`);
+    ok(!b5.disabled && /3 agentes da carrocinha · paredes que se movem, poder do osso de 35 s e 1000 pontos/.test(b5.text), `com a Fase 4 concluída a Fase 5 abre (${b5.text})`);
 
     // ---- jogo salvo na Fase 5 ----
     await playLevel(page, 5, { done: [1, 2, 3, 4], keepSave: true });
@@ -1847,7 +1849,7 @@ const PAGE_HELPERS = () => {
     // esmagamento: nas Fases 1 a 3 o bloco nunca esmaga (o cachorro é empurrado); na Fase 4 esmaga, mas não quem está na proteção depois de perder uma vida
     const crush = await ev(page, () => {
       const out = {};
-      // Fase 3 com o veterinário "ligado" (noCatch desligado): o cachorro parado onde o bloco 1 vai chegar é empurrado, não esmagado
+      // Fase 3 com o agente da carrocinha "ligado" (noCatch desligado): o cachorro parado onde o bloco 1 vai chegar é empurrado, não esmagado
       __game.start(3, { active: [0] }); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.x = -500; i.y = -500; });
       __game.player.x = 7 * 32 + 4; __game.player.y = 2 * 32 + 4; for (let i = 0; i < 160; i++) __game.tick(0.05);
       out.f3 = { lives: __game.lives, lost: __game.livesLost, state: __game.state, pushed: __game.player.x !== 7 * 32 + 4 || __game.player.y !== 2 * 32 + 4 };
@@ -1890,7 +1892,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("leva 2 da 0.6.0: blocos sorteados, veterinários espalhados, menu de fases anteriores, tabela das fases", async () => {
+  await section("leva 2 da 0.6.0: blocos sorteados, agentes da carrocinha espalhados, menu de fases anteriores, tabela das fases", async () => {
     // ---- a quantidade de blocos/paredes é sorteada a cada jogo ----
     await playLevel(page, 3, { done: [1, 2], keepSave: true });
     const rnd = await ev(page, () => {
@@ -1929,7 +1931,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-continue");
     ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.blocks.map((b) => b.i).join()) === "1", "continuar volta com a mesma peça (só a porta 2)");
 
-    // ---- veterinários espalhados: não andam colados nem se sobrepõem ----
+    // ---- agentes da carrocinha espalhados: não andam colados nem se sobrepõem ----
     // 6 minutos simulados por fase com sorteio fixo (2 sementes): mede o tempo sobrepostos (< 16 px), a menos de 3 tiles e a maior sequência seguida a menos de 3 tiles
     const sep = await ev(page, () => {
       const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -1951,28 +1953,28 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); return out;
     });
-    ok([2, 3, 4, 5].every((l) => sep[l].overlap <= 60), `em 6 minutos simulados (2 sorteios) os veterinários quase nunca ficam um em cima do outro: no máximo 1 s sobrepostos em cada fase (quadros sobrepostos: ${[2, 3, 4, 5].map((l) => sep[l].overlap).join(", ")})`);
+    ok([2, 3, 4, 5].every((l) => sep[l].overlap <= 60), `em 6 minutos simulados (2 sorteios) os agentes da carrocinha quase nunca ficam um em cima do outro: no máximo 1 s sobrepostos em cada fase (quadros sobrepostos: ${[2, 3, 4, 5].map((l) => sep[l].overlap).join(", ")})`);
     ok([2, 3, 4, 5].every((l) => sep[l].near / sep[l].pairs < 0.1), `e raramente andam juntos: tempo a menos de 3 tiles de distância ${[2, 3, 4, 5].map((l) => (100 * sep[l].near / sep[l].pairs).toFixed(1) + "%").join(", ")} (Fases 2 a 5)`);
     ok([2, 3, 4, 5].every((l) => sep[l].maxStreak <= 15 * 60), `e nunca andam em fila por muito tempo: a maior sequência a menos de 3 tiles dura ${[2, 3, 4, 5].map((l) => (sep[l].maxStreak / 60).toFixed(1) + " s").join(", ")} (Fases 2 a 5)`);
-    // o carteiro atingido volta ao posto; se outro veterinário estiver nele, vai para o tile livre mais perto (nunca fica em cima de outro)
+    // o carteiro atingido volta ao posto; se outro agente da carrocinha estiver nele, vai para o tile livre mais perto (nunca fica em cima de outro)
     const post = await ev(page, () => {
       __game.start(4); __game.setRand(() => 0.99); __game.noCatch = true; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
       const bone = __game.items.find((i) => i.bone), p = __game.player, [v0, v1] = __game.vets;
       p.x = bone.x - 4; p.y = bone.y - 4; __game.tick(0.01);
-      v1.cx = v0.sx + 4; v1.cy = v0.sy; // outro veterinário parado em cima do posto do 0
+      v1.cx = v0.sx + 4; v1.cy = v0.sy; // outro agente da carrocinha parado em cima do posto do 0
       __game.freezeVets = false; for (const o of __game.vets) { o.idle = 99; o.leg = null; o.route = []; }
       v0.cx = v0.sx + 5 * 32; v0.cy = v0.sy; // o 0 está longe do posto; o cachorro o atinge ali
       p.x = v0.cx - 12; p.y = v0.cy - 12; __game.tick(0.01);
       return { d: Math.hypot(v0.cx - v1.cx, v0.cy - v1.cy), postmen: __game.postmen, atPost: Math.hypot(v0.cx - v0.sx, v0.cy - v0.sy) };
     });
-    ok(post.postmen === 1 && post.d >= 32 && post.atPost <= 64, `com outro veterinário no posto, o carteiro atingido volta ao tile livre mais perto (${post.d.toFixed(0)} px do outro, ${post.atPost.toFixed(0)} px do posto)`);
-    // "Continuar jogo" separa dois veterinários que foram salvos no mesmo tile
+    ok(post.postmen === 1 && post.d >= 32 && post.atPost <= 64, `com outro agente da carrocinha no posto, o carteiro atingido volta ao tile livre mais perto (${post.d.toFixed(0)} px do outro, ${post.atPost.toFixed(0)} px do posto)`);
+    // "Continuar jogo" separa dois agentes da carrocinha que foram salvos no mesmo tile
     await ev(page, () => { __game.start(4); __game.freezeVets = true; __game.save(); });
     await ev(page, () => { const st = Records.createStore(localStorage), g = st.loadGame("Totó"); g.snap.vets[1] = g.snap.vets[2].slice(); st.saveGame("Totó", g.snap); });
     await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
     const cont = await ev(page, () => { const [a, b, c] = __game.vets; return [Math.hypot(a.cx - b.cx, a.cy - b.cy), Math.hypot(b.cx - c.cx, b.cy - c.cy), Math.hypot(a.cx - c.cx, a.cy - c.cy)]; });
-    ok(cont.every((d) => d >= 32), `ao continuar um jogo salvo com dois veterinários no mesmo tile, eles voltam separados (${cont.map((d) => d.toFixed(0)).join(", ")} px)`);
-    // Fase 3 jogada no toque: veterinários 10% mais lentos (só nela); nas outras fases nada muda
+    ok(cont.every((d) => d >= 32), `ao continuar um jogo salvo com dois agentes da carrocinha no mesmo tile, eles voltam separados (${cont.map((d) => d.toFixed(0)).join(", ")} px)`);
+    // Fase 3 jogada no toque: agentes da carrocinha 10% mais lentos (só nela); nas outras fases nada muda
     const ease = await ev(page, () => {
       const run = (id, touchMode, row, c0) => {
         __game.start(id); __game.noCatch = true; __game.freezeVets = false; __game.setRand(() => 0.99); __game.touchInput = touchMode;
@@ -1983,18 +1985,18 @@ const PAGE_HELPERS = () => {
       };
       const r = { f3k: run(3, false, 15, 1), f3t: run(3, true, 15, 1), f2t: run(2, true, 14, 1) }; __game.setRand(null); return r;
     });
-    ok(Math.abs(ease.f3k.speed - 66.55) < 0.5 && !ease.f3k.assist && Math.abs(ease.f3t.speed - 59.9) < 0.5 && ease.f3t.assist && Math.abs(ease.f2t.speed - 60.5) < 0.5 && !ease.f2t.assist, `Fase 3 no toque: veterinários a ${ease.f3t.speed.toFixed(1)} px/s em vez de ${ease.f3k.speed.toFixed(1)} (10% mais lentos); a Fase 2 no toque segue em ${ease.f2t.speed.toFixed(1)}`);
-    // a perseguição se espalha: dois veterinários atrás do cachorro, num mapa com dois caminhos, vêm por caminhos diferentes
+    ok(Math.abs(ease.f3k.speed - 66.55) < 0.5 && !ease.f3k.assist && Math.abs(ease.f3t.speed - 59.9) < 0.5 && ease.f3t.assist && Math.abs(ease.f2t.speed - 60.5) < 0.5 && !ease.f2t.assist, `Fase 3 no toque: agentes da carrocinha a ${ease.f3t.speed.toFixed(1)} px/s em vez de ${ease.f3k.speed.toFixed(1)} (10% mais lentos); a Fase 2 no toque segue em ${ease.f2t.speed.toFixed(1)}`);
+    // a perseguição se espalha: dois agentes da carrocinha atrás do cachorro, num mapa com dois caminhos, vêm por caminhos diferentes
     const flank = await ev(page, () => {
       __game.start(4); __game.noCatch = true; __game.setRand(() => 0.99); __game.freezeVets = false;
       const v0 = __game.vets[0], v1 = __game.vets[1], p = __game.player; for (const v of __game.vets) { v.cool = 0; v.think = 0; v.idle = 0; v.leg = null; v.route = []; }
       __game.vets[2].cool = 999; v0.cx = 20 * 32 + 16; v0.cy = 27 * 32 + 16; v1.cx = 19 * 32 + 16; v1.cy = 27 * 32 + 16;
-      // dois veterinários lado a lado perseguindo o mesmo cachorro: não podem ficar sobrepostos durante a perseguição
+      // dois agentes da carrocinha lado a lado perseguindo o mesmo cachorro: não podem ficar sobrepostos durante a perseguição
       p.x = 4 * 32 + 4; p.y = 27 * 32 + 4; v0.mode = v1.mode = "chase"; v0.modeT = v1.modeT = 5; v0.chaseAge = v1.chaseAge = 0;
       let minD = 1e9; for (let i = 0; i < 60 * 3; i++) { __game.tick(1 / 60); minD = Math.min(minD, Math.hypot(v0.cx - v1.cx, v0.cy - v1.cy)); }
       return { minD, modes: [v0.mode, v1.mode] };
     });
-    ok(flank.minD >= 20, `perseguindo o mesmo cachorro, dois veterinários não se sobrepõem (distância mínima ${flank.minD.toFixed(1)} px)`);
+    ok(flank.minD >= 20, `perseguindo o mesmo cachorro, dois agentes da carrocinha não se sobrepõem (distância mínima ${flank.minD.toFixed(1)} px)`);
     // a velocidade real é a nominal, qualquer que seja a taxa de quadros (o que sobra de um passo continua no próximo)
     const spd = await ev(page, () => {
       const run = (dt) => {
@@ -2007,7 +2009,7 @@ const PAGE_HELPERS = () => {
       const a = run(1 / 144), b = run(1 / 60), c = run(1 / 20); __game.setRand(null);
       return { a: a.px / a.t, b: b.px / b.t, c: c.px / c.t, cfg: __game.vets[0].cfg.speed };
     });
-    ok([spd.a, spd.b, spd.c].every((s) => Math.abs(s - spd.cfg) / spd.cfg < 0.012), `a velocidade média do veterinário é a da fase (${spd.cfg} px/s) com 144, 60 e 20 quadros por segundo (${spd.a.toFixed(2)}, ${spd.b.toFixed(2)}, ${spd.c.toFixed(2)})`);
+    ok([spd.a, spd.b, spd.c].every((s) => Math.abs(s - spd.cfg) / spd.cfg < 0.012), `a velocidade média do agente da carrocinha é a da fase (${spd.cfg} px/s) com 144, 60 e 20 quadros por segundo (${spd.a.toFixed(2)}, ${spd.b.toFixed(2)}, ${spd.c.toFixed(2)})`);
 
     // ---- menu: Jogar fases anteriores (melhorar os recordes) ----
     await fresh(page, { done: [] });
@@ -2050,7 +2052,7 @@ const PAGE_HELPERS = () => {
       const r = rows[i]; if (!r) return;
       const [id, cond, vets, rations, bones, vs, dog] = r, [sp, ch] = vs.replace(/ px\/s/, "").split("/").map((x) => num(x.trim()));
       if (num(id) !== l.id) diffs.push(`fase ${l.id}: id`);
-      if (num(vets) !== l.vets) diffs.push(`fase ${l.id}: veterinários ${vets} ≠ ${l.vets}`);
+      if (num(vets) !== l.vets) diffs.push(`fase ${l.id}: agentes da carrocinha ${vets} ≠ ${l.vets}`);
       if (num(rations) !== l.rations) diffs.push(`fase ${l.id}: rações ${rations} ≠ ${l.rations}`);
       if (num(bones) !== l.bones) diffs.push(`fase ${l.id}: ossos ${bones} ≠ ${l.bones}`);
       if (Math.abs(sp - l.speed) > 1e-9 || Math.abs(ch - l.chase) > 1e-9) diffs.push(`fase ${l.id}: velocidades ${vs} ≠ ${l.speed} / ${l.chase}`);
@@ -2058,7 +2060,7 @@ const PAGE_HELPERS = () => {
       if (l.minPoints) { if (!new RegExp(`chegar a ${l.minPoints} pontos`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" sem ${l.minPoints} pontos`); }
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
     });
-    ok(!diffs.length, `os números da tabela das fases do README (condição, veterinários, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
+    ok(!diffs.length, `os números da tabela das fases do README (condição, agentes da carrocinha, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
     // ---- a tabela "Fases 6 a 10" do README (mapa, alcance, peças móveis, pontos, renascer) também bate com o jogo ----
     const sec6 = readme.slice(readme.indexOf("### Fases 6 a 10"), readme.indexOf("Nas **Fases 9 e 10**"));
     const T6 = {};
@@ -2074,7 +2076,7 @@ const PAGE_HELPERS = () => {
       const id = l.id ?? i + 6, chk = (name, want, got) => { if (!new RegExp(`^${want}`).test(got || "")) d6.push(`Fase ${i + 6} ${name}: "${got}" ≠ "${want}"`); };
       chk("mapa", `${l.C} × ${l.R}`, need("Mapa")[i]);
       chk("rações/ossos", `${l.rations} / ${l.bones}`, need("Rações / ossos")[i]);
-      chk("veterinários", String(l.nv), need("Veterinários (no centro do mapa)")[i]);
+      chk("agentes da carrocinha", String(l.nv), need("Agentes da carrocinha (no centro do mapa)")[i]);
       chk("vidas escondidas", `${l.lives[0]} ou ${l.lives[1]}`, need("Vidas escondidas (sorteio por jogo)")[i]);
       chk("alcance", String(l.alert), need('Alcance do "!"')[i]);
       chk("peças", `${l.nd} / ${l.nw}`, need("Portas de bloco / paredes (definidas)")[i]);
@@ -2086,7 +2088,7 @@ const PAGE_HELPERS = () => {
       chk("poder", `${l.power} s`, need("Poder do osso")[i]);
       chk("renascer", l.respawn ? "renasce onde morreu" : "volta ao início", need("Ao ser pego ou esmagado")[i]);
     });
-    ok(L6.length === 5 && !d6.length, `a tabela das Fases 6 a 10 do README (mapa, rações, ossos, veterinários, vidas escondidas, alcance, peças móveis, pontos, poder, renascer) bate com o jogo ${d6.join("; ")}`);
+    ok(L6.length === 5 && !d6.length, `a tabela das Fases 6 a 10 do README (mapa, rações, ossos, agentes da carrocinha, vidas escondidas, alcance, peças móveis, pontos, poder, renascer) bate com o jogo ${d6.join("; ")}`);
   });
 
   // =====================================================================
@@ -2160,7 +2162,7 @@ const PAGE_HELPERS = () => {
     for (let k = 0; k < 3; k++) await catchOnce(page);
     ok(await ev(page, () => __game.state) === "lost" && /Fase 2/.test(await page.textContent("#lose-chances")), "sem vidas na Fase 2: a mensagem fala da Fase 2");
     await page.click("#btn-retry");
-    ok(await ev(page, () => [__game.level, __game.items.length, __game.vets.length, __game.retries, __game.lives].join()) === "2,9,2,1,3", "nova tentativa na Fase 2 recomeça a Fase 2 do zero (9 itens, 2 veterinários, 3 vidas)");
+    ok(await ev(page, () => [__game.level, __game.items.length, __game.vets.length, __game.retries, __game.lives].join()) === "2,9,2,1,3", "nova tentativa na Fase 2 recomeça a Fase 2 do zero (9 itens, 2 agentes da carrocinha, 3 vidas)");
     ok(await hudIs(page, "#hud-points", "-100"), "e custa 100 pontos");
   });
 
@@ -2651,7 +2653,7 @@ const PAGE_HELPERS = () => {
     ok(a[0] === b[0] && a[1] === b[1], "toque no centro do controle (zona morta) não move");
     a = await where(); await drag(-0.8, -0.8); await t.waitForTimeout(300); b = await where(); await release();
     ok(b[0] < a[0] - 5 || b[1] < a[1] - 5, "diagonal funciona");
-    // Fase 3 no toque: a facilitação (veterinários mais lentos, cachorro um pouco mais rápido) liga com o controle de toque e desliga com o teclado
+    // Fase 3 no toque: a facilitação (agentes da carrocinha mais lentos, cachorro um pouco mais rápido) liga com o controle de toque e desliga com o teclado
     await ev(t, () => { __game.start(3); __game.freezeVets = true; __game.touchInput = false; });
     const asKeys = await ev(t, () => ({ assist: __game.assist, dog: __game.dogSpeed }));
     await drag(0.9, 0); await t.waitForTimeout(150);
@@ -2972,7 +2974,7 @@ const PAGE_HELPERS = () => {
 
   // =====================================================================
   // =====================================================================
-  await section("0.7.0: Fases 6 a 10 (mapas grandes, mais rações, ossos, veterinários mais rápidos e mais peças móveis)", async () => {
+  await section("0.7.0: Fases 6 a 10 (mapas grandes, mais rações, ossos, agentes da carrocinha mais rápidos e mais peças móveis)", async () => {
     await play(page, { keepSave: true });
     // o que cada fase deve ter (a Tabela das fases do README é conferida em outra seção)
     const SPEC = {
@@ -3013,8 +3015,8 @@ const PAGE_HELPERS = () => {
     });
     for (const id of [6, 7, 8, 9, 10]) {
       const I = info[id], S = SPEC[id];
-      ok(I.C === S.cols && I.R === S.rows && I.border && I.nP === 1 && I.V.length === S.nv && I.E === 6, `Fase ${id}: mapa de ${I.C} × ${I.R} tiles cercado por paredes, 1 início, ${S.nv} veterinários e saída 3 × 2`);
-      ok(I.vReach && I.exitD >= 60 && I.V.every(([c, r]) => Math.abs(c - (I.C >> 1)) <= 4 && Math.abs(r - (I.R >> 1)) <= 3), `Fase ${id}: saída (a ${I.exitD} passos) e veterinários alcançáveis, e eles começam no centro`);
+      ok(I.C === S.cols && I.R === S.rows && I.border && I.nP === 1 && I.V.length === S.nv && I.E === 6, `Fase ${id}: mapa de ${I.C} × ${I.R} tiles cercado por paredes, 1 início, ${S.nv} agentes da carrocinha e saída 3 × 2`);
+      ok(I.vReach && I.exitD >= 60 && I.V.every(([c, r]) => Math.abs(c - (I.C >> 1)) <= 4 && Math.abs(r - (I.R >> 1)) <= 3), `Fase ${id}: saída (a ${I.exitD} passos) e agentes da carrocinha alcançáveis, e eles começam no centro`);
       ok(I.doors === S.doors[2] && I.walls === S.walls[2] && I.wallShape && I.trackFree && I.blocksN === S.doors[2] + S.walls[2], `Fase ${id}: ${I.doors} portas de bloco e ${I.walls} paredes de 3 tiles, com os trilhos em chão livre`);
       ok(I.combos === 1 << I.blocksN && I.okAll === I.combos, `Fase ${id}: com as ${I.blocksN} peças em qualquer posição (${I.combos} combinações) todo o chão fora dos trilhos continua alcançável (${I.okAll})`);
       const c = I.cfg;
@@ -3022,16 +3024,16 @@ const PAGE_HELPERS = () => {
       const dEv = c.every.filter((_, i) => !c.wallsFlag[i]), wEv = c.every.filter((_, i) => c.wallsFlag[i]);
       ok(dEv.every((e) => e === S.dEvery || (e === undefined && S.dEvery === 3)) && wEv.every((e) => e === S.wEvery) && c.range.door.join() === S.doors.slice(0, 2).join() && c.range.wall.join() === S.walls.slice(0, 2).join(), `Fase ${id}: portas mudam a cada ${S.dEvery} s, paredes a cada ${S.wEvery} s; sorteio de ${S.doors[0]} a ${S.doors[1]} portas e ${S.walls[0]} a ${S.walls[1]} paredes`);
     }
-    // a dificuldade só sobe: rações, ossos, velocidade dos veterinários, peças móveis; e o cachorro sempre é mais rápido que o veterinário perseguindo
+    // a dificuldade só sobe: rações, ossos, velocidade dos agentes da carrocinha, peças móveis; e o cachorro sempre é mais rápido que o agente da carrocinha perseguindo
     const ids = [5, 6, 7, 8, 9, 10], cf = ids.map((i) => info[i].cfg), dogPx = cf.map((c) => 252 * c.dog);
     const inc = (f) => cf.every((c, i) => i === 0 || f(c) > f(cf[i - 1])), nondec = (f) => cf.every((c, i) => i === 0 || f(c) >= f(cf[i - 1]));
-    ok(inc((c) => c.rations) && nondec((c) => c.bones) && cf[5].bones > cf[0].bones && inc((c) => c.sp) && inc((c) => c.ch) && inc((c) => c.min) && nondec((c) => c.alert) && ids.every((i, k) => k === 0 || info[i].blocksN >= info[ids[k - 1]].blocksN), `de uma fase para a seguinte (5 a 10) sobem as rações (${cf.map((c) => c.rations).join(", ")}), os ossos (${cf.map((c) => c.bones).join(", ")}), a velocidade dos veterinários (${cf.map((c) => c.ch).join(", ")} px/s com o !), os pontos mínimos e as peças móveis (${ids.map((i) => info[i].blocksN).join(", ")})`);
-    ok(dogPx.every((d, i) => d / cf[i].ch >= 1.4) && dogPx.every((d, i) => i === 0 || d >= dogPx[i - 1]), `o cachorrinho segue pelo menos 40% mais rápido que o veterinário perseguindo, em todas as fases (${dogPx.map((d, i) => (d / cf[i].ch).toFixed(2) + "×").join(", ")})`);
+    ok(inc((c) => c.rations) && nondec((c) => c.bones) && cf[5].bones > cf[0].bones && inc((c) => c.sp) && inc((c) => c.ch) && inc((c) => c.min) && nondec((c) => c.alert) && ids.every((i, k) => k === 0 || info[i].blocksN >= info[ids[k - 1]].blocksN), `de uma fase para a seguinte (5 a 10) sobem as rações (${cf.map((c) => c.rations).join(", ")}), os ossos (${cf.map((c) => c.bones).join(", ")}), a velocidade dos agentes da carrocinha (${cf.map((c) => c.ch).join(", ")} px/s com o !), os pontos mínimos e as peças móveis (${ids.map((i) => info[i].blocksN).join(", ")})`);
+    ok(dogPx.every((d, i) => d / cf[i].ch >= 1.4) && dogPx.every((d, i) => i === 0 || d >= dogPx[i - 1]), `o cachorrinho segue pelo menos 40% mais rápido que o agente da carrocinha perseguindo, em todas as fases (${dogPx.map((d, i) => (d / cf[i].ch).toFixed(2) + "×").join(", ")})`);
     // as Fases 9 e 10 têm peças bem mais rápidas que as da Fase 5
     const fast = await ev(page, () => { const o = {}; for (const id of [5, 9, 10]) { __game.start(id); o[id] = __game.blocks.map((b) => [b.def.kind === "W" ? "p" : "b", b.def.every, +b.def.slide.toFixed(2)]); } return o; });
     const avg = (arr, kind, k) => { const v = arr.filter((x) => x[0] === kind).map((x) => x[k]); return v.reduce((a, b) => a + b, 0) / v.length; };
     ok(avg(fast[9], "b", 1) < avg(fast[5], "b", 1) && avg(fast[10], "b", 1) < avg(fast[9], "b", 1) && avg(fast[9], "p", 1) < avg(fast[5], "p", 1) && avg(fast[10], "p", 1) < avg(fast[9], "p", 1) && avg(fast[10], "b", 2) < avg(fast[5], "b", 2), "Fases 9 e 10: blocos e paredes mudam de lado com mais frequência e deslizam mais rápido que na Fase 5");
-    // sorteios de itens: contagens, chão livre, fora dos trilhos, alcançáveis, longe do início e dos veterinários
+    // sorteios de itens: contagens, chão livre, fora dos trilhos, alcançáveis, longe do início e dos agentes da carrocinha
     for (const id of [6, 8, 10]) {
       const S = SPEC[id], lay = await ev(page, (id) => { const out = []; for (let i = 0; i < 40; i++) { __game.start(id); out.push(__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32, it.bone ? 1 : 0, it.life ? 1 : 0])); } return out; }, id);
       const I = info[id], trackSet = new Set(I.trackSet);
@@ -3044,11 +3046,11 @@ const PAGE_HELPERS = () => {
         if (items.filter((i) => i[3]).length < 3 || items.filter((i) => i[3]).length > 4) bad = "vidas escondidas (devem ser 3 ou 4)";
         if (items.filter((i) => i[3] && i[2]).length > 1) bad = "vida em mais de um osso";
         seenLives.add(items.filter((i) => i[3]).length);
-        for (const [c, r] of items) { if (L[r][c] === "#" || L[r][c] === "X") bad = "em parede/caixa"; if (L[r][c] === "E") bad = "na saída"; if (trackSet.has(c + "," + r)) bad = "no trilho"; if (I.V.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um veterinário"; }
+        for (const [c, r] of items) { if (L[r][c] === "#" || L[r][c] === "X") bad = "em parede/caixa"; if (L[r][c] === "E") bad = "na saída"; if (trackSet.has(c + "," + r)) bad = "no trilho"; if (I.V.some((v) => Math.hypot(c - v[0], r - v[1]) < 4)) bad = "perto de um agente da carrocinha"; }
       }
-      ok(!bad && seenLives.has(3) && seenLives.has(4), `Fase ${id}: 40 sorteios de ${S.rations} rações + ${S.bones} ossos com 3 ou 4 vidas escondidas (vistas: ${[...seenLives].sort().join(" e ")}), em chão livre, fora dos trilhos e longe dos veterinários ${bad && "(" + bad + ")"}`);
+      ok(!bad && seenLives.has(3) && seenLives.has(4), `Fase ${id}: 40 sorteios de ${S.rations} rações + ${S.bones} ossos com 3 ou 4 vidas escondidas (vistas: ${[...seenLives].sort().join(" e ")}), em chão livre, fora dos trilhos e longe dos agentes da carrocinha ${bad && "(" + bad + ")"}`);
     }
-    // todas as fases rodam 60 s com os veterinários soltos sem erro e sem mudar o número de veterinários
+    // todas as fases rodam 60 s com os agentes da carrocinha soltos sem erro e sem mudar o número de agentes da carrocinha
     const run = await ev(page, () => {
       const out = [];
       for (const id of [6, 7, 8, 9, 10]) {
@@ -3059,8 +3061,8 @@ const PAGE_HELPERS = () => {
       __game.setRand(null); __game.noCatch = false; return out;
     });
     const NV = { 6: 3, 7: 4, 8: 5, 9: 5, 10: 6 };
-    ok(run.every(([id, n, st, b]) => n === NV[id] && st === "playing" && b), `as Fases 6 a 10 rodam 60 s com veterinários e peças móveis soltos sem problema (${run.map((r) => r[0] + ":" + r[1] + " vets").join(", ")})`);
-    // 3 minutos simulados por fase (Fases 6 a 10, com 3 a 6 veterinários): quase nunca sobrepostos, raramente juntos e nunca em fila por muito tempo
+    ok(run.every(([id, n, st, b]) => n === NV[id] && st === "playing" && b), `as Fases 6 a 10 rodam 60 s com agentes da carrocinha e peças móveis soltos sem problema (${run.map((r) => r[0] + ":" + r[1] + " vets").join(", ")})`);
+    // 3 minutos simulados por fase (Fases 6 a 10, com 3 a 6 agentes da carrocinha): quase nunca sobrepostos, raramente juntos e nunca em fila por muito tempo
     const sep2 = await ev(page, () => {
       const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
       const out = {};
@@ -3079,7 +3081,7 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); __game.noCatch = false; return out;
     });
-    ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 60), `Fases 6 a 10, 3 minutos simulados: os veterinários quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
+    ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 60), `Fases 6 a 10, 3 minutos simulados: os agentes da carrocinha quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
     ok([6, 7, 8, 9, 10].every((l) => sep2[l].near / sep2[l].pairs < 0.15 && sep2[l].maxStreak <= 15 * 60), `e raramente andam juntos nem em fila (tempo a menos de 3 tiles: ${[6, 7, 8, 9, 10].map((l) => (100 * sep2[l].near / sep2[l].pairs).toFixed(1) + "%").join(", ")}; maior sequência ${[6, 7, 8, 9, 10].map((l) => (sep2[l].maxStreak / 60).toFixed(1) + " s").join(", ")})`);
     // ---- depois da Fase 10 (a última) não há Próxima fase ----
     await playLevel(page, 10, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
@@ -3091,7 +3093,7 @@ const PAGE_HELPERS = () => {
       for (const id of [8, 9, 10]) {
         __game.start(id); __game.freezeVets = true; __game.noCatch = false; __game.items.forEach((i) => { i.life = false; }); // (um item com vida extra no lugar do teste anularia a vida perdida)
         const p = __game.player, spawn = [p.x, p.y], M = __game.levels[id - 1].map;
-        // vai até um lugar livre bem longe do início (fora dos trilhos das peças móveis) e é pego por um veterinário
+        // vai até um lugar livre bem longe do início (fora dos trilhos das peças móveis) e é pego por um agente da carrocinha
         const trk = new Set(__game.levels[id - 1].blocks.flatMap((b) => { const o = []; for (const w of ["from", "to"]) for (let i = 0; i < (b.size ? b.size[0] : 1); i++) for (let j = 0; j < (b.size ? b.size[1] : 1); j++) o.push((b[w][0] + i) + "," + (b[w][1] + j)); return o; }));
         let tile = null; for (let r = M.length - 4; r > 3 && !tile; r--) for (let c = 8; c < M[0].length - 8 && !tile; c++) if (M[r][c] === "." && M[r][c + 1] === "." && !trk.has(c + "," + r) && Math.abs(c - (M[0].length >> 1)) > 6) tile = [c, r];
         p.x = tile[0] * 32 + 4; p.y = tile[1] * 32 + 4; const here = [p.x, p.y];
@@ -3103,7 +3105,7 @@ const PAGE_HELPERS = () => {
     });
     ok(rp[8].lives === 1 && rp[8].at.join() === rp[8].spawn.join() && rp[8].vetsHome, "Fase 8: perdeu uma vida e o cachorrinho volta ao início (como sempre)");
     if (![9, 10].every((id) => rp[id].lives === 1 && rp[id].at.join() === rp[id].here.join() && rp[id].invuln > 1.5 && rp[id].vetsHome)) console.log("   detalhe:", JSON.stringify(rp));
-    ok([9, 10].every((id) => rp[id].lives === 1 && rp[id].at.join() === rp[id].here.join() && rp[id].invuln > 1.5 && rp[id].vetsHome), `Fases 9 e 10: ao ser pego o cachorrinho renasce onde morreu (${rp[9].at.map(Math.round).join(",")}), protegido por ${rp[9].invuln.toFixed(1)} s, e os veterinários voltam aos postos`);
+    ok([9, 10].every((id) => rp[id].lives === 1 && rp[id].at.join() === rp[id].here.join() && rp[id].invuln > 1.5 && rp[id].vetsHome), `Fases 9 e 10: ao ser pego o cachorrinho renasce onde morreu (${rp[9].at.map(Math.round).join(",")}), protegido por ${rp[9].invuln.toFixed(1)} s, e os agentes da carrocinha voltam aos postos`);
     // esmagado por um bloco: renasce ao lado do bloco, nunca dentro dele
     const cr = await ev(page, () => {
       __game.start(9); __game.freezeVets = true; __game.noCatch = false; __game.items.forEach((i) => { i.x = -500; i.y = -500; });
@@ -3125,7 +3127,7 @@ const PAGE_HELPERS = () => {
   // =====================================================================
   await section("0.7.0: o tempo só começa ao jogar, vidas escondidas sem coração e Fase 3 com 1 a 2 vidas", async () => {
     await play(page, { keepSave: true });
-    // ---- a fase espera o primeiro passo: relógio, veterinários e blocos parados ----
+    // ---- a fase espera o primeiro passo: relógio, agentes da carrocinha e blocos parados ----
     const w = await ev(page, () => {
       __game.autoStart = false; __game.start(3); __game.noCatch = false;
       const v0 = __game.vets[0], pos0 = [v0.cx, v0.cy], bt0 = __game.blocks.map((b) => b.bt), toast0 = document.getElementById("toast").textContent;
@@ -3137,7 +3139,7 @@ const PAGE_HELPERS = () => {
       const later = { time: __game.time, moved: v0.cx !== pos0[0] || v0.cy !== pos0[1], blocks: __game.blocks.some((b, i) => b.bt !== bt0[i]) };
       __game.autoStart = true; return { waited, after, later };
     });
-    ok(!w.waited.started && w.waited.time === 0 && !w.waited.moved && !w.waited.blocks && w.waited.lives === 3 && /^0,0 s$/.test(w.waited.hud) && /só começa quando você se mexer/.test(w.waited.toast0), `Fase 3: depois de 20 s parado o relógio segue em 0, os veterinários e os blocos não saíram do lugar e o aviso explica (${w.waited.hud}; "${w.waited.toast0.slice(-45)}")`);
+    ok(!w.waited.started && w.waited.time === 0 && !w.waited.moved && !w.waited.blocks && w.waited.lives === 3 && /^0,0 s$/.test(w.waited.hud) && /só começa quando você se mexer/.test(w.waited.toast0), `Fase 3: depois de 20 s parado o relógio segue em 0, os agentes da carrocinha e os blocos não saíram do lugar e o aviso explica (${w.waited.hud}; "${w.waited.toast0.slice(-45)}")`);
     ok(w.after.started && w.after.time > 0 && w.after.time <= 0.06 && !w.after.toast && w.later.time > 4.9 && (w.later.moved || w.later.blocks), `no primeiro passo o relógio começa a contar (${w.after.time.toFixed(2)} s), o aviso some e o resto do mundo anda (relógio ${w.later.time.toFixed(1)} s depois de 5 s)`);
     // o jogo salvo antes do primeiro passo continua esperando; o salvo depois, continua direto
     const sv = await ev(page, () => {
@@ -3300,7 +3302,7 @@ const PAGE_HELPERS = () => {
       for (let id = 1; id <= 10; id++) { __game.start(id); for (let i = 0; i < 40; i++) __game.tick(0.05); out.push([id, __game.started, __game.time, __game.vets.every((v) => Math.hypot(v.cx - v.sx, v.cy - v.sy) < 0.01)]); }
       __game.autoStart = true; return out;
     });
-    ok(waits.every(([, st, tm, still]) => !st && tm === 0 && still), `as Fases 1 a 10 esperam o primeiro passo (2 s parado: relógio em 0 e veterinários nos postos)`);
+    ok(waits.every(([, st, tm, still]) => !st && tm === 0 && still), `as Fases 1 a 10 esperam o primeiro passo (2 s parado: relógio em 0 e agentes da carrocinha nos postos)`);
     // ---- Próxima fase, Jogar novamente e Tentar novamente também esperam; a Próxima fase existe da Fase 1 à 9 ----
     for (const id of [1, 5, 9]) {
       await playLevel(page, id, { done: Array.from({ length: id - 1 }, (_, k) => k + 1) });
@@ -3365,7 +3367,7 @@ const PAGE_HELPERS = () => {
     });
     ok(near.worst >= 3, `ao renascer no lugar (Fases 9 e 10, ${near.trials} sorteios) nenhum item cai a menos de 3 tiles do cachorrinho (o mais perto: ${near.worst} tiles)`);
 
-    // ---- pegar um osso com veterinários no meio de uma perseguição: eles terminam o trecho e não cortam a quina das paredes ----
+    // ---- pegar um osso com agentes da carrocinha no meio de uma perseguição: eles terminam o trecho e não cortam a quina das paredes ----
     const clip = await ev(page, () => {
       const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
       let worst = 0, runs = 0, chasing = 0;
@@ -3373,7 +3375,7 @@ const PAGE_HELPERS = () => {
         const rnd = mulberry(id * 1000 + k);
         __game.setRand(rnd); __game.start(id); __game.noCatch = true; __game.freezeVets = false;
         const M = __game.levels[id - 1].map, p = __game.player;
-        // o cachorrinho fica longe do salão (num chão livre sorteado): os veterinários atravessam corredores e esquinas atrás dele
+        // o cachorrinho fica longe do salão (num chão livre sorteado): os agentes da carrocinha atravessam corredores e esquinas atrás dele
         let tile; for (let n = 0; n < 500; n++) { const c = 1 + Math.floor(rnd() * (M[0].length - 2)), r = 1 + Math.floor(rnd() * (M.length - 2)); if (M[r][c] === "." && Math.hypot(c * 32 - __game.vets[0].sx, r * 32 - __game.vets[0].sy) > 12 * 32) { tile = [c, r]; break; } }
         p.x = tile[0] * 32 + 4; p.y = tile[1] * 32 + 4;
         for (const v of __game.vets) { v.mode = "chase"; v.modeT = v.cfg.chaseTime; v.chaseAge = 0; v.cool = 0; }
@@ -3395,7 +3397,7 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); __game.noCatch = false; return { worst, runs, chasing };
     });
-    ok(clip.chasing >= 100 && clip.worst <= 1, `pegar um osso com veterinários perseguindo (${clip.chasing} perseguidores em ${clip.runs} sorteios, Fases 6 a 10): nenhum veterinário entra mais de 1 px numa parede (pior: ${clip.worst.toFixed(1)} px)`);
+    ok(clip.chasing >= 100 && clip.worst <= 1, `pegar um osso com agentes da carrocinha perseguindo (${clip.chasing} perseguidores em ${clip.runs} sorteios, Fases 6 a 10): nenhum agente da carrocinha entra mais de 1 px numa parede (pior: ${clip.worst.toFixed(1)} px)`);
 
     // ---- cada porta e cada parede das Fases 6 a 10 desliza na velocidade e no intervalo da tabela ----
     const spec = { 6: [120, 120, 3, 10], 7: [120, 120, 3, 10], 8: [120, 120, 3, 10], 9: [160, 140, 2.5, 8], 10: [200, 160, 2, 6] };
@@ -3572,6 +3574,140 @@ const PAGE_HELPERS = () => {
     const bad = fit.filter((f) => f.overflowX > 1 || !f.goVisible || (f.landscape && f.scroll > 1) || f.minH < 36 || f.tinyText);
     ok(bad.length === 0, `a tela de reforços cabe em ${fit.length} tamanhos (sem rolagem lateral, Começar à vista, deitado sem rolar, botões de 36 px ou mais, letras de 10,5 px ou mais)${bad.length ? ": problema em " + bad.map((f) => `${f.w}x${f.h} (scroll ${f.scroll}, lateral ${f.overflowX}, botão ${f.goVisible}, menor ${f.minH.toFixed(0)}px, letra miúda ${f.tinyText})`).join("; ") : ""}`);
     await page.setViewportSize({ width: 1280, height: 720 });
+  });
+
+  // =====================================================================
+  await section("0.9.0: agentes da carrocinha e carteiros que fogem", async () => {
+    await play(page);
+    const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // ---- nenhum texto do jogo fala mais em veterinário ----
+    const texts = await ev(page, () => {
+      const out = {};
+      for (const id of ["menu", "levels", "howto", "scores", "pause", "win", "lose", "reinforce"]) { const e = document.getElementById(id); out[id] = e ? e.textContent : ""; }
+      out.hud = document.getElementById("hud").textContent + [...document.querySelectorAll("#hud [title], #hud [aria-label]")].map((e) => (e.title || "") + (e.getAttribute("aria-label") || "")).join(" ");
+      out.canvas = document.getElementById("game").getAttribute("aria-label");
+      return out;
+    });
+    const vet = Object.entries(texts).filter(([, t]) => /veterin/i.test(t)).map(([k]) => k);
+    ok(vet.length === 0, `nenhuma tela, rótulo ou aviso fala em veterinário (${vet.join(", ") || "ok"})`);
+    ok(/carrocinha/.test(texts.howto) && /carrocinha/.test(texts.canvas) && /fogem/.test(texts.howto), "o Como jogar e a descrição do jogo falam da carrocinha e dos carteiros que fogem");
+    const lv = await ev(page, () => { const st = Records.createStore(localStorage); st.setPlayer("Totó"); for (let l = 1; l <= 9; l++) st.completeLevel("Totó", l); return 1; });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-start");
+    const listTxt = await page.textContent("#levels-list");
+    ok(/1 agente da carrocinha/.test(listTxt) && /6 agentes da carrocinha/.test(listTxt) && !/veterin/i.test(listTxt), "a lista de fases fala em 1 agente da carrocinha (Fase 1) até 6 agentes da carrocinha (Fase 10)");
+    await page.click("#levels-list button:nth-child(5)");
+    ok(/Fase 5: 3 agentes da carrocinha/.test(await page.textContent("#toast")), "o aviso de começar a fase diz quantos agentes da carrocinha há");
+    const lose = await ev(page, () => { __game.start(2); __game.setLives(1); __game.noCatch = false; for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return { state: __game.state, title: document.getElementById("lose-title").textContent }; });
+    ok(lose.state === "lost" && lose.title === "A carrocinha pegou o cachorrinho!", `ao ser pego a tela diz "${lose.title}"`);
+
+    // ---- o desenho: agente de colete laranja; carteiro azul ----
+    const frame = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const colorsAround = (mode) => ev(page, async (mode) => {
+      __game.autoStart = true; __game.start(2); __game.freezeVets = true;
+      const v = __game.vets[0], p = __game.player; p.x = v.cx + 150; p.y = v.cy - 12;
+      if (mode === "power") { const b = __game.items.find((i) => i.bone); const x0 = p.x, y0 = p.y; p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); p.x = x0; p.y = y0; }
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, cx = Math.round((v.cx - __game.view.camX) * k), cy = Math.round((v.cy - __game.view.camY) * k), R = Math.round(24 * k);
+      const d = c.getImageData(cx - R, cy - R, 2 * R, 2 * R).data; let orange = 0, blue = 0, green = 0;
+      for (let i = 0; i < d.length; i += 4) { const [r, g, b] = [d[i], d[i + 1], d[i + 2]]; if (r > 230 && g > 110 && g < 160 && b < 70) orange++; if (b > 180 && r < 90 && g > 100 && g < 150) blue++; if (r > 70 && r < 110 && g > 100 && g < 140 && b > 55 && b < 90) green++; }
+      __game.autoStart = true; return { orange, blue, green, power: __game.power };
+    }, mode);
+    const cn = await colorsAround("normal"), cp = await colorsAround("power");
+    ok(cn.orange > 20 && cn.green > 10 && cn.blue < 5, `o agente da carrocinha é desenhado com colete laranja e uniforme verde (${cn.orange} px laranja, ${cn.green} px verdes)`);
+    ok(cp.power > 0 && cp.blue > 20 && cp.orange < 5, `com o poder do osso ele vira carteiro azul, sem o colete laranja (${cp.blue} px azuis, ${cp.orange} px laranja)`);
+
+    // ---- com o poder, os carteiros FOGEM (não perseguem), mais devagar; sem o poder, os agentes perseguem ----
+    const flee = await ev(page, () => {
+      const out = {};
+      const setup = (power) => {
+        __game.setRand(() => 0.5); __game.start(2); __game.noCatch = true; __game.freezeVets = false;
+        const v0 = __game.vets[0], v1 = __game.vets[1], p = __game.player;
+        // o cachorrinho vai para 4 tiles de um agente, em chão livre da sala central
+        p.x = v0.cx + 4 * 32 - 12; p.y = v0.cy - 12;
+        for (const v of __game.vets) { v.cool = 0; v.think = 0; v.idle = 0; v.mode = "patrol"; v.leg = null; v.route = []; }
+        if (power) { const b = __game.items.find((i) => i.bone); const x = p.x, y = p.y; p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); p.x = x; p.y = y; }
+        return [v0, v1];
+      };
+      for (const power of [false, true]) {
+        const [v0, v1] = setup(power), p = __game.player;
+        const d0 = [Math.hypot(v0.cx - p.x - 12, v0.cy - p.y - 12), Math.hypot(v1.cx - p.x - 12, v1.cy - p.y - 12)];
+        let chaseFrames = 0, fleeFrames = 0, maxStep = 0, prev = [[v0.cx, v0.cy], [v1.cx, v1.cy]], dist = 0, moving = 0;
+        for (let i = 0; i < 60 * 3; i++) {
+          p.x = p.x; __game.tick(1 / 60);
+          for (const [k, v] of [v0, v1].entries()) { if (v.mode === "chase") chaseFrames++; if (v.mode === "flee") fleeFrames++; const st = Math.hypot(v.cx - prev[k][0], v.cy - prev[k][1]); if (k === 0 && st > 0.01) { dist += st; moving++; } maxStep = Math.max(maxStep, st); prev[k] = [v.cx, v.cy]; }
+        }
+        const d1 = [Math.hypot(v0.cx - p.x - 12, v0.cy - p.y - 12), Math.hypot(v1.cx - p.x - 12, v1.cy - p.y - 12)];
+        out[power ? "power" : "normal"] = { d0, d1, chaseFrames, fleeFrames, speed: moving ? dist / moving * 60 : 0, maxStep, power: __game.power };
+      }
+      __game.setRand(null); __game.noCatch = false; return out;
+    });
+    ok(flee.normal.chaseFrames > 0 && flee.normal.d1[0] < flee.normal.d0[0], `sem poder o agente persegue o cachorrinho (distância ${flee.normal.d0[0].toFixed(0)} → ${flee.normal.d1[0].toFixed(0)} px)`);
+    ok(flee.power.fleeFrames > 100 && flee.power.chaseFrames === 0 && flee.power.d1[0] > flee.power.d0[0] + 40, `com o poder os carteiros fogem e não perseguem (distância ${flee.power.d0[0].toFixed(0)} → ${flee.power.d1[0].toFixed(0)} px; ${flee.power.fleeFrames} quadros fugindo, ${flee.power.chaseFrames} perseguindo)`);
+    const sp = await ev(page, () => { const L = __game.levels[1].vets[0]; return { speed: L.speed, chase: L.chaseSpeed }; });
+    ok(Math.abs(flee.power.speed - sp.speed * 1.25) / (sp.speed * 1.25) < 0.08 && flee.power.speed < sp.chase * 0.7, `o carteiro foge a ${flee.power.speed.toFixed(1)} px/s (1,25 × a patrulha de ${sp.speed} = ${(sp.speed * 1.25).toFixed(1)}; bem abaixo dos ${sp.chase} da perseguição)`);
+
+    // ---- encostar num carteiro: +100, volta ao posto tonto por 2 s, depois foge a 50% ----
+    const hit = await ev(page, () => {
+      __game.setRand(() => 0.5); __game.start(2); __game.noCatch = false; __game.items.forEach((i) => { i.life = false; });
+      const p = __game.player, b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01);
+      const v = __game.vets[0]; v.cx = p.x + 12; v.cy = p.y + 12; v.leg = null; const lives0 = __game.lives, sc0 = __game.score;
+      __game.tick(0.01);
+      const out = { lives: __game.lives - lives0, gain: __game.score - sc0, postmen: __game.postmen, slow: v.slow, stun: v.hitCool, mode: v.mode, post: [Math.round(v.cx - v.sx), Math.round(v.cy - v.sy)] };
+      // longe do cachorrinho, parado no posto enquanto tonto
+      const pos = [v.cx, v.cy]; let still = true; for (let i = 0; i < 60; i++) { __game.tick(1 / 60); if (Math.hypot(v.cx - pos[0], v.cy - pos[1]) > 0.5) still = false; }
+      out.stillFor1s = still;
+      p.x = v.cx + 3 * 32 - 12; p.y = v.cy - 12; for (let i = 0; i < 90; i++) __game.tick(1 / 60);
+      let dist = 0, n = 0, last = [v.cx, v.cy]; for (let i = 0; i < 120; i++) { __game.tick(1 / 60); const st = Math.hypot(v.cx - last[0], v.cy - last[1]); if (st > 0.01) { dist += st; n++; } last = [v.cx, v.cy]; }
+      out.slowSpeed = n ? dist / n * 60 : 0; out.after = __game.postmen; out.mode2 = v.mode;
+      __game.setRand(null); return out;
+    });
+    const spd = await ev(page, () => __game.levels[1].vets[0].speed);
+    ok(hit.lives === 0 && hit.gain === 100 && hit.postmen === 1 && hit.slow && hit.mode === "flee" && hit.stun > 1.9 && Math.abs(hit.post[0]) < 33 && Math.abs(hit.post[1]) < 33 && hit.stillFor1s, `encostar no carteiro: +100 pontos, nenhuma vida perdida, ele volta ao posto e fica tonto parado (${JSON.stringify(hit.post)} px do posto)`);
+    ok(hit.mode2 === "flee" && hit.after === 1 && hit.slowSpeed > 0 && Math.abs(hit.slowSpeed - spd * 1.25 * 0.5) / (spd * 1.25 * 0.5) < 0.15, `depois do susto ele volta a fugir 50% mais lento (${hit.slowSpeed.toFixed(1)} px/s ≈ ${(spd * 1.25 * 0.5).toFixed(1)}) e o mesmo carteiro não rende pontos de novo`);
+
+    // ---- o poder acaba: os carteiros voltam a ser agentes que perseguem ----
+    const endp = await ev(page, () => {
+      __game.setRand(() => 0.5); __game.start(2); __game.noCatch = true; const p = __game.player, b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01);
+      const x = p.x, y = p.y; p.x = 600; p.y = 500; // longe de todos
+      const modes1 = __game.vets.map((v) => v.mode).join();
+      for (let i = 0; i < 60 * 31; i++) __game.tick(1 / 60);
+      const out = { modes1, power: __game.power, modes2: __game.vets.map((v) => v.mode).join(), toast: document.getElementById("toast").textContent, slow: __game.vets.some((v) => v.slow) };
+      __game.setRand(null); __game.noCatch = false; return out;
+    });
+    ok(/^flee,flee$/.test(endp.modes1) && endp.power <= 0 && /^(patrol|chase),(patrol|chase)$/.test(endp.modes2) && !endp.slow, `quando o poder acaba os carteiros voltam a ser agentes (${endp.modes1} → ${endp.modes2})`);
+
+    // ---- jogo salvo com o poder ligado: continua com os carteiros fugindo ----
+    const sv = await ev(page, () => {
+      __game.start(2); __game.freezeVets = true; const p = __game.player, b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); __game.save(); return { power: __game.power }; // (o jogo salvo precisa das vidas escondidas da fase: não as apaga)
+    });
+    await ev(page, () => sessionStorage.setItem("keepSave", "1"));
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
+    const cont = await ev(page, () => ({ power: __game.power, modes: __game.vets.map((v) => v.mode).join() }));
+    ok(sv.power > 25 && cont.power > 25 && /^flee,flee$/.test(cont.modes), `Continuar jogo com o poder ligado volta com os carteiros fugindo (${cont.modes}, poder ${cont.power.toFixed(0)} s)`);
+
+    // ---- em todas as fases com muitos agentes: fuga sem erro, sem parede, sem ficar parados nem empilhados ----
+    const many = await ev(page, () => {
+      const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const out = [];
+      for (const id of [3, 5, 7, 8, 10]) {
+        __game.setRand(mulberry(id)); __game.start(id); __game.noCatch = true; __game.freezeVets = false;
+        const M = __game.levels[id - 1].map, p = __game.player, n = __game.vets.length;
+        const b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01);
+        let overlap = 0, wall = 0, bad = 0, minMove = Infinity;
+        const start = __game.vets.map((v) => [v.cx, v.cy]), far = new Array(n).fill(0);
+        for (let f = 0; f < 60 * 24; f++) {
+          // o cachorrinho persegue o agente mais perto (como um jogador faria), sem atravessar nada: só se aproxima
+          if (f % 6 === 0) { const t = __game.vets.reduce((a, v) => (Math.hypot(v.cx - p.x, v.cy - p.y) < Math.hypot(a.cx - p.x, a.cy - p.y) ? v : a)); const dx = t.cx - p.x - 12, dy = t.cy - p.y - 12, d = Math.hypot(dx, dy) || 1; p.x += dx / d * 1.5; p.y += dy / d * 1.5; }
+          __game.tick(1 / 60);
+          for (const v of __game.vets) { if (!Number.isFinite(v.cx) || !Number.isFinite(v.cy)) bad++; const c = Math.floor(v.cx / 32), r = Math.floor(v.cy / 32); if (M[r] && (M[r][c] === "#" || M[r][c] === "X")) wall++; }
+          for (let a = 0; a < n; a++) for (let c = a + 1; c < n; c++) if (Math.hypot(__game.vets[a].cx - __game.vets[c].cx, __game.vets[a].cy - __game.vets[c].cy) < 14) overlap++;
+        }
+        out.push({ id, n, overlap, wall, bad, modes: __game.vets.map((v) => v.mode).join(), moved: __game.vets.map((v, i) => Math.round(Math.hypot(v.cx - start[i][0], v.cy - start[i][1]))), postmen: __game.postmen });
+      }
+      __game.setRand(null); __game.noCatch = false; return out;
+    });
+    ok(many.every((m) => m.bad === 0 && m.wall === 0), `fugindo (24 s com o cachorrinho no encalço) nas Fases 3, 5, 7, 8 e 10 (2 a 6 agentes) ninguém some, vira NaN ou entra em parede`);
+    ok(many.every((m) => m.overlap <= 60 * 3), `e quase nunca ficam um em cima do outro (quadros sobrepostos: ${many.map((m) => `F${m.id}: ${m.overlap}`).join(", ")})`);
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {

@@ -38,9 +38,9 @@
   const RESUME_GRACE = 1.5; // proteção ao continuar um jogo salvo
 
   // ---------- Fases ----------
-  // Veterinário da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
+  // Agente da Fase 1: patrulha devagar e raramente decide perseguir, mas, quando aparece o "!",
   // ele acelera e persegue com mais empenho.
-  // Velocidades do veterinário da Fase 1 (px/s): 55 e 110 (a 0.7.0 aumentou em 10% as da 0.6.0, em todas as fases). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 60,5 e 121.
+  // Velocidades do agente da Fase 1 (px/s): 55 e 110 (a 0.7.0 aumentou em 10% as da 0.6.0, em todas as fases). Na Fase 2 valem os mesmos valores + 10% nos dois modos: 60,5 e 121.
   const VET_SPEED = 55, VET_CHASE_SPEED = 110;
   const BASE_VET = {
     speed: VET_SPEED,           // velocidade sem o "!" (patrulhando): 55 px/s
@@ -62,7 +62,7 @@
   const PHASE2_VET = harder(BASE_VET, 1.1);
   // Fase 3: mais 10% de velocidade de movimento (patrulhando e perseguindo) sobre a Fase 2: 66,55 e 133,1 px/s. O resto fica como na Fase 2.
   const PHASE3_VET = { ...PHASE2_VET, speed: Math.round(PHASE2_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE2_VET.chaseSpeed * 1.1 * 100) / 100 };
-  // Fase 4 e Fase 5: mais 10% de velocidade dos veterinários sobre a Fase 3 (73,21 e 146,41 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (238,14 px/s).
+  // Fase 4 e Fase 5: mais 10% de velocidade dos agentes sobre a Fase 3 (73,21 e 146,41 px/s), nos dois modos; o cachorro fica 5% mais rápido que na Fase 3 (238,14 px/s).
   const PHASE4_VET = { ...PHASE3_VET, speed: Math.round(PHASE3_VET.speed * 1.1 * 100) / 100, chaseSpeed: Math.round(PHASE3_VET.chaseSpeed * 1.1 * 100) / 100 };
   // Fases 6 a 10: a partir da Fase 5 (= Fase 4), +4% de velocidade a cada fase (nos dois modos); o resto do comportamento é o mesmo.
   const scaleVet = (c, f) => ({ ...c, speed: Math.round(c.speed * f * 100) / 100, chaseSpeed: Math.round(c.chaseSpeed * f * 100) / 100 });
@@ -73,12 +73,15 @@
   const PHASE10_VET = scaleVet(PHASE4_VET, 1.2);
   const POSTMAN_SLOW = 0.5;  // carteiro atingido pelo cachorro com poder: volta ao centro e anda só 50% da velocidade que a fase dá a ele (até o poder acabar)
   const POSTMAN_STUN = 2;    // s em que o carteiro atingido não pode ser atingido de novo (e não pontua de novo)
-  const VET_NEAR = 3;        // tiles: ao escolher o caminho de patrulha, o veterinário evita passar a menos disso de outro veterinário
-  const VET_TANDEM = 96, TANDEM_AFTER = 3, TANDEM_PAUSE = 1.5; // px, s, s: se um veterinário de número maior patrulha há 3 s a menos de 96 px de outro, ele para 1,5 s e fica para trás
-  const VET_STACK = 24, STACK_AFTER = 0.4, STACK_PAUSE = 1.2; // px, s, s: dois veterinários em patrulha a menos de 24 px por 0,4 s: o de número maior descansa 1,2 s e eles se separam
-  const VET_GAP = 40;        // px: um veterinário que vai atrás de outro não chega mais perto que isso (eles não andam colados nem se sobrepõem)
-  const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser veterinários, talvez bem do lado do cachorro)
-  // Alcance do "!": o veterinário liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
+  const VET_NEAR = 3;        // tiles: ao escolher o caminho de patrulha, o agente evita passar a menos disso de outro agente
+  const VET_TANDEM = 96, TANDEM_AFTER = 3, TANDEM_PAUSE = 1.5; // px, s, s: se um agente de número maior patrulha há 3 s a menos de 96 px de outro, ele para 1,5 s e fica para trás
+  const VET_STACK = 24, STACK_AFTER = 0.4, STACK_PAUSE = 1.2; // px, s, s: dois agentes em patrulha a menos de 24 px por 0,4 s: o de número maior descansa 1,2 s e eles se separam
+  const VET_GAP = 40;        // px: um agente que vai atrás de outro não chega mais perto que isso (eles não andam colados nem se sobrepõem)
+  // Carteiros (os agentes da carrocinha com o poder do osso) FOGEM do cachorrinho, mais devagar que a patrulha normal de perseguição: 1,25 × a velocidade de patrulha
+  // (62,5% da de perseguição); depois de atingidos, 50% mais lentos ainda. A cada passo escolhem, entre os tiles a até FLEE_DEPTH passos, o que fica mais longe do cachorrinho.
+  const FLEE_FACTOR = 1.25, FLEE_DEPTH = 12, FLEE_MAP_EVERY = 0.2; // × velocidade de patrulha, passos, s entre os cálculos das distâncias do cachorrinho
+  const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser agentes, talvez bem do lado do cachorro)
+  // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
   // Blocos que se movem (a partir da Fase 3): ficam parados num tile, e a cada BLOCK_EVERY segundos mudam de lado (deslizam até o outro tile da dupla), sem
@@ -86,7 +89,7 @@
   // `blockEvery` de cada fase pode mudar esse intervalo. Nos últimos BLOCK_WARN s antes de cada mudança, o trilho pisca em amarelo.
   const BLOCK_SPEED = 120, BLOCK_EVERY = 3, BLOCK_WARN = 0.6; // px/s ao deslizar (o dobro de antes), s entre as mudanças, s de aviso
 
-  // # parede | X caixa | E saída | P início do cachorro | V início de um veterinário
+  // # parede | X caixa | E saída | P início do cachorro | V início de um agente
   // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
   const MAP_1 = [
     "#########################",
@@ -108,7 +111,7 @@
     "#...............XX...EEE#",
     "#########################",
   ];
-  // Fase 2: quatro salas nos cantos ligadas por corredores a um salão central, onde os dois veterinários começam.
+  // Fase 2: quatro salas nos cantos ligadas por corredores a um salão central, onde os dois agentes começam.
   const MAP_2 = [
     "#########################",
     "#P......#########.......#",
@@ -129,7 +132,7 @@
     "#.......#########..X.EEE#",
     "#########################",
   ];
-  // Fase 3: armazém com três faixas (salas dos cantos, corredor de cima e de baixo, salão central dos veterinários). Os dois corredores
+  // Fase 3: armazém com três faixas (salas dos cantos, corredor de cima e de baixo, salão central dos agentes). Os dois corredores
   // de cima têm "portas": um bloco que se recolhe a um nicho (e fecha o corredor de novo). Cada porta tem um caminho alternativo.
   const MAP_3 = [
     "#########################",
@@ -152,7 +155,7 @@
     "#########################",
   ];
 
-  // Fase 4: labirinto grande (41 × 29 tiles; a câmera segue o cachorro) com corredores de 1 tile, algumas salas, o salão central dos 3 veterinários e 3 portas de
+  // Fase 4: labirinto grande (41 × 29 tiles; a câmera segue o cachorro) com corredores de 1 tile, algumas salas, o salão central dos 3 agentes e 3 portas de
   // bloco que ESMAGAM. As portas ficam em passagens com caminho alternativo, e o teste confere que todo o chão continua ligado com as portas em qualquer posição.
   const MAP_4 = [
     "#########################################",
@@ -415,14 +418,14 @@
     // bonusStep = pontos por degrau de 10 s do bônus de tempo (de 0 a 10 × bonusStep);
     // blocks = blocos que deslizam de `from` a `to` (tiles na mesma linha ou coluna); `phase` = segundos já decorridos do ciclo ao começar.
     // dogSpeed = fração da velocidade do cachorrinho (1 = 252 px/s; a Fase 3 usa 0,9 = 226,8 px/s, as Fases 4 e 5 usam 0,945 = 238,14 px/s e as Fases 6 a 10 sobem de 0,96 a 1)
-    // alertTiles = a que distância (em quadrados) o veterinário liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
+    // alertTiles = a que distância (em quadrados) o agente liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
     // lifePenalty = pontos perdidos por vida perdida (padrão 50); minPoints = pontos mínimos na fase para passar (padrão 0); bonePower = segundos do poder do osso (0 = sem poder);
     // crush = os blocos esmagam o cachorro (sem o poder do osso); note = frase curta na escolha de fase
     { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(1), blocks: [] },
     { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", blocks: [] },
     {
       id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
-      touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: veterinários 10% mais lentos e cachorrinho 5% mais rápido
+      touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: agentes 10% mais lentos e cachorrinho 5% mais rápido
       blocks: [
         { from: [7, 3], to: [7, 2], phase: 0 },   // porta 1: começa fechada (no corredor) e na primeira mudança se recolhe ao nicho de cima
         { from: [17, 4], to: [17, 3], phase: 0 }, // porta 2: começa aberta (no nicho de baixo) e na primeira mudança fecha o corredor
@@ -521,7 +524,7 @@
     {
       id: 10, title: "Fase 10", map: MAP_10, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
-      note: "a última fase: o maior labirinto, 6 veterinários e blocos muito rápidos; renasce onde morreu",
+      note: "a última fase: o maior labirinto, 6 agentes da carrocinha e blocos muito rápidos; renasce onde morreu",
       blocks: [
         { from: [47, 16], to: [49, 16], size: [3, 1], wall: true, every: 6, speed: 160, phase: 0 }, // parede 1
         { from: [18, 27], to: [18, 29], size: [1, 3], wall: true, every: 6, speed: 160, phase: 3 }, // parede 2
@@ -607,7 +610,7 @@
       if (!Number.isInteger(mn) || !Number.isInteger(mx) || mn < Math.min(1, n) || mx < mn || mx > n) throw new Error(`Quantidade de blocos inválida: ${def.title}`);
       blockRange[g] = [mn, mx];
     }
-    const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos veterinários e do cachorro
+    const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos agentes e do cachorro
     if (te && !(te.vet > 0.5 && te.vet <= 1 && te.dog >= 1 && te.dog <= 1.25)) throw new Error(`Facilitação do toque inválida: ${def.title}`);
     const touchEase = te ? { vet: te.vet, dog: te.dog } : null;
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
@@ -642,9 +645,9 @@
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
-  let power = 0;               // segundos que faltam do poder do osso (os veterinários viram carteiros e o cachorro ganha deles); 0 = sem poder
+  let power = 0;               // segundos que faltam do poder do osso (os agentes viram carteiros e o cachorro ganha deles); 0 = sem poder
   const START_HINT = "O tempo só começa quando você se mexer.";
-  let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os veterinários e os blocos ficam parados
+  let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os agentes e os blocos ficam parados
   let startHint = false;       // o aviso "mova-se para começar" está na tela
   let autoStart = false;       // gancho dos testes: a fase começa a contar na hora (como antes da 0.7.0)
   let pickupToastUntil = 0;    // até quando o aviso de um osso/vida (poder, vida extra) está na tela: o aviso da meta espera por ele
@@ -653,7 +656,7 @@
   let crushed = false;         // um bloco acabou de alcançar o cachorro (nas fases em que ele esmaga): perde uma vida no fim do quadro
   let puffs = [];              // carteiros derrotados: nuvenzinhas que só enfeitam
   let blocks = [];             // blocos que se movem na fase atual: { d: definição, bt: relógio do ciclo, rect: posição (também em `solids`) }
-  const dynBlocked = new Set(); // tiles ocupados agora pelos blocos que se movem (chave: linha * COLS + coluna): os veterinários os contornam
+  const dynBlocked = new Set(); // tiles ocupados agora pelos blocos que se movem (chave: linha * COLS + coluna): os agentes os contornam
   let gameIsAccount = false; // a partida começou com uma conta: se ela for apagada em outra aba, nada mais é gravado em nome dela
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
@@ -679,7 +682,7 @@
     return a;
   }
 
-  // Sorteia onde ficam `count` rações: só em chão alcançável, longe do início do cachorro, dos veterinários e da saída,
+  // Sorteia onde ficam `count` rações: só em chão alcançável, longe do início do cachorro, dos agentes e da saída,
   // e espalhadas pelo mapa (a distância mínima entre elas diminui só se for preciso).
   // `avoid`: tiles que já têm uma ração (as já pegas ficam no mapa até a fase acabar) e não podem receber outra.
   function placeItems(spawnTile, vetTiles, exitTiles, count, avoid = []) {
@@ -722,7 +725,7 @@
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
-    up = cleanUp(o.upgrades) || noUp();
+    up = cleanUp(o.upgrades) || noUp(); fleeMap = null;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -766,7 +769,7 @@
     }
   }
 
-  // Tira da frente do bloco quem estiver no lugar dele: o cachorro vai para o lado livre mais próximo (encostado no bloco); um veterinário vai
+  // Tira da frente do bloco quem estiver no lugar dele: o cachorro vai para o lado livre mais próximo (encostado no bloco); um agente vai
   // para o centro do tile livre mais próximo. Devolvem false se não houver para onde empurrar (aí o bloco não anda, e nunca esmaga).
   function shovePlayer(rect) {
     const pr = { x: player.x, y: player.y, w: player.w, h: player.h };
@@ -798,11 +801,11 @@
   }
   const shoveActors = (rect) => shovePlayer(rect) && shoveVets(rect);
 
-  // Cada bloco anda o seu ciclo no relógio, sem esperar ninguém: se o cachorro ou um veterinário estiver no lugar para onde ele desliza,
+  // Cada bloco anda o seu ciclo no relógio, sem esperar ninguém: se o cachorro ou um agente estiver no lugar para onde ele desliza,
   // é empurrado para o lado (só se não houver mesmo onde pô-lo é que o bloco fica parado, para nunca esmagar).
   function updateBlocks(dt) {
     if (!blocks.length) return;
-    // Nas fases com `crush`, o bloco que alcança o cachorro (sem o poder do osso e fora da proteção) o ESMAGA: ele perde uma vida. Os veterinários continuam sendo empurrados.
+    // Nas fases com `crush`, o bloco que alcança o cachorro (sem o poder do osso e fora da proteção) o ESMAGA: ele perde uma vida. Os agentes continuam sendo empurrados.
     const deadly = lv.crush && !noCatch && power <= 0 && invuln <= 0;
     for (const b of blocks) {
       const bt = normBt(b.d, b.bt + dt), r = blockRectAt(b.d, bt);
@@ -830,8 +833,8 @@
     }
   }
 
-  // ---------- Veterinário (caminha pelo centro dos tiles, sem atravessar paredes) ----------
-  function bfs(from, ignoreBlocks = false, avoid = null) { // `avoid`: tiles (chaves) que não podem ser usados (por ex. onde há outro veterinário)
+  // ---------- Agente (caminha pelo centro dos tiles, sem atravessar paredes) ----------
+  function bfs(from, ignoreBlocks = false, avoid = null) { // `avoid`: tiles (chaves) que não podem ser usados (por ex. onde há outro agente)
     const prev = new Map(), dist = new Map();
     const key = (c, r) => r * COLS + c;
     const q = [from]; dist.set(key(...from), 0); prev.set(key(...from), null);
@@ -863,10 +866,10 @@
     return true;
   }
 
-  // Destino da próxima patrulha: entre os tiles bem longe de onde o veterinário está (de preferência na faixa do mapa dele), os 40% mais afastados dos outros veterinários (e dos destinos deles), sorteado.
-  // Assim os veterinários ocupam lugares diferentes do mapa em vez de andar juntos.
-  // tiles (chaves) por onde o caminho de patrulha de `v` não deve passar: os que ficam a menos de VET_NEAR tiles de outro veterinário E mais perto dele do que `from`
-  // (assim ninguém é obrigado a atravessar o outro, mas dois veterinários lado a lado ainda podem se afastar um do outro)
+  // Destino da próxima patrulha: entre os tiles bem longe de onde o agente está (de preferência na faixa do mapa dele), os 40% mais afastados dos outros agentes (e dos destinos deles), sorteado.
+  // Assim os agentes ocupam lugares diferentes do mapa em vez de andar juntos.
+  // tiles (chaves) por onde o caminho de patrulha de `v` não deve passar: os que ficam a menos de VET_NEAR tiles de outro agente E mais perto dele do que `from`
+  // (assim ninguém é obrigado a atravessar o outro, mas dois agentes lado a lado ainda podem se afastar um do outro)
   function tilesNearOthers(v, from) {
     const out = new Set();
     for (const o of vets) {
@@ -884,7 +887,7 @@
     if (!far.length) return null;
     const others = vets.filter((o) => o !== v);
     if (!others.length) return far[Math.floor(rand() * far.length)];
-    // cada veterinário tem a sua "faixa" do mapa (por colunas: o 1º à esquerda, o último à direita) e patrulha nela na maior parte das vezes
+    // cada agente tem a sua "faixa" do mapa (por colunas: o 1º à esquerda, o último à direita) e patrulha nela na maior parte das vezes
     const mine = far.filter(([c]) => Math.min(vets.length - 1, Math.floor((c * vets.length) / COLS)) === v.idx);
     if (mine.length >= 8 && rand() < 0.75) far = mine;
     const away = ([c, r]) => {
@@ -901,6 +904,31 @@
     const [vx, vy] = centerOf(...v.leg), [ox, oy] = centerOf(...o.leg);
     return Math.hypot(o.cx - vx, o.cy - vy) < Math.hypot(o.cx - v.cx, o.cy - v.cy) && Math.hypot(ox - v.cx, oy - v.cy) >= Math.hypot(o.cx - v.cx, o.cy - v.cy);
   }
+  // Distâncias (em passos) do cachorrinho a cada tile, recalculadas no máximo a cada FLEE_MAP_EVERY s: é o que os carteiros usam para escolher para onde fugir.
+  let fleeMap = null, fleeMapAt = -1;
+  function dogDistances() {
+    if (!fleeMap || time - fleeMapAt >= FLEE_MAP_EVERY || time < fleeMapAt) { fleeMap = bfs(tileOf(player.x + player.w / 2, player.y + player.h / 2)); fleeMapAt = time; }
+    return fleeMap;
+  }
+  // Próximo tile do carteiro `v` ao fugir: entre os tiles a até FLEE_DEPTH passos dele (por caminhos que não passam pelos outros agentes), o que fica mais longe do cachorrinho,
+  // de preferência um que ele alcança antes do cachorrinho; null se não há para onde ir.
+  function fleeStep(v) {
+    const from = tileOf(v.cx, v.cy), dg = dogDistances().dist, key = (c, r) => r * COLS + c;
+    const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return key(c, r); }));
+    const g = bfs(from, false, taken);
+    let best = null, safe = null;
+    for (const [c, r] of g.q) {
+      const mine = g.dist.get(key(c, r));
+      if (mine < 1 || mine > FLEE_DEPTH) continue;
+      const theirs = dg.get(key(c, r)) ?? 99;
+      let open = 0; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (c + dc >= 0 && r + dr >= 0 && c + dc < COLS && r + dr < ROWS && walk[r + dr][c + dc]) open++;
+      const score = theirs - mine * 0.4 + open * 0.3 + rand() * 0.4; // longe do cachorrinho, perto dele mesmo, e de preferência não num beco
+      if (!best || score > best.score) best = { c, r, score };
+      if (mine < theirs - 1 && (!safe || score > safe.score)) safe = { c, r, score };
+    }
+    const goal = safe || best;
+    return goal ? pathTo(g, [goal.c, goal.r])[0] || null : null;
+  }
   function updateVet(v, dt) {
     const cfg = v.cfg;
     if (v.hitCool > 0) v.hitCool -= dt;
@@ -916,12 +944,12 @@
     }
     if (v.mode === "chase" && (v.modeT <= 0 || v.chaseAge >= cfg.chaseMax)) { v.mode = "patrol"; v.cool = cfg.restTime; v.route = []; v.idle = 0.5; }
 
-    // andando colado em cima de outro veterinário (de número menor, também andando) em patrulha: depois de STACK_AFTER s, descansa STACK_PAUSE s e fica para trás
+    // andando colado em cima de outro agente (de número menor, também andando) em patrulha: depois de STACK_AFTER s, descansa STACK_PAUSE s e fica para trás
     // (se o outro está parado, quem anda é quem sai de cima dele: não precisa descansar)
     if (v.mode === "patrol" && v.leg && vets.some((o) => o.idx < v.idx && o.mode === "patrol" && o.leg && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_STACK)) {
       if ((v.stack += dt) > STACK_AFTER) { v.stack = 0; v.idle = Math.max(v.idle, STACK_PAUSE); }
     } else v.stack = 0;
-    // andando em fila atrás de outro veterinário (mesmo corredor, quase colados) por mais de TANDEM_AFTER s (um quarto disso se estiver a menos de VET_GAP): quem vem atrás descansa um pouco e fica para trás
+    // andando em fila atrás de outro agente (mesmo corredor, quase colados) por mais de TANDEM_AFTER s (um quarto disso se estiver a menos de VET_GAP): quem vem atrás descansa um pouco e fica para trás
     const ahead = v.mode === "patrol" && v.leg ? vets.find((o) => o !== v && o.mode === "patrol" && o.leg && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_TANDEM && followsAhead(v, o)) : null;
     if (ahead) {
       v.tandem += Math.hypot(ahead.cx - v.cx, ahead.cy - v.cy) < VET_GAP ? dt * 4 : dt;
@@ -930,11 +958,15 @@
 
     // Anda `budget` pixels neste quadro; ao chegar ao centro de um tile, decide o próximo passo e continua com o que sobrou
     // (assim a velocidade real é a da fase, e não depende da taxa de quadros).
-    let budget = (v.mode === "chase" ? cfg.chaseSpeed : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * (assist() ? lv.touchEase.vet : 1) * vetSlowNow() * dt, idled = false;
+    let budget = (v.mode === "chase" ? cfg.chaseSpeed : v.mode === "flee" ? cfg.speed * FLEE_FACTOR : cfg.speed) * (v.slow ? POSTMAN_SLOW : 1) * (assist() ? lv.touchEase.vet : 1) * vetSlowNow() * dt, idled = false;
     for (let n = 0; n < 4 && budget > 1e-9; n++) {
       if (!v.leg) { // está exatamente no centro de um tile: decide o próximo passo
-        if (v.mode === "chase") {
-          // vai atrás do cachorro por um caminho que não passa pelo tile dos outros veterinários (se houver outro caminho): eles se espalham em vez de andar em fila
+        if (v.mode === "flee") {
+          if (v.hitCool > 0 || v.idle > 0) { if (v.idle > 0 && !idled) v.idle -= dt; return; } // tonto (acabou de ser atingido) ou esperando: parado
+          v.leg = fleeStep(v);
+          if (!v.leg) { v.idle = 0.25; return; } // sem para onde fugir: espera um instante
+        } else if (v.mode === "chase") {
+          // vai atrás do cachorro por um caminho que não passa pelo tile dos outros agentes (se houver outro caminho): eles se espalham em vez de andar em fila
           const from = tileOf(v.cx, v.cy), dogTile = tileOf(player.x + player.w / 2, player.y + player.h / 2);
           const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
           let p = pathTo(bfs(from, false, taken), dogTile);
@@ -945,7 +977,7 @@
           return;
         } else {
           if (!v.route.length) {
-            // escolhe um destino por um caminho que não passa perto dos outros veterinários (para não andarem em fila); se só houver esse corredor, espera até 2 s que o outro saia da frente
+            // escolhe um destino por um caminho que não passa perto dos outros agentes (para não andarem em fila); se só houver esse corredor, espera até 2 s que o outro saia da frente
             const from = tileOf(v.cx, v.cy), near = tilesNearOthers(v, from);
             let g = bfs(from, false, near), goal = pickPatrolGoal(v, g);
             if (!goal && near.size && v.crowd < 2) { v.crowd += dt; return; }
@@ -957,15 +989,15 @@
           if (!v.leg) v.idle = cfg.idleMin;
         }
         if (!v.leg) return;
-        v.from = tileOf(v.cx, v.cy); // o tile de onde está saindo (para voltar, se ficar de frente com outro veterinário)
+        v.from = tileOf(v.cx, v.cy); // o tile de onde está saindo (para voltar, se ficar de frente com outro agente)
       }
       const [tx, ty] = centerOf(...v.leg);
       const dx = tx - v.cx, dy = ty - v.cy, dist = Math.hypot(dx, dy), move = Math.min(budget, dist);
       if (dist > 0) {
         const mx = v.cx + (dx / dist) * move, my = v.cy + (dy / dist) * move;
-        // não anda colado em outro veterinário: se o próximo passo o deixaria a menos de VET_GAP de um veterinário de número menor (e mais perto do que está), espera;
+        // não anda colado em outro agente: se o próximo passo o deixaria a menos de VET_GAP de um agente de número menor (e mais perto do que está), espera;
         // se a espera passa de 0,5 s numa patrulha (cara a cara num corredor), o de número maior volta ao tile de onde veio e escolhe outro destino.
-        // Um veterinário parado de número maior (descansando ou esperando) só o faz esperar 1 s: depois disso ele passa (assim ninguém fica travado para sempre).
+        // Um agente parado de número maior (descansando ou esperando) só o faz esperar 1 s: depois disso ele passa (assim ninguém fica travado para sempre).
         const closer = (o) => Math.hypot(o.cx - mx, o.cy - my) < VET_GAP && Math.hypot(o.cx - mx, o.cy - my) < Math.hypot(o.cx - v.cx, o.cy - v.cy);
         const lower = vets.find((o) => o !== v && (o.idx < v.idx || (o.slow && !v.slow)) && closer(o)); // espera atrás de quem tem número menor e também de um carteiro lento
         const still = lower ? null : vets.find((o) => o !== v && (o.hold > 0 || o.stuck > 0 || !o.leg) && closer(o));
@@ -1009,17 +1041,17 @@
     else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${maxLivesNow()} vidas).${extra}`, 2.8);
   }
 
-  // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o veterinário volta ao seu posto.
+  // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o agente volta ao seu posto.
   // O tempo NÃO zera: continua contando.
   // Fases com `respawnInPlace` (9 e 10): o cachorro renasce ONDE MORREU (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto;
-  // se não houver lugar, volta ao início). Os veterinários voltam aos postos e ele ganha a proteção de sempre.
+  // se não houver lugar, volta ao início). Os agentes voltam aos postos e ele ganha a proteção de sempre.
   function respawn() {
     let inPlace = lv.respawnInPlace;
     if (inPlace) { for (const b of blocks) if (!shovePlayer(b.rect)) { inPlace = false; break; } }
     if (inPlace) Object.assign(player, { moving: false });
     else Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     invuln = invulnNow();
     return inPlace;
@@ -1038,15 +1070,15 @@
   }
 
   // ---------- Poder do osso (a partir da Fase 2) ----------
-  // Pegar um osso dura `bonePower` segundos: os veterinários viram carteiros (não perseguem nem pegam o cachorro) e quem encosta num deles ganha dele.
-  // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser veterinários.
+  // Pegar um osso dura `bonePower` segundos: os agentes viram carteiros (não perseguem nem pegam o cachorro) e quem encosta num deles ganha dele.
+  // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser agentes.
   function startPower() {
     power = bonePowerNow();
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
-    for (const v of vets) if (v.mode === "chase") { v.mode = "patrol"; v.route = []; v.idle = 0.3; v.modeT = 0; v.chaseAge = 0; } // (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
-    toast(`Poder do osso por ${bonePowerNow()} s: os veterinários viram carteiros!`, 2.6); pickupToastUntil = time + 2.6;
+    for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
+    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros e fogem!`, 2.6); pickupToastUntil = time + 2.6;
   }
-  // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro veterinário (dois não ficam um em cima do outro)
+  // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
     const [vc, vr] = tileOf(x, y);
     let best = null;
@@ -1061,17 +1093,17 @@
   }
   function defeatPostman(v) {
     puffs.push({ x: v.cx, y: v.cy, t: 0 });
-    const post = freeSpotNear(v, v.sx, v.sy); // o posto dele; se outro veterinário estiver nele, o tile livre mais perto
-    Object.assign(v, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "patrol", idle: 1.5, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN });
+    const post = freeSpotNear(v, v.sx, v.sy); // o posto dele; se outro agente estiver nele, o tile livre mais perto
+    Object.assign(v, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "flee", idle: 0, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN }); // fica tonto (parado) por POSTMAN_STUN s e depois volta a fugir, 50% mais lento
     postmen++; score = runningScore();
     toast(`Você ganhou do carteiro! +${Records.POSTMAN_POINTS} pontos`, 1.6);
     saveNow();
   }
   function endPower() {
     power = 0;
-    for (const v of vets) { v.slow = false; v.hitCool = 0; v.cool = Math.max(v.cool, 2); } // os carteiros lentos voltam à velocidade normal
+    for (const v of vets) { Object.assign(v, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(v.cool, 2) }); } // os carteiros voltam a ser agentes (e à velocidade normal); o trecho em andamento termina
     invuln = Math.max(invuln, POWER_END_GRACE);
-    toast("O poder acabou: os carteiros voltaram a ser veterinários!", 2.4);
+    toast("O poder acabou: os carteiros voltaram a ser agentes da carrocinha!", 2.4);
   }
 
   // ---------- Atualização ----------
@@ -1088,7 +1120,7 @@
     const byTouch = !!(touch.left || touch.right || touch.up || touch.down);
     if (ix || iy) touchInput = byTouch && !(keys.ArrowLeft || keys.ArrowRight || keys.ArrowUp || keys.ArrowDown || keys.a || keys.d || keys.w || keys.s);
     if (!ix && !iy) { const g = gamepadMove(); ix = g.x; iy = g.y; if (ix || iy) touchInput = false; } // sem teclado/toque: usa o controle (analógico ou direcional)
-    if (!started) { // a fase só começa (relógio, veterinários e blocos) no primeiro passo do jogador
+    if (!started) { // a fase só começa (relógio, agentes e blocos) no primeiro passo do jogador
       if (!(ix || iy)) {
         player.moving = false;
         if (hintTimer <= 0) { toast(START_HINT, 600); startHint = true; } // pausar, "Continuar jogo" com tempo 0 e outros avisos apagam o aviso: ele volta enquanto o jogador não se mexe
@@ -1197,7 +1229,7 @@
     beginPlay();
     const n = vets.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${lv.title}: ${n} ${n === 1 ? "veterinário" : "veterinários"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : `${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     if (started) toast(msg, 2.8);
     else { toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
   }
@@ -1296,12 +1328,12 @@
     Object.assign(player, { x: sv.p.x, y: sv.p.y, facing: sv.p.f, moving: false });
     vets.forEach((v, i) => {
       const [c, r] = tileOf(sv.vets[i][0], sv.vets[i][1]);
-      [v.cx, v.cy] = centerOf(c, r); // o veterinário volta ao centro do tile mais próximo
-      Object.assign(v, { mode: "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
+      [v.cx, v.cy] = centerOf(c, r); // o agente volta ao centro do tile mais próximo
+      Object.assign(v, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
     });
     power = sv.pw; postmen = sv.pk; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
-    vets.forEach((v, i) => { // dois veterinários que estavam no mesmo tile não voltam um em cima do outro
+    vets.forEach((v, i) => { // dois agentes que estavam no mesmo tile não voltam um em cima do outro
       if (vets.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
     });
     invuln = Math.max(sv.invuln, RESUME_GRACE);
@@ -1372,7 +1404,7 @@
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, l.title), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "veterinário" : "veterinários"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
+        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
         if (l.id === focusId) b.dataset.autofocus = "";
@@ -1499,7 +1531,7 @@
     setState("lost");
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "O veterinário pegou o cachorrinho!";
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
     $("lose-lead").textContent = why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
@@ -1880,7 +1912,7 @@
     }
   }
 
-  // Carteiro (os veterinários enquanto dura o poder do osso): uniforme azul, boné com distintivo amarelo, bolsa de correspondência e uma carta.
+  // Carteiro (os agentes enquanto dura o poder do osso): uniforme azul, boné com distintivo amarelo, bolsa de correspondência e uma carta.
   function drawPostman(v) {
     if (v.slow) ctx.globalAlpha = 0.55; // carteiro já pego neste poder (não rende mais pontos): fica esmaecido
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
@@ -1895,27 +1927,38 @@
     ctx.fillRect(x - 8, y - 13.5, 16, 2.5);
     ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18, 3, 3);                                     // distintivo
     ellipse(x - 2.2 + v.dir, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + v.dir, y - 11, 1, 1, "#222");
+    if (v.mode === "flee" && !(v.hitCool > 0)) { // fugindo: gotas de suor escorrendo
+      const t1 = calm ? 0.3 : (time * 2.5 + v.cx * 0.01) % 1, t2 = calm ? 0.7 : (t1 + 0.5) % 1;
+      ctx.fillStyle = "rgba(143,211,255,.9)"; ellipse(x + 8, y - 18 + t1 * 7, 1.5, 2.2, "rgba(143,211,255,.9)"); ellipse(x - 8, y - 16 + t2 * 7, 1.5, 2.2, "rgba(143,211,255,.9)");
+    }
     if (v.hitCool > 0) { // tonto: estrelinhas girando em volta da cabeça
       ctx.fillStyle = "#ffe066";
       for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y - 22 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
   }
+  // Agente da carrocinha: uniforme verde-oliva, colete laranja refletivo, boné com distintivo e um puçá (rede) numa vara comprida.
   function drawVet(v) {
     if (power > 0) { drawPostman(v); return; }
-    const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
+    const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0)), d = v.dir || 1, chase = v.mode === "chase";
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
-    ctx.fillStyle = "#2f4a6b"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9); // calça
-    ctx.fillStyle = "#f4f7fa"; ctx.fillRect(x - 10, y - 7, 20, 15); // jaleco
-    ctx.fillStyle = "#e1e8ef"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10);   // braços
-    ctx.fillStyle = "#18a999"; ctx.fillRect(x - 1.5, y - 4, 3, 9); ctx.fillRect(x - 4.5, y - 1, 9, 3);  // cruz
-    ellipse(x, y - 12, 6, 6, "#f0c8a0");                                                                // cabeça
-    ctx.fillStyle = "#18a999"; ctx.beginPath(); ctx.arc(x, y - 13, 6.4, Math.PI, 0); ctx.fill();        // touca
-    ctx.fillRect(x - 7, y - 13.5, 14, 2);
-    ellipse(x - 2.2 + v.dir, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + v.dir, y - 11, 1, 1, "#222");
-    if (v.mode === "chase") {
+    const px = x + d * (chase ? 16 : 12), py = y - (chase ? 11 : 17); // o puçá aponta para a frente quando persegue
+    ctx.strokeStyle = "#8a6a3a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + d * 8, y + 5); ctx.lineTo(px, py + 3); ctx.stroke(); // vara
+    ctx.strokeStyle = "#ececec"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(px, py - 1, 5.5, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); // aro da rede
+    ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px - 5, py - 1); ctx.lineTo(px + 5, py - 1); ctx.moveTo(px, py - 5.5); ctx.lineTo(px, py + 3.5); ctx.stroke(); // malha
+    ctx.fillStyle = "#3d4a2a"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);       // calça
+    ctx.fillStyle = "#1f1f1f"; ctx.fillRect(x - 6.5, y + 11, 6, 2.5); ctx.fillRect(x + 0.5, y + 11, 6, 2.5); // botas
+    ctx.fillStyle = "#506a3e"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10);     // mangas
+    ctx.fillStyle = "#ff8a1f"; ctx.fillRect(x - 9, y - 7, 18, 15);                                        // colete laranja
+    ctx.fillStyle = "#f4f4f4"; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 3, 18, 2);      // faixas refletivas
+    ellipse(x, y - 12, 6, 6, "#f0c8a0");                                                                  // cabeça
+    ctx.fillStyle = "#33432a"; ctx.beginPath(); ctx.arc(x, y - 13, 6.5, Math.PI, 0); ctx.fill();          // boné
+    ctx.fillRect(x - 7 + (d > 0 ? 0 : -3), y - 13.5, 14 + 3, 2.2);                                       // aba
+    ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18.5, 3, 3);                                     // distintivo
+    ellipse(x - 2.2 + d, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + d, y - 11, 1, 1, "#222");
+    if (chase) {
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("!", x, y - 22 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
+      ctx.fillText("!", x, y - 24 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
     }
   }
 
