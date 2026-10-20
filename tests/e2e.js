@@ -3919,6 +3919,53 @@ const PAGE_HELPERS = () => {
     ok(near(p3.roof, [74, 84, 112]), `a Fase 3 continua com o visual de antes (parede ${p3.roof})`);
   });
 
+  // =====================================================================
+  await section("0.12.0: o agente da carrocinha (e o carteiro) aparecem com o mesmo desenho em TODAS as 10 fases", async () => {
+    await fresh(page);
+    const look = (id, mode) => ev(page, async ([id, mode]) => {
+      __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
+      const v = __game.vets[0], p = __game.player;
+      if (mode === "power") { const b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); }
+      p.x = v.cx + 130; p.y = v.cy - 12; __game.tick(0.01);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, cx = Math.round((v.cx - __game.view.camX) * k), cy = Math.round((v.cy - __game.view.camY) * k), R = Math.round(24 * k);
+      const d = c.getImageData(cx - R, cy - R, 2 * R, 2 * R).data; let orange = 0, blue = 0, green = 0, white = 0;
+      for (let i = 0; i < d.length; i += 4) { const [r, g, b] = [d[i], d[i + 1], d[i + 2]]; if (r > 230 && g > 110 && g < 160 && b < 70) orange++; if (b > 180 && r < 90 && g > 100 && g < 150) blue++; if (r > 70 && r < 110 && g > 100 && g < 140 && b > 55 && b < 90) green++; if (r > 235 && g > 235 && b > 235) white++; }
+      return { orange, blue, green, white, power: __game.power, noVets: __game.vets.length };
+    }, [id, mode]);
+    const bad = [];
+    for (let id = 1; id <= 10; id++) {
+      const n = await look(id, "normal"), pw = id >= 2 ? await look(id, "power") : null;
+      if (!(n.orange > 20 && n.green > 10 && n.blue < 5)) bad.push(`Fase ${id} agente: laranja ${n.orange}, verde ${n.green}, azul ${n.blue}`);
+      if (pw && !(pw.power > 0 && pw.blue > 20 && pw.orange < 5)) bad.push(`Fase ${id} carteiro: azul ${pw.blue}, laranja ${pw.orange}, poder ${pw.power}`);
+    }
+    ok(bad.length === 0, `o agente tem colete laranja e uniforme verde nas Fases 1 a 10, e o carteiro é azul sem colete laranja nas Fases 2 a 10${bad.length ? " — problema: " + bad.join("; ") : ""}`);
+    // as 4 "caixas" dos cantos do pátio da praça (Fases 4 a 10) são vans da carrocinha, não caixas de madeira; nas Fases 1 a 3 continuam caixas
+    const vans = await ev(page, async () => {
+      const out = {};
+      for (let id = 1; id <= 10; id++) {
+        __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
+        const L = __game.levels[id - 1], cx = L.map[0].length >> 1, cy = L.map.length >> 1;
+        const tiles = id >= 4 ? [[-3, -2], [3, -2], [-3, 2], [3, 2]].map(([dc, dr]) => [cx + dc, cy + dr]) : (() => { const o = []; L.map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "X" && o.length < 2) o.push([c, r]); })); return o; })();
+        const rec = { n: 0, vanLike: 0, crateLike: 0 };
+        for (const [c, r] of tiles) {
+          __game.player.x = c * 32 - 40; __game.player.y = r * 32 + 40; __game.tick(0.01);
+          await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+          const k = __game.view.k * __game.view.zoom, ctx = document.getElementById("game").getContext("2d");
+          const d = ctx.getImageData(Math.round((c * 32 - __game.view.camX) * k), Math.round((r * 32 - __game.view.camY) * k), Math.round(32 * k), Math.round(32 * k)).data;
+          let light = 0, brown = 0; for (let i = 0; i < d.length; i += 4) { const [rr, g, b] = [d[i], d[i + 1], d[i + 2]]; if (rr > 200 && g > 205 && b > 215) light++; if (rr > 120 && rr < 150 && g > 80 && g < 100 && b > 35 && b < 55) brown++; }
+          rec.n++; if (light > 150 && brown < 20) rec.vanLike++; if (brown > 150 && light < 20) rec.crateLike++;
+        }
+        out[id] = rec;
+      }
+      return out;
+    });
+    ok([4, 5, 6, 7, 8, 9, 10].every((id) => vans[id].n === 4 && vans[id].vanLike === 4) && [1, 2, 3].every((id) => vans[id].n === 2 && vans[id].crateLike === 2), `nas Fases 4 a 10 os 4 cantos do pátio da praça são vans da carrocinha (claras) e nas Fases 1 a 3 as caixas continuam de madeira (${[1, 2, 3, 4, 7, 10].map((id) => `F${id}: ${vans[id].vanLike} vans/${vans[id].crateLike} caixas`).join(", ")})`);
+    // nenhum texto do jogo fala em veterinário (menu, Como jogar, lista de fases, avisos de cada fase, telas de derrota e vitória)
+    const texts = await ev(page, () => { const out = [document.body.innerText]; for (let id = 1; id <= 10; id++) { __game.start(id); out.push(document.getElementById("toast").textContent); } return out.join("\n"); });
+    ok(!/veterin/i.test(texts) && !/veterin/i.test(await page.evaluate(() => document.documentElement.outerHTML.replace(/<script[\s\S]*?<\/script>/g, ""))), "nenhum texto nem rótulo do jogo fala em veterinário");
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };

@@ -567,7 +567,7 @@
     const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X"));
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const ch = map[r][c];
-      if (ch === "#" || ch === "X") solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch });
+      if (ch === "#" || ch === "X") solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch, van: ch === "X" && def.id >= 4 && Math.abs(c - (cols >> 1)) === 3 && Math.abs(r - (rows >> 1)) === 2 }); // nas cidades (Fase 4 em diante) as 4 "caixas" dos cantos do pátio da praça são as vans da carrocinha
       else if (ch === "E") exitTiles.push([c, r]);
       else if (ch === "P") spawnTile = [c, r];
       else if (ch === "V") vetSpawns.push([c, r]);
@@ -1964,6 +1964,18 @@
     ctx.globalAlpha = 1;
   }
   // Agente da carrocinha: uniforme verde-oliva, colete laranja refletivo, boné com distintivo e um puçá (rede) numa vara comprida.
+  function drawVan(s) { // van da carrocinha vista de cima: teto claro, cabine escura na frente, grade da jaula atrás e giroflex vermelho
+    const x = s.x, y = s.y, left = s.x / TILE < (COLS >> 1); // a frente da van aponta para o centro do pátio
+    ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.fillRect(x + 3, y + 5, 28, 26);
+    ctx.fillStyle = "#d9dee8"; ctx.fillRect(x + 2, y + 3, 28, 26);        // carroceria
+    ctx.fillStyle = "#aab3c4"; ctx.fillRect(x + 2, y + 26, 28, 3);        // beiral
+    ctx.fillStyle = "#2b3550"; ctx.fillRect(left ? x + 20 : x + 3, y + 6, 8, 20); // cabine/para-brisa
+    ctx.strokeStyle = "#5a6478"; ctx.lineWidth = 1.5; ctx.beginPath();     // grade da jaula
+    for (let i = 0; i < 4; i++) { const gx = (left ? x + 6 : x + 14) + i * 3.5; ctx.moveTo(gx, y + 7); ctx.lineTo(gx, y + 25); }
+    ctx.stroke();
+    ctx.fillStyle = "#e23d3d"; ctx.fillRect(x + 14, y + 4, 4, 3);          // giroflex
+    ctx.fillStyle = "#ff8a1f"; ctx.fillRect(x + 4, y + 27, 24, 1.5);       // faixa laranja
+  }
   function drawVet(v) {
     if (power > 0) { drawPostman(v); return; }
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0)), d = v.dir || 1, chase = v.mode === "chase";
@@ -2039,7 +2051,8 @@
       } else if (s.kind === "#") {
         ctx.fillStyle = "#4a5470"; rect(s.x, s.y, s.w, s.h);
         ctx.fillStyle = "#5d6a8c"; rect(s.x, s.y, s.w, 4);
-      } else {
+      } else if (s.van) drawVan(s);
+      else {
         ctx.fillStyle = "#8a5a2b"; rect(s.x + 2, s.y + 2, s.w - 4, s.h - 4);
         ctx.strokeStyle = "#5e3b17"; ctx.lineWidth = 2; ctx.strokeRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
       }

@@ -1,8 +1,12 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.11.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.12.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.12.0 — 20/10/2026 (em preparação)
+- **Agente da carrocinha em todas as fases:** varredura de tudo o que mostra o inimigo (desenho, carteiro, textos, avisos, lista de fases, telas de vitória e derrota). Um teste novo confere **por pixels, nas Fases 1 a 10**, que o agente aparece de colete laranja, boné e uniforme verde e que, com o poder do osso, vira carteiro azul sem o colete; outro confere que nenhum texto do jogo fala mais em veterinário.
+- **Vans da carrocinha:** nas cidades (Fases 4 a 10) as 4 "caixas" dos cantos do pátio da praça, onde os agentes começam, agora são **vans da carrocinha** (teto claro, jaula com grade, giroflex vermelho e faixa laranja); nas Fases 1 a 3 as caixas continuam de madeira.
 
 ## 0.11.0 — 20/10/2026 (em preparação)
 - **Efeitos sonoros** (todos sintetizados na hora com a Web Audio API, sem arquivos de áudio nem bibliotecas): **pegar a ração**, **pegar o osso**, **o agente da carrocinha virando carteiro** (logo depois do som do osso), **ganhar do carteiro**, **ser pego pelo agente** (a captura e, logo depois, o som de perder vida; na última vida, o fim de jogo), **perder uma vida** (também esmagado por bloco, sem a captura), **pegar uma vida nova** (depois do som do item), **passar de fase**, **fim de jogo** (sem vidas ou "os pontos não bastaram") e um toque curto ao **escolher um reforço**. Menu, pausa, jogo carregado e reinício não tocam nada.
