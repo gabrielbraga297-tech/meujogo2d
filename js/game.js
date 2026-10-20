@@ -2277,9 +2277,11 @@
 
   // ---------- Botões e formulário ----------
   const on = (id, fn) => $(id).addEventListener("click", fn);
-  function renderSound() { // os botões do menu e da pausa mostram se o som está ligado
-    const off = sound.isMuted();
-    for (const id of ["btn-sound", "btn-sound-pause"]) { const b = $(id); b.textContent = off ? "Som: desligado" : "Som: ligado"; b.setAttribute("aria-pressed", off ? "false" : "true"); }
+  function renderSound() { // o ícone do menu e o botão da pausa mostram se o som está ligado
+    const off = sound.isMuted(), label = off ? "Som: desligado" : "Som: ligado";
+    const icon = $("btn-sound"); icon.setAttribute("aria-pressed", off ? "false" : "true"); icon.setAttribute("aria-label", label); icon.title = `${label} (tecla M)`;
+    icon.querySelector(".snd-on").hidden = off; icon.querySelector(".snd-off").hidden = !off;
+    const b = $("btn-sound-pause"); b.textContent = label; b.setAttribute("aria-pressed", off ? "false" : "true");
   }
   function toggleSound() { const off = sound.toggleMuted(); renderSound(); if (!off) sound.play("pick"); } // ao ligar, um toque de confirmação
   renderSound();

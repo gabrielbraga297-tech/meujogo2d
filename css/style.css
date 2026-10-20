@@ -127,6 +127,8 @@ button.primary:hover { background: var(--green-hi); filter: none; }
 button.danger { background: #8a2f2f; }
 button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .menu-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.sound-corner { position: absolute; top: calc(var(--pad) / 2 + env(safe-area-inset-top, 0px)); right: calc(var(--pad) / 2); display: grid; place-items: center; width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: 12px; background: var(--panel-2); } /* só no menu: um ícone no canto, para não aumentar a lista de botões */
+.sound-corner svg[hidden] { display: none; }
 /* telas longas (Como jogar, Pontuações, lista de fases): o Voltar fica sempre à vista, colado no fim da tela, sem precisar rolar até o final */
 #howto, #scores, #levels { scroll-padding-bottom: 76px; } /* o botão focado (Tab, setas, a fase aberta na lista) nunca fica atrás do Voltar fixo */
 #howto .menu-list, #scores .menu-list, #levels .menu-list:last-child { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }

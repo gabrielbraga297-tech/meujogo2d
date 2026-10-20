@@ -69,8 +69,11 @@
         <button id="btn-scores" type="button">Pontuações</button>
         <button id="btn-name" type="button">Escolher nome de usuário</button>
         <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
-        <button id="btn-sound" type="button" aria-pressed="true">Som: ligado</button>
       </nav>
+      <button id="btn-sound" class="sound-corner" type="button" aria-pressed="true" aria-label="Som: ligado" title="Som: ligado (tecla M)">
+        <svg class="snd-on" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="#fff" d="M4 9v6h4l5 4V5L8 9H4z"/><path fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+        <svg class="snd-off" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" hidden><path fill="#fff" d="M4 9v6h4l5 4V5L8 9H4z"/><path fill="none" stroke="#ff7a6b" stroke-width="2.4" stroke-linecap="round" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>
+      </button>
     </div>
     <footer class="menu-foot">
       <p id="menu-version" class="version" aria-label="Versão do jogo"></p>
@@ -242,8 +245,8 @@
       <div class="menu-list">
         <button id="btn-resume" type="button" class="primary" data-autofocus>Continuar</button>
         <button id="btn-save" type="button">Salvar jogo</button>
-        <button id="btn-sound-pause" type="button" aria-pressed="true">Som: ligado</button>
         <button id="btn-pause-menu" type="button">Voltar ao menu</button>
+        <button id="btn-sound-pause" type="button" aria-pressed="true">Som: ligado</button>
       </div>
       <p id="pause-msg" class="muted" role="status" aria-live="polite"></p>
       <p id="pause-up" class="muted"></p>

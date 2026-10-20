@@ -2830,7 +2830,7 @@ const PAGE_HELPERS = () => {
     await ev(g, () => { document.getElementById("btn-resume").focus(); __padSet({ press: [13] }); __game.padPoll(0.016); });
     ok(await focusId() === "btn-save", "(repetição) primeiro passo");
     await ev(g, () => { for (let i = 0; i < 40; i++) __game.padPoll(0.016); __padSet({ release: [13] }); __game.padPoll(0.016); });
-    ok(["btn-resume", "btn-save", "btn-pause-menu"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
+    ok(["btn-resume", "btn-save", "btn-pause-menu", "btn-sound-pause"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
     await padHit(9);
 
     // o direcional já apertado ao abrir uma tela não corre pelos botões (só vale depois de voltar ao neutro)
@@ -3828,7 +3828,7 @@ const PAGE_HELPERS = () => {
     // ---- botão de som e tecla M ----
     ok(await page.getAttribute("#btn-sound-pause", "aria-pressed") === "true" && /Som: ligado/.test(await page.textContent("#btn-sound-pause")), "o botão de som da pausa começa ligado");
     await page.keyboard.press("Escape"); await page.click("#btn-sound-pause");
-    const st = await ev(page, () => ({ muted: __game.sound.isMuted(), stored: localStorage.getItem("cachorrinho.som.v1"), label: document.getElementById("btn-sound-pause").textContent, menuLabel: document.getElementById("btn-sound").textContent }));
+    const st = await ev(page, () => ({ muted: __game.sound.isMuted(), stored: localStorage.getItem("cachorrinho.som.v1"), label: document.getElementById("btn-sound-pause").textContent, menuLabel: document.getElementById("btn-sound").getAttribute("aria-label") }));
     ok(st.muted && /"m":1/.test(st.stored) && st.label === "Som: desligado" && st.menuLabel === "Som: desligado" && await page.getAttribute("#btn-sound-pause", "aria-pressed") === "false", `o botão desliga o som: preferência guardada ${st.stored} e rótulos "${st.label}" / "${st.menuLabel}"`);
     await page.click("#btn-resume"); await clear(); await takeItem("ration");
     ok(JSON.stringify(await ev(page, () => __game.sounds.map((e) => [e.name, e.played]))) === '[["ration",false]]', "mudo: o jogo ainda pede o som da ração, mas ele não toca");
@@ -3840,9 +3840,9 @@ const PAGE_HELPERS = () => {
     // a preferência vale depois de recarregar a página
     await page.keyboard.press("Escape"); await page.click("#btn-sound-pause"); await ev(page, () => { __game.save(); });
     await page.reload(); await page.evaluate(PAGE_HELPERS);
-    ok(await ev(page, () => __game.sound.isMuted()) && /desligado/.test(await page.textContent("#btn-sound")) && await page.getAttribute("#btn-sound", "aria-pressed") === "false", "depois de recarregar a página o som continua desligado (e o botão do menu diz isso)");
+    ok(await ev(page, () => __game.sound.isMuted()) && /desligado/.test(await page.getAttribute("#btn-sound", "aria-label")) && await page.getAttribute("#btn-sound", "aria-pressed") === "false", "depois de recarregar a página o som continua desligado (e o botão do menu diz isso)");
     await page.click("#btn-sound");
-    ok(!(await ev(page, () => __game.sound.isMuted())) && /ligado/.test(await page.textContent("#btn-sound")) && (await heard()).includes("pick"), "o botão do menu liga o som e toca um toque de confirmação");
+    ok(!(await ev(page, () => __game.sound.isMuted())) && /ligado/.test(await page.getAttribute("#btn-sound", "aria-label")) && (await heard()).includes("pick"), "o botão do menu liga o som e toca um toque de confirmação");
     // digitar um "m" no nome não liga nem desliga o som
     await page.click("#btn-name"); await page.fill("#name-input", "Mimi");
     ok(!(await ev(page, () => __game.sound.isMuted())), "digitar a letra m num campo de texto não mexe no som");
