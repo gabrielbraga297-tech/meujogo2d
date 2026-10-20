@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.9.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.11.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -128,6 +128,24 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 6*
 - O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.
 - Os valores estão em `REINFORCEMENTS`/`UP_MAX` de `js/game.js`; o teste `0.8.0: reforços` confere cada efeito.
 
+## Sons (0.11.0)
+Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores e ruído filtrado): não há arquivo de áudio, biblioteca nem rede (`js/sound.js`). O navegador só libera o som depois do **primeiro gesto** do jogador (toque, clique ou tecla); antes disso o jogo roda mudo, sem erro.
+
+| Quando | Som |
+|---|---|
+| pegar a ração | pingo curto (0,14 s) |
+| pegar o osso | quatro notas subindo (dó mi sol dó) |
+| o agente vira carteiro (osso com o poder desligado) | transformação, logo depois do som do osso |
+| pegar um carteiro (ganhar dele) | duas notas rápidas (si mi) |
+| ser pego pelo agente da carrocinha | captura, e logo depois o som de perder vida |
+| perder uma vida (também esmagado por bloco, sem a captura) | três notas descendo |
+| pegar uma vida nova (depois do som do item) | seis notas alegres |
+| passar de fase | fanfarra (1,25 s) |
+| fim de jogo (sem vidas ou "os pontos não bastaram") | quatro notas descendo (1,2 s) |
+| escolher um reforço e ligar o som | toque curto de confirmação |
+
+Os sons são **baixos por padrão** (volume 0,35) e foram medidos (pico, duração, cliques, equilíbrio de volume e diferença entre eles: 182 de 182 verificações); no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. **Menu, pausa, jogo carregado e reinício não tocam nada.** O botão **Som: ligado / desligado** (no menu e na pausa) e a tecla **M** ligam e desligam; a escolha fica em `localStorage` na chave `cachorrinho.som.v1` (separada do jogo salvo e das contas). O gancho de testes `window.__game.sounds` registra todo pedido de som (nome, instante e se tocou).
+
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*); as vidas são **cumulativas**:
 
@@ -237,6 +255,7 @@ O jogo aceita **teclado**, **controle (gamepad)** e **toque**, e dá para mistur
 | Mover | **W A S D** ou **setas** (tecla física, vale em qualquer layout de teclado) | **analógico esquerdo** (quanto mais inclinado, mais rápido) ou **direcional** | controle redondo na tela |
 | Pausar / continuar | **Esc** ou **P** | **Start** | botão de pausa no placar |
 | Salvar | **Ctrl+S** (ou **Cmd+S**) | **Y** | botão de disquete no placar ou **Salvar jogo** na pausa |
+| Som | **M** liga e desliga | — | botão **Som** no menu e na pausa |
 | Menus | **↑ ↓** (ou **Tab**) escolhem, **Enter**/**Espaço** confirmam, **Esc** volta | direcional ou analógico escolhem, **A** confirma, **B** volta | tocar nos botões |
 
 **Controle:** funciona com a maioria dos controles (Xbox, PlayStation, Switch Pro, genéricos), por cabo ou Bluetooth, nos navegadores que têm a *Gamepad API* (Chrome e Edge; Firefox e Safari também a têm, mas **só testei com um controle simulado no Chromium**, não com um controle de verdade). Conecte o controle e **aperte um botão** (o navegador só o reconhece depois disso); o jogo avisa "Controle conectado". Controles fora do padrão usam só o analógico esquerdo e os botões A, B e Start. Campos de texto (nome, senha) ainda precisam do teclado.
@@ -259,6 +278,7 @@ index.html            canvas, placar (HTML) e todas as telas (menu, fases, como 
 css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
+js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
 js/board.js           ranking compartilhado entre aparelhos (REST / banco do Claude), em stand by, com validação (testável sozinho)
@@ -267,6 +287,7 @@ tests/auth.test.js    testes unitários das senhas (Node)
 tests/records.test.js testes unitários das pontuações e melhores pontuações (Node)
 tests/accounts.test.js testes unitários do cadastro e da entrada (Node)
 tests/board.test.js   testes unitários do ranking compartilhado, com servidor de mentira (Node)
+tests/sound.test.js   testes unitários dos efeitos sonoros (Node, com um áudio de mentira) 
 tests/version.test.js confere a versão (js/version.js) com o CHANGELOG.md e o workflow
 tests/e2e.js          testes no navegador (Playwright)
 .github/workflows/pages.yml   publicação no GitHub Pages
@@ -279,6 +300,7 @@ node tests/records.test.js
 node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
+node tests/sound.test.js
 npm i playwright
 npx playwright install chromium   # ou use CHROMIUM_PATH=/caminho/do/chromium
 node tests/e2e.js              # opcional: node tests/e2e.js "toque" roda só as seções com esse texto
@@ -289,4 +311,4 @@ Os testes do ranking compartilhado usam um servidor de mentira com a mesma API d
 Em *Settings → Pages → Build and deployment → Source*, escolha **GitHub Actions**. A cada push na `main`, o workflow publica o jogo.
 
 ## Notas
-- Ainda não há som.
+- Sem som no aparelho? Os navegadores só liberam o áudio depois do primeiro toque, clique ou tecla do jogador; use **Som: ligado** no menu ou a tecla **M**.

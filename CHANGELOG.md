@@ -1,8 +1,14 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.9.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.11.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.11.0 — 20/10/2026 (em preparação)
+- **Efeitos sonoros** (todos sintetizados na hora com a Web Audio API, sem arquivos de áudio nem bibliotecas): **pegar a ração**, **pegar o osso**, **o agente da carrocinha virando carteiro** (logo depois do som do osso), **ganhar do carteiro**, **ser pego pelo agente** (a captura e, logo depois, o som de perder vida; na última vida, o fim de jogo), **perder uma vida** (também esmagado por bloco, sem a captura), **pegar uma vida nova** (depois do som do item), **passar de fase**, **fim de jogo** (sem vidas ou "os pontos não bastaram") e um toque curto ao **escolher um reforço**. Menu, pausa, jogo carregado e reinício não tocam nada.
+- **Botão de som** no menu e na pausa (*Som: ligado / desligado*) e a tecla **M**; a escolha fica guardada neste aparelho (`cachorrinho.som.v1`, separada do jogo salvo). O navegador só libera o áudio depois do primeiro toque, clique ou tecla do jogador (antes disso o jogo roda mudo, sem erro); se o navegador não tiver Web Audio, o jogo segue mudo.
+- Volume baixo por padrão (0,35), no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. Os 10 sons foram medidos em áudio renderizado (pico, duração, cliques no começo e no fim, notas, equilíbrio de volume entre eles: 182 de 182 verificações) e há testes unitários (`tests/sound.test.js`) e de navegador (seção *0.11.0*).
+- **Correção:** o fim de jogo por "os pontos não bastaram" não pode mais ser disparado duas vezes (a tela e o som).
 
 ## 0.9.0 — 20/10/2026
 - **Agentes da carrocinha:** os inimigos deixam de ser veterinários e passam a ser **agentes da carrocinha** que pegam cachorrinhos na rua (uniforme, boné e rede no lugar do jaleco). Os textos do jogo (Como jogar, avisos, placar das fases, mensagens de fim de jogo), o README e os testes foram trocados; as regras, as velocidades e os números **não mudam**.
