@@ -1,8 +1,15 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.9.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.10.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.10.0 — 20/10/2026 (em preparação)
+- **Mapas de rua nas Fases 4 a 10:** os labirintos confusos (corredores de 1 tile, uma ou duas saídas) foram trocados por **cidades** de 41 × 29 até 61 × 39 tiles: ruas largas (4 a 5 tiles) entre quarteirões de prédios, a **praça da carrocinha** no centro (7 × 5, com 4 vans nos cantos e os postos dos agentes), início e saída em cantos opostos e **pelo menos 3 caminhos que não dividem nenhum tile** do início à saída. Quase não há beco sem saída; as portas de bloco ficam em vielas dos quarteirões e as paredes que se movem em avenidas (a abertura que sobra muda de lado). Com as peças em qualquer posição, todo o chão continua ligado (conferido por teste, em todas as combinações).
+- **Visual de cidade** a partir da Fase 4: asfalto, calçadas junto dos prédios e telhados (com claraboias); as Fases 1 a 3 ficam como antes.
+- **O que não mudou:** quantidade de rações, ossos, vidas escondidas, agentes (3, 4, 5, 5 e 6), velocidades, pontos mínimos, tempo das peças e as regras das Fases 9 e 10; a Fase 5 passou de 41 × 29 para 43 × 29 tiles. A dificuldade continua subindo com o tamanho do mapa (o caminho mais curto vai de 60 a 90 passos), os agentes e as peças móveis (mais e mais rápidas), e as Fases 9 e 10 seguem as maiores.
+- **Equilíbrio medido com o robô que joga como gente:** nas cidades ele perde bem menos vidas por tentativa do que nos labirintos (Fase 10: ≈ 0,4 com um jogador desatento, ≈ 0,07 com um jogador atento, contra ≈ 1,8 e ≈ 1,5 nos labirintos da 0.9.0): numa rua larga sempre há por onde fugir, e acelerar muito os agentes quase não mudou isso nas simulações. *Se você quiser as Fases 9 e 10 mais difíceis, o caminho é mexer nos números das fases (agentes, velocidades, pontos mínimos) — diga o quanto.*
+- **Testes:** os testes antigos que dependiam de coordenadas dos labirintos foram reescritos para valer para qualquer mapa (esmagamento, ciclo das paredes, trilhos desenhados, agentes que patrulham sem se sobrepor), e uma seção nova confere, para cada fase de 4 a 10, o tamanho, o pátio da praça, os caminhos separados, a falta de labirinto e o desenho de asfalto e telhado.
 
 ## 0.9.0 — 20/10/2026 (em preparação)
 - **Agentes da carrocinha:** os inimigos deixam de ser veterinários e passam a ser **agentes da carrocinha** que pegam cachorrinhos na rua (uniforme, boné e rede no lugar do jaleco). Os textos do jogo (Como jogar, avisos, placar das fases, mensagens de fim de jogo), o README e os testes foram trocados; as regras, as velocidades e os números **não mudam**.
