@@ -1139,7 +1139,7 @@
   }
 
   // ---------- Estados e telas ----------
-  const SCREENS = ["menu", "levels", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "lose"].map($);
+  const SCREENS = ["menu", "levels", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
 
   function setState(s) {
     state = s;
@@ -1406,10 +1406,10 @@
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
     return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
   }
-  // Monta os botões; devolve true se há algum para escolher (a Próxima fase fica desligada até a escolha).
+  // Monta os botões da tela de reforços; devolve true se há algum para escolher.
+  let reinforceOffered = false;
   function renderReinforce(next) {
-    const box = $("reinforce");
-    box.classList.toggle("hidden", !next);
+    $("btn-reinforce-go").disabled = true;
     if (!next) return false;
     const list = $("reinforce-list");
     list.replaceChildren();
@@ -1445,9 +1445,9 @@
     }
     $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} (${r.text}). Ele vale a partir da ${next.title}.`;
     $("win-extra").textContent = winExtraText(next);
-    $("btn-next").disabled = false;
-    $("btn-next").focus({ preventScroll: true });
-    if ($("btn-next").scrollIntoView) $("btn-next").scrollIntoView({ block: "nearest" }); // a Próxima fase fica à vista (a lista de reforços é longa)
+    $("btn-reinforce-go").disabled = false;
+    $("btn-reinforce-go").focus({ preventScroll: true });
+    if ($("btn-reinforce-go").scrollIntoView) $("btn-reinforce-go").scrollIntoView({ block: "nearest" }); // o botão de começar fica à vista
   }
 
   function win() {
@@ -1466,7 +1466,7 @@
     $("win-extra").textContent = winExtraText(next);
     $("btn-next").classList.toggle("hidden", !next);
     $("btn-next").textContent = next ? `Próxima fase (${next.title})` : "";
-    $("btn-next").disabled = renderReinforce(next); // com reforços para escolher, a Próxima fase espera a escolha
+    reinforceOffered = renderReinforce(next); // com reforços para escolher, a Próxima fase abre a tela de escolha
     $("btn-again").classList.toggle("primary", !next);
     let res = null;
     const gone = accountGone();
@@ -2130,6 +2130,7 @@
 
   function onEscape() {
     if (document.body.dataset.screen === "scores") closeScores();
+    else if (document.body.dataset.screen === "reinforce" && state === "won") showScreen("win");
     else if (state === "playing") pauseGame();
     else if (state === "paused") resumeGame();
     else if (state === "won" || state === "lost") goMenu();
@@ -2227,7 +2228,17 @@
   on("btn-pause", pauseGame);
   on("btn-resume", resumeGame);
   on("btn-pause-menu", goMenu);
-  on("btn-next", () => { if (LEVELS.some((l) => l.id === levelId + 1) && !$("btn-next").disabled) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp || up, player: gamePlayer }); }); // as vidas e os reforços passam para a próxima fase
+  on("btn-next", () => { // as vidas e os reforços passam para a próxima fase
+  const next = LEVELS.find((l) => l.id === levelId + 1);
+  if (!next || state !== "won") return;
+  if (!reinforceOffered) { begin(next.id, { lives: carriedLives, upgrades: up, player: gamePlayer }); return; }
+  $("btn-reinforce-go").textContent = `Começar a ${next.title}`;
+  $("btn-reinforce-go").disabled = !nextUp;
+  showScreen("reinforce");
+  if (nextUp) $("btn-reinforce-go").focus({ preventScroll: true }); // já escolheu (voltou para ver o resultado): o foco vai para Começar
+});
+on("btn-reinforce-go", () => { if (nextUp && state === "won" && LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp, player: gamePlayer }); });
+on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   on("btn-again", () => begin(levelId, { player: gamePlayer }));
   on("btn-win-scores", () => openScores("win"));
   on("btn-win-menu", goMenu);

@@ -258,17 +258,25 @@
       <p id="win-general" class="record"></p>
       <p id="win-total" class="muted"></p>
       <p id="win-extra" class="muted"></p>
-      <div id="reinforce" class="reinforce hidden" role="group" aria-labelledby="reinforce-title">
-        <h2 id="reinforce-title">Escolha um reforço</h2>
-        <p class="muted">Cada fase dá direito a <strong>1 reforço</strong>, que fica com você nas próximas fases. Escolha para liberar a próxima fase.</p>
-        <div id="reinforce-list" class="reinforce-list"></div>
-        <p id="reinforce-msg" class="muted" role="status" aria-live="polite"></p>
-      </div>
       <div class="menu-list">
         <button id="btn-next" type="button" class="primary hidden" data-autofocus>Próxima fase</button>
         <button id="btn-again" type="button" data-autofocus>Jogar novamente</button>
         <button id="btn-win-scores" type="button">Pontuações</button>
         <button id="btn-win-menu" type="button">Menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Escolha do reforço (depois da vitória, antes da próxima fase) -->
+  <section id="reinforce" class="screen hidden" aria-labelledby="reinforce-title">
+    <div class="panel wide">
+      <h1 id="reinforce-title">Escolha um reforço</h1>
+      <p class="muted">Cada fase dá direito a <strong>1 reforço</strong>, que fica com você nas próximas fases.</p>
+      <div id="reinforce-list" class="reinforce-list"></div>
+      <p id="reinforce-msg" class="muted" role="status" aria-live="polite"></p>
+      <div class="menu-list">
+        <button id="btn-reinforce-go" type="button" class="primary" disabled>Começar a próxima fase</button>
+        <button id="btn-reinforce-back" type="button">Voltar</button>
       </div>
     </div>
   </section>

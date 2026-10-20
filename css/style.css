@@ -177,9 +177,6 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .level-list .locked { background: #232838; color: #7d8599; cursor: not-allowed; }
 .level-list .locked:hover { filter: none; }
 /* Reforços: a escolha na tela de vitória */
-.reinforce { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(61, 220, 132, .08); border: 1px solid rgba(61, 220, 132, .35); }
-.reinforce h2 { margin: 0; }
-.reinforce p { font-size: clamp(14px, 2vw, 16px) !important; }
 .reinforce-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .reinforce-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; padding: 8px 12px; text-align: center; }
 .reinforce-opt strong { font-size: 1.05em; }
@@ -187,8 +184,16 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .reinforce-opt.chosen, .reinforce-opt.chosen:disabled { background: var(--green); color: #08210f; opacity: 1; }
 .reinforce-opt.locked { background: #232838; color: #7d8599; cursor: not-allowed; }
 button:disabled { cursor: not-allowed; }
-#btn-next:disabled { opacity: .55; }
+#btn-reinforce-go:disabled { opacity: .55; }
 @media (max-width: 480px) { .reinforce-list { grid-template-columns: 1fr; } }
+/* celular deitado e baixo: 3 colunas e botões compactos, para a escolha caber sem rolar */
+@media (max-height: 520px) and (min-width: 481px) {
+  .reinforce-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .reinforce-opt { min-height: 50px; padding: 5px 8px; }
+  .reinforce-opt .sub { font-size: .66em; }
+  #reinforce .panel > p { display: none; }
+  #reinforce-msg { display: block !important; }
+}
 
 /* ---------- Controle de toque (celular/tablet) ---------- */
 #touch { display: none; width: 100%; flex-direction: column; align-items: center; gap: 6px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
