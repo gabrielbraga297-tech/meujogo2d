@@ -35,7 +35,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os agentes da carrocinha ganharam +10% em todas as fases).
-- Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa e anda **50% mais devagar** que a velocidade da fase (até o poder acabar).
+- Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa, fica tonto por 2 s e depois foge a **50% da velocidade de fuga** (0,625 × a velocidade de patrulha da tabela, ou seja 37,8 px/s na Fase 2) até o poder acabar.
 - **Fase 3 no celular:** quando se joga com o **controle de toque** (menos preciso que teclado), a Fase 3 fica um pouco mais fácil: os agentes da carrocinha andam **10% mais devagar** (59,9 / 119,8 px/s) e o cachorrinho fica **5% mais rápido** (238,14 px/s). Com teclado ou controle de videogame valem os números da tabela (campo `touchEase` da fase, em `js/game.js`).
 - As fases são liberadas em ordem: cada uma abre ao terminar a anterior.
 
@@ -122,7 +122,7 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 6*
 | **Vida extra** | +1 vida agora (some se as vidas já estão no máximo) | — |
 | **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
 | **Pelo grosso** | +1 s de proteção depois de perder uma vida (2 s → até 5 s) | 3 níveis |
-| **Carrocinha lenta** | agentes 5% mais lentos (patrulha e perseguição) | 4 níveis (−20%) |
+| **Carrocinha lenta** | agentes 5% mais lentos (patrulha, perseguição e fuga dos carteiros) | 4 níveis (−20%) |
 
 - Começar uma fase pelo menu ou usar *Jogar novamente* começa **sem reforços** (como começa com 3 vidas). *Tentar novamente* e *Continuar jogo* mantêm os reforços da partida (eles ficam no jogo salvo, campo `up`).
 - O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.

@@ -3740,6 +3740,30 @@ const PAGE_HELPERS = () => {
     });
     ok(many.every((m) => m.bad === 0 && m.wall === 0), `fugindo (24 s com o cachorrinho no encalço) nas Fases 3, 5, 7, 8 e 10 (2 a 6 agentes) ninguém some, vira NaN ou entra em parede`);
     ok(many.every((m) => m.overlap <= 60 * 3), `e quase nunca ficam um em cima do outro (quadros sobrepostos: ${many.map((m) => `F${m.id}: ${m.overlap}`).join(", ")})`);
+    // com o cachorrinho parado longe, nenhum carteiro fica preso atrás de outro (esperando com trecho a andar) nem treme indo e voltando entre dois tiles
+    const idle = await ev(page, () => {
+      const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const out = [];
+      for (const [id, seed] of [[2, 1], [4, 2], [7, 1], [10, 3]]) {
+        __game.autoStart = true; __game.allBlocks = true; __game.noCatch = true; __game.setRand(mulberry(seed * 101 + id)); __game.start(id); __game.freezeVets = false;
+        const bone = __game.items.find((i) => i.bone); __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
+        __game.player.x = 36; __game.player.y = 68; // no canto do início, longe dos carteiros
+        const wait = __game.vets.map(() => ({ t: 0, tile: "" })), hist = __game.vets.map(() => []); let worst = 0, moves = 0, rev = 0;
+        for (let i = 0; i < 60 * 26; i++) {
+          __game.tick(1 / 60);
+          __game.vets.forEach((v, k) => {
+            const t = Math.floor(v.cx / 32) + "," + Math.floor(v.cy / 32), w = wait[k], h = hist[k];
+            if (v.mode === "flee" && v.hitCool <= 0 && v.leg && t === w.tile) w.t += 1 / 60; else w.t = 0;
+            w.tile = t; worst = Math.max(worst, w.t);
+            if (!h.length || h[h.length - 1] !== t) { h.push(t); moves++; if (h.length >= 3 && h[h.length - 3] === t) rev++; }
+          });
+        }
+        out.push({ id, worst: +worst.toFixed(1), moves, rev, mode: __game.vets.map((v) => v.mode).join() });
+      }
+      __game.setRand(null); __game.noCatch = false; return out;
+    });
+    ok(idle.every((m) => m.worst <= 3), `carteiro nenhum fica preso esperando atrás de outro por mais de 3 s com o cachorrinho longe (maior espera: ${idle.map((m) => `F${m.id}: ${m.worst} s`).join(", ")})`);
+    ok(idle.every((m) => m.rev / Math.max(1, m.moves) < 0.4 && /flee/.test(m.mode)), `e não tremem (voltas ao tile anterior em ${idle.map((m) => `F${m.id}: ${m.rev} de ${m.moves} passos`).join(", ")})`);
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {
