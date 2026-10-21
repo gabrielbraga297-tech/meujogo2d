@@ -909,9 +909,10 @@ const PAGE_HELPERS = () => {
     ok(await hudIs(page, "#hud-level", "2") && await hudIs(page, "#hud-items", "0/7") && await hudIs(page, "#hud-points", "0"), "placar mostra FASE 2 e RAÇÕES 0/7");
     ok(await ev(page, () => __game.items.length) === 9 && await ev(page, () => __game.items.filter((i) => i.bone).length) === 2 && await ev(page, () => __game.lives) === 3, "a Fase 2 tem 7 rações + 2 ossos e começa com 3 vidas");
 
-    // agentes da carrocinha: no centro, 10% mais espertos
+    // agentes da carrocinha: nos postos do mapa (longe do início do cachorrinho), 10% mais espertos
     const vs = await ev(page, () => __game.vets.map((v) => [Math.floor(v.cx / 32), Math.floor(v.cy / 32)]));
-    ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - 12) <= 2 && Math.abs(r - 8.5) <= 1.5), `os 2 agentes da carrocinha começam no centro do mapa (${vs.join(" e ")})`);
+    const pDog2 = G2.find("P")[0];
+    ok(JSON.stringify(vs) === JSON.stringify(G2.find("V")) && vs.every(([c, r]) => Math.abs(c - pDog2[0]) + Math.abs(r - pDog2[1]) >= 6), `os 2 agentes da carrocinha começam nos postos do mapa, a 6 tiles ou mais do cachorrinho (${vs.join(" e ")})`);
     const cfgs = await ev(page, () => { const a = { ...__game.vets[0].cfg }, b = { ...__game.vets[1].cfg }; __game.start(1); return { f2a: a, f2b: b, f1: { ...__game.vets[0].cfg } }; });
     const close = (a, b) => Math.abs(a - b) < 1e-9;
     const up = ["speed", "chaseSpeed", "chaseTime", "chaseMax"], down = ["thinkEvery", "restTime", "idleMin", "idleMax"];
