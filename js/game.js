@@ -3130,13 +3130,16 @@
     ctx.lineCap = "round";
     if (p.facing === "left" || p.facing === "right") {
       const s = p.facing === "right" ? 1 : -1;
-      if (sk.acc === "cape") { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx + s * 3, cy - 4); ctx.lineTo(cx - s * (13 + wag * 0.4), cy + 3 + wag * 0.3); ctx.lineTo(cx - s * 9, cy + 7); ctx.lineTo(cx + s * 2, cy + 3); ctx.closePath(); ctx.fill(); } // capa (atrás do corpo)
       ctx.strokeStyle = DARK; ctx.lineWidth = 3; // rabo
       ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * (9 + 6 * tl), cy - 5 + wag, cx - s * (9 + 5 * tl), cy - 9 * tl + wag); ctx.stroke();
       ctx.fillStyle = DARK; // patas
       ctx.fillRect(cx - s * 7 - 2 + leg, cy + 4, 4, 7); ctx.fillRect(cx + s * 4 - 2 - leg, cy + 4, 4, 7);
       ellipse(cx - s * 2, cy + 1, 10, 7, TAN);                 // corpo
       if (sk.spots) { for (const [dx, dy, r] of [[-5, -1, 2.4], [0, 3, 2], [-8, 3, 1.7]]) ellipse(cx + s * dx, cy + dy, r, r, DARK); } else ellipse(cx - s * 4, cy - 1, 5, 4, DARK); // manchas
+      if (sk.acc === "cape") { // capa: presa no pescoço, esvoaça para trás por cima das costas (a cabeça e a coleira ficam por cima dela)
+        const fl = wag * 0.5; ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx + s * 3.5, cy - 5.5); ctx.lineTo(cx - s * 16, cy - 3 + fl); ctx.lineTo(cx - s * 13, cy + 3.5 + fl * 0.6); ctx.lineTo(cx + s * 3, cy + 1); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#a01c22"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + s * 3, cy - 3); ctx.lineTo(cx - s * 14, cy - 0.5 + fl * 0.8); ctx.stroke(); // dobra da capa
+      }
       ellipse(cx + s * (7 + hd), cy - 3, 7 * hd, 6.5 * hd, TAN);                // cabeça
       ellipse(cx + s * (11 + 2 * hd), cy - 1, 4, 3, LIGHT);               // focinho
       ellipse(cx + s * (13.5 + 2 * hd), cy - 1.5, 1.6, 1.4, "#222");      // nariz
@@ -3146,6 +3149,7 @@
       if (gr >= 0.67 && !sk.collar) ellipse(cx + s * 3, cy + 5.5, 1.3, 1.3, "#f2c230"); // plaquinha do adulto
       if (sk.acc === "pirate") { // bandana no pescoço e tapa-olho
         ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx + s * 1, cy - 3); ctx.lineTo(cx + s * 6, cy - 3); ctx.lineTo(cx + s * 3.5, cy + 4); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#111"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + s * (8 + 2 * hd), cy - 5); ctx.lineTo(cx + s * (4.5 + 0.5 * hd), cy - 7.8); ctx.stroke(); // tira do tapa-olho
         ellipse(cx + s * (8 + 2 * hd), cy - 5, 2.4, 2.2, "#111");
       }
       if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx + s * (7 + hd), cy - 3, 9.5 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
@@ -3167,9 +3171,13 @@
         ellipse(cx, cy + 3 + 8 * hd, 3.6, 2.8, LIGHT);
         ellipse(cx, cy + 4 + 8 * hd, 1.6, 1.3, "#222");
         const eye = 1.3 * (1 + 0.5 * (1 - gr)); ellipse(cx - 3, cy + 6 + hd, eye, eye, "#222"); ellipse(cx + 3, cy + 6 + hd, eye, eye, "#222");
-        if (sk.acc === "pirate") ellipse(cx + 3, cy + 6 + hd, 2.4, 2.2, "#111");
+        if (sk.acc === "pirate") { ctx.strokeStyle = "#111"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + 3, cy + 6 + hd); ctx.lineTo(cx - 6, cy + 2.2 + hd); ctx.stroke(); ellipse(cx + 3, cy + 6 + hd, 2.4, 2.2, "#111"); } // tapa-olho (com a tira)
       }
-      if (sk.acc === "pirate") { ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx - 6, cy + s * 5); ctx.lineTo(cx + 6, cy + s * 5); ctx.lineTo(cx, cy + s * 11); ctx.closePath(); ctx.fill(); }
+      if (sk.acc === "pirate") { // bandana: de costas é o nó no pescoço; de frente é o triângulo que pende debaixo do queixo (no pescoço ela cobriria os olhos)
+        const hb = cy + 7 + 7.5 * hd; ctx.fillStyle = "#d9342b"; ctx.beginPath();
+        if (s === 1) { ctx.moveTo(cx - 5.5, hb - 0.7); ctx.lineTo(cx + 5.5, hb - 0.7); ctx.lineTo(cx, hb + 5); } else { ctx.moveTo(cx - 6, cy + s * 5); ctx.lineTo(cx + 6, cy + s * 5); ctx.lineTo(cx, cy + s * 11); }
+        ctx.closePath(); ctx.fill();
+      }
       if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, cy + s * (7 + hd), 10 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     }
     ctx.restore();
