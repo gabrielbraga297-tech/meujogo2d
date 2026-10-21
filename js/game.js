@@ -2565,13 +2565,15 @@
     try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
   }
   let shopMsg = "";
-  function renderShop() {
+  // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se o foco estava na lista
+  function renderShop(refocus = -1) {
     const me = store.player(), w = me ? store.wallet(me) : null, list = $("shop-list");
-    $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} ${w.treats === 1 ? "petscoin" : "petscoin"} (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
+    if (refocus < 0) { const a = document.activeElement; refocus = !a || !list.contains(a) ? -1 : a.id.startsWith("shop-name-") ? Number(a.id.slice(10)) : [...list.querySelectorAll("button")].indexOf(a); }
+    $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} petscoin (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
     $("shop-msg").textContent = shopMsg;
     list.replaceChildren();
     let firstFocus = true;
-    for (const k of SKINS) {
+    for (const [i, k] of SKINS.entries()) {
       const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? w.equipped === k.id : k.id === "";
       const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
       cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
@@ -2579,21 +2581,27 @@
       const b = el("button", owned ? "" : "primary-ish"); b.type = "button";
       if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
       else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
-      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(); }); }
+      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(i); }); }
       else {
         const missing = k.price - w.treats;
         b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
-        if (missing > 0) b.title = `Faltam ${missing} petscoin`;
+        if (missing > 0) b.title = missing === 1 ? "Falta 1 petscoin" : `Faltam ${missing} petscoin`;
         b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos)
           const r = store.buySkin(me, k.id, k.price);
-          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Você comprou a skin ${k.name} e já está usando! Sobraram ${r.wallet.treats} petscoin.`; sound.play("levelup"); }
+          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); const n = r.wallet.treats; shopMsg = `Você comprou a skin ${k.name} e já está usando! ${n === 0 ? "Não sobrou nenhum petscoin." : n === 1 ? "Sobrou 1 petscoin." : `Sobraram ${n} petscoin.`}`; sound.play("levelup"); }
           else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : "Não foi possível comprar esta skin.";
-          renderShop();
+          renderShop(i);
         });
         if (firstFocus && !b.disabled) { b.dataset.autofocus = ""; firstFocus = false; }
       }
-      card.append(cv, el("strong", null, k.name), el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
+      const nm = el("strong", null, k.name); nm.id = `shop-name-${i}`; b.id = `shop-btn-${i}`;
+      b.setAttribute("aria-labelledby", `${b.id} ${nm.id}`); // o nome do botão traz a skin ("Comprar (12 petscoin) Dálmata"), senão os botões ficariam todos iguais para o leitor de tela
+      card.append(cv, nm, el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
       list.append(card);
+    }
+    if (refocus >= 0) { // o foco não se perde ao desenhar de novo: fica no mesmo cartão (no botão, se ele ainda serve; senão no nome da skin, que não faz nada com Enter: apertar Enter duas vezes não compra a skin seguinte)
+      const b = list.querySelectorAll("button")[refocus], nm = $(`shop-name-${refocus}`);
+      if (b && !b.disabled) b.focus(); else if (nm) { nm.tabIndex = -1; nm.focus(); } else $("btn-shop-back").focus();
     }
   }
   function openShop() { shopMsg = ""; renderShop(); showScreen("shop"); }
@@ -2732,7 +2740,8 @@
     }
     { // 0.15.9: ao completar a fase o cachorrinho ganha 1 petisco (1 petscoin), guardado na carteira do jogador
       const me2 = accountGone() ? "" : gamePlayer, w = me2 ? store.addTreats(me2, 1) : null;
-      $("win-treat").textContent = w ? `Petisco ganho! +1 petscoin (você tem ${w.treats}). Troque por skins na Lojinha, no menu.` : gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+      if (w) $("win-treat").replaceChildren(`Petisco ganho! +1 petscoin (você tem ${w.treats}).`, el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (a dica some nas telas baixas, para a vitória caber sem rolar)
+      else $("win-treat").textContent = gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
     }
     showScreen("win");
   }
@@ -3137,13 +3146,16 @@
     ctx.lineCap = "round";
     if (p.facing === "left" || p.facing === "right") {
       const s = p.facing === "right" ? 1 : -1;
-      if (sk.acc === "cape") { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx + s * 3, cy - 4); ctx.lineTo(cx - s * (13 + wag * 0.4), cy + 3 + wag * 0.3); ctx.lineTo(cx - s * 9, cy + 7); ctx.lineTo(cx + s * 2, cy + 3); ctx.closePath(); ctx.fill(); } // capa (atrás do corpo)
       ctx.strokeStyle = DARK; ctx.lineWidth = 3; // rabo
       ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * (9 + 6 * tl), cy - 5 + wag, cx - s * (9 + 5 * tl), cy - 9 * tl + wag); ctx.stroke();
       ctx.fillStyle = DARK; // patas
       ctx.fillRect(cx - s * 7 - 2 + leg, cy + 4, 4, 7); ctx.fillRect(cx + s * 4 - 2 - leg, cy + 4, 4, 7);
       ellipse(cx - s * 2, cy + 1, 10, 7, TAN);                 // corpo
       if (sk.spots) { for (const [dx, dy, r] of [[-5, -1, 2.4], [0, 3, 2], [-8, 3, 1.7]]) ellipse(cx + s * dx, cy + dy, r, r, DARK); } else ellipse(cx - s * 4, cy - 1, 5, 4, DARK); // manchas
+      if (sk.acc === "cape") { // capa: presa no pescoço, esvoaça para trás por cima das costas (a cabeça e a coleira ficam por cima dela)
+        const fl = wag * 0.5; ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx + s * 3.5, cy - 5.5); ctx.lineTo(cx - s * 16, cy - 3 + fl); ctx.lineTo(cx - s * 13, cy + 3.5 + fl * 0.6); ctx.lineTo(cx + s * 3, cy + 1); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#a01c22"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + s * 3, cy - 3); ctx.lineTo(cx - s * 14, cy - 0.5 + fl * 0.8); ctx.stroke(); // dobra da capa
+      }
       ellipse(cx + s * (7 + hd), cy - 3, 7 * hd, 6.5 * hd, TAN);                // cabeça
       ellipse(cx + s * (11 + 2 * hd), cy - 1, 4, 3, LIGHT);               // focinho
       ellipse(cx + s * (13.5 + 2 * hd), cy - 1.5, 1.6, 1.4, "#222");      // nariz
@@ -3153,12 +3165,13 @@
       if (gr >= 0.67 && !sk.collar) ellipse(cx + s * 3, cy + 5.5, 1.3, 1.3, "#f2c230"); // plaquinha do adulto
       if (sk.acc === "pirate") { // bandana no pescoço e tapa-olho
         ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx + s * 1, cy - 3); ctx.lineTo(cx + s * 6, cy - 3); ctx.lineTo(cx + s * 3.5, cy + 4); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#111"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + s * (8 + 2 * hd), cy - 5); ctx.lineTo(cx + s * (4.5 + 0.5 * hd), cy - 7.8); ctx.stroke(); // tira do tapa-olho
         ellipse(cx + s * (8 + 2 * hd), cy - 5, 2.4, 2.2, "#111");
       }
       if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx + s * (7 + hd), cy - 3, 9.5 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     } else {
       const s = p.facing === "down" ? 1 : -1;
-      if (sk.acc === "cape" && s === 1) { ctx.fillStyle = "#d92b2b"; ctx.fillRect(cx - 9, cy - 3, 3, 10); ctx.fillRect(cx + 6, cy - 3, 3, 10); } // capa aparece dos lados, de frente
+      if (sk.acc === "cape" && s === 1) { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx - 7, cy - 5); ctx.lineTo(cx + 7, cy - 5); ctx.lineTo(cx + 13, cy + 9); ctx.lineTo(cx - 13, cy + 9); ctx.closePath(); ctx.fill(); } // de frente a capa se abre atrás do corpo e aparece dos dois lados
       ctx.strokeStyle = DARK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * (6 + 7 * tl)); ctx.stroke(); // rabo
       ctx.fillStyle = DARK;
@@ -3174,9 +3187,13 @@
         ellipse(cx, cy + 3 + 8 * hd, 3.6, 2.8, LIGHT);
         ellipse(cx, cy + 4 + 8 * hd, 1.6, 1.3, "#222");
         const eye = 1.3 * (1 + 0.5 * (1 - gr)); ellipse(cx - 3, cy + 6 + hd, eye, eye, "#222"); ellipse(cx + 3, cy + 6 + hd, eye, eye, "#222");
-        if (sk.acc === "pirate") ellipse(cx + 3, cy + 6 + hd, 2.4, 2.2, "#111");
+        if (sk.acc === "pirate") { ctx.strokeStyle = "#111"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx + 3, cy + 6 + hd); ctx.lineTo(cx - 6, cy + 2.2 + hd); ctx.stroke(); ellipse(cx + 3, cy + 6 + hd, 2.4, 2.2, "#111"); } // tapa-olho (com a tira)
       }
-      if (sk.acc === "pirate") { ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx - 6, cy + s * 5); ctx.lineTo(cx + 6, cy + s * 5); ctx.lineTo(cx, cy + s * 11); ctx.closePath(); ctx.fill(); }
+      if (sk.acc === "pirate") { // bandana: de costas é o nó no pescoço; de frente é o triângulo que pende debaixo do queixo (no pescoço ela cobriria os olhos)
+        const hb = cy + 7 + 7.5 * hd; ctx.fillStyle = "#d9342b"; ctx.beginPath();
+        if (s === 1) { ctx.moveTo(cx - 5.5, hb - 0.7); ctx.lineTo(cx + 5.5, hb - 0.7); ctx.lineTo(cx, hb + 5); } else { ctx.moveTo(cx - 6, cy + s * 5); ctx.lineTo(cx + 6, cy + s * 5); ctx.lineTo(cx, cy + s * 11); }
+        ctx.closePath(); ctx.fill();
+      }
       if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, cy + s * (7 + hd), 10 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     }
     ctx.restore();

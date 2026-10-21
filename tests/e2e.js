@@ -204,7 +204,7 @@ const PAGE_HELPERS = () => {
     await fresh(page, { name: "" });
     ok(await ev(page, () => __game.state) === "menu", "começa no menu");
     const labels = await page.$$eval("#menu .menu-list button", (bs) => bs.filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
-    ok(["Iniciar jogo", "Como jogar", "Pontuações", "Escolher nome de usuário"].every((l) => labels.includes(l)), `menu tem as 4 opções (${labels.join(" | ")})`);
+    ok(["Iniciar jogo", "Como jogar", "Pontuações", "Lojinha de skins", "Escolher nome de usuário"].every((l) => labels.includes(l)), `menu tem as 5 opções, incluindo a Lojinha de skins (${labels.join(" | ")})`);
     ok(await ev(page, () => document.activeElement.id) === "btn-start", "botão Iniciar jogo já vem focado");
     ok(await page.isHidden("#btn-continue"), "sem jogo salvo, não há botão Continuar");
     const credit = await page.evaluate(() => {
@@ -3709,10 +3709,10 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => __game.retries) === 1 && await ev(page, () => __game.upgrades.speed) === 2 && await ev(page, () => __game.upgrades.slow) === 1, "Tentar novamente mantém os reforços da partida");
     await ev(page, () => { __game.freezeVets = true; }); await finishNow(page, 10);
     await page.click("#btn-again");
-    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0,0,0,0", "Jogar novamente começa a fase sem reforços");
+    ok(await ev(page, () => Object.values(__game.upgrades).every((v) => v === 0)), "Jogar novamente começa a fase sem reforços");
     await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
     await page.click("#btn-start"); await ev(page, () => { /* escolhe a fase mais alta liberada pelo botão focado */ });
-    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0,0,0,0" && await page.isHidden("#hud-up-item"), "começar uma fase pelo menu também começa sem reforços (e o placar esconde REFORÇOS)");
+    ok(await ev(page, () => Object.values(__game.upgrades).every((v) => v === 0)) && await page.isHidden("#hud-up-item"), "começar uma fase pelo menu também começa sem reforços (e o placar esconde REFORÇOS)");
 
     // ---- jogo salvo: guarda, valida e continua com os reforços ----
     const sv = await ev(page, () => {
@@ -4718,7 +4718,7 @@ const PAGE_HELPERS = () => {
       const fr = hrun(m, 22);
       await setup(n, [[fr.c + 4, fr.r], [fr.c + 18, fr.r]], { dog: [fr.c + 11, fr.r], noCatch: false }); // um gato de cada lado do cachorrinho: nenhum fecha a fuga do outro
       const pw = await go(() => {
-        const b = __game.items.find((i) => i.bone && i.kind === "scare"), p = __game.player;
+        const b = __game.items.find((i) => i.bone && (i.kind || "scare") === "scare"), p = __game.player; // (o osso comum: nas Fases 11 a 20 há ossos de ouro, gelo, turbo e ímã, que não dão o poder do osso)
         b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso
         const modes = __game.cats.map((c) => c.mode), power = __game.power;
         const d0 = __game.cats.map((c) => Math.hypot(c.cx - (p.x + 12), c.cy - (p.y + 12)));
@@ -4925,7 +4925,7 @@ const PAGE_HELPERS = () => {
         const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))), cv = document.getElementById("game"), ctx = cv.getContext("2d");
         const count = () => { const d = ctx.getImageData(Math.round(cv.width * 0.9), 0, Math.round(cv.width * 0.1), cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 235 && d[i + 1] < 110 && d[i + 2] < 110) n++; return n; };
         const a = __game.cats[0], p = __game.player; a.mode = "chase"; a.modeT = 99; await frame(); const before = count();
-        const b = __game.items.find((i) => i.bone && i.kind === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso: o gato foge
+        const b = __game.items.find((i) => i.bone && (i.kind || "scare") === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso comum (os de ouro, gelo, turbo e ímã não dão o poder): o gato foge
         await frame();
         return { mode: a.mode, power: __game.power, before, after: count() };
       });
@@ -4961,7 +4961,7 @@ const PAGE_HELPERS = () => {
     await setup(16, null, { dog: model(16).P });
     const sv1 = await go(() => {
       for (let i = 0; i < 240; i++) __game.tick(1 / 60);
-      const p = __game.player, b = __game.items.find((i) => i.bone && i.kind === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // osso: poder
+      const p = __game.player, b = __game.items.find((i) => i.bone && (i.kind || "scare") === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // osso comum: poder
       const c = __game.cats[2]; c.cx = p.x + 12; c.cy = p.y + 12; c.leg = null; __game.tick(0.016); // assusta o gato 2: +100, volta ao posto, lento
       for (let i = 0; i < 120; i++) __game.tick(1 / 60);
       __game.save();
@@ -6437,6 +6437,597 @@ const PAGE_HELPERS = () => {
     const cont = await ev(page, async () => { __game.freezeVets = true; __game.noCatch = true; const a = await __mk.snap(); __mk.scare(1, "mix"); const b = await __mk.snap(); __mk.wait(2); __mk.home(); __mk.toExit(); const c = await __mk.snap(); return { a, b, c, min: __game.minPoints }; });
     ok(cont.a.state === "playing" && cont.a.postmen === 2 && cont.a.bones === 1 && cont.a.bar === "Missão: sustos 2/3" && cont.a.power > 20 && cont.b.postmen === 3 && cont.b.bar === "Missão cumprida!" && cont.c.state === "playing" && cont.c.toast === `Faltam ${cont.min - cont.c.score} pontos para abrir a saída (meta: ${cont.min}).`,
       `continuar o jogo salvo da Fase 12 mantém a missão (faixa "${cont.a.bar}" com poder de ${cont.a.power.toFixed(0)} s), o 3º susto cumpre ("${cont.b.bar}") e a saída segue fechada pelos pontos ("${cont.c.toast}")`);
+  });
+
+
+  // =====================================================================
+  // 0.15.9: petiscos (1 por fase completada = 1 petscoin) e lojinha de skins. Nada aqui usa coordenadas fixas: o jogo diz onde está o cachorrinho (__game.player, __game.view),
+  // as fases vêm de __game.levels, as skins de __game.skins e as cores esperadas saem do próprio catálogo SKINS (lido de js/game.js).
+  const SK = eval(src.match(/const SKINS = (\[[\s\S]*?\n  \]);/)[1]);
+  const SKIN_SPEC = [["", "Caramelo", 0], ["cinza", "Cinza-prata", 10], ["dalmata", "Dálmata", 12], ["chocolate", "Chocolate", 15], ["dourado", "Dourado", 20], ["arco-iris", "Arco-íris", 25], ["pirata", "Pirata", 30], ["astronauta", "Astronauta", 40], ["super", "Super-cão", 50]];
+  const hex3 = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix3 = (a, b, t) => { const pa = hex3(a), pb = hex3(b); return pa.map((v, k) => Math.round(v + (pb[k] - v) * t)); }; // o mesmo cálculo do jogo (mixHex)
+  const TREAT = (n) => `Petisco ganho! +1 petscoin (você tem ${n}). Troque por skins na Lojinha, no menu.`;
+  const NO_NAME_TREAT = "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+  const BAL = (n, name = "Totó") => `${name}, você tem ${n} petscoin (${n} ${n === 1 ? "petisco" : "petiscos"}).`;
+  const walletOf = (pg, name = "Totó") => pg.evaluate((n) => Records.createStore(localStorage).wallet(n), name); // a carteira como está guardada (outra cópia do armazenamento)
+  // dá a carteira ao jogador: `treats` petscoin (sobram exatamente eles) e as skins `owned` já compradas, com `equip` em uso; recarrega a página
+  const seedWallet = async (pg, { name = "Totó", treats = 0, owned = [], equip = "" } = {}) => {
+    await pg.evaluate(([name, treats, owned, equip]) => {
+      const st = Records.createStore(localStorage), cat = __game.skins, total = treats + owned.reduce((n, id) => n + cat.find((k) => k.id === id).price, 0);
+      for (let left = total; left > 0; left -= 1000) st.addTreats(name, Math.min(1000, left));
+      for (const id of owned) st.buySkin(name, id, cat.find((k) => k.id === id).price);
+      if (owned.length || equip) st.equipSkin(name, equip);
+    }, [name, treats, owned, equip]);
+    await pg.reload(); await pg.evaluate(PAGE_HELPERS);
+  };
+  const shopCards = (pg) => pg.$$eval("#shop-list .shop-card", (cs) => cs.map((c) => { const b = c.querySelector("button"), cv = c.querySelector("canvas"); return { name: c.querySelector("strong").textContent, sub: c.querySelector(".sub").textContent, btn: b.textContent, disabled: b.disabled, title: b.title, equipped: c.classList.contains("equipped"), cw: cv.width, ch: cv.height, role: cv.getAttribute("role"), label: cv.getAttribute("aria-label") }; }));
+  const cardBtn = (id) => `#shop-list .shop-card:nth-child(${SKIN_SPEC.findIndex((s) => s[0] === id) + 1}) button`;
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (catálogo: 9 skins, preços, textos e documentação)", async () => {
+    await fresh(page);
+    const cat = await ev(page, () => __game.skins), min = await ev(page, () => Records.MIN_SKIN_PRICE);
+    ok(min === 10 && await ev(page, () => Records.MAX_TREATS) === 99999, "o preço mínimo de uma skin é 10 petscoin (MIN_SKIN_PRICE) e a carteira guarda no máximo 99999");
+    ok(cat.length === 9 && SK.length === 9 && cat.every((k, i) => k.id === SK[i].id && k.name === SK[i].name && k.price === SK[i].price), `o catálogo tem 9 skins (${cat.map((k) => k.name).join(", ")})`);
+    ok(new Set(cat.map((k) => k.id)).size === 9 && cat[0].id === "" && cat.slice(1).every((k) => /^[a-z0-9-]{1,24}$/.test(k.id)), "os ids são únicos e válidos (o do Caramelo, a skin padrão, é vazio)");
+    ok(cat[0].price === 0 && cat.slice(1).every((k) => Number.isInteger(k.price) && k.price >= min && k.price <= 99999), `o Caramelo é grátis e todas as outras custam pelo menos ${min} petscoin (${cat.slice(1).map((k) => k.price).join(", ")})`);
+    ok(cat.every((k, i) => i === 0 || k.price > cat[i - 1].price), "os preços crescem na ordem do catálogo");
+    ok(JSON.stringify(cat.map((k) => [k.id, k.name, k.price])) === JSON.stringify(SKIN_SPEC), "nomes, ids e preços são os combinados: Caramelo grátis, Cinza-prata 10, Dálmata 12, Chocolate 15, Dourado 20, Arco-íris 25, Pirata 30, Astronauta 40 e Super-cão 50");
+    const TXT = { "": /cachorrinho de sempre/, cinza: /cinza/, dalmata: /branco.*manchas pretas/, chocolate: /marrom/, dourado: /dourado.*coleira de ouro/, "arco-iris": /rosa.*coleira de arco-íris/, pirata: /bandana vermelha.*tapa-olho/, astronauta: /capacete de astronauta/, super: /capa vermelha.*super-herói/ };
+    ok(SK.every((k) => typeof k.text === "string" && k.text.length >= 10 && k.text === k.text.toLowerCase() && TXT[k.id].test(k.text) && !/\b(the|with|and|dog|skin|helmet|cape)\b/i.test(k.text)) && SK.every((k) => /^[A-Za-zÀ-ú][A-Za-zÀ-ú -]*$/.test(k.name)), `os nomes e os textos das skins estão em português (${SK.map((k) => `"${k.text}"`).slice(0, 3).join(", ")}...)`);
+
+    // ---- a documentação bate com o catálogo ----
+    const docs = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8"), readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8"), recSrc = fs.readFileSync(path.join(root, "js/records.js"), "utf8");
+    const rows = docs.split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin");
+    ok(JSON.stringify(rows.map((r) => [r[0], /grátis/.test(r[1]) ? 0 : Number(r[1])])) === JSON.stringify(cat.map((k) => [k.name, k.price])), `a tabela de docs/LOJINHA.md lista as mesmas skins e preços do jogo, na mesma ordem (${rows.map((r) => `${r[0]} ${r[1]}`).join(", ")})`);
+    ok(/MIN_SKIN_PRICE = 10/.test(docs) && /99999/.test(docs) && new RegExp(`${recSrc.match(/MAX_OWNED = (\d+)/)[1]} skins`).test(docs) && /1 petisco[^.]*fase completada/.test(docs), "docs/LOJINHA.md cita o preço mínimo (10), os limites da carteira (99999 petiscos e as skins do código) e 1 petisco por fase completada");
+    const rd = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins"), readme.indexOf("## Os gatos"));
+    ok(rd.length > 300 && cat.slice(1).every((k) => rd.includes(`${k.name} (${k.price})`)) && /Caramelo/.test(rd) && /grátis/.test(rd) && /MIN_SKIN_PRICE = 10/.test(rd) && /1 petisco = 1 petscoin/.test(rd), "o README tem a seção Petiscos, petscoin e lojinha de skins com os mesmos preços do jogo");
+    const cl = changelog.slice(changelog.indexOf("## 0.15.9"), changelog.indexOf("## 0.15.8"));
+    ok(/9 skins/.test(cl) && cat.slice(1).every((k) => cl.includes(`${k.name} ${k.price}`)) && /Caramelo \(grátis\)/.test(cl) && /1 petisco/.test(cl), "o CHANGELOG da 0.15.9 lista as skins e os preços do jogo");
+    await page.click("#btn-howto");
+    const how = await page.textContent("#howto");
+    ok(/Petiscos e skins:/.test(how) && /1 petisco/.test(how) && /petscoin/.test(how) && /Lojinha de skins/.test(how) && /10 petscoin/.test(how), "o Como jogar explica os petiscos, o petscoin e a Lojinha de skins (a partir de 10 petscoin)");
+    await page.click("#btn-howto-back");
+  });
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (1 petisco por fase completada: Fases 1, 2, 12 e 20, jogar de novo; derrota, pausa e saída não dão; carteira de cada jogador)", async () => {
+    await fresh(page, { name: "" });
+    ok(await page.textContent("#menu-progress") === "", "sem nome de usuário o menu não mostra petscoin");
+    await fresh(page);
+    ok(await page.textContent("#menu-progress") === "Fases concluídas: 0/20 · Pontuação total: 0 · Petscoin: 0", `o menu mostra "Petscoin: 0" antes de jogar (${await page.textContent("#menu-progress")})`);
+
+    // ---- Fase 1: 1 petisco; voltar da escolha de reforço não dá outro ----
+    await playLevel(page, 1);
+    ok(await ev(page, () => document.getElementById("win-treat").textContent) === "" && (await walletOf(page)).treats === 0, "antes de vencer não há petisco");
+    await finishNow(page, 10);
+    ok(await page.isVisible("#win") && await page.isVisible("#win-treat") && await page.textContent("#win-treat") === TREAT(1), `Fase 1: a vitória diz "${await page.textContent("#win-treat")}"`);
+    ok(JSON.stringify(await walletOf(page)) === '{"treats":1,"owned":[],"equipped":""}', "e a carteira do Totó guarda 1 petscoin");
+    await page.click("#btn-next"); await page.click("#btn-reinforce-back");
+    ok(await page.isVisible("#win") && (await walletOf(page)).treats === 1 && await page.textContent("#win-treat") === TREAT(1), "abrir a escolha de reforço e voltar ao resultado não dá outro petisco");
+    // ---- jogar a mesma fase de novo: +1 ----
+    await page.click("#btn-again");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1 && (await walletOf(page)).treats === 1, "Jogar novamente recomeça a Fase 1 sem mexer na carteira");
+    await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(2) && (await walletOf(page)).treats === 2, `jogar a mesma fase outra vez dá mais 1 petisco (${await page.textContent("#win-treat")})`);
+    ok(/continua|Mesma pontuação/.test(await page.textContent("#win-personal")), "(mesmo sem melhorar a pontuação da fase: o petisco vale a cada vitória)");
+    // ---- Fase 2 pelo fluxo normal (Próxima fase → reforço → Começar) ----
+    await nextPhase(page);
+    ok(await ev(page, () => __game.level) === 2, "a Próxima fase começa a Fase 2");
+    await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(3) && (await walletOf(page)).treats === 3, `Fase 2: 1 petisco (${await page.textContent("#win-treat")})`);
+    // ---- Fases 12 e 20 (com missão) ----
+    for (const [id, n] of [[12, 4], [20, 5]]) {
+      await ev(page, (id) => { __game.start(id); __game.noCatch = true; }, id);
+      await finishNow(page, 20);
+      ok(await ev(page, () => __game.state) === "won" && await page.textContent("#win-treat") === TREAT(n) && (await walletOf(page)).treats === n, `Fase ${id}: 1 petisco (${await page.textContent("#win-treat")})`);
+    }
+    // o menu mostra o saldo
+    await page.click("#btn-win-menu");
+    ok(/ · Petscoin: 5$/.test(await page.textContent("#menu-progress")) && /^Fases concluídas: 4\/20 · Pontuação total: \d+ · Petscoin: 5$/.test(await page.textContent("#menu-progress")), `o menu mostra "${await page.textContent("#menu-progress")}"`);
+
+    // ---- pausa, saída pelo menu e derrota NÃO dão petisco ----
+    await ev(page, () => { __game.freezeVets = true; __game.noCatch = false; __game.start(2); __game.tick(2); document.getElementById("btn-pause").click(); });
+    ok(await ev(page, () => __game.state) === "paused", "(jogo pausado)");
+    await ev(page, () => { __game.tick(5); });
+    ok((await walletOf(page)).treats === 5, "pausar não dá petisco");
+    await page.click("#btn-pause-menu");
+    ok(await page.isVisible("#menu") && (await walletOf(page)).treats === 5 && / · Petscoin: 5$/.test(await page.textContent("#menu-progress")), "sair da fase pelo menu não dá petisco (continua com 5)");
+    await ev(page, () => { __game.freezeVets = false; __game.noCatch = false; __game.start(2); __game.setLives(1); });
+    const lost = await catchOnce(page);
+    ok(lost[1] === "lost" && await page.isVisible("#lose") && (await walletOf(page)).treats === 5, "perder todas as vidas não dá petisco");
+    await page.click("#btn-retry");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.retries) === 1 && (await walletOf(page)).treats === 5, "Tentar novamente também não dá petisco");
+    await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(6) && (await walletOf(page)).treats === 6, "mas vencer a fase depois de uma nova tentativa dá o petisco (6)");
+    // a carteira sobrevive a recarregar a página
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok((await walletOf(page)).treats === 6 && / · Petscoin: 6$/.test(await page.textContent("#menu-progress")), "recarregar a página mantém os 6 petscoin (menu e carteira)");
+
+    // ---- sem nome de usuário: não guarda e a vitória avisa ----
+    await playLevel(page, 1, { name: "" }); await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === NO_NAME_TREAT && await page.isVisible("#win-treat"), `sem nome de usuário a vitória avisa: "${await page.textContent("#win-treat")}"`);
+    const rawNo = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1") || "{}"));
+    ok(!rawNo.wallet || Object.keys(rawNo.wallet).length === 0, "e nada é guardado em nenhuma carteira");
+    await page.click("#btn-win-menu");
+    ok(await page.textContent("#menu-progress") === "", "o menu sem nome continua sem a linha de petscoin");
+    await page.click("#btn-name"); await page.fill("#name-input", "Ana"); await page.click("#name button[type=submit]");
+    ok(await page.textContent("#menu-progress") === "Fases concluídas: 0/20 · Pontuação total: 0 · Petscoin: 0", "escolher um nome depois não traz o petisco de volta (Ana começa com 0)");
+
+    // ---- dois jogadores: carteiras separadas (pelas telas) ----
+    await playLevel(page, 1); await finishNow(page, 10);
+    await page.click("#btn-again"); await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(2), "Totó chega a 2 petscoin");
+    await page.click("#btn-win-menu"); await page.click("#btn-name"); await page.fill("#name-input", "Ana"); await page.click("#name button[type=submit]");
+    ok(await page.textContent("#menu-player") === "Ana" && / · Petscoin: 0$/.test(await page.textContent("#menu-progress")), "trocar para a Ana mostra o saldo dela (0), não o do Totó");
+    await ev(page, () => __game.start(1)); await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(1), "a Ana ganha o primeiro petisco dela (1), não o 3º do Totó");
+    await page.click("#btn-win-menu");
+    const both = async () => [(await walletOf(page, "Totó")).treats, (await walletOf(page, "Ana")).treats];
+    ok((await both()).join() === "2,1" && / · Petscoin: 1$/.test(await page.textContent("#menu-progress")), `as carteiras são separadas (Totó ${(await both())[0]}, Ana ${(await both())[1]})`);
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Totó')");
+    ok(await page.textContent("#menu-player") === "Totó" && / · Petscoin: 2$/.test(await page.textContent("#menu-progress")), "voltar para o Totó mostra os 2 petscoin dele");
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok((await both()).join() === "2,1", "e as duas carteiras sobrevivem a recarregar a página");
+
+    // ---- apagar a conta apaga a carteira (pelas telas: Esqueci a senha) ----
+    await fresh(page, { name: "" });
+    await ev(page, async () => { const st = Records.createStore(localStorage, { authOptions: { iterations: 2000 } }); await st.register("Bidu", "Senha1234"); st.addTreats("Bidu", 12); st.buySkin("Bidu", "cinza", 10); st.equipSkin("Bidu", "cinza"); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await page.textContent("#menu-player") === "Bidu (conta com senha)" && / · Petscoin: 2$/.test(await page.textContent("#menu-progress")) && await ev(page, () => __game.skin) === "cinza", "a conta Bidu tem 2 petscoin e a skin Cinza-prata em uso");
+    await ev(page, () => __game.start(1)); await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(3) && (await walletOf(page, "Bidu")).treats === 3, "uma conta com senha ganha o petisco igual (3)");
+    await page.click("#btn-win-menu"); await page.click("#btn-logout"); await page.click("#btn-name"); await page.click("#btn-open-login");
+    await page.fill("#login-user", "Bidu"); await page.click("#btn-forgot"); await page.click("#btn-forgot-delete");
+    ok(await page.isVisible("#register") && JSON.stringify(await walletOf(page, "Bidu")) === '{"treats":0,"owned":[],"equipped":""}', "apagar a conta pela tela Esqueci a senha apaga a carteira (petiscos, skins e skin em uso)");
+    const rawDel = await ev(page, () => localStorage.getItem("cachorrinho.v1"));
+    ok(!/bidu/i.test(rawDel), "nada da carteira do Bidu sobra no armazenamento");
+    await ev(page, async () => { const st = Records.createStore(localStorage, { authOptions: { iterations: 2000 } }); await st.register("Bidu", "Outra5678"); });
+    ok(JSON.stringify(await walletOf(page, "Bidu")) === '{"treats":0,"owned":[],"equipped":""}', "criar de novo uma conta com o mesmo nome começa com a carteira vazia");
+
+    // ---- conta apagada em OUTRA aba durante a partida: a vitória não recria nada ----
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const A = await ctx.newPage(); watch(A); const B = await ctx.newPage(); watch(B);
+    await A.goto(URL);
+    await A.evaluate(async () => { localStorage.clear(); const st = Records.createStore(localStorage, { authOptions: { iterations: 2000 } }); await st.register("Nando", "Senha123"); st.addTreats("Nando", 4); });
+    await A.reload(); await A.evaluate(PAGE_HELPERS);
+    await A.evaluate(() => __game.start(1));
+    await B.goto(URL); await B.evaluate(() => { Records.createStore(localStorage).deleteAccount("Nando"); });
+    await A.waitForTimeout(300);
+    await finishNow(A, 10);
+    const leftN = await A.evaluate(() => localStorage.getItem("cachorrinho.v1"));
+    ok(await A.textContent("#win-treat") === "" && !/nando/i.test(leftN), "conta apagada em outra aba: a vitória não dá petisco e não recria a carteira");
+    await ctx.close();
+
+    // ---- a tela de vitória com o parágrafo novo cabe nas 3 telas ----
+    await playLevel(page, 1); await finishNow(page, 10);
+    const lay = [];
+    for (const [w, h] of [[1000, 700], [390, 760], [760, 360]]) {
+      await page.setViewportSize({ width: w, height: h });
+      const r = await ev(page, () => { const t = document.getElementById("win-treat").getBoundingClientRect(), win = document.getElementById("win"); document.getElementById("btn-win-menu").scrollIntoView({ block: "nearest" }); const m = document.getElementById("btn-win-menu").getBoundingClientRect(); return { sw: win.scrollWidth, cw: win.clientWidth, doc: document.documentElement.scrollWidth, iw: innerWidth, ih: innerHeight, tl: t.left, tr: t.right, mt: m.top, mb: m.bottom, ml: m.left, mr: m.right }; });
+      if (!(r.sw <= r.cw && r.doc <= r.iw && r.tl >= 0 && r.tr <= r.iw && r.mt >= -1 && r.mb <= r.ih + 1 && r.ml >= 0 && r.mr <= r.iw)) lay.push(`${w}x${h}: ${JSON.stringify(r)}`);
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    ok(lay.length === 0, `a tela de vitória com "Petisco ganho!" cabe em 1000x700, 390x760 e 760x360 (sem rolagem lateral e com o botão Menu alcançável)${lay.length ? " — problema: " + lay.join("; ") : ""}`);
+  });
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (a lojinha: saldo, prévias, comprar, usar, teclado, sem nome, duas abas e as 3 telas)", async () => {
+    const msg = () => page.textContent("#shop-msg"), bal = () => page.textContent("#shop-balance");
+    const focusName = () => ev(page, () => { const a = document.activeElement, c = a && a.closest && a.closest(".shop-card"); return c ? c.querySelector("strong").textContent : (a && a.id) || ""; });
+    const heard = () => ev(page, () => __game.sounds.map((e) => e.name));
+    const clearSounds = () => ev(page, () => __game.sound.reset());
+    const skinNow = () => ev(page, () => __game.skin);
+    await fresh(page); await seedWallet(page, { treats: 37 });
+
+    // ---- o botão no menu e a tela ----
+    const labels = await page.$$eval("#menu .menu-list button", (bs) => bs.filter((b) => b.offsetParent).map((b) => b.textContent.trim()));
+    ok(labels.includes("Lojinha de skins") && labels.indexOf("Lojinha de skins") > labels.indexOf("Pontuações") && labels.indexOf("Lojinha de skins") < labels.indexOf("Escolher nome de usuário"), `o menu tem o botão Lojinha de skins (${labels.join(" | ")})`);
+    ok(/ · Petscoin: 37$/.test(await page.textContent("#menu-progress")), `o menu mostra o saldo (${await page.textContent("#menu-progress")})`);
+    await page.click("#btn-shop");
+    ok(await page.isVisible("#shop") && await page.isHidden("#menu") && await ev(page, () => document.body.dataset.screen) === "shop" && await ev(page, () => __game.state) === "menu", "o botão abre a Lojinha (o jogo continua no estado de menu)");
+    ok(await page.textContent("#shop-title") === "Lojinha de skins" && await page.getAttribute("#shop", "aria-labelledby") === "shop-title" && await page.getByRole("heading", { name: "Lojinha de skins" }).isVisible(), "a tela tem o título Lojinha de skins (rotulada para leitor de tela)");
+    ok(await bal() === BAL(37) && /1 petisco/.test(await page.textContent("#shop-help")) && /10 petscoin/.test(await page.textContent("#shop-help")) && await msg() === "", `o saldo diz "${await bal()}" e a ajuda explica 1 petisco = 1 petscoin e o mínimo de 10`);
+    ok(await page.getAttribute("#shop-msg", "role") === "status" && await page.getAttribute("#shop-msg", "aria-live") === "polite", "as mensagens da lojinha são anunciadas por leitor de tela (role=status)");
+
+    // ---- os 9 cartões ----
+    let cards = await shopCards(page);
+    ok(cards.length === 9 && cards.every((c, i) => c.name === SKIN_SPEC[i][1]) && cards.every((c, i) => c.cw === 216 && c.ch === 156 && c.role === "img" && c.label === `Prévia da skin ${SKIN_SPEC[i][1]}`), `há 9 cartões, na ordem do catálogo, cada um com o nome e uma prévia rotulada (${cards.map((c) => c.name).join(", ")})`);
+    ok(cards.every((c, i) => c.sub.includes(SK[i].text) && (i === 0 || c.sub.includes(`${SKIN_SPEC[i][2]} petscoin`))), "cada cartão traz o texto da skin e o preço");
+    const wantBtn = (treats, owned = [], equip = "") => SKIN_SPEC.map(([id, , price]) => (id === equip ? ["Em uso", true, ""] : id === "" || owned.includes(id) ? ["Usar", false, ""] : [`Comprar (${price} petscoin)`, price > treats, price > treats ? `${price - treats === 1 ? "Falta 1 petscoin" : `Faltam ${price - treats} petscoin`}` : ""]));
+    const gotBtn = (cs) => cs.map((c) => [c.btn, c.disabled, c.title]);
+    ok(JSON.stringify(gotBtn(cards)) === JSON.stringify(wantBtn(37)), `com 37 petscoin: Caramelo "Em uso"; Comprar ligado até 30 e desligado em Astronauta e Super-cão com "Faltam 3 petscoin" e "Faltam 13 petscoin" (${gotBtn(cards).map((b) => b[0].replace(" petscoin", "")).join(" | ")})`);
+    ok(cards.map((c) => c.equipped).join() === "true,false,false,false,false,false,false,false,false", "só o Caramelo está marcado como em uso");
+    ok(await focusName() === "Cinza-prata", `o foco inicial vai para o primeiro botão de comprar que dá (${await focusName()})`);
+
+    // ---- rótulos acessíveis: o nome da skin faz parte do nome do botão ----
+    const names = [];
+    for (const [i, [, name]] of SKIN_SPEC.entries()) names.push(await page.getByRole("button", { name: new RegExp(`^${i === 0 ? "Em uso" : "Comprar"}.*${esc(name)}$`) }).count());
+    ok(names.every((n) => n === 1), `cada botão tem um nome acessível com o nome da skin (um "Comprar (12 petscoin)" solto não diz qual skin é): ${names.join(",")}`);
+
+    // ---- as prévias são desenhos de verdade e diferentes uma da outra ----
+    const pv = await ev(page, (bodies) => {
+      const cvs = [...document.querySelectorAll("#shop-list .shop-card canvas")], px = cvs.map((c) => c.getContext("2d").getImageData(0, 0, c.width, c.height).data);
+      const near = (d, [r, g, b], t) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 250 && Math.abs(d[i] - r) <= t && Math.abs(d[i + 1] - g) <= t && Math.abs(d[i + 2] - b) <= t) n++; return n; };
+      const opaque = px.map((d) => { let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; });
+      const diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2]), Math.abs(a[i + 3] - b[i + 3])) > 24) n++; return n; };
+      let minDiff = 1e9, pair = "";
+      for (let i = 0; i < px.length; i++) for (let j = i + 1; j < px.length; j++) { const d = diff(px[i], px[j]); if (d < minDiff) { minDiff = d; pair = `${i}/${j}`; } }
+      return { opaque, body: px.map((d, i) => near(d, bodies[i], 4)), minDiff, pair };
+    }, SK.map((k) => (k.tan ? hex3(k.tan[1]) : hex3("#d9a066")))); // (a prévia é o cachorrinho adulto: a cor do corpo é a do fim do par)
+    ok(pv.opaque.every((n) => n > 800 && n < 216 * 156 * 0.6), `as 9 prévias estão desenhadas (nem vazias nem cheias: ${pv.opaque.join(", ")} pixels pintados)`);
+    ok(pv.body.every((n) => n > 150), `cada prévia tem o pelo da cor do catálogo (${pv.body.join(", ")} pixels da cor do corpo)`);
+    ok(pv.minDiff >= 150, `as prévias são diferentes duas a duas (a mais parecida, ${pv.pair}, difere em ${pv.minDiff} pixels)`);
+
+    // ---- comprar pelo teclado (Enter), pelo mouse e pelo Espaço ----
+    await clearSounds();
+    await page.keyboard.press("Enter"); // o foco está em "Comprar (10 petscoin)" da Cinza-prata
+    ok(await bal() === BAL(27) && await msg() === "Você comprou a skin Cinza-prata e já está usando! Sobraram 27 petscoin." && await skinNow() === "cinza", `Enter compra a Cinza-prata, já a põe em uso e avisa: "${await msg()}"`);
+    ok(JSON.stringify(await walletOf(page)) === '{"treats":27,"owned":["cinza"],"equipped":"cinza"}' && (await heard()).join() === "levelup", "a compra está na carteira guardada (27 petscoin, Cinza-prata, em uso) e toca o som levelup");
+    cards = await shopCards(page);
+    ok(JSON.stringify(gotBtn(cards)) === JSON.stringify(wantBtn(27, ["cinza"], "cinza")) && cards.map((c) => c.equipped).join() === "false,true,false,false,false,false,false,false,false", `os botões se atualizam (Caramelo "Usar", Cinza-prata "Em uso", Pirata com "Faltam 3 petscoin")`);
+    ok(await ev(page, () => document.activeElement.id) === "shop-name-1" && await focusName() === "Cinza-prata", `depois de comprar o foco não se perde: fica no cartão (no nome da Cinza-prata, que já não é botão de comprar)`);
+    await page.keyboard.press("Enter"); await page.keyboard.press("Enter"); // um Enter a mais (ou dois seguidos) não compra a skin seguinte sem querer
+    ok(await bal() === BAL(27) && (await walletOf(page)).owned.join() === "cinza" && await skinNow() === "cinza", "apertar Enter de novo depois de comprar não compra nem muda nada (27 petscoin, só a Cinza-prata)");
+    await page.keyboard.press("Tab");
+    ok(await focusName() === "Dálmata", `Tab segue para o próximo botão disponível (${await focusName()})`);
+    await page.click(cardBtn("dalmata"));
+    ok(await bal() === BAL(15) && await msg() === "Você comprou a skin Dálmata e já está usando! Sobraram 15 petscoin." && await skinNow() === "dalmata" && (await walletOf(page)).owned.join() === "cinza,dalmata", `o mouse compra a Dálmata (15 petscoin sobram): "${await msg()}"`);
+    await page.focus(cardBtn("chocolate")); await page.keyboard.press("Space");
+    ok(await bal() === BAL(0) && await msg() === "Você comprou a skin Chocolate e já está usando! Não sobrou nenhum petscoin." && await skinNow() === "chocolate", `o Espaço compra a Chocolate e gasta tudo: "${await msg()}"`);
+    cards = await shopCards(page);
+    ok(JSON.stringify(gotBtn(cards)) === JSON.stringify(wantBtn(0, ["cinza", "dalmata", "chocolate"], "chocolate")), `sem saldo, todo "Comprar" fica desligado com a falta no title ("Faltam 20 petscoin" no Dourado ... "Faltam 50 petscoin" no Super-cão)`);
+    ok(await ev(page, () => document.activeElement.id) === "shop-name-3", "o foco continua no cartão da Chocolate depois de comprar com o Espaço");
+
+    // ---- comprar de novo / sem saldo é impossível (inclusive forçando) ----
+    await clearSounds();
+    await ev(page, () => { const b = document.querySelector("#shop-list .shop-card:nth-child(5) button"); b.disabled = false; b.click(); }); // força o clique em "Comprar" do Dourado (20) sem saldo
+    ok(await msg() === "Faltam petscoin para esta skin." && await bal() === BAL(0) && (await walletOf(page)).owned.join() === "cinza,dalmata,chocolate" && (await heard()).length === 0, "forçar o clique no Comprar do Dourado sem saldo é recusado (nada é gasto nem comprado, sem som)");
+    const stale = await page.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(2) button")); // o botão "Usar" da Cinza-prata desta tela (vai ficar velho)
+    await clearSounds();
+    await page.click(cardBtn("cinza"));
+    ok(await msg() === "Skin em uso: Cinza-prata." && await skinNow() === "cinza" && await bal() === BAL(0), `"Usar" põe a Cinza-prata em uso, de graça: "${await msg()}"`);
+    ok((await heard()).join() === "pick", `e toca o som pick (${(await heard()).join()})`);
+    await page.click(cardBtn("dalmata")); await page.click(cardBtn("cinza")); // (de volta à Cinza-prata)
+    // a carteira recusa preços abaixo de 10, mesmo com saldo: dá 500 petscoin pela outra cópia do armazenamento
+    const rules = await ev(page, () => {
+      const st = Records.createStore(localStorage); st.addTreats("Totó", 500);
+      const out = {};
+      out.cheap = [9, 5, 1, 0, -10, 9.99].map((p) => JSON.stringify(st.buySkin("Totó", "dourado", p)));
+      out.badArgs = [["dourado", "20"], ["dourado", NaN], ["dourado", Infinity], ["Dourado", 20], ["dour ado", 20], ["", 20], [null, 20], [undefined, 20], ["a".repeat(25), 20], ["dourado", 100000]].map(([id, p]) => JSON.stringify(st.buySkin("Totó", id, p)));
+      out.owned = ["cinza", "dalmata", "chocolate"].map((id) => JSON.stringify(st.buySkin("Totó", id, 10)));
+      out.noBuy = [st.wallet("Totó").treats, st.wallet("Totó").owned.join()];
+      return out;
+    });
+    ok(rules.cheap.every((r) => r === '{"ok":false,"error":"invalid"}') && rules.badArgs.every((r) => r === '{"ok":false,"error":"invalid"}'), "com 500 petscoin, preço menor que 10 (9, 5, 1, 0, negativo, 9,99), preço que não é inteiro ou passa do máximo e ids inválidos são recusados");
+    ok(rules.owned.every((r) => r === '{"ok":false,"error":"owned"}') && rules.noBuy[0] === 500 && rules.noBuy[1] === "cinza,dalmata,chocolate", "comprar de novo uma skin que já é sua é recusado, e as recusas não gastam nada (500 petscoin)");
+    // a tela ainda mostra 0 (o saldo mudou "por fora", nesta mesma aba): o clique confere de novo no armazenamento e compra com os 500 que estão lá
+    await ev(page, () => { const b = document.querySelector("#shop-list .shop-card:nth-child(5) button"); b.disabled = false; b.click(); });
+    ok(await bal() === BAL(480) && await skinNow() === "dourado" && await msg() === "Você comprou a skin Dourado e já está usando! Sobraram 480 petscoin.", `o clique confere o saldo no armazenamento (a tela mostrava 0): "${await msg()}"`);
+    await stale.evaluate((b) => { b.click(); }); // o botão velho (de uma tela já redesenhada) "Usar" da Cinza-prata
+    ok(await skinNow() === "cinza" && await bal() === BAL(480), "um botão velho de uma tela já redesenhada só faz o que dizia (Usar a Cinza-prata), sem gastar nada");
+
+    // ---- usar outra skin comprada e voltar ao padrão ----
+    await page.click(cardBtn("dalmata"));
+    ok(await skinNow() === "dalmata" && (await walletOf(page)).equipped === "dalmata", "Usar a Dálmata troca a skin e guarda");
+    await page.click(cardBtn(""));
+    cards = await shopCards(page);
+    ok(await skinNow() === "" && (await walletOf(page)).equipped === "" && await msg() === "Skin em uso: Caramelo." && cards[0].btn === "Em uso" && cards[0].equipped && cards[3].btn === "Usar", `Usar o Caramelo volta ao padrão: "${await msg()}"`);
+    ok((await walletOf(page)).owned.join() === "cinza,dalmata,chocolate,dourado", "as skins compradas continuam sendo suas (Cinza-prata, Dálmata, Chocolate, Dourado)");
+
+    // ---- teclado: setas, Tab e Voltar ----
+    await page.keyboard.press("Escape");
+    ok(await page.isVisible("#menu") && await page.isHidden("#shop") && / · Petscoin: 480$/.test(await page.textContent("#menu-progress")), `Esc volta ao menu, que mostra o saldo novo (${await page.textContent("#menu-progress")})`);
+    await page.click("#btn-shop");
+    ok(await msg() === "", "reabrir a lojinha limpa a mensagem");
+    const first = await focusName();
+    ok(first === "Arco-íris", `o foco inicial é o primeiro "Comprar" que dá (${first}: Arco-íris custa 25 e as de antes já são suas)`);
+    await page.keyboard.press("ArrowDown");
+    const second = await focusName();
+    await page.keyboard.press("ArrowUp");
+    ok(second === "Pirata" && await focusName() === "Arco-íris", `↓ e ↑ andam entre os botões disponíveis (${first} → ${second} → ${await focusName()})`);
+    const tabs = [await focusName()]; for (let i = 0; i < 4; i++) { await page.keyboard.press("Tab"); tabs.push(await focusName()); }
+    ok(tabs.slice(0, 5).join(",") === "Arco-íris,Pirata,Astronauta,Super-cão,btn-shop-back", `Tab passa só pelos botões ligados e termina no Voltar (${tabs.slice(0, 5).join(" → ")})`);
+    await page.focus("#btn-shop-back"); await page.keyboard.press("Enter");
+    ok(await page.isVisible("#menu") && await ev(page, () => __game.state) === "menu", "Enter em Voltar leva ao menu");
+    await page.click("#btn-shop"); await page.click("#btn-shop-back");
+    ok(await page.isVisible("#menu") && await page.isHidden("#shop"), "clicar em Voltar leva ao menu");
+    await ev(page, () => { const st = Records.createStore(localStorage); st.buySkin("Totó", "arco-iris", 25); st.buySkin("Totó", "pirata", 30); st.buySkin("Totó", "astronauta", 40); st.buySkin("Totó", "super", 50); });
+    await page.click("#btn-shop");
+    ok(await focusName() === "btn-shop-back" || await focusName() === "Voltar", `quando nada dá para comprar o foco inicial vai para o Voltar (${await focusName()})`);
+  });
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (a lojinha sem nome, com poucos petscoin, em duas abas e nas 3 telas)", async () => {
+    const msg = () => page.textContent("#shop-msg"), bal = () => page.textContent("#shop-balance");
+    // ---- sem nome de usuário: só mostra, não compra ----
+    await fresh(page, { name: "" });
+    await page.click("#btn-shop");
+    let cards = await shopCards(page);
+    ok(await bal() === "Escolha um nome de usuário no menu para guardar petiscos e comprar skins." && cards.length === 9 && cards.every((c) => c.disabled), "sem nome: a lojinha pede para escolher um nome de usuário e todos os botões ficam desligados");
+    ok(cards[0].btn === "Padrão" && cards.slice(1).every((c, i) => c.btn === `${SKIN_SPEC[i + 1][2]} petscoin`), `os cartões mostram o nome, a prévia e o preço (${cards.map((c) => c.btn.replace(" petscoin", "")).join(" | ")})`);
+    ok(await ev(page, () => document.activeElement.id) === "btn-shop-back", "sem nome o foco inicial vai para o Voltar");
+    await ev(page, () => { for (const b of document.querySelectorAll("#shop-list button")) { b.disabled = false; b.click(); } }); // força todos os cliques
+    const wNo = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1") || "{}").wallet || {});
+    ok(Object.keys(wNo).length === 0 && await ev(page, () => __game.skin) === "", "forçar os cliques sem nome não cria carteira nem muda a skin");
+    await page.keyboard.press("Escape");
+    ok(await page.isVisible("#menu"), "Esc volta ao menu");
+
+    // ---- poucos petscoin: "Falta 1 petscoin" e "Sobrou 1 petscoin" ----
+    await fresh(page); await seedWallet(page, { treats: 9 });
+    await page.click("#btn-shop");
+    cards = await shopCards(page);
+    ok(await bal() === BAL(9) && cards[1].disabled && cards[1].title === "Falta 1 petscoin" && cards[2].title === "Faltam 3 petscoin" && cards[8].title === "Faltam 41 petscoin", `com 9 petscoin a Cinza-prata está a 1 de distância ("${cards[1].title}") e o resto diz "Faltam N petscoin" (${cards[2].title}, ${cards[8].title})`);
+    ok(await ev(page, () => document.activeElement.id) === "btn-shop-back", "com 9 petscoin não há o que comprar: o foco inicial vai para o Voltar");
+    await page.keyboard.press("Escape");
+    await fresh(page); await seedWallet(page, { treats: 11 });
+    await page.click("#btn-shop"); await page.click(cardBtn("cinza"));
+    ok(await bal() === BAL(1) && await msg() === "Você comprou a skin Cinza-prata e já está usando! Sobrou 1 petscoin.", `com 1 petscoin sobrando a mensagem fala certo: "${await msg()}"`);
+    await page.keyboard.press("Escape");
+    await fresh(page); await seedWallet(page, { treats: 0 });
+    await page.click("#btn-shop");
+    ok(await bal() === BAL(0) && (await shopCards(page)).slice(1).every((c, i) => c.disabled && c.title === `Faltam ${SKIN_SPEC[i + 1][2]} petscoin`), `com 0 petscoin: "${await bal()}" e nenhum botão de comprar liga`);
+    await page.keyboard.press("Escape");
+
+    // ---- duas abas: comprar na A, ver na B; o clique atrasado da B é recusado ----
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const A = await ctx.newPage(); watch(A); const Bp = await ctx.newPage(); watch(Bp);
+    await fresh(A); await seedWallet(A, { treats: 20 });
+    await Bp.goto(URL); await Bp.evaluate(PAGE_HELPERS);
+    await A.click("#btn-shop"); await Bp.click("#btn-shop");
+    ok(await Bp.textContent("#shop-balance") === BAL(20), "as duas abas mostram 20 petscoin");
+    const old = await Bp.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(3) button")); // "Comprar (12 petscoin)" da Dálmata, na B
+    await A.click(cardBtn("chocolate")); // A compra a Chocolate (15): sobram 5
+    ok(await A.textContent("#shop-balance") === BAL(5), "a aba A compra a Chocolate (sobram 5)");
+    await Bp.waitForFunction((t) => document.getElementById("shop-balance").textContent === t, BAL(5), { timeout: 3000 }).catch(() => {}); // (o navegador leva alguns milissegundos para repassar o que uma aba gravou às outras)
+    ok(await Bp.textContent("#shop-balance") === BAL(5) && (await shopCards(Bp))[3].btn === "Em uso", "a aba B se atualiza sozinha: 5 petscoin e a Chocolate já aparece como sua e em uso");
+    await old.evaluate((b) => b.click()); // o clique que a B já tinha na mão: Dálmata (12) com 5 petscoin
+    ok(await Bp.textContent("#shop-msg") === "Faltam petscoin para esta skin." && JSON.stringify(await walletOf(Bp)) === '{"treats":5,"owned":["chocolate"],"equipped":"chocolate"}', "o clique atrasado da B é recusado (sem saldo): nada é gasto e a Dálmata não é comprada");
+    // as duas abas tentam comprar a MESMA skin, cada uma com a tela que tinha (a da A mostra 20 petscoin e a da B, 35; no armazenamento há 35): só uma compra vale
+    const shows = (pg, text) => pg.waitForFunction((t) => document.getElementById("shop-balance").textContent === t, text, { timeout: 3000 }).then(() => true, () => false);
+    await ev(Bp, () => { Records.createStore(localStorage).addTreats("Totó", 15); });
+    const sA = await shows(A, BAL(20)); // (o navegador leva alguns milissegundos para repassar o que uma aba gravou às outras: espera a A receber o aviso antes de gravar na A)
+    await ev(A, () => { Records.createStore(localStorage).addTreats("Totó", 15); });
+    const sB = await shows(Bp, BAL(35));
+    ok(sA && sB && await A.textContent("#shop-balance") === BAL(20), `(a A recebeu os 20 e ficou com a tela velha; a B recebeu os 35: A mostra "${await A.textContent("#shop-balance")}" e B mostra "${await Bp.textContent("#shop-balance")}")`);
+    const oldA = await A.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(5) button")), oldB = await Bp.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(5) button")); // "Comprar (20 petscoin)" do Dourado, nas duas abas
+    await oldA.evaluate((b) => b.click());
+    await oldB.evaluate((b) => b.click());
+    const w2 = await walletOf(Bp);
+    ok(w2.treats === 15 && w2.owned.join() === "chocolate,dourado" && /Você já tem esta skin\./.test(await Bp.textContent("#shop-msg")), `as duas abas clicam em Comprar o Dourado: só uma compra vale (${w2.treats} petscoin, ${w2.owned.join(" e ")}) e a outra avisa "${await Bp.textContent("#shop-msg")}"`);
+    await ctx.close();
+
+    // ---- as 3 telas ----
+    await fresh(page); await seedWallet(page, { treats: 12 });
+    const lay = [], small = [];
+    for (const [w, h] of [[1000, 700], [390, 760], [760, 360]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.click("#btn-shop");
+      const r = await ev(page, () => {
+        const sh = document.getElementById("shop"), cardsR = [...sh.querySelectorAll(".shop-card")].map((c) => c.getBoundingClientRect()), btns = [...sh.querySelectorAll("button")];
+        const out = { w: innerWidth, h: innerHeight, sw: sh.scrollWidth, cw: sh.clientWidth, doc: document.documentElement.scrollWidth, body: document.body.scrollWidth, left: Math.min(...cardsR.map((c) => c.left)), right: Math.max(...cardsR.map((c) => c.right)), minBtnH: Math.min(...btns.map((b) => b.getBoundingClientRect().height)), minFont: Math.min(...[...sh.querySelectorAll(".sub, strong, button, #shop-help, #shop-balance")].map((e) => parseFloat(getComputedStyle(e).fontSize))), cols: new Set(cardsR.map((c) => Math.round(c.left))).size, canvasW: sh.querySelector("canvas").getBoundingClientRect().width };
+        sh.scrollTop = sh.scrollHeight; const back = document.getElementById("btn-shop-back").getBoundingClientRect();
+        out.backTop = back.top; out.backBottom = back.bottom; out.backL = back.left; out.backR = back.right; out.scrollable = sh.scrollHeight > sh.clientHeight;
+        sh.scrollTop = 0; const t = document.getElementById("shop-title").getBoundingClientRect(); out.titleTop = t.top;
+        return out;
+      });
+      if (!(r.sw <= r.cw && r.doc <= r.w && r.body <= r.w && r.left >= 0 && r.right <= r.w && r.backTop >= 0 && r.backBottom <= r.h + 1 && r.backL >= 0 && r.backR <= r.w && r.titleTop >= 0)) lay.push(`${w}x${h}: ${JSON.stringify(r)}`);
+      if (!(r.minBtnH >= 36 && r.minFont >= 12 && r.canvasW >= 100)) small.push(`${w}x${h}: botão mais baixo ${r.minBtnH.toFixed(0)} px, letra menor ${r.minFont} px, prévia ${r.canvasW.toFixed(0)} px`);
+      await page.click("#btn-shop-back"); // Voltar alcançável (o clique rola até ele)
+      if (!(await page.isVisible("#menu"))) lay.push(`${w}x${h}: o Voltar não levou ao menu`);
+      await page.click("#btn-shop"); await page.keyboard.press("Escape");
+      if (!(await page.isVisible("#menu"))) lay.push(`${w}x${h}: Esc não levou ao menu`);
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    ok(lay.length === 0, `a lojinha em 1000x700, 390x760 e 760x360: sem rolagem lateral, cartões e título dentro da tela, Voltar alcançável no fim da rolagem (e por Esc)${lay.length ? " — problema: " + lay.join("; ") : ""}`);
+    ok(small.length === 0, `botões de 36 px ou mais, letras de 12 px ou mais e prévias legíveis nas 3 telas${small.length ? " — problema: " + small.join("; ") : ""}`);
+  });
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (a skin vale no jogo: o desenho de cada skin nos 3 tamanhos e 4 direções; contato, velocidade e pontos iguais)", async () => {
+    const g = await newPage({ viewport: { width: 1000, height: 700 }, deviceScaleFactor: 3 }); // (resolução alta: as listras e os acessórios pequenos ganham pixels para medir)
+    try {
+      const SIZES = { filhote: {}, jovem: { speed: 4, bone: 4, slow: 4 }, adulto: { speed: 4, bone: 4, slow: 4, heart: 3, shield: 3 } }, FACES = ["right", "left", "down", "up"];
+      // ---- ferramenta dentro da página: põe o cachorrinho num lugar livre, espera o desenho e conta os pixels de cada cor ao redor dele ----
+      const injectLook = () => g.evaluate(() => {
+        const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+        window.__shots = {};
+        window.__look = async (key, id, level, ups, facing, spec) => {
+          if (!spec.keep) Records.createStore(localStorage).equipSkin("Totó", id); // (spec.keep: joga com a skin que já está em uso)
+          __game.autoStart = true; __game.start(level, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, ...ups } }); __game.freezeVets = true; __game.noCatch = true; __game.items.splice(0);
+          const p = __game.player;
+          if (spec.place) { // (Fase 1: um lugar livre de 3 x 3 tiles, sem nada por perto)
+            const M = __game.levels[0].map; let spot = null;
+            for (let r = 1; r < M.length - 3 && !spot; r++) for (let c = 1; c < M[0].length - 3 && !spot; c++) { let free = true; for (let dr = 0; dr < 3 && free; dr++) for (let dc = 0; dc < 3; dc++) if (M[r + dr][c + dc] !== ".") { free = false; break; } if (free) spot = [c, r]; }
+            p.x = (spot[0] + 1) * 32 + 4; p.y = (spot[1] + 1) * 32 + 4;
+          }
+          p.facing = facing; p.moving = false; __game.tick(0.01);
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          const gr = __game.growth, mix = (a, b, t) => hex(a).map((v, k) => Math.round(v + (hex(b)[k] - v) * t));
+          const v = __game.view, k = v.k * v.zoom, ctx = document.getElementById("game").getContext("2d");
+          const cx = Math.round((p.x + p.w / 2 - v.camX) * k), cy = Math.round((p.y + p.h / 2 - v.camY) * k), R = Math.round(26 * k);
+          const d = ctx.getImageData(cx - R, cy - R, 2 * R, 2 * R).data;
+          if (key) window.__shots[key] = d;
+          const body = spec.tan ? mix(spec.tan[0], spec.tan[1], gr) : mix("#ecc592", "#d9a066", gr), caramel = mix("#ecc592", "#d9a066", gr), dark = spec.dark ? mix(spec.dark[0], spec.dark[1], gr) : mix("#9a6a3c", "#7a4a22", gr);
+          const probes = { body: [...body, 4], caramel: [...caramel, 4], dark: [...dark, 4], bandana: [217, 52, 43, 3], patch: [17, 17, 17, 5], cape: [217, 43, 43, 6], capeCollar: [193, 39, 45, 6], helmet: [222, 240, 254, 9], goldCollar: [212, 160, 23, 6],
+            rbR: [229, 57, 53, 8], rbO: [251, 140, 0, 8], rbY: [253, 216, 53, 8], rbG: [67, 160, 71, 8], rbB: [30, 136, 229, 8], white: [255, 255, 255, 12] };
+          const out = { gr, stage: __game.stage, skin: __game.skin, w: p.w, h: p.h, k }; for (const n in probes) out[n] = 0;
+          for (let i = 0; i < d.length; i += 4) for (const n in probes) { const [r, g2, b, t] = probes[n]; if (Math.abs(d[i] - r) <= t && Math.abs(d[i + 1] - g2) <= t && Math.abs(d[i + 2] - b) <= t) out[n]++; }
+          return out;
+        };
+        window.__pairs = (group) => { // a menor diferença (em pixels) entre duas skins na mesma situação, e quais são
+          const keys = Object.keys(window.__shots).filter((s) => s.endsWith(group)), diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) > 24) n++; return n; };
+          let min = 1e9, pair = ""; for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) { const n = diff(window.__shots[keys[i]], window.__shots[keys[j]]); if (n < min) { min = n; pair = `${keys[i]} x ${keys[j]}`; } }
+          return { n: keys.length, min, pair };
+        };
+      });
+      const look = (key, k, sz, f, level = 1, place = true, keep = false) => g.evaluate(([key, id, level, ups, f, spec]) => window.__look(key, id, level, ups, f, spec), [key, k.id, level, SIZES[sz] || {}, f, { tan: k.tan || null, dark: k.dark || null, place, keep }]);
+
+      // ---- comprar na lojinha, voltar ao menu e jogar: a skin comprada é a que aparece na fase ----
+      await fresh(g); await seedWallet(g, { treats: 30 }); await injectLook();
+      await g.click("#btn-shop"); await g.click(cardBtn("pirata")); await g.keyboard.press("Escape");
+      ok(await g.isVisible("#menu") && await g.evaluate(() => __game.skin) === "pirata", "depois de comprar a Pirata na lojinha e voltar ao menu, a skin em uso do jogo é a Pirata");
+      const bought = await look("", SK.find((k) => k.id === "pirata"), "x", "right", 1, true, true);
+      ok(bought.skin === "pirata" && bought.bandana >= 20 && bought.patch >= 20 && bought.w === 24, `e na fase o cachorrinho aparece de pirata (bandana ${bought.bandana} e tapa-olho ${bought.patch} pixels)`);
+      // (volta ao padrão pela lojinha e joga: o Caramelo, sem acessório)
+      await g.evaluate(() => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+      await g.click("#btn-shop"); await g.click(cardBtn("")); await g.keyboard.press("Escape");
+      const back = await look("", SK[0], "x", "right", 1, true, true);
+      ok(back.skin === "" && back.bandana <= 8 && back.patch <= 3 && back.caramel > 100, `usar o Caramelo na lojinha tira a bandana da fase (bandana ${back.bandana}, pelo caramelo ${back.caramel} pixels)`);
+      await fresh(g); await seedWallet(g, { treats: 0, owned: SK.slice(1).map((k) => k.id) }); await injectLook();
+
+      // ---- 9 skins x 3 tamanhos x 4 direções: as cores do catálogo e os acessórios aparecem ----
+      const R = {}, bad = [];
+      for (const sz of Object.keys(SIZES)) for (const f of FACES) for (const k of SK) R[`${k.id || "caramelo"}|${sz}|${f}`] = await look(`${k.id || "caramelo"}|${sz}|${f}`, k, sz, f);
+      const sig = ["bandana", "patch", "cape", "capeCollar", "helmet", "goldCollar", "rbR"], mark = { pirata: ["bandana", "patch"], super: ["cape", "capeCollar"], astronauta: ["helmet"], dourado: ["goldCollar"], "arco-iris": ["rbR"] };
+      for (const sz of Object.keys(SIZES)) for (const f of FACES) for (const k of SK) {
+        const id = k.id || "caramelo", r = R[`${id}|${sz}|${f}`], tag = `${id}/${sz}/${f}`, side = f === "right" || f === "left";
+        if (r.skin !== k.id) bad.push(`${tag}: skin em uso "${r.skin}"`);
+        if (r.stage !== sz) bad.push(`${tag}: tamanho ${r.stage}`);
+        if (r.w !== 24 || r.h !== 24) bad.push(`${tag}: contato ${r.w}x${r.h}`);
+        if (!(r.body >= 60)) bad.push(`${tag}: só ${r.body} pixels da cor do corpo`);
+        if (k.tan && r.caramel > 0.05 * r.body) bad.push(`${tag}: ainda tem ${r.caramel} pixels do pelo caramelo`);
+        for (const s of sig) { // só a skin dona do acessório tem a cor dele
+          const own = Object.entries(mark).some(([m, list]) => m === k.id && list.includes(s));
+          const need = own && (s !== "patch" || f !== "up") && (!["capeCollar", "goldCollar", "rbR"].includes(s) || side);
+          if (need && !(r[s] >= { helmet: 100, cape: 15, bandana: 20, patch: 20, capeCollar: 20, goldCollar: 20, rbR: 4 }[s])) bad.push(`${tag}: falta o acessório (${s} ${r[s]})`);
+          if (!own && r[s] > 8) bad.push(`${tag}: ${s} ${r[s]} em quem não tem esse acessório`);
+          if (own && s === "patch" && f === "up" && r[s] > 3) bad.push(`${tag}: tapa-olho de costas (${r[s]})`);
+        }
+        if (k.id === "arco-iris" && side && !["rbR", "rbO", "rbY", "rbG", "rbB"].every((s) => r[s] >= 4)) bad.push(`${tag}: coleira sem as 5 listras (${["rbR", "rbO", "rbY", "rbG", "rbB"].map((s) => r[s])})`);
+        if (k.id === "dalmata" && !(r.dark >= 150 && (f === "up" || r.white >= 20))) bad.push(`${tag}: manchas pretas ${r.dark}, branco ${r.white}`);
+      }
+      ok(bad.length === 0, `cada uma das 9 skins aparece na fase, nos 3 tamanhos (filhote, jovem, adulto) e nas 4 direções, com a cor do pelo do catálogo e o acessório certo (bandana e tapa-olho, capa, capacete, coleira de ouro e de arco-íris, manchas)${bad.length ? " — problemas: " + bad.slice(0, 8).join("; ") : ""}`);
+      const pg = [];
+      for (const sz of Object.keys(SIZES)) for (const f of FACES) { const r = await g.evaluate((grp) => window.__pairs(grp), `|${sz}|${f}`); if (!(r.n === 9 && r.min >= 40)) pg.push(`${sz}/${f}: ${r.pair} só difere em ${r.min} pixels (${r.n} skins)`); }
+      ok(pg.length === 0, `nos 3 tamanhos e nas 4 direções, duas skins quaisquer são desenhadas de forma diferente (pelo menos 40 pixels de diferença)${pg.length ? " — problema: " + pg.join("; ") : ""}`);
+      ok(R["caramelo|filhote|down"].caramel > 50 && R["caramelo|adulto|right"].caramel > 50, "(a skin padrão continua com o pelo caramelo de sempre)");
+
+      // ---- as skins com acessório também aparecem em outras fases (Fase 5: jovem; Fase 10: adulto) ----
+      const lv = [];
+      for (const [level, stage] of [[5, "jovem"], [10, "adulto"]]) for (const id of ["pirata", "astronauta", "super"]) {
+        const k = SK.find((x) => x.id === id), r = await look("", k, "x", "right", level, false);
+        const want = { pirata: ["bandana", 20], astronauta: ["helmet", 100], super: ["cape", 30] }[id];
+        if (!(r.stage === stage && r.skin === id && r[want[0]] >= want[1] && r.w === 24)) lv.push(`Fase ${level}/${id}: ${r.stage}, ${want[0]} ${r[want[0]]}`);
+      }
+      ok(lv.length === 0, `na Fase 5 (jovem) e na Fase 10 (adulto) a skin em uso também é desenhada${lv.length ? " — problema: " + lv.join("; ") : ""}`);
+
+      // ---- o contato (24 x 24), a velocidade e as regras NÃO mudam com a skin ----
+      const mv = [];
+      let base = null;
+      for (const k of SK) {
+        const m = await g.evaluate(async (id) => {
+          Records.createStore(localStorage).equipSkin("Totó", id);
+          __game.autoStart = true; __game.start(1); __game.freezeVets = true; __game.noCatch = true; __game.items.splice(0);
+          const M = __game.levels[0].map; let spot = null;
+          for (let r = 1; r < M.length - 1 && !spot; r++) for (let c = 1; c < M[0].length - 8 && !spot; c++) { let free = true; for (let dc = 0; dc < 8 && free; dc++) if (M[r][c + dc] !== ".") free = false; if (free) spot = [c, r]; }
+          const p = __game.player; p.x = spot[0] * 32 + 4; p.y = spot[1] * 32 + 4; p.facing = "right";
+          const x0 = p.x; __t.hold("d", 30);
+          return { skin: __game.skin, w: p.w, h: p.h, dx: p.x - x0, speed: __game.dogSpeed, lives: __game.lives, minPoints: __game.minPoints, maxLives: __game.maxLives, items: __game.levels[0].rations };
+        }, k.id);
+        base = base || m;
+        if (!(m.skin === k.id && m.w === 24 && m.h === 24 && m.dx > 90 && Math.abs(m.dx - base.dx) < 1e-6 && m.speed === base.speed && m.lives === base.lives && m.minPoints === base.minPoints && m.maxLives === base.maxLives)) mv.push(`${k.id || "caramelo"}: ${JSON.stringify(m)}`);
+      }
+      ok(mv.length === 0, `com qualquer skin o contato é 24 x 24, o cachorrinho anda a mesma distância em 0,5 s (${base.dx.toFixed(1)} px a ${base.speed} px/s) e as vidas, a meta de pontos e o resto não mudam${mv.length ? " — problema: " + mv.slice(0, 3).join("; ") : ""}`);
+      // o agente da carrocinha pega o cachorrinho da mesma forma com e sem skin (o contato é o mesmo retângulo): encostando perde 1 vida; a 40 px não perde
+      const catchR = [];
+      for (const id of ["", "super", "astronauta", "pirata"]) catchR.push(await g.evaluate((id) => {
+        const lose = (dx) => {
+          Records.createStore(localStorage).equipSkin("Totó", id);
+          __game.autoStart = true; __game.start(2); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+          for (const v of __game.vets) v.cool = 99; for (let k = 0; k < 45; k++) __game.tick(0.05);
+          const v = __game.vets[0], p = __game.player; v.cx = p.x + 12 + dx; v.cy = p.y + 12; __game.freezeVets = false; __game.tick(0.01);
+          return 3 - __game.lives;
+        };
+        return [lose(10), lose(40)];
+      }, id));
+      ok(catchR.every((r) => r.join() === "1,0"), `o agente da carrocinha pega o cachorrinho do mesmo jeito com e sem skin (a 10 px perde 1 vida e a 40 px nada: ${catchR.map((r) => r.join("/")).join(", ")} em Caramelo, Super-cão, Astronauta e Pirata)`);
+
+      // ---- a skin persiste ao recarregar e vale para quem está jogando ----
+      await g.evaluate(() => { Records.createStore(localStorage).equipSkin("Totó", "pirata"); });
+      await g.reload(); await g.evaluate(PAGE_HELPERS);
+      ok(await g.evaluate(() => __game.skin) === "pirata", "recarregar a página mantém a skin em uso (Pirata)");
+    } finally { await g.context().close(); }
+
+    // ---- trocar de jogador / sair da conta muda a skin ----
+    await fresh(page, { name: "" });
+    await ev(page, async () => { const st = Records.createStore(localStorage, { authOptions: { iterations: 2000 } }); await st.register("Bidu", "Senha1234"); st.addTreats("Bidu", 60); st.buySkin("Bidu", "super", 50); st.equipSkin("Bidu", "super"); st.setPlayer("Totó"); st.addTreats("Totó", 20); st.buySkin("Totó", "dourado", 20); st.equipSkin("Totó", "dourado"); st.setPlayer("Ana"); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    const sk = () => ev(page, () => __game.skin);
+    ok(await page.textContent("#menu-player") === "Ana" && await sk() === "", "a Ana (sem skin comprada) joga com o Caramelo");
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Totó')");
+    ok(await page.textContent("#menu-player") === "Totó" && await sk() === "dourado", "trocar para o Totó põe a skin dele (Dourado)");
+    await ev(page, () => __game.start(1));
+    ok(await sk() === "dourado" && await ev(page, () => __game.level) === 1, "e a partida começa com a skin do Totó");
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Ana')");
+    await ev(page, () => __game.start(1));
+    ok(await sk() === "", "trocar de volta para a Ana volta ao Caramelo");
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Bidu (com senha)')");
+    await page.fill("#login-pass", "Senha1234"); await page.click("#btn-login-submit");
+    await page.waitForFunction(() => document.getElementById("menu") && !document.getElementById("menu").classList.contains("hidden") && /Bidu/.test(document.getElementById("menu-player").textContent), null, { timeout: 15000 });
+    ok(await sk() === "super", "entrar na conta Bidu põe a skin dela (Super-cão)");
+    await page.click("#btn-logout");
+    ok(await page.textContent("#menu-player") === "ainda não escolhido" && await sk() === "", "Sair da conta volta ao Caramelo (sem nome não há skin)");
+    await ev(page, () => __game.start(1));
+    ok(await sk() === "", "e uma partida sem nome também usa o Caramelo");
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    await page.click("#btn-shop");
+    ok(await sk() === "" && (await shopCards(page)).every((c) => c.disabled) && (await shopCards(page))[0].btn === "Padrão", "sem nome a lojinha mostra o Caramelo como padrão e nada para comprar");
+    await page.keyboard.press("Escape");
+  });
+
+  // =====================================================================
+  await section("0.15.9: petiscos, petscoin e lojinha de skins (jogo salvo e Continuar; a pontuação não muda com a skin nem com os petiscos)", async () => {
+    const skinNow = () => ev(page, () => __game.skin);
+    // ---- jogo salvo / Continuar: a skin e os petiscos não se perdem ----
+    await fresh(page, { keepSave: true }); await seedWallet(page, { treats: 3, owned: ["dalmata", "pirata"], equip: "dalmata" });
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; for (let i = 0; i < 40; i++) __game.tick(0.05); });
+    ok(await ev(page, () => __game.save()) === true && await skinNow() === "dalmata", "(Fase 2, com a skin Dálmata, salva)");
+    const rawSave = await ev(page, () => localStorage.getItem("cachorrinho.save.v1"));
+    ok(!/dalmata|petscoin|treat|wallet/i.test(rawSave), "o jogo salvo não guarda skin nem petiscos (eles ficam na carteira do jogador)");
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await page.isVisible("#btn-continue") && / · Petscoin: 3$/.test(await page.textContent("#menu-progress")) && await skinNow() === "dalmata", "recarregar a página: o menu tem Continuar jogo, mostra 3 petscoin e a skin continua Dálmata");
+    await page.click("#btn-continue");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2 && await skinNow() === "dalmata" && JSON.stringify(await walletOf(page)) === '{"treats":3,"owned":["dalmata","pirata"],"equipped":"dalmata"}', "Continuar volta à Fase 2 com a skin Dálmata e a carteira intacta (3 petscoin, 2 skins)");
+    await finishNow(page, 10);
+    ok(await page.textContent("#win-treat") === TREAT(4) && (await walletOf(page)).owned.join() === "dalmata,pirata", "terminar o jogo continuado dá o petisco (4) e mantém as skins");
+    // a skin que vale é a que está em uso na hora de Continuar (trocada na lojinha entre o salvar e o continuar)
+    await fresh(page, { keepSave: true }); await seedWallet(page, { treats: 3, owned: ["dalmata", "pirata"], equip: "dalmata" });
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(1); __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    await page.click("#btn-shop"); await page.click(cardBtn("pirata")); await page.keyboard.press("Escape");
+    await page.click("#btn-continue");
+    ok(await skinNow() === "pirata" && await ev(page, () => __game.state) === "playing", "se a skin for trocada na lojinha antes de Continuar, o jogo continuado usa a skin nova (Pirata)");
+    // o jogo salvo de um jogador não leva a skin de outro
+    await ev(page, () => { __game.save(); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    await ev(page, () => { const st = Records.createStore(localStorage); st.setPlayer("Ana"); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await skinNow() === "" && await page.isHidden("#btn-continue"), "outro jogador (Ana) tem o Caramelo e não vê o jogo salvo do Totó");
+
+    // ---- a pontuação não muda com a skin nem com os petiscos ----
+    const lcg = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const runPoints = async (name, seedOpts, level) => {
+      await fresh(page, { name }); if (seedOpts) await seedWallet(page, { name, ...seedOpts });
+      await ev(page, ([level, seed]) => { __game.setRand((() => { let s = seed; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })()); __game.start(level); __game.setRand(null); }, [level, 7]);
+      await finishNow(page, 10);
+      return ev(page, () => ({ points: document.getElementById("win-points").textContent, breakdown: document.getElementById("win-breakdown").textContent, total: document.getElementById("win-total").textContent, personal: document.getElementById("win-personal").textContent, score: __game.score, skin: __game.skin }));
+    };
+    for (const level of [2, 5]) {
+      const plain = await runPoints("Totó", null, level), rich = await runPoints("Ana", { treats: 500, owned: ["super"], equip: "super" }, level);
+      ok(plain.skin === "" && rich.skin === "super" && plain.points === rich.points && plain.breakdown === rich.breakdown && plain.total.replace(/\(\+\d+\)/, "") === rich.total.replace(/\(\+\d+\)/, "") && plain.score === rich.score && Number(plain.points) > 0, `Fase ${level}: a pontuação é a mesma com e sem skin, com 0 e com 500 petscoin (${plain.points} pontos: ${plain.breakdown})`);
+      ok(!/petisc|petscoin|skin/i.test(rich.breakdown + rich.total + rich.personal), "o resumo da pontuação não mistura petisco com pontos");
+    }
+    // o ranking e as melhores pontuações também não mudam: Totó, depois de ganhar 3 petscoin em 3 vitórias, tem a mesma pontuação total
+    await fresh(page);
+    for (let i = 0; i < 3; i++) { await ev(page, () => { __game.setRand((() => { let s = 7; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })()); __game.start(2); __game.setRand(null); }); await finishNow(page, 10); }
+    const tot = await ev(page, () => { const st = Records.createStore(localStorage); return { total: st.totalScore("Totó", [1, 2]), best: st.personalBest("Totó", 2).p, treats: st.wallet("Totó").treats }; });
+    ok(tot.treats === 3 && tot.total === tot.best && tot.best > 0, `3 vitórias da mesma fase dão 3 petscoin e a pontuação total é a melhor da fase (${tot.total} = ${tot.best}): petisco não é ponto`);
   });
 
 
