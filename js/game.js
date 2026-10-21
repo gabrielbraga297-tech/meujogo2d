@@ -2733,7 +2733,8 @@
     }
     { // 0.15.9: ao completar a fase o cachorrinho ganha 1 petisco (1 petscoin), guardado na carteira do jogador
       const me2 = accountGone() ? "" : gamePlayer, w = me2 ? store.addTreats(me2, 1) : null;
-      $("win-treat").textContent = w ? `Petisco ganho! +1 petscoin (você tem ${w.treats}). Troque por skins na Lojinha, no menu.` : gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+      if (w) $("win-treat").replaceChildren(`Petisco ganho! +1 petscoin (você tem ${w.treats}).`, el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (a dica some nas telas baixas, para a vitória caber sem rolar)
+      else $("win-treat").textContent = gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
     }
     showScreen("win");
   }

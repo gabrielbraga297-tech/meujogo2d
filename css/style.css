@@ -270,6 +270,7 @@ body.touch[data-state="playing"] #touch { display: flex; }
   .menu-foot { margin-top: 4px; }
   .credit, .version { font-size: 12px !important; line-height: 1.2 !important; }
   .saved-info { padding: 4px 10px; font-size: 13px !important; }
+  .long-hint { display: none; } /* a dica "Troque por skins na Lojinha" da vitória (0.15.9) */
 }
 
 /* Celular estreito em pé: telas um pouco mais compactas (menu com jogo salvo e vitória cabem melhor) */
@@ -291,6 +292,10 @@ body.touch[data-state="playing"] #touch { display: flex; }
   .menu-list { gap: 6px; margin-top: 2px; }
   .menu-list button { min-height: 40px; padding: 6px 14px; font-size: 16px; }
   .menu-foot { margin-top: 4px; }
+  /* 0.15.9: com o botão "Lojinha de skins" o menu com jogo salvo passava da tela: Como jogar e Pontuações dividem uma linha */
+  #menu .menu-list { flex-direction: row; flex-wrap: wrap; }
+  #menu .menu-list button { flex: 1 1 100%; }
+  #menu .menu-list #btn-howto, #menu .menu-list #btn-scores { flex: 1 1 calc(50% - 3px); padding-inline: 6px; }
 }
 
 @media (max-width: 420px) {
