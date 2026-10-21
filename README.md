@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.4 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.6 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -96,6 +96,9 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 | Sorteio por jogo (portas; paredes) | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 |
 | Portas mudam de lado a cada | 3 s | 3 s | 3 s | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **1,8 s** (220 px/s) | **1,8 s** (220 px/s) | **1,6 s** (240 px/s) | **1,6 s** (240 px/s) |
 | Paredes mudam de lado a cada | 10 s | 10 s | 10 s | **8 s** (140 px/s) | **8 s** (140 px/s) | **8 s** (140 px/s) | **5,5 s** (180 px/s) | **5,5 s** (180 px/s) | **5 s** (200 px/s) | **5 s** (200 px/s) |
+| Máximo de vidas (sem reforço; até 10 com *Coração maior*) | 6 | 6 | 7 | 7 | 8 | 8 | 9 | 9 | 10 | 10 |
+| **Missão** (além dos pontos) | todos os 5 ossos | assustar 3 | 36 rações | todos os 6 ossos e assustar 2 | assustar 4 | 44 rações | todos os 7 ossos e assustar 3 | assustar 5 e 35 rações | todos os 8 ossos e assustar 4 | todos os 8 ossos, assustar 5 e 48 rações |
+| Bônus por cumprir a missão | +200 | +250 | +300 | +350 | +400 | +450 | +500 | +550 | +600 | +650 |
 | Perda por vida / pontos para passar | −300 / 2300 | −300 / 2450 | −325 / 2650 | −325 / 2800 | −350 / 3000 | −350 / 3200 | −375 / 3400 | −375 / 3600 | −400 / 3800 | −400 / 4000 |
 | Poder do osso | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s |
 | Ao ser pego ou esmagado | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** |
@@ -141,6 +144,17 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 **Na Fase 3** a **velocidade** de movimento ganha mais 10% (66,55 e 133,1 px/s); a duração das perseguições e o descanso são os da Fase 2.
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
+
+## Missões e mais vidas (0.15.6, Fases 11 a 20)
+**Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/5 · sustos 1/3 · rações 20/36*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina de 1 a 3 destas exigências:
+
+- **Ossos:** pegar **todos** os ossos da fase (Fases 11, 14, 17, 19 e 20);
+- **Sustos:** **assustar** N carteiros ou gatos com o poder do osso (a soma de todos os poderes da fase; 3 na Fase 12 até 5 nas Fases 18 e 20);
+- **Rações:** pegar pelo menos N rações (36 na Fase 13, 44 na 16, 35 na 18 e 48 na 20).
+
+Quando os pontos já bastam mas falta a missão, o jogo avisa (*Pontos suficientes! Falta a missão: …*) e, se o cachorrinho chega à saída, a saída continua fechada (*Falta a missão: …*). Se já pegou **tudo** e o poder do osso acabou sem dar para cumprir a missão (poucos sustos), **não há mais como passar**: a tentativa acaba como em *os pontos não bastaram* (*A missão não foi cumprida!*; custa uma nova tentativa). **Cumprir a missão vale pontos extras** (+200 na Fase 11, +50 a cada fase, +650 na Fase 20), mostrados na tela de vitória.
+
+**Mais vidas:** o máximo de vidas **sobe a partir da Fase 11**: 6, 6, 7, 7, 8, 8, 9, 9, 10 e 10 nas Fases 11 a 20 (5 nas Fases 1 a 10), e o reforço *Coração maior* soma mais 1 por nível, mas **nunca passa de 10** (quando o máximo da fase já é 10 ele deixa de ser oferecido). As vidas extras escondidas (3 ou 4 por fase) e o reforço *Vida extra* levam você até esse máximo, e o placar mostra até **10 corações**.
 
 ## Ambientes (0.14.0)
 Cada fase é um **lugar que o cachorrinho conhece**, com chão, paredes e "caixas" desenhados no estilo do ambiente (`js/themes.js`; as regras, os mapas e os números de cada fase não mudam):
@@ -208,15 +222,15 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 Os sons são **baixos por padrão** (volume 0,35) e foram medidos (pico, duração, cliques, equilíbrio de volume e diferença entre eles: 182 de 182 verificações); no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. **Menu, pausa, jogo carregado e reinício não tocam nada.** O botão **Som: ligado / desligado** (no menu e na pausa) e a tecla **M** ligam e desligam; a escolha fica em `localStorage` na chave `cachorrinho.som.v1` (separada do jogo salvo e das contas). O gancho de testes `window.__game.sounds` registra todo pedido de som (nome, instante e se tocou).
 
 ## Vidas
-Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*); as vidas são **cumulativas**:
+Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*; **a partir da Fase 11 o máximo sobe até 10**, veja *Missões e mais vidas*); as vidas são **cumulativas**:
 
-- Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo de 5 (mais os níveis de *Coração maior*).
+- Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo da fase (5; de 6 a 10 nas Fases 11 a 20; mais os níveis de *Coração maior*, nunca acima de 10).
 - As vidas que sobram ao terminar uma fase **passam para a fase seguinte** (pelo botão *Próxima fase*). Escolher uma fase no menu ou usar *Jogar novamente* começa com 3 vidas.
 - Se o agente da carrocinha encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 e 10). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **nas Fases 9 e 10 ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro (poder do osso) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro (poder do osso) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 
