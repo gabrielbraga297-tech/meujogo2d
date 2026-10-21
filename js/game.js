@@ -96,7 +96,7 @@
   const SHIELD_TIME = 10, ICE_TIME = 6, TURBO_TIME = 8, TURBO_FACTOR = 1.4, MAGNET_TIME = 12, MAGNET_RADIUS = 4 * TILE; // s de cada efeito (o reforço Osso poderoso soma 4 s por nível), × velocidade do cachorrinho, px
   const BONE_LABEL = { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" };
   // Bolinhas (0.15.8, a partir da Fase 2): cachorros adoram correr atrás de bolinhas. Cada bolinha vale 50 pontos e FOGE rolando quando o cachorrinho chega a 3 tiles: ele tem de correr atrás dela (ela quica nas paredes e para sozinha).
-  const BALL_R = 7, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
+  const BALL_R = 8, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
   const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
   const BALL_COLORS = ["#ff5a5a", "#ffd23f", "#4fc3ff", "#7be07b"];
   // Skins do cachorrinho (0.15.9): a lojinha vende por petiscos (1 petisco por fase completada = 1 petscoin); o preço mínimo é Records.MIN_SKIN_PRICE (10).
@@ -2038,6 +2038,8 @@
   const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
   const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
   const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  // 0.15.8: com tudo pego e a missão cumprida, os pontos que faltam para o mínimo ainda podem vir das bolinhas que sobraram: a tentativa só acaba se nem elas bastarem
+  const ballsCanOpen = () => missionDone() && runningScore() < lv.minPoints && runningScore() + (balls.length - ballsGot()) * Records.BALL_POINTS >= lv.minPoints;
   // A missão de sustos fica impossível quando o poder acabou e não sobrou nenhum osso comum (os outros tipos não assustam).
   const missionImpossible = () => !!lv.mission && lv.mission.scare > 0 && postmen < lv.mission.scare && power <= 0 && !items.some((it) => !it.taken && it.bone && (it.kind || "scare") === "scare");
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
@@ -2133,6 +2135,14 @@
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
     for (const b of balls) {
       if (b.taken) continue;
+      { // um bloco que desliza por cima de uma bolinha a empurra para o lado livre mais perto (ela não fica presa por baixo dele)
+        const box = { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }, hit = solids.find((o) => overlap(box, o));
+        if (hit) {
+          const outs = [[hit.x - BALL_R - 0.5, b.y], [hit.x + hit.w + BALL_R + 0.5, b.y], [b.x, hit.y - BALL_R - 0.5], [b.x, hit.y + hit.h + BALL_R + 0.5]].sort((p, q) => Math.hypot(p[0] - b.x, p[1] - b.y) - Math.hypot(q[0] - b.x, q[1] - b.y));
+          const free = outs.find(([x, y]) => { const bx = { x: x - BALL_R, y: y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }; return x > BALL_R && y > BALL_R && x < WORLD_W - BALL_R && y < WORLD_H - BALL_R && !solids.some((o) => overlap(bx, o)); });
+          if (free) { b.x = free[0]; b.y = free[1]; b.vx = 0; b.vy = 0; }
+        }
+      }
       const dx = b.x - px, dy = b.y - py;
       if (Math.hypot(dx, dy) < BALL_SCARE && Math.hypot(b.vx, b.vy) < 40 && lineClear(px, py, b.x, b.y)) { // chute: foge pelo eixo em que o cachorrinho está mais perto
         const k = ballKick(levelId);
@@ -2249,7 +2259,7 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
+    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen() && !ballsCanOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
