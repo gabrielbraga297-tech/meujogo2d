@@ -24,11 +24,15 @@
     { id: "heart", name: "Coração maior", text: "+1 vida no máximo (e +1 vida agora)", max: 3 },
     { id: "shield", name: "Pelo grosso", text: "+2 s de proteção depois de perder uma vida", max: 3 },
     { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 8% mais lentos", max: 4 },
+    // Reforços novos da 0.15.7: só são oferecidos a partir da Fase 11 (`from`)
+    { id: "stealth", name: "Patas de veludo", text: "agentes e gatos notam você 1 quadrado mais tarde", max: 3, from: 11 },
+    { id: "scent", name: "Faro", text: "uma seta mostra o osso mais perto (e, no nível 2, a saída aberta)", max: 2, from: 11 },
+    { id: "lure", name: "Ímã de ração", text: "as rações perto de você vêm sozinhas", max: 3, from: 11 },
   ];
   const REINFORCE_OFFER = 3; // quantas opções de reforço aparecem por fase
-  const UP_KEYS = ["speed", "bone", "heart", "shield", "slow"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
-  const UP_MAX = { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4 };
-  const noUp = () => ({ speed: 0, bone: 0, heart: 0, shield: 0, slow: 0 });
+  const UP_KEYS = ["speed", "bone", "heart", "shield", "slow", "stealth", "scent", "lure"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
+  const UP_MAX = { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4, stealth: 3, scent: 2, lure: 3 };
+  const noUp = () => ({ speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, stealth: 0, scent: 0, lure: 0 });
   const cleanUp = (u) => { // reforços válidos (inteiros de 0 ao máximo de cada um) ou null
     if (!u || typeof u !== "object") return null;
     const out = noUp();
@@ -87,6 +91,11 @@
   // Gatos (0.16.0, a partir da Fase 11): mais ágeis e mais espertos que os agentes (a lógica está em updateCat). Velocidades em px/s: veja `cat` em LEVELS.
   const CAT_BASE = { speed: 130, chaseSpeed: 200, hear: 7, chaseTime: 3, chaseMax: 12, restTime: 1.2, thinkEvery: 0.08, idleMin: 0.3, idleMax: 0.9 };
   const CAT_GAP = 40, CAT_LEAD_MAX = 4, CAT_FLEE_FACTOR = 0.72, CAT_STUN = 2, CAT_SLOW = 0.6; // px entre gatos, tiles de antecipação, × velocidade de perseguição ao fugir, s tonto, × lentidão do gato atingido
+  // Ossos de tipos novos (0.15.7, a partir da Fase 11): além do osso comum (poder de assustar), há o de ouro (escudo), o de gelo (congela agentes e gatos), o turbo (corre mais) e o ímã (pega as rações perto). Cada fase diz quais ossos tem em `boneMix`.
+  const BONE_KINDS = ["scare", "gold", "ice", "turbo", "magnet"];
+  const SHIELD_TIME = 10, ICE_TIME = 6, TURBO_TIME = 8, TURBO_FACTOR = 1.4, MAGNET_TIME = 12, MAGNET_RADIUS = 4 * TILE; // s de cada efeito (o reforço Osso poderoso soma 4 s por nível), × velocidade do cachorrinho, px
+  const BONE_LABEL = { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" };
+  const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
@@ -1081,6 +1090,7 @@
       note: "labirinto ainda maior e mais agentes da carrocinha",
       cats: [[18, 32], [7, 27]], cat: { speed: 130, chaseSpeed: 200, hear: 7 },
       lifeCap: 6, mission: { bones: true }, missionBonus: 200,
+      boneMix: ["scare", "scare", "scare", "gold", "ice"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [29, 7], [38, 3], [44, 3], [49, 3], [55, 3], [61, 3]], y: [[1, 3], [6, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [15, 6], to: [15, 7], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1103,6 +1113,7 @@
       note: "mais rações e mais pontos",
       cats: [[33, 27], [46, 8], [58, 38]], cat: { speed: 132, chaseSpeed: 203, hear: 7 },
       lifeCap: 6, mission: { scare: 3 }, missionBonus: 250,
+      boneMix: ["scare", "scare", "scare", "ice", "turbo"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 7], [39, 3], [45, 3], [51, 3], [57, 3], [63, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [63, 5], to: [64, 5], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1125,6 +1136,7 @@
       note: "labirinto enorme: 13 × 7 quarteirões e 6 agentes",
       cats: [[23, 21], [2, 40], [58, 40]], cat: { speed: 134, chaseSpeed: 205, hear: 7 },
       lifeCap: 7, mission: { rations: 36 }, missionBonus: 300,
+      boneMix: ["scare", "scare", "scare", "gold", "ice", "magnet"],
       maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 3], [27, 3], [32, 7], [41, 3], [46, 3], [51, 3], [57, 3], [62, 3], [67, 3]], y: [[1, 3], [7, 3], [13, 3], [19, 5], [27, 3], [33, 3], [39, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [49, 27], to: [49, 28], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1147,6 +1159,7 @@
       note: "blocos e paredes mais rápidos",
       cats: [[59, 14], [13, 28], [43, 8], [49, 28]], cat: { speed: 135, chaseSpeed: 208, hear: 7 },
       lifeCap: 7, mission: { bones: true, scare: 2 }, missionBonus: 350,
+      boneMix: ["scare", "scare", "scare", "gold", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 3], [27, 3], [33, 7], [42, 3], [48, 3], [53, 3], [58, 3], [64, 3], [69, 3]], y: [[1, 3], [7, 3], [13, 3], [19, 5], [27, 3], [33, 3], [39, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [62, 1], to: [62, 2], size: [1, 2], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1169,6 +1182,7 @@
       note: "mais um bom pedaço de labirinto para explorar",
       cats: [[24, 15], [7, 42], [13, 22], [60, 29]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
       lifeCap: 8, mission: { scare: 4 }, missionBonus: 400,
+      boneMix: ["scare", "scare", "scare", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [28, 3], [34, 7], [43, 3], [49, 3], [54, 3], [59, 3], [65, 3], [71, 3]], y: [[1, 3], [7, 3], [13, 4], [20, 5], [28, 3], [34, 4], [41, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [43, 32], to: [44, 32], size: [2, 1], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1191,6 +1205,7 @@
       note: "labirinto de 13 × 9 quarteirões e 7 agentes",
       cats: [[19, 35], [72, 30], [30, 7], [66, 17], [24, 30]], cat: { speed: 139, chaseSpeed: 214, hear: 8 },
       lifeCap: 8, mission: { rations: 44 }, missionBonus: 450,
+      boneMix: ["scare", "scare", "scare", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [29, 3], [34, 7], [44, 3], [49, 3], [54, 3], [60, 3], [65, 3], [71, 3]], y: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 5], [29, 3], [34, 3], [39, 3], [45, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [18, 14], to: [19, 14], size: [2, 1], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1213,6 +1228,7 @@
       note: "peças móveis ainda mais rápidas",
       cats: [[31, 30], [45, 7], [25, 24], [51, 30], [38, 46]], cat: { speed: 141, chaseSpeed: 216, hear: 8 },
       lifeCap: 9, mission: { bones: true, scare: 3 }, missionBonus: 500,
+      boneMix: ["scare", "scare", "scare", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [24, 3], [30, 3], [35, 7], [44, 3], [50, 3], [55, 3], [61, 3], [67, 3], [73, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 5], [29, 3], [34, 3], [40, 3], [45, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [11, 45], to: [11, 46], size: [1, 2], wall: true, every: 5.5, speed: 180, phase: 0 }, // parede 1
@@ -1235,6 +1251,7 @@
       note: "8 agentes da carrocinha e muitos becos",
       cats: [[76, 31], [65, 25], [31, 8], [53, 2], [59, 2], [53, 37]], cat: { speed: 143, chaseSpeed: 219, hear: 8 },
       lifeCap: 9, mission: { scare: 5, rations: 35 }, missionBonus: 550,
+      boneMix: ["scare", "scare", "scare", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 3], [36, 7], [46, 3], [52, 3], [58, 3], [64, 3], [69, 3], [75, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 3], [23, 5], [30, 3], [36, 3], [41, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [16, 47], to: [16, 48], size: [1, 2], wall: true, every: 5.5, speed: 180, phase: 0 }, // parede 1
@@ -1257,6 +1274,7 @@
       note: "quase no fim: o labirinto mais enrolado até aqui",
       cats: [[66, 37], [32, 8], [32, 48], [20, 19], [72, 2], [26, 43]], cat: { speed: 144, chaseSpeed: 222, hear: 9 },
       lifeCap: 10, mission: { bones: true, scare: 4 }, missionBonus: 600,
+      boneMix: ["scare", "scare", "scare", "gold", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [25, 3], [31, 3], [37, 7], [47, 3], [53, 3], [59, 3], [65, 3], [71, 3], [77, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 5], [31, 3], [36, 3], [42, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [59, 16], to: [60, 16], size: [2, 1], wall: true, every: 5, speed: 200, phase: 0 }, // parede 1
@@ -1279,6 +1297,7 @@
       note: "a Fase 20: o maior labirinto de todos",
       cats: [[33, 14], [80, 19], [61, 38], [61, 8], [49, 26], [14, 33], [21, 26]], cat: { speed: 146, chaseSpeed: 224, hear: 9 },
       lifeCap: 10, mission: { bones: true, scare: 5, rations: 48 }, missionBonus: 650,
+      boneMix: ["scare", "scare", "scare", "gold", "ice", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 4], [26, 3], [32, 3], [38, 7], [48, 3], [54, 3], [60, 3], [66, 4], [73, 3], [79, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [24, 5], [32, 3], [37, 3], [43, 3], [49, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [64, 49], to: [64, 50], size: [1, 2], wall: true, every: 5, speed: 200, phase: 0 }, // parede 1
@@ -1336,6 +1355,8 @@
     if (!Number.isInteger(lifePenalty) || lifePenalty < 0 || lifePenalty > 1000 || !Number.isInteger(minPoints) || minPoints < 0 || minPoints > 100000 || !(bonePower >= 0 && bonePower <= 120)) {
       throw new Error(`Regras de pontos ou poder inválidas: ${def.title}`);
     }
+    const boneMix = def.boneMix ? def.boneMix.slice() : Array(bones).fill("scare");
+    if (boneMix.length !== bones || !boneMix.every((k) => BONE_KINDS.includes(k)) || (bones && !boneMix.includes("scare") && bonePower > 0) || (def.mission && def.mission.scare && boneMix.filter((k) => k === "scare").length < 2)) throw new Error(`Ossos da fase inválidos: ${def.title}`);
     const lifeCap = def.lifeCap ?? MAX_LIVES;
     if (!Number.isInteger(lifeCap) || lifeCap < MAX_LIVES || lifeCap > LIFE_CAP_HARD) throw new Error(`Máximo de vidas inválido: ${def.title}`);
     // missão (0.15.6): além dos pontos mínimos, a saída só abre com a missão cumprida: `bones` (pegar todos os ossos), `scare` (assustar tantos carteiros/gatos com o poder do osso) e `rations` (pegar tantas rações)
@@ -1393,7 +1414,7 @@
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
-      lifeCap, mission, missionBonus,
+      lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
@@ -1452,6 +1473,8 @@
   const capFor = (L, u) => Math.min(LIFE_CAP_HARD, L.lifeCap + u.heart); // máximo de vidas de uma fase com os reforços `u` (0.15.6: sobe nas Fases 11 a 20; nunca passa de 10)
   const maxLivesNow = () => capFor(lv, up);
   let missionSaid = false;     // (fases com missão) já avisou que os pontos bastam mas falta a missão
+  let fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; // segundos que faltam de cada efeito dos ossos de tipo novo (0.15.7)
+  const fxTime = (base) => base + (REINFORCE_BONE / 2) * up.bone; // o reforço Osso poderoso também alonga os efeitos novos (+4 s por nível)
   const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
   const bonePowerNow = () => (lv.bonePower ? lv.bonePower + REINFORCE_BONE * up.bone : 0);
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
@@ -1488,7 +1511,7 @@
     return cand.slice(0, count);
   }
 
-  const tileItem = ([c, r], life, bone = false) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life, bone });
+  const tileItem = ([c, r], life, bone = false, kind = null) => ({ x: c * TILE + 8, y: r * TILE + 8, w: 16, h: 16, taken: false, life, bone, kind: bone ? kind || "scare" : null });
 
   // Quais das peças móveis da fase entram neste jogo: a QUANTIDADE de cada tipo é sorteada (`blockRange`) e quais são também. `given` = escolha já feita (jogo salvo).
   let allBlocks = false; // só para testes: liga todas as peças
@@ -1512,7 +1535,7 @@
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
@@ -1527,7 +1550,8 @@
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
-    shuffle(items.map((_, i) => i)).slice(0, lv.bones).forEach((i) => { items[i].bone = true; });
+    const boneAt = shuffle(items.map((_, i) => i)).slice(0, lv.bones), mix = lv.boneMixed ? shuffle(lv.boneMix.slice()) : lv.boneMix; // (sem tipos novos não há sorteio a mais: o sorteio das fases antigas não muda)
+    boneAt.forEach((i, k) => { items[i].bone = true; items[i].kind = mix[k]; });
     // Alguns itens (ração ou osso) trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fases 2 e 3: 1 ou 2; Fases 4 e 5: 3 e 4; Fases 6 a 10: 3 ou 4).
     const extra = lv.lifeMin + Math.floor(rand() * (lv.lifeMax - lv.lifeMin + 1));
     // (no máximo 1 osso traz vida; nunca nos dois ossos da Fase 3)
@@ -1549,7 +1573,7 @@
     const near = []; // renascendo no lugar, nenhum item cai em cima do cachorro nem logo ao lado dele
     if (lv.respawnInPlace) { const [pc, pr] = tileOf(player.x + player.w / 2, player.y + player.h / 2); for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) near.push([c, r]); }
     const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near]);
-    rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone)); });
+    rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone, it.kind)); });
   }
 
   // ---------- Blocos e paredes que se movem (Fases 3 a 10) ----------
@@ -1598,7 +1622,7 @@
   function updateBlocks(dt) {
     if (!blocks.length) return;
     // Nas fases com `crush`, o bloco que alcança o cachorro (sem o poder do osso e fora da proteção) o ESMAGA: ele perde uma vida. Os agentes continuam sendo empurrados.
-    const deadly = lv.crush && !noCatch && power <= 0 && invuln <= 0;
+    const deadly = lv.crush && !noCatch && power <= 0 && invuln <= 0 && fx.shield <= 0;
     for (const b of blocks) {
       const bt = normBt(b.d, b.bt + dt), r = blockRectAt(b.d, bt);
       if (r.x === b.rect.x && r.y === b.rect.y) { b.bt = bt; continue; } // parado numa das pontas: só o relógio anda
@@ -1613,7 +1637,7 @@
   }
 
   // ---------- Cachorro ----------
-  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade
+  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
     for (const s of solids) {
@@ -1650,7 +1674,7 @@
   function canSee(v) {
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
     const dx = px - v.cx, dy = py - v.cy, dist = Math.hypot(dx, dy);
-    if (dist > v.cfg.sight) return false;
+    if (dist > v.cfg.sight - up.stealth * TILE) return false; // (Patas de veludo: notam 1 quadrado mais tarde por nível)
     for (let d = 0; d < dist; d += 8) {
       const [c, r] = tileOf(v.cx + (dx * d) / dist, v.cy + (dy * d) / dist);
       if (!walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
@@ -1898,7 +1922,7 @@
     if (c.pounceCd > 0) c.pounceCd -= dt;
     const [ct, cr] = tileOf(c.cx, c.cy), px = player.x + player.w / 2, py = player.y + player.h / 2;
     if (power <= 0) {
-      const sees = canSee(c), heard = (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear;
+      const sees = canSee(c), heard = (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear - up.stealth;
       if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
       if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
         c.think = cfg.thinkEvery;
@@ -2055,6 +2079,42 @@
     }
     return best || { cx: x, cy: y };
   }
+  // Ossos de tipos novos (0.15.7): cada um liga um efeito por alguns segundos (o osso comum, `scare`, é o poder de assustar de sempre).
+  const FX_INFO = {
+    gold: { key: "shield", time: SHIELD_TIME, text: (t) => `escudo dourado por ${t} s: nada pega o cachorrinho!` },
+    ice: { key: "ice", time: ICE_TIME, text: (t) => `agentes e gatos congelados por ${t} s!` },
+    turbo: { key: "turbo", time: TURBO_TIME, text: (t) => `+${Math.round((TURBO_FACTOR - 1) * 100)}% de velocidade por ${t} s!` },
+    magnet: { key: "magnet", time: MAGNET_TIME, text: (t) => `as rações vêm sozinhas por ${t} s!` },
+  };
+  function startFx(kind) {
+    const f = FX_INFO[kind], t = fxTime(f.time);
+    fx[f.key] = t;
+    toast(`${BONE_LABEL[kind]}: ${f.text(t)}`, 2.6); pickupToastUntil = time + 2.6;
+  }
+  function endFx(key) { // o efeito acabou: quem estava congelado volta devagar e o cachorrinho ganha 1 s de proteção
+    if (key === "ice") { for (const e of everyone()) e.cool = Math.max(e.cool, 1.5); invuln = Math.max(invuln, POWER_END_GRACE); }
+    if (time >= pickupToastUntil) toast({ shield: "O escudo acabou.", ice: "O gelo derreteu!", turbo: "O turbo acabou.", magnet: "O ímã acabou." }[key], 1.6);
+  }
+  // Há caminho livre (sem parede nem bloco) em linha reta entre dois pontos?
+  function lineClear(ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy);
+    for (let d = 0; d <= dist; d += 8) {
+      const [c, r] = tileOf(ax + (dist ? (dx * d) / dist : 0), ay + (dist ? (dy * d) / dist : 0));
+      if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
+    }
+    return true;
+  }
+  function takeItem(it) { // pega um item (o cachorrinho encostou nele ou o ímã o trouxe)
+    it.taken = true;
+    const kind = it.kind || "scare";
+    if (it.bone) {
+      bonesGot++; sound.play("bone");
+      if (kind !== "scare") startFx(kind);
+      else if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play("transform", { delay: 0.3 }); } // os agentes viram carteiros
+    } else { collected++; sound.play("ration"); }
+    if (it.life) giveLife(it, it.bone ? (kind !== "scare" ? ` · ${BONE_LABEL[kind]}!` : lv.bonePower ? ` · Poder do osso por ${bonePowerNow()} s!` : "") : "");
+    score = runningScore(); saveNow();
+  }
   function defeatPostman(v) {
     sound.play("postman");
     puffs.push({ x: v.cx, y: v.cy, t: 0 });
@@ -2114,16 +2174,12 @@
 
     updateBlocks(dt);
     if (crushed) { crushed = false; loseLife("crush"); return; }
-    for (const it of items) {
-      if (!it.taken && overlap(player, it)) {
-        it.taken = true;
-        if (it.bone) {
-          bonesGot++; sound.play("bone");
-          if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play("transform", { delay: 0.3 }); } // os agentes viram carteiros
-        } else { collected++; sound.play("ration"); }
-        if (it.life) giveLife(it, it.bone && lv.bonePower ? ` · Poder do osso por ${bonePowerNow()} s!` : "");
-        score = runningScore(); saveNow();
-      }
+    for (const k of ["shield", "ice", "turbo", "magnet"]) if (fx[k] > 0 && (fx[k] -= dt) <= 0) { fx[k] = 0; endFx(k); } // (os efeitos dos ossos novos acabam)
+    for (const it of items) if (!it.taken && overlap(player, it)) takeItem(it);
+    const pull = Math.max(fx.magnet > 0 ? MAGNET_RADIUS : 0, up.lure ? lureRadius(up.lure) : 0); // ímã (osso) ou Ímã de ração (reforço): as rações perto, à vista, vêm sozinhas
+    if (pull > 0) {
+      const mx = player.x + player.w / 2, my = player.y + player.h / 2;
+      for (const it of items) if (!it.taken && !it.bone && Math.hypot(it.x + 8 - mx, it.y + 8 - my) <= pull && lineClear(mx, my, it.x + 8, it.y + 8)) { puffs.push({ x: it.x + 8, y: it.y + 8, t: 0.4 }); takeItem(it); }
     }
 
     if (lv.minPoints) { // meta de pontos (e missão): avisa quando a saída abre (e de novo se a pontuação cair abaixo e voltar)
@@ -2138,15 +2194,15 @@
     if (power > 0 && (power -= dt) <= 0) endPower();
     if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
-    if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
-    if (!freezeVets || catsThaw) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
+    if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
+    if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < 22;
-    const protectedNow = invuln > 0;
+    const protectedNow = invuln > 0 || fx.shield > 0; // (o escudo do osso de ouro também protege)
     if (invuln > 0) invuln -= dt;
     if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
       for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
       for (const c of cats) if (!c.slow && touching(c)) defeatCat(c); // (o gato assustado vale o mesmo: +100 por poder)
-    } else if (!protectedNow && !noCatch && (vets.some(touching) || cats.some(touching))) { loseLife(); return; }
+    } else if (!protectedNow && !noCatch && fx.ice <= 0 && (vets.some(touching) || cats.some(touching))) { loseLife(); return; } // (congelado, o inimigo é inofensivo)
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
@@ -2228,12 +2284,13 @@
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
       v: 4, mz: MAP_REV, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
-      items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 : 0]), // coluna, linha, pego, vida extra, osso
+      items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 + BONE_KINDS.indexOf(it.kind || "scare") : 0]), // coluna, linha, pego, vida extra, osso (0 = ração; 1 = osso comum; 2 a 5 = ouro, gelo, turbo, ímã)
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
       bl: blocks.map((b) => r2(b.bt)), // ponto do ciclo de cada bloco que se move
       ba: blocks.map((b) => b.i),      // quais peças móveis da fase entraram neste jogo (a quantidade é sorteada)
       pw: power > 0 ? Math.max(0.01, r2(power)) : 0, vd: vets.map((v) => (v.slow ? 1 : 0)), pk: postmen, // poder do osso que falta, carteiros lentos (já atingidos) e quantos já foram atingidos
+      ...(fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? { fx: [r2(fx.shield), r2(fx.ice), r2(fx.turbo), r2(fx.magnet)] } : {}), // efeitos dos ossos novos que ainda faltam (0.15.7)
       ...(cats.length ? { cats: cats.map((c) => [r2(c.cx), r2(c.cy)]), cd: cats.map((c) => (c.slow ? 1 : 0)) } : {}), // gatos (0.16.0): posições e quais já foram assustados neste poder
     };
   }
@@ -2249,8 +2306,8 @@
       if (sv.v === 3 && (L.bones || L.blockDefs.length)) return null; // o formato antigo não tem ossos nem blocos
       let upv = noUp(); // reforços (campo novo da 0.8.0; jogos salvos antigos não têm: começam sem nenhum)
       if (sv.up !== undefined) {
-        if (!Array.isArray(sv.up) || sv.up.length !== UP_KEYS.length) return null;
-        upv = cleanUp(Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])));
+        if (!Array.isArray(sv.up) || (sv.up.length !== UP_KEYS.length && sv.up.length !== 5)) return null; // (jogos salvos antes da 0.15.7 têm 5 reforços: os novos começam em 0)
+        upv = cleanUp(Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i] ?? 0])));
         if (!upv) return null;
       }
       if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > capFor(L, upv) || !num(sv.invuln, 0, INVULN + REINFORCE_SHIELD * upv.shield)) return null;
@@ -2262,15 +2319,16 @@
       for (const it of sv.items) {
         if (!Array.isArray(it) || it.length !== (sv.v === 3 ? 4 : 5)) return null;
         const [c, r, t, l] = it, b = sv.v === 3 ? 0 : it[4];
-        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || (b !== 0 && b !== 1)) return null;
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || !Number.isInteger(b) || b < 0 || b > BONE_KINDS.length) return null;
         // dois itens que faltam pegar não podem ocupar o mesmo tile (um já pego pode: jogos salvos da 0.4.0 tinham esse defeito)
         if (t === 0) { if (seen.has(r * L.cols + c)) return null; seen.add(r * L.cols + c); }
         if (L.trackTiles.some(([tc, tr]) => tc === c && tr === r)) return null; // nunca no trilho de um bloco
-        lifeItems += l; boneItems += b;
+        lifeItems += l; boneItems += b > 0 ? 1 : 0;
         items4.push([c, r, t, l, b]);
       }
       if (lifeItems < L.lifeMin || lifeItems > L.lifeMax || boneItems !== L.bones) return null; // a fase tem de ter a quantidade prevista de vidas extras e de ossos
-      if (items4.filter((it) => it[3] === 1 && it[4] === 1).length > 1) return null; // no máximo 1 osso traz vida
+      if (items4.filter((it) => it[3] === 1 && it[4] > 0).length > 1) return null; // no máximo 1 osso traz vida
+      if (items4.filter((it) => it[4] > 0).map((it) => BONE_KINDS[it[4] - 1]).sort().join() !== L.boneMix.slice().sort().join()) return null; // os tipos de osso têm de ser os da fase
       const pw = sv.pw === undefined ? 0 : sv.pw, vd = sv.vd === undefined ? L.vetSpawns.map(() => 0) : sv.vd;
       if (!num(pw, 0, 120) || pw > (L.bonePower ? L.bonePower + REINFORCE_BONE * upv.bone : 0) || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
       let bl = [], ba = [];
@@ -2290,6 +2348,9 @@
         const [c, r] = tileOf(v[0], v[1]);
         if (!L.walk[r][c]) return null;
       }
+      const fxv = sv.fx === undefined ? [0, 0, 0, 0] : sv.fx;
+      if (!Array.isArray(fxv) || fxv.length !== 4 || !fxv.every((x) => num(x, 0, 60))) return null;
+      if (!L.boneMixed && fxv.some((x) => x > 0)) return null; // só as fases com ossos de tipos novos têm esses efeitos
       const pk = sv.pk === undefined ? 0 : sv.pk;
       if (!Number.isInteger(pk) || pk < 0 || pk > 999 || (pk > 0 && !L.bonePower)) return null;
       const nCats = L.catSpawns.length, cd = sv.cd === undefined ? L.catSpawns.map(() => 0) : sv.cd;
@@ -2302,7 +2363,7 @@
         }
       }
       if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, up: UP_KEYS.map((k) => upv[k]) };
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, up: UP_KEYS.map((k) => upv[k]) };
     } catch { return null; }
   }
 
@@ -2319,7 +2380,7 @@
 
   function applySnapshot(sv) {
     reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba, upgrades: Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])) });
-    items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b === 1), { taken: t === 1 }));
+    items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b > 0, b > 0 ? BONE_KINDS[b - 1] : null), { taken: t === 1 }));
     blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
     time = sv.time; livesLost = sv.lost; started = autoStart || sv.time > 0;
@@ -2334,7 +2395,7 @@
       if (sv.cats) { const [cc, cr] = tileOf(sv.cats[i][0], sv.cats[i][1]); [c.cx, c.cy] = centerOf(cc, cr); } // o gato volta ao centro do tile mais próximo
       Object.assign(c, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2.5, modeT: 0, chaseAge: 0, slow: sv.cd[i] === 1, hitCool: 0, seen: null });
     });
-    power = sv.pw; postmen = sv.pk; score = runningScore();
+    power = sv.pw; postmen = sv.pk; fx = { shield: sv.fx[0], ice: sv.fx[1], turbo: sv.fx[2], magnet: sv.fx[3] }; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
       if (all.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
@@ -2438,7 +2499,7 @@
   const winExtraText = (next) => `${theme.place} · Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
     (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
   // `L` = a fase em que o reforço vai valer (o máximo de vidas sobe nas Fases 11 a 20); o Coração maior perde a graça quando o máximo da fase já é 10.
-  function reinforceAvailable(r, u, curLives, L = lv) { return r.id === "life" ? curLives < capFor(L, u) : r.id === "heart" ? u.heart < UP_MAX.heart && capFor(L, u) < LIFE_CAP_HARD : u[r.id] < UP_MAX[r.id]; }
+  function reinforceAvailable(r, u, curLives, L = lv) { return r.from && L.id < r.from ? false : r.id === "life" ? curLives < capFor(L, u) : r.id === "heart" ? u.heart < UP_MAX.heart && capFor(L, u) < LIFE_CAP_HARD : u[r.id] < UP_MAX[r.id]; }
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
     return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
   }
@@ -2449,6 +2510,9 @@
     if (u.heart) o.push(`${capFor(L, u)} vidas no máximo`);
     if (u.shield) o.push(`${INVULN + REINFORCE_SHIELD * u.shield} s de proteção ao perder uma vida`);
     if (u.slow) o.push(`agentes ${Math.round(REINFORCE_SLOW * 100 * u.slow)}% mais lentos`);
+    if (u.stealth) o.push(`inimigos notam você ${u.stealth} ${u.stealth === 1 ? "quadrado" : "quadrados"} mais tarde`);
+    if (u.scent) o.push(u.scent >= 2 ? "setas para o osso e para a saída" : "seta para o osso mais perto");
+    if (u.lure) o.push(`rações a até ${lureRadius(u.lure) / TILE} quadrados vêm sozinhas`);
     return o.join(" · ");
   }
   // Monta os botões da tela de reforços; devolve true se há algum para escolher.
@@ -2861,11 +2925,20 @@
     ctx.fillStyle = "#fff"; ctx.fillRect(cx - 8, cy + 3, 16, 1.5);
   }
 
+  const BONE_LOOK = { // cores de cada tipo de osso (0.15.7)
+    scare: { fill: "#f6f1e3", stroke: "#a99c7c", glow: null },
+    gold: { fill: "#ffd23f", stroke: "#b8860b", glow: "rgba(255,210,63,.35)" },
+    ice: { fill: "#bfeaff", stroke: "#4f9fd0", glow: "rgba(120,200,255,.35)" },
+    turbo: { fill: "#ff9f43", stroke: "#c2570c", glow: "rgba(255,120,40,.35)" },
+    magnet: { fill: "#d8b4ff", stroke: "#8a4fd1", glow: "rgba(190,130,255,.38)" },
+  };
   function drawBone(it) { // osso: vale 150 pontos (50 + 100 de bônus)
     const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 7, 11, 3.5, "rgba(0,0,0,.25)");
+    const look = BONE_LOOK[it.kind || "scare"];
+    if (look.glow) ellipse(cx, cy, 14, 14, look.glow); // os ossos de tipo novo brilham na cor do efeito
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.45);
-    ctx.fillStyle = "#f6f1e3"; ctx.strokeStyle = "#a99c7c"; ctx.lineWidth = 1.4;
+    ctx.fillStyle = look.fill; ctx.strokeStyle = look.stroke; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.rect(-8, -2.4, 16, 4.8); ctx.fill(); ctx.stroke();
     for (const [x, y] of [[-8.5, -3], [-8.5, 3], [8.5, -3], [8.5, 3]]) { ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     ctx.fillRect(-8, -2, 16, 4); // esconde o contorno entre a haste e as pontas
@@ -3135,16 +3208,55 @@
     for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
     for (const v of vets) drawVet(v);
     for (const c of cats) drawCat(c);
+    if (fx.ice > 0) for (const e of everyone()) drawIce(e); // congelados pelo osso de gelo
     for (const f of puffs) { // carteiro derrotado: nuvem que cresce e some
       ctx.fillStyle = `rgba(255,255,255,${(0.8 * (1 - f.t / 0.8)).toFixed(2)})`;
       for (const [dx, dy] of [[-8, -4], [8, -4], [0, 6], [0, -10]]) { ctx.beginPath(); ctx.arc(f.x + dx * (0.6 + f.t * 1.5), f.y + dy * (0.6 + f.t * 1.5), 5 + f.t * 8, 0, Math.PI * 2); ctx.fill(); }
     }
+    drawDogFx();
     if (power > 0) { // aura dourada do poder do osso (pisca nos últimos 5 s)
       const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
     if (!(started && invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível)
     drawChaseArrows(camX, camY, vw, vh);
+    drawGuideArrows();
+  }
+  // Congelado: bloco de gelo em volta do agente ou do gato (derrete e pisca nos últimos 2 s).
+  function drawIce(e) {
+    if (fx.ice < 2 && !calm && Math.floor(time * 8) % 2 === 0) return;
+    ctx.fillStyle = "rgba(150,220,255,.5)"; ctx.strokeStyle = "rgba(235,250,255,.95)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.rect(e.cx - 14, e.cy - 17, 28, 30); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(e.cx - 9, e.cy - 11); ctx.lineTo(e.cx - 3, e.cy - 5); ctx.moveTo(e.cx + 4, e.cy + 8); ctx.lineTo(e.cx + 10, e.cy + 2); ctx.stroke();
+  }
+  // Efeitos dos ossos de tipo novo no cachorrinho: escudo dourado (pisca no fim), rastro do turbo e círculo do ímã.
+  function drawDogFx() {
+    const x = player.x + 12, y = player.y + 12;
+    if (fx.magnet > 0 && (fx.magnet > 2 || calm || Math.floor(time * 8) % 2 === 0)) { ctx.strokeStyle = "rgba(190,130,255,.45)"; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(x, y, MAGNET_RADIUS, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+    if (fx.turbo > 0) {
+      const back = { left: [1, 0], right: [-1, 0], up: [0, 1], down: [0, -1] }[player.facing] || [-1, 0];
+      ctx.strokeStyle = "rgba(255,150,60,.85)"; ctx.lineWidth = 3;
+      for (const o of [-6, 0, 6]) { const px = x + back[0] * 14 + (back[1] ? o : 0), py = y + back[1] * 14 + (back[0] ? o : 0); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + back[0] * 12, py + back[1] * 12); ctx.stroke(); }
+    }
+    if (fx.shield > 0 && (fx.shield > 2 || calm || Math.floor(time * 8) % 2 === 0)) {
+      ctx.fillStyle = "rgba(255,214,90,.2)"; ctx.strokeStyle = "rgba(255,214,90,.95)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x, y, 21 + (calm ? 0 : Math.sin(time * 6)), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+  }
+  // Faro (reforço): setinhas em volta do cachorrinho apontando o osso mais perto (dourada) e, no nível 2, a saída quando está aberta (verde).
+  function drawGuideArrows() {
+    if (!up.scent || state !== "playing") return;
+    const ox = player.x + 12, oy = player.y + 12;
+    const arrow = (tx, ty, color) => {
+      const dx = tx - ox, dy = ty - oy, d = Math.hypot(dx, dy);
+      if (d < 70) return; // já está perto: não precisa de seta
+      const a = Math.atan2(dy, dx), x = ox + Math.cos(a) * 36, y = oy + Math.sin(a) * 36;
+      ctx.fillStyle = color; ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); ctx.lineTo(x + Math.cos(a + 2.5) * 7, y + Math.sin(a + 2.5) * 7); ctx.lineTo(x + Math.cos(a - 2.5) * 7, y + Math.sin(a - 2.5) * 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+    };
+    let best = null; for (const it of items) if (it.bone && !it.taken) { const d = Math.hypot(it.x + 8 - ox, it.y + 8 - oy); if (!best || d < best.d) best = { d, x: it.x + 8, y: it.y + 8 }; }
+    if (best) arrow(best.x, best.y, "#ffd23f");
+    if (up.scent >= 2 && exitOpen()) arrow(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2, "#3ddc84");
   }
 
   // ---------- Placar (HTML) ----------
@@ -3155,7 +3267,7 @@
   const hudEl = {
     upItem: $("hud-up-item"), up: $("hud-up"),
     level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
-    pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
+    pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), fxBar: $("fx-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
   };
   const hudCache = {};
@@ -3186,6 +3298,10 @@
     if (hudCache.mp !== lv.minPoints) { hudCache.mp = lv.minPoints; hudEl.pointsItem.title = lv.minPoints ? `Para passar da ${lv.title} são necessários pelo menos ${lv.minPoints} pontos nesta fase` : ""; }
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
     if (hudCache.ms !== lv.id + "|" + !!lv.mission) { hudCache.ms = lv.id + "|" + !!lv.mission; hudEl.missionBar.classList.toggle("hidden", !lv.mission); hudEl.missionBar.setAttribute("aria-label", lv.mission ? `Missão da ${lv.title}: ${missionTexts().join(" e ")}. A saída só abre com os pontos mínimos e a missão cumprida${lv.missionBonus ? `; cumprir a missão vale +${lv.missionBonus} pontos` : ""}.` : "Missão da fase"); }
+    { // faixa dos efeitos dos ossos de tipo novo (escudo, gelo, turbo, ímã): só aparece enquanto há algum
+      const t = [["shield", "Escudo"], ["ice", "Gelo"], ["turbo", "Turbo"], ["magnet", "Ímã"]].filter(([k]) => fx[k] > 0).map(([k, n]) => `${n} ${Math.ceil(fx[k])} s`).join(" · ");
+      if (hudCache.fx !== t) { hudCache.fx = t; hudEl.fxBar.textContent = t; hudEl.fxBar.classList.toggle("hidden", !t); }
+    }
     if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, sustos, rações); cumprida, manda ir para a saída
       const left = missionLeft(), t = left.length ? `Missão: ${left.join(" · ")}` : "Missão cumprida!";
       if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length); }
@@ -3453,7 +3569,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
-    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
+    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },

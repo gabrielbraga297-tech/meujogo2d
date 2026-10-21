@@ -84,6 +84,11 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 }
 #mission-bar b { color: var(--gold); }
 #mission-bar.done { color: var(--green); }
+/* efeitos dos ossos de tipo novo (escudo, gelo, turbo, ímã): logo abaixo da faixa da missão */
+#fx-bar {
+  position: absolute; left: 50%; top: calc(1.5% + 2.1em); transform: translateX(-50%); width: max-content; max-width: 94%; padding: 2px 10px; border-radius: 999px;
+  background: rgba(0, 0, 0, .55); color: var(--gold); font-weight: 700; font-size: clamp(11px, 1.6vw, 14px); text-align: center; pointer-events: none;
+}
 
 /* ---------- Telas (menu, como jogar, pontuações, nome, pausa, vitória, derrota) ---------- */
 .screen {
