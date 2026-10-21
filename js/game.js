@@ -2045,7 +2045,10 @@
   // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
   const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && postmen >= lv.mission.scare && collected >= lv.mission.rations);
   const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
+  const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
   const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  // A missão de sustos fica impossível quando o poder acabou e não sobrou nenhum osso comum (os outros tipos não assustam).
+  const missionImpossible = () => !!lv.mission && lv.mission.scare > 0 && postmen < lv.mission.scare && power <= 0 && !items.some((it) => !it.taken && it.bone && (it.kind || "scare") === "scare");
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
@@ -2255,7 +2258,7 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
+    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
@@ -2334,7 +2337,7 @@
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionTexts().join(" e ")}` : ""}`;
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionShort()}` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
@@ -2743,9 +2746,9 @@
     sound.play("gameover", { delay: why ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    const missionFail = why === "short" && lv.mission && runningScore() >= lv.minPoints && !missionDone(); // (0.15.6) os pontos bastam, mas não dá mais para cumprir a missão (acabou o poder do osso)
+    const missionFail = why === "short" && lv.mission && !missionDone() && (runningScore() >= lv.minPoints || !allCollected()); // (0.15.6) não dá mais para cumprir a missão (acabou o poder do osso sem os sustos); se pegou tudo e os pontos também faltam, vale a derrota dos pontos
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
-    $("lose-lead").textContent = missionFail ? `Você pegou tudo, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
+    $("lose-lead").textContent = missionFail ? `${allCollected() ? "Você pegou tudo" : "Acabou o poder do osso"}, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -3247,13 +3250,13 @@
   // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
     if (power > 0) return;
-    const m = 16, ox = player.x + player.w / 2, oy = player.y + player.h / 2;
+    const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0) + (fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? 26 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão e da faixa dos efeitos)
     for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
       const dx = v.cx - ox, dy = v.cy - oy;
       let t = Infinity; // da posição do cachorrinho até a borda da tela (menos a margem), na direção do agente
       if (dx > 0) t = Math.min(t, (camX + vw - m - ox) / dx); else if (dx < 0) t = Math.min(t, (camX + m - ox) / dx);
-      if (dy > 0) t = Math.min(t, (camY + vh - m - oy) / dy); else if (dy < 0) t = Math.min(t, (camY + m - oy) / dy);
+      if (dy > 0) t = Math.min(t, (camY + vh - m - oy) / dy); else if (dy < 0) t = Math.min(t, (camY + mt - oy) / dy);
       if (!(t > 0) || !Number.isFinite(t)) continue;
       const x = ox + dx * t, y = oy + dy * t, a = Math.atan2(dy, dx), r = 10 + (calm ? 0 : Math.abs(Math.sin(time * 8)) * 1.5);
       ctx.fillStyle = "#ff4d4d"; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * (r + 7), y + Math.sin(a) * (r + 7)); // pontinha para o lado do agente

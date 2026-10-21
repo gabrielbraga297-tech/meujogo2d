@@ -414,6 +414,32 @@ test("levelPoints com ossos (150 pontos cada: 50 + 100 de bônus), carteiros (10
   assert.strictEqual(R.levelPoints(7, 500000, 0, 0, { bones: 2, bonusStep: 20 }), 1000, "sem bônus de tempo");
 });
 
+test("levelPoints com o bônus da missão (0.15.6, Fases 11 a 20): soma ao total, entra no recorde e nunca é negativo", () => {
+  // Fase 11 (44 rações, 5 ossos, bônus de tempo de 10 por degrau, 5 + 2 sustos, perda de 300 por vida, missão de +200)
+  const base = { bones: 5, postmen: 3, bonusStep: 10, lifePenalty: 300 };
+  const noMission = R.levelPoints(44, 60000, 1, 0, base);
+  assert.strictEqual(noMission, 4400 + 750 + 300 + R.timeBonus(60000, 10) - 300, "sem missionBonus tudo segue como antes");
+  assert.strictEqual(R.levelPoints(44, 60000, 1, 0, { ...base, missionBonus: 200 }), noMission + 200, "missionBonus 200 soma 200");
+  assert.strictEqual(R.levelPoints(44, 60000, 1, 0, { ...base, missionBonus: 0 }), noMission, "missionBonus 0 não muda nada");
+  // o bônus de cada fase (200 na Fase 11, mais 50 por fase, 650 na Fase 20)
+  for (let n = 11; n <= 20; n++) {
+    const b = 200 + 50 * (n - 11);
+    assert.strictEqual(R.levelPoints(10, 25000, 0, 0, { bones: 2, postmen: 1, bonusStep: 20, missionBonus: b }), 1000 + 300 + 100 + R.timeBonus(25000, 20) + b, `Fase ${n}: +${b}`);
+  }
+  assert.strictEqual(200 + 50 * 9, 650, "o bônus da Fase 20 é 650");
+  // o bônus soma aos outros termos e não elimina as perdas (vidas e tentativas)
+  assert.strictEqual(R.levelPoints(0, 999999, 2, 3, { lifePenalty: 400, missionBonus: 650 }), 650 - 800 - 300, "a perda de vidas e tentativas continua descontando (pode ficar negativa)");
+  assert.strictEqual(R.levelPoints(62, 999999, 0, 0, { bones: 8, postmen: 5, bonusStep: 20, lifePenalty: 400, missionBonus: 650 }), 6200 + 1200 + 500 + 650, "Fase 20 perfeita sem bônus de tempo");
+  // entradas inválidas valem 0 (como ossos e carteiros)
+  for (const bad of [-200, 1.5, "200", null, undefined, NaN, Infinity, {}, [], true]) assert.strictEqual(R.levelPoints(5, 999999, 0, 0, { missionBonus: bad }), 500, `missionBonus ${JSON.stringify(bad) ?? String(bad)} vale 0`);
+  // o bônus da missão faz diferença no ranking: mesma partida, com e sem a missão
+  const s = R.createStore(null);
+  s.addRun({ level: 11, timeMs: 60000, points: noMission, name: "Ana" });
+  s.addRun({ level: 11, timeMs: 60000, points: noMission + 200, name: "Bia" });
+  assert.deepStrictEqual(s.ranking(11).map((r) => r.n), ["Bia", "Ana"], "quem cumpriu a missão (+200) fica na frente");
+  assert.strictEqual(s.personalBest("Bia", 11).p, noMission + 200, "o recorde pessoal guarda o total com o bônus");
+});
+
 test("a Fase 3 pode guardar e somar pontuação como as outras fases", () => {
   const s = R.createStore(null);
   s.addRun({ level: 1, timeMs: 20000, points: 600, name: "Ana" });
