@@ -2022,6 +2022,8 @@
   const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
   const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
   const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  // 0.15.8: com tudo pego e a missão cumprida, os pontos que faltam para o mínimo ainda podem vir das bolinhas que sobraram: a tentativa só acaba se nem elas bastarem
+  const ballsCanOpen = () => missionDone() && runningScore() < lv.minPoints && runningScore() + (balls.length - ballsGot()) * Records.BALL_POINTS >= lv.minPoints;
   // A missão de sustos fica impossível quando o poder acabou e não sobrou nenhum osso comum (os outros tipos não assustam).
   const missionImpossible = () => !!lv.mission && lv.mission.scare > 0 && postmen < lv.mission.scare && power <= 0 && !items.some((it) => !it.taken && it.bone && (it.kind || "scare") === "scare");
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
@@ -2233,7 +2235,7 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
+    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen() && !ballsCanOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
