@@ -4,6 +4,13 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
+## 0.15.4 — 21/10/2026 (em preparação)
+- **Fases 11 a 20:** dez labirintos de cidade novos, cada um maior que o anterior (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), gerados e conferidos por script como os da 0.15.1 (3 caminhos sem célula em comum do início à saída, becos sem saída, praça da carrocinha 7 × 5 no centro, 6 portas e 6 paredes que se movem com o chão sempre ligado). Mais becos sem saída (19 até 35), então o difícil agora é **se orientar**.
+- **Mais de tudo a cada fase:** rações 44 → 62, ossos 5 → 8, **5 a 8 agentes da carrocinha** (a velocidade da Fase 10 mais 2% por fase), alcance do "!" 16 → 20 quadrados, peças móveis cada vez mais rápidas (portas a cada 3 s até 1,6 s; paredes a cada 10 s até 5 s) e **mais pontos para passar**: 2300 → 4000 (perda de 300 a 400 pontos por vida). O cachorrinho renasce onde morreu em todas e a Fase 20 segue sem chefão (fica para um próximo capítulo).
+- **Cada fase é um lugar novo** (temas visuais próprios, veja *Ambientes* no README).
+- **Documentação:** a tabela das fases do README tem as 20 fases e a seção *Fases 11 a 20*; ambas são conferidas por testes com os dados do jogo.
+- **Testes:** a seção dos labirintos de cidade confere as 20 fases (tamanho, quarteirões, caminhos sem célula em comum, peças móveis em todas as combinações, becos), as tabelas do README das Fases 6 a 10 e 11 a 20, e as 20 fases rodam sem problema.
+
 ## 0.15.3 — 21/10/2026 (em preparação)
 - **O cachorrinho late ao completar cada fase**, e o latido **muda com o tamanho dele**: **filhote** (Fases 1 a 4, ou com poucos reforços) dois "ai-ai" agudos e curtinhos (1250 e 1350 Hz subindo, 0,26 s); **jovem** (Fases 5 a 7) dois "uau" médios (540 e 500 Hz caindo, 0,4 s); **adulto** (Fase 8 em diante) dois "uó" graves e fortes (250 e 230 Hz caindo, com uma quadrada uma oitava abaixo, 0,65 s). O tamanho é o mesmo do desenho (`dogGrowth`), então os reforços também fazem o latido ficar mais grave. Toca 0,9 s depois do começo da fanfarra e uma só vez por vitória; ao perder não late.
 - **Testes:** os 3 latidos (notas, subida e descida, timbres, duração crescente, ruído de sopro, filhote inteiro acima do adulto) e, no jogo, o latido certo em cada fase e com reforços (F1 filhote, F5 jovem, F8 adulto, F1 jovem e adulto com muitos reforços), um só por vitória e nenhum ao perder.

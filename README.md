@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.3 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.4 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -33,6 +33,16 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 8 | chegar a 1650 pontos na fase (a saída abre) e sair | 5 | 32 | 4 | 82 / 163,98 px/s | 246,96 px/s |
 | 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 5 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
 | 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
+| 11 | chegar a 2300 pontos na fase (a saída abre) e sair | 5 | 44 | 5 | 89,32 / 178,62 px/s | 252 px/s |
+| 12 | chegar a 2450 pontos na fase (a saída abre) e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
+| 13 | chegar a 2650 pontos na fase (a saída abre) e sair | 6 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
+| 14 | chegar a 2800 pontos na fase (a saída abre) e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
+| 15 | chegar a 3000 pontos na fase (a saída abre) e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
+| 16 | chegar a 3200 pontos na fase (a saída abre) e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
+| 17 | chegar a 3400 pontos na fase (a saída abre) e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
+| 18 | chegar a 3600 pontos na fase (a saída abre) e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
+| 19 | chegar a 3800 pontos na fase (a saída abre) e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
+| 20 | chegar a 4000 pontos na fase (a saída abre) e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os agentes da carrocinha ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa, fica tonto por 2 s e depois foge a **50% da velocidade de fuga** (0,625 × a velocidade de patrulha da tabela, ou seja 37,8 px/s na Fase 2) até o poder acabar.
@@ -71,6 +81,24 @@ Cidades cada vez maiores, a partir da Fase 6: mais rações, mais ossos, **mais 
 | Ao ser pego ou esmagado | volta ao início | volta ao início | volta ao início | **renasce onde morreu** | **renasce onde morreu** |
 
 Nas **Fases 9 e 10** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os agentes da carrocinha voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
+
+### Fases 11 a 20 (0.15.4)
+Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 8 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
+
+| | Fase 11 | Fase 12 | Fase 13 | Fase 14 | Fase 15 | Fase 16 | Fase 17 | Fase 18 | Fase 19 | Fase 20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
+| Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
+| Agentes da carrocinha (no centro do mapa) | 5 | 5 | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
+| Vidas escondidas (sorteio por jogo) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
+| Alcance do "!" | 16 quadrados | 16 | 17 | 17 | 18 | 18 | 19 | 19 | 20 | 20 |
+| Portas de bloco / paredes (definidas) | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 |
+| Sorteio por jogo (portas; paredes) | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 | 5–6; 5–6 |
+| Portas mudam de lado a cada | 3 s | 3 s | 3 s | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **1,8 s** (220 px/s) | **1,8 s** (220 px/s) | **1,6 s** (240 px/s) | **1,6 s** (240 px/s) |
+| Paredes mudam de lado a cada | 10 s | 10 s | 10 s | **8 s** (140 px/s) | **8 s** (140 px/s) | **8 s** (140 px/s) | **5,5 s** (180 px/s) | **5,5 s** (180 px/s) | **5 s** (200 px/s) | **5 s** (200 px/s) |
+| Perda por vida / pontos para passar | −300 / 2300 | −300 / 2450 | −325 / 2650 | −325 / 2800 | −350 / 3000 | −350 / 3200 | −375 / 3400 | −375 / 3600 | −400 / 3800 | −400 / 4000 |
+| Poder do osso | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s |
+| Ao ser pego ou esmagado | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** | **renasce onde morreu** |
 
 **Labirintos com desenho de cidade (0.10.0, refeitos na 0.15.1):** as Fases 1 a 10 são **labirintos**, desenhados como cidade: uma grade de **quarteirões-células** (cruzamentos e praças de 3 a 5 tiles) ligados por **ruas de 3 tiles de largura** entre **prédios de 2 a 3 tiles**; na Fase 4 em diante a célula do meio é a **praça da carrocinha** (7 × 5, com 4 vans nos cantos e os postos dos agentes), o início fica na borda esquerda e a saída (3 × 2) na direita, e algumas ruas viram **vielas de 1 tile** com porta de bloco. Os labirintos antigos eram confusos (corredores de 1 tile, uma ou duas saídas); estes têm sempre **3 caminhos que não passam pela mesma célula** do início à saída (2 nas Fases 2 e 3) e o início e a saída têm 3 ruas cada. **O quanto confunde** é medido em becos sem saída (células ligadas por uma só rua, contando as portas como ruas): **Fases 1 a 5: 0, 2, 3, 0 e 2; Fases 6 a 10: 4, 8, 11, 17 e 19**, com 20, 20, 20, 35, 35, 45, 63, 63, 77 e 77 quarteirões, e o caminho mais curto do início à saída cresce de 49 passos (Fase 4) a 81 (Fase 10). **As Fases 9 e 10 continuam as maiores, as com mais becos e as de peças mais rápidas.** Os mapas são gerados por `tools/citymaze/gen_citymaze.py` (a mesma semente dá o mesmo mapa) e o teste `0.10.0` confere tudo no jogo: tamanho, quarteirões abertos, nenhuma célula solta, caminhos sem célula em comum (fluxo máximo), becos por fase, peças móveis (trilhos em chão livre, afastados, nicho fechado, sempre 1 tile livre ao lado das paredes) e que **em todas as combinações de posição das peças o chão continua ligado**. A partir da Fase 4 o desenho mostra asfalto, calçadas e telhados. **Equilíbrio, com honestidade:** o robô de teste (`balance/`, joga como gente com atraso de reação e erros de pontaria, mas **conhece o mapa inteiro e onde estão os itens**) ganha 4 de 4 tentativas nas Fases 3, 4, 6, 8 e 10 sem perder nenhuma vida e é perseguido por 0 a 3 s por tentativa (estratégia "pontos mínimos": 17 a 30 s por fase; pegando tudo: 23 a 58 s). Ou seja, o robô **não mede a dificuldade de se orientar num labirinto** (uma pessoa não sabe onde está a saída nem os becos sem saída), e os agentes quase não encontram o robô porque as ruas de 3 tiles dão espaço para desviar e há poucos agentes para o tamanho do mapa. Se quiser as fases mais difíceis, os botões são os números de cada fase (agentes, velocidades, alcance do "!", pontos mínimos) e a tabela de becos acima.
 

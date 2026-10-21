@@ -2135,7 +2135,7 @@ const PAGE_HELPERS = () => {
     ok(worse.l1 === 600 && worse.total === 2300 && /Mesma|continua 600/.test(await page.textContent("#win-personal")), `jogar de novo e fazer menos pontos não diminui o recorde (continua ${worse.l1}) nem o total (${worse.total})`);
     await page.click("#btn-win-menu"); await page.click("#btn-start");
     const playList = await page.evaluate(() => [...document.querySelectorAll("#levels-list button")].map((b) => [b.textContent.slice(0, 8), b.disabled]));
-    ok(playList.length === 10 && playList[3][1] === false && playList[4][1] === true && playList.slice(5).every((b) => b[1] === true) && /Escolher a fase/.test(await page.textContent("#levels-title")), "Iniciar jogo continua mostrando todas as fases (as liberadas abertas e as outras bloqueadas)");
+    ok(playList.length === 20 && playList[3][1] === false && playList[4][1] === true && playList.slice(5).every((b) => b[1] === true) && /Escolher a fase/.test(await page.textContent("#levels-title")), "Iniciar jogo continua mostrando todas as fases (as liberadas abertas e as outras bloqueadas)");
     // pular de fase não soma partida: ir da Fase 1 direto à 3 deixa a Fase 3 como estava
     await page.click("#levels-list button:nth-child(3)"); await ev(page, () => { __game.freezeVets = true; }); await finishNow(page, 100);
     const skip = await ev(page, () => { const st = Records.createStore(localStorage); return { l3: st.personalBest("Totó", 3).p, total: st.totalScore("Totó", [1, 2, 3, 4, 5]) }; });
@@ -2148,7 +2148,7 @@ const PAGE_HELPERS = () => {
     const rows = tbl.split("\n").filter((l) => /^\| \d+ \|/.test(l)).map((l) => l.split("|").map((c) => c.trim()).filter(Boolean));
     const num = (s) => Number(String(s).replace(",", "."));
     const lvData = await ev(page, () => __game.levels.map((l) => ({ id: l.id, vets: l.vets.length, rations: l.rations, bones: l.bones, speed: l.vets[0].speed, chase: l.vets[0].chaseSpeed, minPoints: l.minPoints, dog: l.dogSpeed })));
-    ok(rows.length === lvData.length && lvData.length === 10, `a tabela do README tem uma linha para cada fase do jogo (${rows.length} de ${lvData.length})`);
+    ok(rows.length === lvData.length && lvData.length === 20, `a tabela do README tem uma linha para cada fase do jogo (${rows.length} de ${lvData.length})`);
     const diffs = [];
     lvData.forEach((l, i) => {
       const r = rows[i]; if (!r) return;
@@ -2163,34 +2163,37 @@ const PAGE_HELPERS = () => {
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
     });
     ok(!diffs.length, `os números da tabela das fases do README (condição, agentes da carrocinha, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
-    // ---- a tabela "Fases 6 a 10" do README (mapa, alcance, peças móveis, pontos, renascer) também bate com o jogo ----
-    const sec6 = readme.slice(readme.indexOf("### Fases 6 a 10"), readme.indexOf("Nas **Fases 9 e 10**"));
-    const T6 = {};
-    for (const l of sec6.split("\n")) { if (!l.startsWith("| ") || /^\|[-| ]+\|$/.test(l)) continue; const c = l.split("|").slice(1, -1).map((x) => x.trim().replace(/\*\*/g, "")); T6[c[0]] = c.slice(1); }
-    const L6 = await ev(page, () => __game.levels.filter((l) => l.id >= 6).map((l) => {
+    // ---- as tabelas "Fases 6 a 10" e "Fases 11 a 20" do README (mapa, alcance, peças móveis, pontos, renascer) também batem com o jogo ----
+    const allLv = await ev(page, () => __game.levels.filter((l) => l.id >= 6).map((l) => {
       const doors = l.blocks.filter((b) => !b.wall), walls = l.blocks.filter((b) => b.wall);
-      return { C: l.map[0].length, R: l.map.length, rations: l.rations, bones: l.bones, nv: l.vets.length, lives: l.extraLives, alert: l.alertTiles, nd: doors.length, nw: walls.length, rd: l.blockRange.door, rw: l.blockRange.wall,
+      return { id: l.id, C: l.map[0].length, R: l.map.length, rations: l.rations, bones: l.bones, nv: l.vets.length, lives: l.extraLives, alert: l.alertTiles, nd: doors.length, nw: walls.length, rd: l.blockRange.door, rw: l.blockRange.wall,
         de: doors.map((b) => b.every ?? 3), ds: doors.map((b) => b.speed ?? 120), we: walls.map((b) => b.every), ws: walls.map((b) => b.speed ?? 120), pen: l.lifePenalty, min: l.minPoints, power: l.bonePower, respawn: l.respawnInPlace };
     }));
-    const d6 = [], fmtS = (x) => String(x).replace(".", ",");
-    const need = (name) => { if (!T6[name] || T6[name].length !== 5) d6.push(`linha "${name}" não encontrada`); return T6[name] || []; };
-    L6.forEach((l, i) => {
-      const id = l.id ?? i + 6, chk = (name, want, got) => { if (!new RegExp(`^${want}`).test(got || "")) d6.push(`Fase ${i + 6} ${name}: "${got}" ≠ "${want}"`); };
-      chk("mapa", `${l.C} × ${l.R}`, need("Mapa")[i]);
-      chk("rações/ossos", `${l.rations} / ${l.bones}`, need("Rações / ossos")[i]);
-      chk("agentes da carrocinha", String(l.nv), need("Agentes da carrocinha (no centro do mapa)")[i]);
-      chk("vidas escondidas", `${l.lives[0]} ou ${l.lives[1]}`, need("Vidas escondidas (sorteio por jogo)")[i]);
-      chk("alcance", String(l.alert), need('Alcance do "!"')[i]);
-      chk("peças", `${l.nd} / ${l.nw}`, need("Portas de bloco / paredes (definidas)")[i]);
-      chk("sorteio", `${l.rd[0]}–${l.rd[1]}; ${l.rw[0]}–${l.rw[1]}`, need("Sorteio por jogo (portas; paredes)")[i]);
-      chk("portas", `${fmtS(l.de[0])} s${l.ds[0] !== 120 ? ` \\(${l.ds[0]} px/s\\)` : ""}`, need("Portas mudam de lado a cada")[i]);
-      chk("paredes", `${fmtS(l.we[0])} s${l.ws[0] !== 120 ? ` \\(${l.ws[0]} px/s\\)` : ""}`, need("Paredes mudam de lado a cada")[i]);
-      if (new Set(l.de).size !== 1 || new Set(l.we).size !== 1 || new Set(l.ds).size !== 1 || new Set(l.ws).size !== 1) d6.push(`Fase ${i + 6}: peças do mesmo tipo com intervalos ou velocidades diferentes`);
-      chk("perda/pontos", `−${l.pen} / ${l.min}`, need("Perda por vida / pontos para passar")[i]);
-      chk("poder", `${l.power} s`, need("Poder do osso")[i]);
-      chk("renascer", l.respawn ? "renasce onde morreu" : "volta ao início", need("Ao ser pego ou esmagado")[i]);
-    });
-    ok(L6.length === 5 && !d6.length, `a tabela das Fases 6 a 10 do README (mapa, rações, ossos, agentes da carrocinha, vidas escondidas, alcance, peças móveis, pontos, poder, renascer) bate com o jogo ${d6.join("; ")}`);
+    const fmtS = (x) => String(x).replace(".", ",");
+    for (const [first, last, head, tail] of [[6, 10, "### Fases 6 a 10", "Nas **Fases 9 e 10**"], [11, 20, "### Fases 11 a 20", "**Labirintos com desenho de cidade"]]) {
+      const sec = readme.slice(readme.indexOf(head), readme.indexOf(tail, readme.indexOf(head)));
+      const n = last - first + 1, T6 = {};
+      for (const l of sec.split("\n")) { if (!l.startsWith("| ") || /^\|[-| ]+\|$/.test(l)) continue; const c = l.split("|").slice(1, -1).map((x) => x.trim().replace(/\*\*/g, "")); T6[c[0]] = c.slice(1); }
+      const L6 = allLv.filter((l) => l.id >= first && l.id <= last), d6 = [];
+      const need = (name) => { if (!T6[name] || T6[name].length !== n) d6.push(`linha "${name}" não encontrada (ou sem ${n} colunas)`); return T6[name] || []; };
+      L6.forEach((l, i) => {
+        const chk = (name, want, got) => { if (!new RegExp(`^${want}`).test(got || "")) d6.push(`Fase ${l.id} ${name}: "${got}" ≠ "${want}"`); };
+        chk("mapa", `${l.C} × ${l.R}`, need("Mapa")[i]);
+        chk("rações/ossos", `${l.rations} / ${l.bones}`, need("Rações / ossos")[i]);
+        chk("agentes da carrocinha", String(l.nv), need("Agentes da carrocinha (no centro do mapa)")[i]);
+        chk("vidas escondidas", `${l.lives[0]} ou ${l.lives[1]}`, need("Vidas escondidas (sorteio por jogo)")[i]);
+        chk("alcance", String(l.alert), need('Alcance do "!"')[i]);
+        chk("peças", `${l.nd} / ${l.nw}`, need("Portas de bloco / paredes (definidas)")[i]);
+        chk("sorteio", `${l.rd[0]}–${l.rd[1]}; ${l.rw[0]}–${l.rw[1]}`, need("Sorteio por jogo (portas; paredes)")[i]);
+        chk("portas", `${fmtS(l.de[0])} s${l.ds[0] !== 120 ? ` \\(${l.ds[0]} px/s\\)` : ""}`, need("Portas mudam de lado a cada")[i]);
+        chk("paredes", `${fmtS(l.we[0])} s${l.ws[0] !== 120 ? ` \\(${l.ws[0]} px/s\\)` : ""}`, need("Paredes mudam de lado a cada")[i]);
+        if (new Set(l.de).size !== 1 || new Set(l.we).size !== 1 || new Set(l.ds).size !== 1 || new Set(l.ws).size !== 1) d6.push(`Fase ${l.id}: peças do mesmo tipo com intervalos ou velocidades diferentes`);
+        chk("perda/pontos", `−${l.pen} / ${l.min}`, need("Perda por vida / pontos para passar")[i]);
+        chk("poder", `${l.power} s`, need("Poder do osso")[i]);
+        chk("renascer", l.respawn ? "renasce onde morreu" : "volta ao início", need("Ao ser pego ou esmagado")[i]);
+      });
+      ok(L6.length === n && !d6.length, `a tabela das Fases ${first} a ${last} do README (mapa, rações, ossos, agentes da carrocinha, vidas escondidas, alcance, peças móveis, pontos, poder, renascer) bate com o jogo ${d6.join("; ")}`);
+    }
   });
 
   // =====================================================================
