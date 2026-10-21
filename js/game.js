@@ -2558,10 +2558,10 @@
     try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
   }
   let shopMsg = "";
-  // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se ele estava na lista
+  // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se o foco estava na lista
   function renderShop(refocus = -1) {
     const me = store.player(), w = me ? store.wallet(me) : null, list = $("shop-list");
-    if (refocus < 0) refocus = [...list.querySelectorAll("button")].indexOf(document.activeElement);
+    if (refocus < 0) { const a = document.activeElement; refocus = !a || !list.contains(a) ? -1 : a.id.startsWith("shop-name-") ? Number(a.id.slice(10)) : [...list.querySelectorAll("button")].indexOf(a); }
     $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} petscoin (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
     $("shop-msg").textContent = shopMsg;
     list.replaceChildren();
@@ -2592,9 +2592,9 @@
       card.append(cv, nm, el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
       list.append(card);
     }
-    if (refocus >= 0) { // o foco não se perde ao desenhar de novo: vai para o botão ligado do mesmo cartão ou dos seguintes, senão para o primeiro ligado, senão para o Voltar
-      const bs = [...list.querySelectorAll("button")];
-      (bs.slice(refocus).find((x) => !x.disabled) || bs.find((x) => !x.disabled) || $("btn-shop-back")).focus();
+    if (refocus >= 0) { // o foco não se perde ao desenhar de novo: fica no mesmo cartão (no botão, se ele ainda serve; senão no nome da skin, que não faz nada com Enter: apertar Enter duas vezes não compra a skin seguinte)
+      const b = list.querySelectorAll("button")[refocus], nm = $(`shop-name-${refocus}`);
+      if (b && !b.disabled) b.focus(); else if (nm) { nm.tabIndex = -1; nm.focus(); } else $("btn-shop-back").focus();
     }
   }
   function openShop() { shopMsg = ""; renderShop(); showScreen("shop"); }
