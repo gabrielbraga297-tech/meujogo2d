@@ -32,6 +32,9 @@
 
   // Pontuação da fase = 100 por ração + bônus de tempo − 50 por vida perdida − 100 por cada nova tentativa
   // (reinício depois de perder todas as vidas). PODE FICAR NEGATIVA.
+  // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
+  const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 60;
+  const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
   const RATION_POINTS = 100, BONE_POINTS = 150 /* 50 do osso + 100 de bônus */, POSTMAN_POINTS = 100, BALL_POINTS = 50 /* bolinha (0.15.8) */, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
   const count = (n) => (Number.isInteger(n) && n > 0 ? n : 0);
   // `extra` (opcional): { bones: ossos pegos (150 pontos cada), postmen: carteiros atingidos (100 cada), balls: bolinhas pegas (50 cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
@@ -92,7 +95,7 @@
     const failures = new Map(); // chave do jogador -> { n, until } (só em memória)
 
     // objetos sem protótipo: um nome como "constructor" não pode colidir com Object.prototype
-    const emptyData = () => ({ v: 2, player: "", players: [], bests: Object.create(null), progress: Object.create(null), accounts: Object.create(null) });
+    const emptyData = () => ({ v: 2, player: "", players: [], bests: Object.create(null), progress: Object.create(null), accounts: Object.create(null), wallet: Object.create(null) });
     let data = emptyData();
     const saves = Object.create(null); // jogo salvo por jogador: { chave: { t, snap } }
     let persistent = false;
@@ -169,7 +172,16 @@
             }
           }
         }
-        data = { v: 2, player, players: players.slice(0, MAX_PLAYERS), bests, progress, accounts };
+        const wallet = Object.create(null); // carteira de petiscos por jogador: { t: petiscos, own: skins compradas, eq: skin em uso ("" = a padrão) }
+        if (raw.wallet && typeof raw.wallet === "object") {
+          for (const [k, w] of Object.entries(raw.wallet)) {
+            if (!k || !w || typeof w !== "object") continue;
+            const own = Array.isArray(w.own) ? [...new Set(w.own.filter(isSkinId))].slice(0, MAX_OWNED) : [];
+            const eq = typeof w.eq === "string" && own.includes(w.eq) ? w.eq : "";
+            wallet[k] = { t: Number.isInteger(w.t) && w.t >= 0 ? Math.min(w.t, MAX_TREATS) : 0, own, eq };
+          }
+        }
+        data = { v: 2, player, players: players.slice(0, MAX_PLAYERS), bests, progress, accounts, wallet };
       } catch { /* dados corrompidos: começa do zero */ }
     }
 
@@ -286,6 +298,7 @@
         delete data.accounts[k];
         delete data.progress[k];
         delete data.bests[k];
+        delete data.wallet[k];
         data.players = data.players.filter((x) => nameKey(x) !== k);
         if (nameKey(data.player) === k) data.player = "";
         failures.delete(k);
@@ -370,6 +383,43 @@
         return this.progress(name);
       },
 
+      // ---------- Petiscos e skins (0.15.9): carteira de cada jogador ----------
+      wallet(name) {
+        const w = data.wallet[nameKey(name)];
+        return w ? { treats: w.t, owned: w.own.slice(), equipped: w.eq } : { treats: 0, owned: [], equipped: "" };
+      },
+      // +n petiscos (1 por fase completada); devolve a carteira ou null (sem jogador ou n inválido)
+      addTreats(name, n = 1) {
+        const k = nameKey(canonical(name));
+        if (!k || !Number.isInteger(n) || n < 1 || n > 1000) return null;
+        const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
+        w.t = Math.min(MAX_TREATS, w.t + n);
+        save();
+        return this.wallet(name);
+      },
+      // compra uma skin: o preço tem de ser de pelo menos MIN_SKIN_PRICE; { ok:false, error } se faltam petiscos, já tem ou o pedido é inválido
+      buySkin(name, id, price) {
+        const k = nameKey(canonical(name));
+        if (!k || !isSkinId(id) || !Number.isInteger(price) || price < MIN_SKIN_PRICE || price > MAX_TREATS) return { ok: false, error: "invalid" };
+        const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
+        if (w.own.includes(id)) return { ok: false, error: "owned" };
+        if (w.t < price) return { ok: false, error: "funds" };
+        if (w.own.length >= MAX_OWNED) return { ok: false, error: "invalid" };
+        w.t -= price; w.own = [...w.own, id];
+        save();
+        return { ok: true, wallet: this.wallet(name) };
+      },
+      // usa uma skin que já é do jogador ("" = a padrão)
+      equipSkin(name, id) {
+        const k = nameKey(canonical(name));
+        if (!k || (id !== "" && !isSkinId(id))) return null;
+        const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
+        if (id !== "" && !w.own.includes(id)) return null;
+        w.eq = id;
+        save();
+        return this.wallet(name);
+      },
+
       // ---------- Jogo salvo (um por jogador). `snap` é qualquer objeto JSON; quem chama valida ao carregar ----------
       saveGame(name, snap) {
         const k = nameKey(canonical(name));
@@ -399,5 +449,5 @@
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,
-    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
+    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, MIN_SKIN_PRICE, MAX_TREATS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
 });

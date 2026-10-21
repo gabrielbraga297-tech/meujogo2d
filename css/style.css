@@ -182,6 +182,14 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 #scores-public { display: flex; flex-direction: column; gap: 10px; }
 
 /* ---------- Escolher a fase ---------- */
+/* lojinha de skins (0.15.9) */
+.shop-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+.shop-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); text-align: center; }
+.shop-card.equipped { border-color: var(--green); box-shadow: 0 0 0 2px rgba(61, 220, 132, .35); }
+.shop-card canvas { width: 108px; height: 78px; border-radius: 10px; background: rgba(255, 255, 255, .08); }
+.shop-card strong { font-size: 1.05em; }
+.shop-card .sub { font-size: .85em; opacity: .85; min-height: 2.4em; }
+.shop-card button { width: 100%; }
 .level-list { display: flex; flex-direction: column; gap: 10px; }
 .level-list button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 20px; text-align: center; }
 .level-list button strong { font-size: 1.1em; }

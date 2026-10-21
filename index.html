@@ -70,6 +70,7 @@
         <button id="btn-replay" type="button" class="hidden">Jogar fases anteriores</button>
         <button id="btn-howto" type="button">Como jogar</button>
         <button id="btn-scores" type="button">Pontuações</button>
+        <button id="btn-shop" type="button">Lojinha de skins</button>
         <button id="btn-name" type="button">Escolher nome de usuário</button>
         <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
       </nav>
@@ -95,6 +96,17 @@
   </section>
 
   <!-- Como jogar -->
+  <section id="shop" class="screen page hidden" aria-labelledby="shop-title">
+    <div class="panel">
+      <h1 id="shop-title">Lojinha de skins</h1>
+      <p id="shop-balance" class="record"></p>
+      <p id="shop-help" class="muted">Cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>). Troque os petiscos por skins para o cachorrinho: elas custam a partir de 10 petscoin.</p>
+      <p id="shop-msg" class="muted" role="status" aria-live="polite"></p>
+      <div id="shop-list" class="shop-list"></div>
+      <div class="menu-list"><button id="btn-shop-back" type="button" class="primary" data-autofocus>Voltar</button></div>
+    </div>
+  </section>
+
   <section id="howto" class="screen page hidden" aria-labelledby="howto-title" tabindex="-1" data-scroll>
     <div class="panel">
       <h1 id="howto-title">Como jogar</h1>
@@ -107,6 +119,7 @@
         <li><strong>Missão (a partir da Fase 11):</strong> além dos pontos mínimos, cada fase tem uma <strong>missão</strong> (pegar todos os ossos, assustar carteiros ou gatos com o poder do osso e/ou pegar um número de rações). Ela aparece numa faixa no alto do jogo, e a saída só abre com a missão cumprida, que ainda dá <strong>pontos extras</strong>.</li>
         <li><strong>Ossos de cores diferentes (a partir da Fase 11):</strong> o osso branco é o de sempre. O <strong>osso de ouro</strong> dá um escudo (nada pega o cachorrinho), o <strong>osso de gelo</strong> congela os agentes e os gatos, o <strong>osso turbo</strong> deixa o cachorrinho mais rápido e o <strong>osso ímã</strong> puxa as rações que estão perto. Os efeitos aparecem numa faixa no alto do jogo.</li>
         <li><strong>Bolinhas (a partir da Fase 2):</strong> cachorro adora bolinha! As <strong>bolinhas coloridas</strong> espalhadas pela fase valem <strong>50 pontos</strong> cada, mas <strong>fogem rolando</strong> quando você chega perto: corra atrás e encoste nelas. Elas não são obrigatórias para abrir a saída.</li>
+        <li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins para o cachorrinho (a partir de 10 petscoin): cores, bandana de pirata, capacete de astronauta, capa de super-cão...</li>
         <li><strong>Reforços:</strong> ao vencer uma fase você escolhe <strong>1 reforço</strong> entre <strong>3 opções sorteadas</strong> (de um conjunto de 6: mais velocidade, poder do osso mais longo, vida extra, mais vidas no máximo, mais proteção ou agentes mais lentos; a partir da Fase 11 entram mais 3: patas de veludo, faro e ímã de ração). Ele fica com você nas fases seguintes; a próxima fase só começa depois da escolha. Começar uma fase pelo menu ou jogá-la de novo começa sem reforços.</li>
         <li><strong>Crescer:</strong> na Fase 1 o cachorrinho é um <strong>filhote</strong> (cabeça grande, coleira vermelha). A cada fase vencida e a cada reforço escolhido ele cresce: vira um cachorro <strong>jovem</strong> (coleira azul) e, por fim, um cachorro <strong>adulto</strong> (coleira verde com plaquinha). É só o desenho: o tamanho de contato e as regras são os mesmos. Na pausa o jogo diz em que fase de crescimento ele está.</li>
         <li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5 (até 8 com o reforço <em>Coração maior</em>); <strong>a partir da Fase 11 o máximo sobe até 10</strong>. Alguns itens escondem uma <strong>vida extra</strong> (você só descobre ao pegar o item): cada uma dá +1 vida, até o máximo. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>
@@ -272,6 +285,7 @@
       <p id="win-personal" class="record"></p>
       <p id="win-general" class="record"></p>
       <p id="win-total" class="muted"></p>
+      <p id="win-treat" class="record"></p>
       <p id="win-extra" class="muted"></p>
       <div class="menu-list">
         <button id="btn-next" type="button" class="primary hidden" data-autofocus>Próxima fase</button>

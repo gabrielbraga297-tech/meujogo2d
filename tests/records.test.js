@@ -471,5 +471,58 @@ test("sem armazenamento (só memória) tudo continua funcionando", () => {
   assert.ok(a.hasGame("Ana") && a.personalBest("Ana", 1).p === 600);
 });
 
+
+// ---------- petiscos, petscoin e skins (0.15.9) ----------
+test("levelPoints: 50 por bolinha e bônus da missão (0.15.7/0.15.8)", () => {
+  assert.strictEqual(R.BALL_POINTS, 50);
+  assert.strictEqual(R.levelPoints(5, 18000, 0, 0, { balls: 2 }), 700);
+  assert.strictEqual(R.levelPoints(5, 18000, 0, 0, { balls: 2, missionBonus: 200 }), 900);
+  assert.strictEqual(R.levelPoints(5, 18000, 0, 0, { balls: -3, missionBonus: 1.5 }), 600, "valores inválidos não contam");
+});
+
+test("carteira: começa vazia, 1 petisco por fase completada e só para quem tem nome", () => {
+  const st = R.createStore(memStorage());
+  assert.deepStrictEqual(st.wallet("Totó"), { treats: 0, owned: [], equipped: "" });
+  assert.strictEqual(st.addTreats("", 1), null, "sem nome não guarda");
+  assert.strictEqual(st.addTreats("Totó", 0), null);
+  assert.strictEqual(st.addTreats("Totó", 1.5), null);
+  assert.strictEqual(st.addTreats("Totó", 1).treats, 1);
+  assert.strictEqual(st.addTreats("totó", 2).treats, 3, "o nome não distingue maiúsculas");
+  assert.strictEqual(st.wallet("TOTÓ").treats, 3);
+  assert.strictEqual(R.MIN_SKIN_PRICE, 10);
+});
+
+test("comprar skin: preço mínimo de 10 petscoin, saldo, já tem, usar e guardar", () => {
+  const mem = memStorage(), st = R.createStore(mem);
+  st.addTreats("Totó", 9);
+  assert.deepStrictEqual(st.buySkin("Totó", "cinza", 10), { ok: false, error: "funds" }, "9 petscoin não bastam");
+  assert.deepStrictEqual(st.buySkin("Totó", "barata", 9), { ok: false, error: "invalid" }, "o preço mínimo é 10");
+  assert.deepStrictEqual(st.buySkin("Totó", "cinza", 0), { ok: false, error: "invalid" });
+  assert.deepStrictEqual(st.buySkin("Totó", "Cinza Prata!", 10), { ok: false, error: "invalid" }, "id inválido");
+  assert.strictEqual(st.wallet("Totó").treats, 9, "recusar não gasta nada");
+  st.addTreats("Totó", 5);
+  const r = st.buySkin("Totó", "cinza", 10);
+  assert.ok(r.ok && r.wallet.treats === 4 && r.wallet.owned.join() === "cinza");
+  assert.deepStrictEqual(st.buySkin("Totó", "cinza", 10), { ok: false, error: "owned" });
+  assert.strictEqual(st.equipSkin("Totó", "dalmata"), null, "não dá para usar o que não é seu");
+  assert.strictEqual(st.equipSkin("Totó", "cinza").equipped, "cinza");
+  assert.strictEqual(st.equipSkin("Totó", "").equipped, "", "'' volta à skin padrão");
+  st.equipSkin("Totó", "cinza");
+  const again = R.createStore(mem); // outra aba/recarregou: tudo guardado
+  assert.deepStrictEqual(again.wallet("Totó"), { treats: 4, owned: ["cinza"], equipped: "cinza" });
+});
+
+test("carteira: dados adulterados no armazenamento são limpos e apagar a conta apaga a carteira", () => {
+  const raw = JSON.stringify({ v: 2, player: "Totó", players: ["Totó"], bests: {}, progress: {}, accounts: {}, wallet: {
+    "toto": { t: 12, own: ["cinza", "cinza", "<img>", 5, "dalmata"], eq: "nao-tenho" },
+    "ana": { t: -4, own: "x", eq: 7 }, "": { t: 3 }, "bia": { t: 1e12, own: [], eq: "" } } });
+  const st = R.createStore(memStorage({ "cachorrinho.v1": raw }));
+  assert.deepStrictEqual(st.wallet("Totó"), { treats: 12, owned: ["cinza", "dalmata"], equipped: "" });
+  assert.strictEqual(st.wallet("Ana").treats, 0);
+  assert.strictEqual(st.wallet("Bia").treats, 0, "petiscos fora do limite não valem");
+  st.deleteAccount("Totó");
+  assert.deepStrictEqual(st.wallet("Totó"), { treats: 0, owned: [], equipped: "" });
+});
+
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
 process.exit(failed ? 1 : 0);

@@ -99,6 +99,22 @@
   const BALL_R = 7, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
   const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
   const BALL_COLORS = ["#ff5a5a", "#ffd23f", "#4fc3ff", "#7be07b"];
+  // Skins do cachorrinho (0.15.9): a lojinha vende por petiscos (1 petisco por fase completada = 1 petscoin); o preço mínimo é Records.MIN_SKIN_PRICE (10).
+  // `tan`/`dark`: pelo do corpo e das orelhas/patas/rabo, [filhote, adulto]; `collar`: coleira fixa (sem isso a coleira muda com o crescimento); `acc`: acessório; `spots`: manchas.
+  const SKINS = [
+    { id: "", name: "Caramelo", price: 0, text: "o cachorrinho de sempre (grátis)" },
+    { id: "cinza", name: "Cinza-prata", price: 10, text: "pelo cinza de cachorro velho e sábio", tan: ["#cfd3d9", "#aeb4bd"], dark: ["#8c929c", "#6b7280"], light: "#e6e8ec" },
+    { id: "dalmata", name: "Dálmata", price: 12, text: "branco com manchas pretas", tan: ["#f6f6f6", "#eeeeee"], dark: ["#2b2b2b", "#1f1f1f"], light: "#ffffff", spots: true },
+    { id: "chocolate", name: "Chocolate", price: 15, text: "pelo marrom de chocolate", tan: ["#8a5a3a", "#6b4226"], dark: ["#4a2c17", "#3a2010"], light: "#b98a62" },
+    { id: "dourado", name: "Dourado", price: 20, text: "pelo dourado e coleira de ouro", tan: ["#f2cf7a", "#e0b04a"], dark: ["#c89a3a", "#a87c22"], light: "#fae6b0", collar: "#d4a017" },
+    { id: "arco-iris", name: "Arco-íris", price: 25, text: "pelo rosa-bebê e coleira de arco-íris", tan: ["#ffd6f0", "#f3b6e4"], dark: ["#c9a0ff", "#a97bec"], light: "#fff0fb", collar: "rainbow" },
+    { id: "pirata", name: "Pirata", price: 30, text: "bandana vermelha e tapa-olho", acc: "pirate" },
+    { id: "astronauta", name: "Astronauta", price: 40, text: "capacete de astronauta", tan: ["#f2f4f8", "#dfe3ea"], dark: ["#9aa3b2", "#7c8696"], light: "#ffffff", acc: "helmet" },
+    { id: "super", name: "Super-cão", price: 50, text: "capa vermelha de super-herói", collar: "#c1272d", acc: "cape" },
+  ];
+  const skinById = (id) => SKINS.find((k) => k.id === id) || SKINS[0];
+  let skinId = ""; // a skin em uso do jogador atual (0.15.9)
+  const refreshSkin = () => { const me = store.player(), w = me ? store.wallet(me) : null; skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : ""; };
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
@@ -1432,7 +1448,7 @@
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("game");
-  const ctx = canvas.getContext("2d");
+  let ctx = canvas.getContext("2d"); // (let: a lojinha desenha o cachorrinho nos mostruários trocando o contexto por um instante)
   const fmt = Records.formatTime;
   const calm = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -1538,7 +1554,7 @@
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
     levelId = id; lv = BUILT[id]; theme = Themes.of(id); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
-    walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn;
+    walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn; refreshSkin();
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
@@ -2258,7 +2274,7 @@
   }
 
   // ---------- Estados e telas ----------
-  const SCREENS = ["menu", "levels", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
+  const SCREENS = ["menu", "levels", "shop", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
 
   function setState(s) {
     state = s;
@@ -2540,6 +2556,47 @@
   }
 
 
+  // ---------- Lojinha de skins (0.15.9): petiscos (1 por fase completada = 1 petscoin) por skins do cachorrinho ----------
+  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin
+    const c2 = canvas.getContext("2d"), keep = ctx;
+    c2.clearRect(0, 0, canvas.width, canvas.height);
+    ctx = c2; c2.save(); c2.scale(3.4, 3.4);
+    try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
+  }
+  let shopMsg = "";
+  function renderShop() {
+    const me = store.player(), w = me ? store.wallet(me) : null, list = $("shop-list");
+    $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} ${w.treats === 1 ? "petscoin" : "petscoin"} (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
+    $("shop-msg").textContent = shopMsg;
+    list.replaceChildren();
+    let firstFocus = true;
+    for (const k of SKINS) {
+      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? w.equipped === k.id : k.id === "";
+      const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
+      cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
+      renderSkinPreview(cv, k.id);
+      const b = el("button", owned ? "" : "primary-ish"); b.type = "button";
+      if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
+      else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
+      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(); }); }
+      else {
+        const missing = k.price - w.treats;
+        b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
+        if (missing > 0) b.title = `Faltam ${missing} petscoin`;
+        b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos)
+          const r = store.buySkin(me, k.id, k.price);
+          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Você comprou a skin ${k.name} e já está usando! Sobraram ${r.wallet.treats} petscoin.`; sound.play("levelup"); }
+          else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : "Não foi possível comprar esta skin.";
+          renderShop();
+        });
+        if (firstFocus && !b.disabled) { b.dataset.autofocus = ""; firstFocus = false; }
+      }
+      card.append(cv, el("strong", null, k.name), el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
+      list.append(card);
+    }
+  }
+  function openShop() { shopMsg = ""; renderShop(); showScreen("shop"); }
+
   function pauseGame() {
     if (state !== "playing") return;
     saveNow(); // pausar também salva
@@ -2672,6 +2729,10 @@
       $("win-general").textContent = "";
       $("win-total").textContent = "";
     }
+    { // 0.15.9: ao completar a fase o cachorrinho ganha 1 petisco (1 petscoin), guardado na carteira do jogador
+      const me2 = accountGone() ? "" : gamePlayer, w = me2 ? store.addTreats(me2, 1) : null;
+      $("win-treat").textContent = w ? `Petisco ganho! +1 petscoin (você tem ${w.treats}). Troque por skins na Lojinha, no menu.` : gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+    }
     showScreen("win");
   }
 
@@ -2720,7 +2781,8 @@
     const bests = me ? LEVELS.map((l) => [l, store.personalBest(me, l.id)]).filter(([, b]) => b) : [];
     $("menu-best").textContent = bests.length ? `Suas melhores: ${bests.map(([l, b]) => `${l.title} ${b.p}`).join(" · ")}` : "";
     const done = me ? store.progress(me).completed.filter((l) => LEVEL_IDS.includes(l)).length : 0;
-    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVEL_IDS)}` : "";
+    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVEL_IDS)} · Petscoin: ${store.wallet(me).treats}` : "";
+    refreshSkin();
     const g = savedGame();
     $("btn-continue").classList.toggle("hidden", !g);
     $("btn-start").classList.toggle("primary", !g);
@@ -3055,38 +3117,55 @@
   const dogGrowth = () => clamp((levelId - 1 + DOG_GROW_PER_UP * UP_KEYS.reduce((n, k) => n + up[k], 0)) / DOG_GROW_LEVELS, 0, 1);
   const dogStage = (gr) => (gr < 0.34 ? "filhote" : gr < 0.67 ? "jovem" : "adulto");
   const mixHex = (a, b, t) => { const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16)); return "#" + pa.map((v, k) => Math.round(v + (pb[k] - v) * t).toString(16).padStart(2, "0")).join(""); };
-  function drawDog(p) {
+  // `o` (opcional, 0.15.9): { gr: tamanho (0 a 1), skin: id da skin, still: sem balançar (mostruário da lojinha) }; sem `o`, desenha o cachorrinho do jogo com a skin em uso.
+  function drawDog(p, o = {}) {
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-    const gr = dogGrowth(), sc = 0.66 + 0.34 * gr, hd = 1.28 - 0.28 * gr, ear = 1.3 - 0.3 * gr, tl = 0.6 + 0.4 * gr; // tamanho do corpo, da cabeça, das orelhas e do rabo
-    const wag = calm ? 0 : Math.sin(time * 16) * (p.moving ? 5 : 2) * (1.15 - 0.15 * gr);
-    const leg = p.moving ? Math.sin(time * 18) * 3 : 0;
-    const TAN = mixHex("#ecc592", "#d9a066", gr), DARK = mixHex("#9a6a3c", "#7a4a22", gr), LIGHT = "#f1d2a6", COLLAR = gr < 0.34 ? "#d9483b" : gr < 0.67 ? "#3b6fc9" : "#2f8f5a";
+    const gr = o.gr ?? dogGrowth(), sc = 0.66 + 0.34 * gr, hd = 1.28 - 0.28 * gr, ear = 1.3 - 0.3 * gr, tl = 0.6 + 0.4 * gr; // tamanho do corpo, da cabeça, das orelhas e do rabo
+    const sk = skinById(o.skin ?? skinId), still = !!o.still || calm;
+    const wag = still ? 0 : Math.sin(time * 16) * (p.moving ? 5 : 2) * (1.15 - 0.15 * gr);
+    const leg = p.moving && !o.still ? Math.sin(time * 18) * 3 : 0;
+    const pick2 = (pair, a, b) => (pair ? mixHex(pair[0], pair[1], gr) : mixHex(a, b, gr));
+    const TAN = pick2(sk.tan, "#ecc592", "#d9a066"), DARK = pick2(sk.dark, "#9a6a3c", "#7a4a22"), LIGHT = sk.light || "#f1d2a6";
+    const COLLAR = sk.collar && sk.collar !== "rainbow" ? sk.collar : gr < 0.34 ? "#d9483b" : gr < 0.67 ? "#3b6fc9" : "#2f8f5a", RAINBOW = ["#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5"];
+    const collarRect = (x, y, w, h, vertical) => { // coleira (de arco-íris: listras)
+      if (sk.collar !== "rainbow") { ctx.fillStyle = COLLAR; ctx.fillRect(x, y, w, h); return; }
+      RAINBOW.forEach((c, k) => { ctx.fillStyle = c; if (vertical) ctx.fillRect(x, y + (k * h) / 5, w, h / 5 + 0.4); else ctx.fillRect(x + (k * w) / 5, y, w / 5 + 0.4, h); });
+    };
     ctx.save(); ctx.translate(cx, cy + 11); ctx.scale(sc, sc); ctx.translate(-cx, -(cy + 11)); // os pés ficam no mesmo lugar: o filhote só é menor
     ellipse(cx, cy + 10, 12, 4, "rgba(0,0,0,.25)");
     ctx.lineCap = "round";
     if (p.facing === "left" || p.facing === "right") {
       const s = p.facing === "right" ? 1 : -1;
+      if (sk.acc === "cape") { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx + s * 3, cy - 4); ctx.lineTo(cx - s * (13 + wag * 0.4), cy + 3 + wag * 0.3); ctx.lineTo(cx - s * 9, cy + 7); ctx.lineTo(cx + s * 2, cy + 3); ctx.closePath(); ctx.fill(); } // capa (atrás do corpo)
       ctx.strokeStyle = DARK; ctx.lineWidth = 3; // rabo
       ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * (9 + 6 * tl), cy - 5 + wag, cx - s * (9 + 5 * tl), cy - 9 * tl + wag); ctx.stroke();
       ctx.fillStyle = DARK; // patas
       ctx.fillRect(cx - s * 7 - 2 + leg, cy + 4, 4, 7); ctx.fillRect(cx + s * 4 - 2 - leg, cy + 4, 4, 7);
       ellipse(cx - s * 2, cy + 1, 10, 7, TAN);                 // corpo
-      ellipse(cx - s * 4, cy - 1, 5, 4, DARK);                 // mancha
+      if (sk.spots) { for (const [dx, dy, r] of [[-5, -1, 2.4], [0, 3, 2], [-8, 3, 1.7]]) ellipse(cx + s * dx, cy + dy, r, r, DARK); } else ellipse(cx - s * 4, cy - 1, 5, 4, DARK); // manchas
       ellipse(cx + s * (7 + hd), cy - 3, 7 * hd, 6.5 * hd, TAN);                // cabeça
       ellipse(cx + s * (11 + 2 * hd), cy - 1, 4, 3, LIGHT);               // focinho
       ellipse(cx + s * (13.5 + 2 * hd), cy - 1.5, 1.6, 1.4, "#222");      // nariz
       ellipse(cx + s * 4, cy - 4, 2.6 * ear, 5 * ear, DARK, s * 0.25);     // orelha
       ellipse(cx + s * (8 + 2 * hd), cy - 5, 1.4 * (1 + 0.5 * (1 - gr)), 1.4 * (1 + 0.5 * (1 - gr)), "#222");          // olho (maior no filhote)
-      ctx.fillStyle = COLLAR; ctx.fillRect(cx + s * 3 - 1.5, cy - 2, 3, 7); // coleira (vermelha no filhote, azul no jovem, verde no adulto)
-      if (gr >= 0.67) ellipse(cx + s * 3, cy + 5.5, 1.3, 1.3, "#f2c230"); // plaquinha do adulto
+      collarRect(cx + s * 3 - 1.5, cy - 2, 3, 7, true); // coleira (vermelha no filhote, azul no jovem, verde no adulto)
+      if (gr >= 0.67 && !sk.collar) ellipse(cx + s * 3, cy + 5.5, 1.3, 1.3, "#f2c230"); // plaquinha do adulto
+      if (sk.acc === "pirate") { // bandana no pescoço e tapa-olho
+        ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx + s * 1, cy - 3); ctx.lineTo(cx + s * 6, cy - 3); ctx.lineTo(cx + s * 3.5, cy + 4); ctx.closePath(); ctx.fill();
+        ellipse(cx + s * (8 + 2 * hd), cy - 5, 2.4, 2.2, "#111");
+      }
+      if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx + s * (7 + hd), cy - 3, 9.5 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     } else {
       const s = p.facing === "down" ? 1 : -1;
+      if (sk.acc === "cape" && s === 1) { ctx.fillStyle = "#d92b2b"; ctx.fillRect(cx - 9, cy - 3, 3, 10); ctx.fillRect(cx + 6, cy - 3, 3, 10); } // capa aparece dos lados, de frente
       ctx.strokeStyle = DARK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * (6 + 7 * tl)); ctx.stroke(); // rabo
       ctx.fillStyle = DARK;
       ctx.fillRect(cx - 8, cy - 2 + leg, 4, 6); ctx.fillRect(cx + 4, cy - 2 - leg, 4, 6);
       ellipse(cx, cy - s * 1, 8, 9, TAN);                      // corpo
-      ctx.fillStyle = COLLAR; ctx.fillRect(cx - 5, cy + s * 5 - 1.5, 10, 3); // coleira
+      if (sk.spots) { for (const [dx, dy, r] of [[-3, -2, 2.2], [3, 1, 2], [-1, 4, 1.6]]) ellipse(cx + dx, cy + dy, r, r, DARK); }
+      if (sk.acc === "cape" && s === -1) { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx - 7, cy - 6); ctx.lineTo(cx + 7, cy - 6); ctx.lineTo(cx + 9, cy + 8); ctx.lineTo(cx - 9, cy + 8); ctx.closePath(); ctx.fill(); } // de costas a capa cobre o corpo
+      collarRect(cx - 5, cy + s * 5 - 1.5, 10, 3, false); // coleira
       ellipse(cx, cy + s * (7 + hd), 7 * hd, 6.5 * hd, TAN);                    // cabeça
       ellipse(cx - 6.5 * hd, cy + s * (6 + hd), 2.6 * ear, 5 * ear, DARK, -0.2);         // orelhas
       ellipse(cx + 6.5 * hd, cy + s * (6 + hd), 2.6 * ear, 5 * ear, DARK, 0.2);
@@ -3094,7 +3173,10 @@
         ellipse(cx, cy + 3 + 8 * hd, 3.6, 2.8, LIGHT);
         ellipse(cx, cy + 4 + 8 * hd, 1.6, 1.3, "#222");
         const eye = 1.3 * (1 + 0.5 * (1 - gr)); ellipse(cx - 3, cy + 6 + hd, eye, eye, "#222"); ellipse(cx + 3, cy + 6 + hd, eye, eye, "#222");
+        if (sk.acc === "pirate") ellipse(cx + 3, cy + 6 + hd, 2.4, 2.2, "#111");
       }
+      if (sk.acc === "pirate") { ctx.fillStyle = "#d9342b"; ctx.beginPath(); ctx.moveTo(cx - 6, cy + s * 5); ctx.lineTo(cx + 6, cy + s * 5); ctx.lineTo(cx, cy + s * 11); ctx.closePath(); ctx.fill(); }
+      if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx, cy + s * (7 + hd), 10 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     }
     ctx.restore();
   }
@@ -3597,6 +3679,8 @@
   on("btn-save", manualSave);
   on("btn-save-hud", manualSave);
   on("btn-howto", () => showScreen("howto"));
+  on("btn-shop", openShop);
+  on("btn-shop-back", goMenu);
   on("btn-howto-back", goMenu);
   on("btn-scores", () => openScores("menu"));
   on("btn-scores-back", closeScores);
@@ -3636,13 +3720,13 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   window.addEventListener("storage", (e) => {
     if (e.key !== null && !String(e.key).startsWith("cachorrinho.")) return;
     const screen = document.body.dataset.screen;
-    if (screen === "menu") renderMenu(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
+    if (screen === "menu") renderMenu(); else if (screen === "shop") renderShop(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
   });
 
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
-    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
+    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get skin() { return skinId; }, get skins() { return SKINS.map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },

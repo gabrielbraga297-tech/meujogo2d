@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.8 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.9 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -166,6 +166,9 @@ Os efeitos ativos aparecem numa **faixa no alto do jogo** (*Escudo 8 s · Gelo 3
 
 ## Bolinhas (0.15.8, a partir da Fase 2)
 **Cachorros adoram correr atrás de bolinhas.** Cada fase, a partir da Fase 2, tem **bolinhas coloridas** espalhadas pelo chão: **1 nas Fases 2 e 3, 2 nas Fases 4 e 5, 3 nas Fases 6 a 10, 4 nas Fases 11 a 15 e 5 nas Fases 16 a 20**. Cada bolinha vale **+50 pontos** (o placar mostra **BOLINHAS n/N**), mas ela **foge**: quando o cachorrinho chega a **3 tiles** dela (e a vê), ela é **chutada** para longe pelo eixo em que ele está, **rola, quica nas paredes e nos blocos e para sozinha** depois de uns 5 tiles (a velocidade do chute cresce com a fase: 196 px/s na Fase 2, 340 na Fase 20; o cachorrinho anda de 200 a 252). É só correr atrás dela e encostar: ela some com um *plim*. As bolinhas **não são obrigatórias** (a saída abre sem elas, e elas contam para os pontos mínimos), os agentes e os gatos não ligam para elas, e se o cachorrinho perde uma vida as bolinhas ficam onde estão. O lugar de cada bolinha é sorteado no começo de cada jogo (fora do caminho dos itens, dos trilhos dos blocos e do início); o jogo salvo guarda a posição e quais já foram pegas.
+
+## Petiscos, petscoin e lojinha de skins (0.15.9)
+**Ao completar cada fase o cachorrinho ganha 1 petisco; 1 petisco = 1 petscoin.** O saldo fica guardado no nome de usuário do jogador (só neste aparelho, como as pontuações; quem não tem nome não guarda) e aparece no menu (*Petscoin: N*) e na tela de vitória (*Petisco ganho! +1 petscoin*). Em **Menu → Lojinha de skins** os petscoin viram **skins** para o cachorrinho, **a partir de 10 petscoin**: Cinza-prata (10), Dálmata (12), Chocolate (15), Dourado (20), Arco-íris (25), Pirata (30), Astronauta (40) e Super-cão (50), além do Caramelo grátis. A skin só muda o desenho (o tamanho de contato, a velocidade e as regras são os mesmos) e vale nos três tamanhos e nas quatro direções. O plano completo, as regras e as ideias para depois estão em [`docs/LOJINHA.md`](docs/LOJINHA.md); o preço mínimo (`MIN_SKIN_PRICE = 10`) é conferido pelo código e pelos testes.
 
 ## Os gatos (0.15.5, Fases 11 a 20)
 Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 4, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
