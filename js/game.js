@@ -3155,7 +3155,7 @@
       if (sk.acc === "helmet") { ctx.fillStyle = "rgba(180,220,255,.28)"; ctx.strokeStyle = "rgba(225,242,255,.95)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(cx + s * (7 + hd), cy - 3, 9.5 * hd, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     } else {
       const s = p.facing === "down" ? 1 : -1;
-      if (sk.acc === "cape" && s === 1) { ctx.fillStyle = "#d92b2b"; ctx.fillRect(cx - 9, cy - 3, 3, 10); ctx.fillRect(cx + 6, cy - 3, 3, 10); } // capa aparece dos lados, de frente
+      if (sk.acc === "cape" && s === 1) { ctx.fillStyle = "#d92b2b"; ctx.beginPath(); ctx.moveTo(cx - 7, cy - 5); ctx.lineTo(cx + 7, cy - 5); ctx.lineTo(cx + 13, cy + 9); ctx.lineTo(cx - 13, cy + 9); ctx.closePath(); ctx.fill(); } // de frente a capa se abre atrás do corpo e aparece dos dois lados
       ctx.strokeStyle = DARK; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * (6 + 7 * tl)); ctx.stroke(); // rabo
       ctx.fillStyle = DARK;
