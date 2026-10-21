@@ -115,9 +115,9 @@ function ready(extra = {}, fakeOpts = {}) {
 }
 
 // ---------- Contrato do módulo ----------
-test("Sound.NAMES tem os 13 eventos (os 10 pedidos + os 3 latidos por tamanho) e MAX_SECONDS os limites de cada um", () => {
-  assert.deepStrictEqual([...Sound.NAMES], ["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3"]);
-  assert.deepStrictEqual({ ...Sound.MAX_SECONDS }, { ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8 });
+test("Sound.NAMES tem os 14 eventos (os 10 pedidos + os 3 latidos por tamanho + o miau do gato) e MAX_SECONDS os limites de cada um", () => {
+  assert.deepStrictEqual([...Sound.NAMES], ["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow"]);
+  assert.deepStrictEqual({ ...Sound.MAX_SECONDS }, { ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45 });
   assert.strictEqual(Sound.DEFAULT_VOLUME, 0.35);
   assert.strictEqual(Sound.KEY, "cachorrinho.som.v1");
   assert.strictEqual(typeof Sound.create, "function");
@@ -313,9 +313,9 @@ test("limite de taxa: o mesmo som não repete antes de 60 ms; outros sons não s
 test("no máximo 8 sons ao mesmo tempo; quando terminam, volta a tocar", () => {
   const { s, ctx, fake, now } = ready();
   const res = [];
-  // 13 nomes diferentes no mesmo instante: do 9º em diante são recusados
+  // 14 nomes diferentes no mesmo instante: do 9º em diante são recusados
   for (const n of Sound.NAMES) res.push(s.play(n));
-  assert.deepStrictEqual(res, [true, true, true, true, true, true, true, true, false, false, false, false, false]);
+  assert.deepStrictEqual(res, [true, true, true, true, true, true, true, true, false, false, false, false, false, false]);
   ctx.currentTime = 0.5; // ration, bone, transform e postman já acabaram: sobram 4 vozes
   assert.strictEqual(s.play("gameover"), true, "há vaga depois que sons curtos terminam");
   ctx.currentTime = 10; now.add(1000);
@@ -375,7 +375,7 @@ test("sem Web Audio (AudioContextClass null): supported=false, unlock e play dev
   assert.strictEqual(s.supported, false);
   assert.strictEqual(s.unlock(), false);
   for (const n of Sound.NAMES) assert.strictEqual(s.play(n), false);
-  assert.strictEqual(s.events.length, 13);
+  assert.strictEqual(s.events.length, 14);
   s.setMuted(true); assert.strictEqual(s.isMuted(), true);
   s.setVolume(0.2); assert.strictEqual(s.getVolume(), 0.2);
 });

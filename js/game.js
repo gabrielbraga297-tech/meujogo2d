@@ -83,6 +83,11 @@
   // (62,5% da de perseguição); depois de atingidos, 50% mais lentos ainda. A cada passo escolhem, entre os tiles a até FLEE_DEPTH passos, o que fica mais longe do cachorrinho.
   const FLEE_FACTOR = 1.25, FLEE_DEPTH = 12, FLEE_MAP_EVERY = 0.2; // × velocidade de patrulha, passos, s entre os cálculos das distâncias do cachorrinho
   const POWER_END_GRACE = 1; // s de proteção quando o poder do osso acaba (os carteiros voltam a ser agentes, talvez bem do lado do cachorro)
+  // Gatos (0.16.0, a partir da Fase 11): mais ágeis e mais espertos que os agentes (a lógica está em updateCat). Velocidades em px/s: veja `cat` em LEVELS.
+  const CAT_BASE = { speed: 130, chaseSpeed: 200, hear: 7, chaseTime: 3, chaseMax: 12, restTime: 1.2, thinkEvery: 0.08, idleMin: 0.3, idleMax: 0.9 };
+  const CAT_GAP = 40, CAT_LEAD_MAX = 4, CAT_FLEE_FACTOR = 0.72, CAT_STUN = 2, CAT_SLOW = 0.6; // px entre gatos, tiles de antecipação, × velocidade de perseguição ao fugir, s tonto, × lentidão do gato atingido
+  const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
+  const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
@@ -1311,7 +1316,14 @@
       throw new Error(`Regras de pontos ou poder inválidas: ${def.title}`);
     }
     const alertTiles = def.alertTiles;
-    if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 20) throw new Error(`Alcance do "!" inválido: ${def.title}`);
+    if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 24) throw new Error(`Alcance do "!" inválido: ${def.title}`);
+    // gatos: `cats` = tiles de chão onde cada um começa; `cat` = velocidades (px/s) e alcance do ouvido (passos) que mudam o padrão CAT_BASE
+    const catSpawns = [], catCfg = { ...CAT_BASE, ...(def.cat || {}), sight: (alertTiles + 4) * TILE };
+    for (const t of def.cats || []) {
+      if (!Array.isArray(t) || t.length !== 2 || !Number.isInteger(t[0]) || !Number.isInteger(t[1]) || t[0] < 0 || t[1] < 0 || t[0] >= cols || t[1] >= rows || map[t[1]][t[0]] !== "." || catSpawns.some((o) => o[0] === t[0] && o[1] === t[1])) throw new Error(`Posição de gato inválida: ${def.title}`);
+      catSpawns.push([t[0], t[1]]);
+    }
+    if (catSpawns.length > 8 || !(catCfg.speed >= 40 && catCfg.speed <= 300 && catCfg.chaseSpeed >= catCfg.speed && catCfg.chaseSpeed <= 400 && catCfg.hear >= 0 && catCfg.hear <= 20)) throw new Error(`Gatos inválidos: ${def.title}`);
     if (!Number.isInteger(def.rations) || def.rations < 1 || !Number.isInteger(bones) || bones < 0 || !Number.isInteger(lifeMin) || !Number.isInteger(lifeMax) ||
         lifeMin < 0 || lifeMax < lifeMin || lifeMax > def.rations + bones || !Number.isInteger(bonusStep) || bonusStep < 1) {
       throw new Error(`Itens inválidos: ${def.title}`);
@@ -1342,12 +1354,17 @@
     const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos agentes e do cachorro
     if (te && !(te.vet > 0.5 && te.vet <= 1 && te.dog >= 1 && te.dog <= 1.25)) throw new Error(`Facilitação do toque inválida: ${def.title}`);
     const touchEase = te ? { vet: te.vet, dog: te.dog } : null;
+    const catWalk = map.map((row) => [...row].map((ch) => ch !== "#")); // o gato pula as caixas "X": para ele, só a parede é obstáculo
+    const exitDist = new Int16Array(rows * cols).fill(-1); // passos de cada tile até a saída (pelo chão do gato, sem contar os blocos): o gato de número ímpar fecha esse caminho
+    { const q = []; for (const [c, r] of exitTiles) { exitDist[r * cols + c] = 0; q.push([c, r]); }
+      for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = exitDist[r * cols + c]; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc >= 0 && nr >= 0 && nc < cols && nr < rows && catWalk[nr][nc] && exitDist[nr * cols + nc] < 0) { exitDist[nr * cols + nc] = d + 1; q.push([nc, nr]); } } } }
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
+      catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -1376,6 +1393,10 @@
   let state = "menu"; // menu | playing | paused | won | lost
   let levelId = LEVELS[0].id, lv = BUILT[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
+  let cats = [];               // gatos da fase atual (a partir da Fase 11): veja updateCat
+  let catOverride = null;      // usado apenas em testes: posições dos gatos no lugar das da fase
+  let catsThaw = false;        // usado apenas em testes: com `freezeVets` ligado, os gatos continuam andando (assim os testes congelam só os agentes)
+  let meowAt = -99;            // quando foi o último miau (um só som a cada CAT_MEOW_EVERY s, mesmo com vários gatos)
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let theme = Themes.of(1); // o ambiente (lugar) da fase atual: js/themes.js
   const themeG = { ctx: null, rect: null, x: 0, y: 0, c: 0, r: 0, free: false, border: false, solid: null, h: (k) => Themes.hash(themeG.c, themeG.r, k) }; // o que cada função de desenho do ambiente recebe
@@ -1460,13 +1481,17 @@
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
-    up = cleanUp(o.upgrades) || noUp(); fleeMap = null;
+    up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
     vets = lv.vetSpawns.map(([c, r], i) => {
       const cfg = lv.vetCfgs[i], [cx, cy] = centerOf(c, r);
       return { cfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 1, think: cfg.thinkEvery, modeT: 0, chaseAge: 0, cool: 1, dir: 1, idx: i, goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, from: null, slow: false, hitCool: 0 };
+    });
+    cats = (catOverride || lv.catSpawns).map(([c, r], i) => {
+      const [cx, cy] = centerOf(c, r);
+      return { cat: true, cfg: lv.catCfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 0.8 + 0.4 * i, think: 0.1, modeT: 0, chaseAge: 0, cool: 1.5, dir: 1, idx: i, goal: null, hold: 0, stuck: 0, from: null, slow: false, hitCool: 0, seen: null, seenDir: [0, 0], searchT: 0, searched: false, pounce: 0, pounceCd: 0, look: i % 4 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
@@ -1518,14 +1543,14 @@
     return true;
   }
   function shoveVets(rect) {
-    for (const v of vets) {
+    for (const v of everyone()) {
       if (!overlap({ x: v.cx - 12, y: v.cy - 12, w: 24, h: 24 }, rect)) continue;
       const [vc, vr] = tileOf(v.cx, v.cy);
       let best = null;
       for (let r = vr - 3; r <= vr + 3; r++) for (let c = vc - 3; c <= vc + 3; c++) {
         if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
         const [cx, cy] = centerOf(c, r), box = { x: cx - 12, y: cy - 12, w: 24, h: 24 };
-        if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < 20)) continue;
+        if (solids.some((o) => overlap(box, o)) || everyone().some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < 20)) continue;
         const d = Math.hypot(cx - v.cx, cy - v.cy);
         if (!best || d < best.d) best = { cx, cy, d };
       }
@@ -1569,7 +1594,7 @@
   }
 
   // ---------- Agente (caminha pelo centro dos tiles, sem atravessar paredes) ----------
-  function bfs(from, ignoreBlocks = false, avoid = null) { // `avoid`: tiles (chaves) que não podem ser usados (por ex. onde há outro agente)
+  function bfs(from, ignoreBlocks = false, avoid = null, grid = walk) { // `avoid`: tiles (chaves) que não podem ser usados (por ex. onde há outro agente)
     const prev = new Map(), dist = new Map();
     const key = (c, r) => r * COLS + c;
     const q = [from]; dist.set(key(...from), 0); prev.set(key(...from), null);
@@ -1577,7 +1602,7 @@
       const [c, r] = q[i], d = dist.get(key(c, r));
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nc = c + dc, nr = r + dr;
-        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !walk[nr][nc] || dist.has(key(nc, nr)) || (!ignoreBlocks && dynBlocked.has(key(nc, nr))) || (avoid && avoid.has(key(nc, nr)))) continue;
+        if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !grid[nr][nc] || dist.has(key(nc, nr)) || (!ignoreBlocks && dynBlocked.has(key(nc, nr))) || (avoid && avoid.has(key(nc, nr)))) continue;
         dist.set(key(nc, nr), d + 1); prev.set(key(nc, nr), [c, r]); q.push([nc, nr]);
       }
     }
@@ -1648,10 +1673,11 @@
   // Próximo tile do carteiro `v` ao fugir: entre os tiles a até FLEE_DEPTH passos dele (por caminhos que não passam pelos outros agentes), o que fica mais longe do cachorrinho,
   // de preferência um que ele alcança antes do cachorrinho; null se não há para onde ir.
   function fleeStep(v) {
-    const from = tileOf(v.cx, v.cy), dg = dogDistances().dist, key = (c, r) => r * COLS + c;
+    const cat = !!v.cat, grid = cat ? lv.catWalk : walk, depth = cat ? CAT_FLEE_DEPTH : FLEE_DEPTH; // o gato foge pelo chão dele (com as caixas) e olha mais longe
+    const from = tileOf(v.cx, v.cy), dg = (cat ? catDistances() : dogDistances()).dist, key = (c, r) => r * COLS + c;
     // não conta como caminho o tile de outro agente nem os tiles a menos de VET_GAP dele: ali o carteiro nunca conseguiria entrar (ficaria parado esperando)
     const taken = new Set();
-    for (const o of vets) {
+    for (const o of everyone()) {
       if (o === v) continue;
       const [oc, or] = tileOf(o.cx, o.cy);
       for (let r = or - 2; r <= or + 2; r++) for (let c = oc - 2; c <= oc + 2; c++) {
@@ -1660,14 +1686,14 @@
         if (Math.hypot(cx - o.cx, cy - o.cy) < VET_GAP && !(c === from[0] && r === from[1])) taken.add(key(c, r));
       }
     }
-    const g = bfs(from, false, taken);
+    const g = bfs(from, false, taken, grid);
     let best = null, safe = null;
     for (const [c, r] of g.q) {
       const mine = g.dist.get(key(c, r));
-      if (mine > FLEE_DEPTH) continue; // (o próprio tile também é candidato: no ponto mais longe ele fica parado em vez de ir e voltar)
+      if (mine > depth) continue; // (o próprio tile também é candidato: no ponto mais longe ele fica parado em vez de ir e voltar)
       const theirs = dg.get(key(c, r)) ?? 99;
-      let open = 0; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (c + dc >= 0 && r + dr >= 0 && c + dc < COLS && r + dr < ROWS && walk[r + dr][c + dc]) open++;
-      const tie = ((((c * 73856093) ^ (r * 19349663) ^ ((v.idx + 1) * 83492791)) >>> 0) % 1000) / 1000 * 0.4; // desempate fixo por tile e por agente (com sorteio novo a cada olhada o carteiro tremeria)
+      let open = 0; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (c + dc >= 0 && r + dr >= 0 && c + dc < COLS && r + dr < ROWS && grid[r + dr][c + dc]) open++;
+      const tie = ((((c * 73856093) ^ (r * 19349663) ^ ((v.idx + 1 + (cat ? 40 : 0)) * 83492791)) >>> 0) % 1000) / 1000 * 0.4; // desempate fixo por tile e por agente (com sorteio novo a cada olhada o carteiro tremeria)
       const score = theirs - mine * 0.4 + open * 0.3 + tie + (mine === 0 ? 0.4 : 0); // longe do cachorrinho, perto dele mesmo, e de preferência não num beco (+0,4 para ficar onde está se já é bom)
       if (!best || score > best.score) best = { c, r, score };
       if (mine < theirs - 1 && (!safe || score > safe.score)) safe = { c, r, score };
@@ -1773,6 +1799,156 @@
     }
   }
 
+  // ---------- Gatos (a partir da Fase 11) ----------
+  // Inimigo novo, mais ÁGIL e mais ESPERTO que o agente da carrocinha. Anda de tile em tile como o agente, mas:
+  //  - é mais rápido (patrulhando e perseguindo) e dá um BOTE (CAT_POUNCE × a velocidade por CAT_POUNCE_TIME s) quando vê o cachorrinho a até 4 tiles;
+  //  - PULA as caixas "X" (para ele são chão: acha atalhos que o cachorrinho não tem);
+  //  - OUVE o cachorrinho a até `hear` passos de distância, mesmo atrás de paredes, e não só vê (o agente só vê);
+  //  - não corre atrás de ONDE O CACHORRINHO ESTÁ, e sim de onde ele vai estar (adianta-se até CAT_LEAD_MAX tiles na direção em que ele anda); o gato de número ímpar
+  //    (quando há mais de um) fecha o caminho da SAÍDA, indo para a frente do cachorrinho, e os dois se espalham em vez de andar em fila;
+  //  - perdeu o cachorrinho de vista? Vai até onde o viu por último, continua na direção em que ele ia e PROCURA por perto (CAT_SEARCH s) antes de voltar a patrulhar;
+  //  - patrulha por onde o cachorrinho anda (mais da metade dos destinos fica a 8 a 26 passos dele), em vez de por qualquer lugar;
+  //  - quase não descansa depois de perseguir (restTime baixo);
+  //  - com o poder do osso FOGE (rápido e esperto, sem ficar lento como o carteiro) e quem o toca ganha +100 pontos; o gato atingido volta ao posto, tonto, e foge mais devagar até o poder acabar.
+  const DIRS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const headingOf = () => (player.facing === "left" ? [-1, 0] : player.facing === "right" ? [1, 0] : player.facing === "up" ? [0, -1] : [0, 1]);
+  const everyone = () => (cats.length ? vets.concat(cats) : vets); // agentes e gatos (para um não parar em cima do outro)
+  let catMap = null, catMapAt = -1;
+  // Distâncias (em passos, pelo chão que o gato usa: com as caixas) do cachorrinho a cada tile, recalculadas no máximo a cada FLEE_MAP_EVERY s.
+  function catDistances() {
+    if (!catMap || time - catMapAt >= FLEE_MAP_EVERY || time < catMapAt) { catMap = bfs(tileOf(player.x + player.w / 2, player.y + player.h / 2), false, null, lv.catWalk); catMapAt = time; }
+    return catMap;
+  }
+  const dogTileNow = () => tileOf(player.x + player.w / 2, player.y + player.h / 2);
+  // O tile para onde o gato corre ao perseguir: onde o cachorrinho vai estar (ou, para o gato de número ímpar, o caminho dele até a saída).
+  function catTarget(c) {
+    const cw = lv.catWalk, dogT = dogTileNow(), g = catDistances(), [cc, cr] = tileOf(c.cx, c.cy);
+    const steps = g.dist.get(cr * COLS + cc) ?? 99;
+    const lead = steps <= 3 ? 0 : Math.min(CAT_LEAD_MAX, Math.floor(steps / 3));
+    if (c.idx % 2 === 1 && steps > 5 && lv.exitDist) { // fecha o caminho: desce o mapa de distâncias da saída a partir do cachorrinho
+      let [tc, tr] = dogT;
+      for (let i = 0; i < lead + 3; i++) {
+        let best = null, bd = lv.exitDist[tr * COLS + tc];
+        for (const [dc, dr] of DIRS4) { const nc = tc + dc, nr = tr + dr; if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue; const nd = lv.exitDist[nr * COLS + nc]; if (nd >= 0 && nd < bd) { bd = nd; best = [nc, nr]; } }
+        if (!best) break;
+        [tc, tr] = best;
+      }
+      return [tc, tr];
+    }
+    if (!lead || !player.moving) return dogT;
+    const [dx, dy] = headingOf();
+    let [tc, tr] = dogT;
+    for (let i = 0; i < lead; i++) { const nc = tc + dx, nr = tr + dy; if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !cw[nr][nc]) break; tc = nc; tr = nr; }
+    return [tc, tr];
+  }
+  // Destino da patrulha (ou da procura, perto de onde o cachorrinho foi visto por último): longe do gato, longe dos outros gatos e, na maioria das vezes, por perto do cachorrinho.
+  function pickCatGoal(c, g) {
+    const dg = catDistances().dist;
+    let far = g.q.filter(([col, row]) => g.dist.get(g.key(col, row)) >= 6);
+    if (!far.length) return null;
+    if (c.mode === "search" && c.seen) { const near = far.filter(([col, row]) => Math.hypot(col - c.seen[0], row - c.seen[1]) <= 9); if (near.length) far = near; }
+    else if (rand() < 0.55) { const hunt = far.filter(([col, row]) => { const d = dg.get(g.key(col, row)); return d !== undefined && d >= 8 && d <= 26; }); if (hunt.length) far = hunt; }
+    const others = cats.filter((o) => o !== c);
+    if (!others.length) return far[Math.floor(rand() * far.length)];
+    const away = ([col, row]) => {
+      const [x, y] = centerOf(col, row);
+      return Math.min(...others.map((o) => Math.min(Math.hypot(x - o.cx, y - o.cy), o.goal ? Math.hypot(x - o.goal[0], y - o.goal[1]) : Infinity)));
+    };
+    const ranked = far.map((t) => [t, away(t)]).sort((a, b) => b[1] - a[1]);
+    const top = ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.5)));
+    return top[Math.floor(rand() * top.length)][0];
+  }
+  function updateCat(c, dt) {
+    const cfg = c.cfg, cw = lv.catWalk;
+    if (c.hitCool > 0) c.hitCool -= dt;
+    c.think -= dt; c.modeT -= dt; c.cool -= dt;
+    if (c.pounce > 0) c.pounce -= dt;
+    if (c.pounceCd > 0) c.pounceCd -= dt;
+    const [ct, cr] = tileOf(c.cx, c.cy), px = player.x + player.w / 2, py = player.y + player.h / 2;
+    if (power <= 0) {
+      const sees = canSee(c), heard = (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear;
+      if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
+      if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
+        c.think = cfg.thinkEvery;
+        if (sees || heard) { // notou o cachorrinho: persegue (e mia, no máximo uma vez a cada CAT_MEOW_EVERY s)
+          c.mode = "chase"; c.modeT = cfg.chaseTime; c.chaseAge = 0; c.route = []; c.goal = null; c.idle = 0;
+          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; sound.play("meow"); }
+        }
+      }
+      if (c.mode === "chase") {
+        c.chaseAge += dt;
+        if (sees || heard) c.modeT = Math.max(c.modeT, cfg.chaseTime * 0.5); // enquanto vê ou ouve o cachorrinho, não desiste
+        if (sees && c.pounce <= 0 && c.pounceCd <= 0 && Math.hypot(c.cx - px, c.cy - py) <= CAT_POUNCE_RANGE) { c.pounce = CAT_POUNCE_TIME; c.pounceCd = CAT_POUNCE_TIME + CAT_POUNCE_COOLDOWN; }
+        if (c.modeT <= 0 || c.chaseAge >= cfg.chaseMax) { // perdeu o cachorrinho: vai até onde o viu por último e procura por perto
+          c.mode = "search"; c.searchT = CAT_SEARCH; c.cool = cfg.restTime; c.route = []; c.goal = null; c.idle = 0; c.searched = false;
+        }
+      }
+      if (c.mode === "search" && (c.searchT -= dt) <= 0) { c.mode = "patrol"; c.route = []; c.goal = null; c.seen = null; }
+    }
+
+    // Anda `budget` pixels neste quadro (como o agente: ao chegar ao centro de um tile decide o próximo passo e continua com o que sobrou)
+    const speed = c.mode === "chase" ? cfg.chaseSpeed * (c.pounce > 0 ? CAT_POUNCE : 1) : c.mode === "flee" ? cfg.chaseSpeed * CAT_FLEE_FACTOR * (c.slow ? CAT_SLOW : 1) : c.mode === "search" ? cfg.speed * CAT_SEARCH_FACTOR : cfg.speed;
+    let budget = speed * dt, idled = false;
+    for (let n = 0; n < 4 && budget > 1e-9; n++) {
+      if (!c.leg) { // está exatamente no centro de um tile: decide o próximo passo
+        const from = tileOf(c.cx, c.cy);
+        if (c.mode === "flee") {
+          if (c.hitCool > 0 || c.idle > 0) { if (c.idle > 0 && !idled) c.idle -= dt; return; } // tonto (acabou de ser atingido) ou esperando: parado
+          c.leg = fleeStep(c);
+          if (!c.leg) { c.idle = 0.2; return; }
+        } else if (c.mode === "chase") {
+          const goal = catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
+          let p = pathTo(bfs(from, false, taken, cw), goal);
+          if (!p.length) p = pathTo(bfs(from, false, null, cw), goal);
+          if (!p.length) p = pathTo(bfs(from, false, null, cw), dogTileNow()); // já está no tile do alvo: vai direto ao cachorrinho
+          c.leg = p[0] || null;
+        } else {
+          if (c.idle > 0) { if (!idled) c.idle -= dt; return; }
+          if (!c.route.length) {
+            if (c.mode === "search" && !c.searched) { // primeiro vai até onde o cachorrinho foi visto e um pouco além, na direção em que ele ia
+              c.searched = true;
+              if (c.seen) {
+                let [tc, tr] = c.seen; const [dx, dy] = c.seenDir || [0, 0];
+                for (let i = 0; i < 4; i++) { const nc = tc + dx, nr = tr + dy; if (!(dx || dy) || nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS || !cw[nr][nc]) break; tc = nc; tr = nr; }
+                c.route = pathTo(bfs(from, false, null, cw), [tc, tr]);
+              }
+            }
+            if (!c.route.length) {
+              const g = bfs(from, false, null, cw), goal = pickCatGoal(c, g);
+              if (goal) { c.route = pathTo(g, goal); c.goal = centerOf(...goal); }
+            }
+          }
+          c.leg = c.route.shift() || null;
+          if (!c.leg) c.idle = cfg.idleMin;
+        }
+        if (!c.leg) return;
+        c.from = from;
+      }
+      const [tx, ty] = centerOf(...c.leg);
+      const dx = tx - c.cx, dy = ty - c.cy, dist = Math.hypot(dx, dy), move = Math.min(budget, dist);
+      if (dist > 0) {
+        const mx = c.cx + (dx / dist) * move, my = c.cy + (dy / dist) * move;
+        // um gato de número maior não anda colado num de número menor: espera um pouco e, se continuar travado, volta e escolhe outro caminho
+        const lower = cats.find((o) => o !== c && o.idx < c.idx && Math.hypot(o.cx - mx, o.cy - my) < CAT_GAP && Math.hypot(o.cx - mx, o.cy - my) < Math.hypot(o.cx - c.cx, o.cy - c.cy));
+        if (lower) {
+          if ((c.hold += dt) > 0.5) { c.hold = 0; if (c.from) { c.leg = c.from; c.from = null; } c.route = []; c.goal = null; }
+          return;
+        }
+        c.hold = 0;
+        if (blocks.length && blocks.some((b) => overlap({ x: mx - 12, y: my - 12, w: 24, h: 24 }, b.rect))) { // bloco no caminho: espera; se demorar, volta ao tile de onde veio e escolhe outro caminho
+          if ((c.stuck += dt) > 0.4) { c.stuck = 0; if (c.from) { c.leg = c.from; c.from = null; } c.route = []; c.goal = null; }
+          return;
+        }
+        c.stuck = 0;
+        if (dx) c.dir = Math.sign(dx);
+      }
+      if (dist <= budget) {
+        c.cx = tx; c.cy = ty; c.leg = null; budget -= dist;
+        if ((c.mode === "patrol" || c.mode === "search") && !c.route.length) { c.idle = cfg.idleMin + rand() * (cfg.idleMax - cfg.idleMin); c.goal = null; idled = true; }
+      } else { c.cx += (dx / dist) * budget; c.cy += (dy / dist) * budget; budget = 0; }
+    }
+  }
+
   // ---------- Pontuação e vidas ----------
   // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
@@ -1799,6 +1975,9 @@
     for (const v of vets) {
       Object.assign(v, { cx: v.sx, cy: v.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
+    for (const c of cats) {
+      Object.assign(c, { cx: c.sx, cy: c.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 2.5, modeT: 0, chaseAge: 0, think: c.cfg.thinkEvery, seen: null, pounce: 0, pounceCd: 0 });
+    }
     invuln = invulnNow();
     return inPlace;
   }
@@ -1823,8 +2002,9 @@
   function startPower() {
     power = bonePowerNow();
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
+    for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
     for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
-    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros e fogem!`, 2.6); pickupToastUntil = time + 2.6;
+    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros${cats.length ? " e os gatos" : ""} fogem!`, 2.6); pickupToastUntil = time + 2.6;
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -1833,7 +2013,7 @@
     for (let r = vr - 4; r <= vr + 4; r++) for (let c = vc - 4; c <= vc + 4; c++) {
       if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
       const [cx, cy] = centerOf(c, r), box = { x: cx - 12, y: cy - 12, w: 24, h: 24 };
-      if (solids.some((o) => overlap(box, o)) || vets.some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < VET_GAP)) continue;
+      if (solids.some((o) => overlap(box, o)) || everyone().some((o) => o !== v && Math.hypot(o.cx - cx, o.cy - cy) < VET_GAP)) continue;
       const d = Math.hypot(cx - x, cy - y);
       if (!best || d < best.d) best = { cx, cy, d };
     }
@@ -1848,11 +2028,21 @@
     toast(`Você ganhou do carteiro! +${Records.POSTMAN_POINTS} pontos`, 1.6);
     saveNow();
   }
+  function defeatCat(c) { // o cachorrinho com o poder do osso encosta num gato: +100 pontos; o gato volta ao posto, tonto, e foge mais devagar até o poder acabar
+    sound.play("postman");
+    puffs.push({ x: c.cx, y: c.cy, t: 0 });
+    const post = freeSpotNear(c, c.sx, c.sy);
+    Object.assign(c, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "flee", idle: 0, modeT: 0, chaseAge: 0, slow: true, hitCool: CAT_STUN, pounce: 0 });
+    postmen++; score = runningScore();
+    toast(`Você assustou o gato! +${Records.POSTMAN_POINTS} pontos`, 1.6);
+    saveNow();
+  }
   function endPower() {
     power = 0;
+    for (const c of cats) Object.assign(c, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(c.cool, 2), seen: null, pounce: 0 }); // os gatos voltam a patrulhar
     for (const v of vets) { Object.assign(v, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(v.cool, 2) }); } // os carteiros voltam a ser agentes (e à velocidade normal); o trecho em andamento termina
     invuln = Math.max(invuln, POWER_END_GRACE);
-    toast("O poder acabou: os carteiros voltaram a ser agentes da carrocinha!", 2.4);
+    toast(cats.length ? "O poder acabou: os carteiros voltaram a ser agentes da carrocinha e os gatos voltaram!" : "O poder acabou: os carteiros voltaram a ser agentes da carrocinha!", 2.4);
   }
 
   // ---------- Atualização ----------
@@ -1909,12 +2099,14 @@
     if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets) for (const v of vets) updateVet(v, Math.min(dt, 0.05));
+    if (!freezeVets || catsThaw) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < 22;
     const protectedNow = invuln > 0;
     if (invuln > 0) invuln -= dt;
     if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
       for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
-    } else if (!protectedNow && !noCatch && vets.some(touching)) { loseLife(); return; }
+      for (const c of cats) if (!c.slow && touching(c)) defeatCat(c); // (o gato assustado vale o mesmo: +100 por poder)
+    } else if (!protectedNow && !noCatch && (vets.some(touching) || cats.some(touching))) { loseLife(); return; }
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
@@ -1981,9 +2173,9 @@
     if (me) store.clearGame(me); // um jogo novo substitui o salvo (só aqui: cancelar a escolha da fase não apaga nada)
     reset(id, o);
     beginPlay();
-    const n = vets.length;
+    const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
@@ -2002,6 +2194,7 @@
       bl: blocks.map((b) => r2(b.bt)), // ponto do ciclo de cada bloco que se move
       ba: blocks.map((b) => b.i),      // quais peças móveis da fase entraram neste jogo (a quantidade é sorteada)
       pw: power > 0 ? Math.max(0.01, r2(power)) : 0, vd: vets.map((v) => (v.slow ? 1 : 0)), pk: postmen, // poder do osso que falta, carteiros lentos (já atingidos) e quantos já foram atingidos
+      ...(cats.length ? { cats: cats.map((c) => [r2(c.cx), r2(c.cy)]), cd: cats.map((c) => (c.slow ? 1 : 0)) } : {}), // gatos (0.16.0): posições e quais já foram assustados neste poder
     };
   }
 
@@ -2059,7 +2252,17 @@
       }
       const pk = sv.pk === undefined ? 0 : sv.pk;
       if (!Number.isInteger(pk) || pk < 0 || pk > 999 || (pk > 0 && !L.bonePower)) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, up: UP_KEYS.map((k) => upv[k]) };
+      const nCats = L.catSpawns.length, cd = sv.cd === undefined ? L.catSpawns.map(() => 0) : sv.cd;
+      if (sv.cats !== undefined) { // gatos (0.16.0): uma posição de chão por gato da fase
+        if (!Array.isArray(sv.cats) || sv.cats.length !== nCats) return null;
+        for (const v of sv.cats) {
+          if (!Array.isArray(v) || !num(v[0], 0, L.worldW - 1) || !num(v[1], 0, L.worldH - 1)) return null;
+          const [c, r] = tileOf(v[0], v[1]);
+          if (!L.catWalk[r][c]) return null;
+        }
+      }
+      if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, up: UP_KEYS.map((k) => upv[k]) };
     } catch { return null; }
   }
 
@@ -2087,10 +2290,14 @@
       [v.cx, v.cy] = centerOf(c, r); // o agente volta ao centro do tile mais próximo
       Object.assign(v, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
     });
+    cats.forEach((c, i) => {
+      if (sv.cats) { const [cc, cr] = tileOf(sv.cats[i][0], sv.cats[i][1]); [c.cx, c.cy] = centerOf(cc, cr); } // o gato volta ao centro do tile mais próximo
+      Object.assign(c, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2.5, modeT: 0, chaseAge: 0, slow: sv.cd[i] === 1, hitCool: 0, seen: null });
+    });
     power = sv.pw; postmen = sv.pk; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
-    vets.forEach((v, i) => { // dois agentes que estavam no mesmo tile não voltam um em cima do outro
-      if (vets.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
+    everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
+      if (all.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
     });
     invuln = Math.max(sv.invuln, RESUME_GRACE);
   }
@@ -2160,7 +2367,7 @@
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, `${l.title} · ${Themes.of(l.id).place}`), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
+        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${(l.cats || []).length ? ` e ${l.cats.length} ${l.cats.length === 1 ? "gato" : "gatos"}` : ""}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
         if (l.id === focusId) b.dataset.autofocus = "";
@@ -2790,6 +2997,60 @@
     }
   }
 
+  // Gato (0.16.0): de lado, olhando para onde anda; corpo comprido, orelhas pontudas, rabo em pé e bigodes. Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas).
+  // Perseguindo: olhos apertados e "!"; no bote o corpo estica; fugindo (poder do osso): pelo arrepiado, rabo em pé e gotas de suor; atingido: estrelinhas. Nas caixas "X" ele pula.
+  const CAT_COATS = [
+    { fur: "#e8903a", dark: "#b96a1f", light: "#f6c98a", eye: "#6bd36b" },
+    { fur: "#8d96a6", dark: "#5f6877", light: "#c6ccd6", eye: "#ffd24a" },
+    { fur: "#3a3b45", dark: "#1c1d24", light: "#666878", eye: "#ffd24a" },
+    { fur: "#efe9df", dark: "#d79b5a", light: "#ffffff", eye: "#6bb7ff" },
+  ];
+  function drawCat(c) {
+    const coat = CAT_COATS[c.look % CAT_COATS.length], flee = c.mode === "flee", chase = c.mode === "chase", d = c.dir || 1, pounce = c.pounce > 0, walking = !!c.leg;
+    let lift = 0; // pulo: sobe até 11 px quando está sobre uma caixa "X" e desce ao se afastar dela
+    for (const t of [tileOf(c.cx, c.cy), c.leg]) if (t && lv.crate[t[1]] && lv.crate[t[1]][t[0]]) { const [x0, y0] = centerOf(t[0], t[1]); lift = Math.max(lift, 11 * (1 - Math.min(1, Math.hypot(c.cx - x0, c.cy - y0) / TILE))); }
+    const bob = calm || !walking ? 0 : Math.sin(time * 14 + c.cx * 0.1) * 1.2, leg = walking && !calm ? Math.sin(time * 16 + c.cx * 0.1) * 3 : 0;
+    ellipse(c.cx, c.cy + 12, 10 - lift * 0.3, 3.5 - lift * 0.1, "rgba(0,0,0,.25)");
+    ctx.save(); ctx.translate(c.cx, c.cy + 2 - lift + bob); ctx.scale(d, 1); // desenhado olhando para a direita; d = -1 espelha
+    const long = pounce ? 1.18 : 1, low = pounce ? 2 : 0, wag = calm ? 0 : Math.sin(time * 7 + c.idx) * (flee ? 4 : 2);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = coat.fur; ctx.lineWidth = flee ? 5.5 : 3.2; // rabo em pé (arrepiado e grosso quando foge)
+    ctx.beginPath(); ctx.moveTo(-9 * long, 1 + low); ctx.quadraticCurveTo(-16 * long, -2 + wag, -13 * long, (flee ? -15 : -11) + wag); ctx.stroke();
+    ctx.strokeStyle = coat.dark; ctx.lineWidth = flee ? 4 : 2.2; ctx.beginPath(); ctx.moveTo(-14.2 * long, -7 + wag * 0.6); ctx.lineTo(-13 * long, (flee ? -15 : -11) + wag); ctx.stroke(); // ponta escura
+    ctx.fillStyle = coat.dark; // patas
+    ctx.fillRect(-8 * long + leg, 4 + low, 3.4, 7 - low); ctx.fillRect(-3 * long - leg, 4 + low, 3.4, 7 - low); ctx.fillRect(3 * long + leg, 4 + low, 3.4, 7 - low); ctx.fillRect(7 * long - leg, 4 + low, 3.4, 7 - low);
+    ellipse(-1, 1 + low, 10.5 * long, flee ? 7.5 : 6.2 - low * 0.4, coat.fur); // corpo (arqueado quando foge)
+    if (c.look === 3) { ellipse(-4, -1 + low, 3.4, 2.6, coat.dark); ellipse(3, 2 + low, 2.6, 2.2, coat.dark); } // manchas
+    else { ctx.strokeStyle = coat.dark; ctx.lineWidth = 1.6; for (const x of [-6, -2, 2]) { ctx.beginPath(); ctx.moveTo(x, -3 + low); ctx.lineTo(x + 0.6, 2 + low); ctx.stroke(); } } // listras
+    ellipse(-1, 4 + low, 7, 2.4, coat.light); // barriga
+    if (flee) { ctx.fillStyle = coat.dark; for (const x of [-7, -3, 1, 5]) { ctx.beginPath(); ctx.moveTo(x - 1.6, -4.5); ctx.lineTo(x, -8.5); ctx.lineTo(x + 1.6, -4.5); ctx.fill(); } } // pelo arrepiado
+    const hx = 10 * long, hy = -3 + low * 0.5;
+    ellipse(hx, hy, 6.4, 5.8, coat.fur); // cabeça
+    ctx.fillStyle = coat.fur; ctx.strokeStyle = coat.dark; ctx.lineWidth = 0.8; // orelhas pontudas
+    for (const [a, b] of [[-5.5, 0], [0.5, 1]]) { ctx.beginPath(); ctx.moveTo(hx + a, hy - 3.5); ctx.lineTo(hx + a + 1.6 + b, hy - 11); ctx.lineTo(hx + a + 5.2, hy - 3.5); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = "#f4a6b0"; ctx.beginPath(); ctx.moveTo(hx - 3.6, hy - 4.2); ctx.lineTo(hx - 2.6, hy - 8.4); ctx.lineTo(hx - 0.6, hy - 4.2); ctx.closePath(); ctx.fill(); // dentro da orelha
+    ellipse(hx + 4.6, hy + 1.5, 3.1, 2.4, coat.light); // focinho
+    ellipse(hx + 6.6, hy + 0.6, 1, 0.8, "#e8798c"); // nariz
+    const er = flee ? 2.5 : chase ? 1.5 : 2; // olhos: arregalados ao fugir, apertados ao perseguir
+    ellipse(hx + 2.4, hy - 1.6, 2.1, er, coat.eye);
+    ctx.fillStyle = "#111"; if (flee) ellipse(hx + 2.4, hy - 1.6, 1.2, 1.2, "#111"); else ctx.fillRect(hx + 2.1, hy - 1.6 - er * 0.9, 0.9, er * 1.8); // pupila (redonda ao fugir, fenda no resto)
+    ctx.strokeStyle = coat.light === "#ffffff" ? "#cfcfcf" : "#f2f2f2"; ctx.lineWidth = 0.6; // bigodes
+    for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(hx + 4.2, hy + 1.5 + k * 1.2); ctx.lineTo(hx + 10, hy + 0.5 + k * 2.6); ctx.stroke(); }
+    ctx.restore();
+    if (chase) {
+      ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("!", c.cx, c.cy - 17 - lift - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
+    }
+    if (flee && c.hitCool <= 0) { // fugindo: gotas de suor
+      const t1 = calm ? 0.3 : (time * 2.5 + c.cx * 0.01) % 1, t2 = calm ? 0.7 : (t1 + 0.5) % 1;
+      ellipse(c.cx + 9, c.cy - 15 - lift + t1 * 7, 1.5, 2.2, "rgba(143,211,255,.9)"); ellipse(c.cx - 8, c.cy - 13 - lift + t2 * 7, 1.5, 2.2, "rgba(143,211,255,.9)");
+    }
+    if (c.hitCool > 0) { // tonto: estrelinhas girando em volta da cabeça
+      ctx.fillStyle = "#ffe066";
+      for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(c.cx + Math.cos(a) * 9, c.cy - 18 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+
   function draw() {
     if (state === "menu" || !solids) return;
     const sx = view.k * view.zoom;
@@ -2831,6 +3092,7 @@
     }
     for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
     for (const v of vets) drawVet(v);
+    for (const c of cats) drawCat(c);
     for (const f of puffs) { // carteiro derrotado: nuvem que cresce e some
       ctx.fillStyle = `rgba(255,255,255,${(0.8 * (1 - f.t / 0.8)).toFixed(2)})`;
       for (const [dx, dy] of [[-8, -4], [8, -4], [0, 6], [0, -10]]) { ctx.beginPath(); ctx.arc(f.x + dx * (0.6 + f.t * 1.5), f.y + dy * (0.6 + f.t * 1.5), 5 + f.t * 8, 0, Math.PI * 2); ctx.fill(); }
@@ -2864,7 +3126,7 @@
       hudCache.wl = wkey;
       hudEl.lives.style.setProperty("--hearts", String(maxLivesNow())); // lugar para todos os corações possíveis: ganhar uma vida não aumenta o placar
       const wide = (e, text) => { e.style.minWidth = `${text.length}ch`; };
-      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + vets.length * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
+      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + (vets.length + cats.length) * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
       wide(hudEl.items, `${lv.rations}/${lv.rations}`);
       wide(hudEl.bones, `${lv.bones}/${lv.bones}`);
       wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
@@ -3144,7 +3406,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
-    get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
+    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
