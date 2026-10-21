@@ -4127,6 +4127,206 @@ const PAGE_HELPERS = () => {
     ok(/Crescer:[\s\S]*filhote[\s\S]*jovem[\s\S]*adulto/.test(await page.textContent("#howto")), "o Como jogar explica que o cachorrinho começa filhote e cresce");
   });
 
+  // =====================================================================
+  await section("0.16.0: os gatos (mais rápidos e mais espertos que os agentes: bote, pulo, ouvido, antecipação, procura e fuga com o poder do osso)", async () => {
+    await fresh(page);
+    // Fase 10 (cidade grande, ruas retas: linhas 1 e 2 livres de ponta a ponta) com gatos colocados pelo teste; os agentes ficam congelados e os gatos soltos
+    const setup = (cats, o = {}) => ev(page, ([cats, o]) => {
+      __game.autoStart = true; __game.catOverride = cats; __game.start(o.level || 10); __game.catOverride = null;
+      __game.setRand(((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(o.seed || 7));
+      __game.freezeVets = true; __game.catsThaw = true; __game.noCatch = o.noCatch !== false;
+      const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = o.facing || "right"; p.moving = false;
+      for (const c of __game.cats) { c.cool = 0; c.idle = 0; }
+      if (o.chase) for (const c of __game.cats) Object.assign(c, { mode: "chase", modeT: 99, chaseAge: 0, pounceCd: o.pounce ? 0 : 99 });
+      return { n: __game.cats.length };
+    }, [cats, o]);
+    const tileOfCat = (c) => [Math.floor(c.cx / 32), Math.floor(c.cy / 32)];
+
+    // ---- os gatos existem, são mais rápidos e dá para pôr onde se quer ----
+    await setup([[5, 1], [30, 1]], { dog: [58, 2] });
+    const st = await ev(page, () => ({ n: __game.cats.length, pos: __game.cats.map((c) => [c.cx, c.cy]), cfg: { ...__game.cats[0].cfg }, vcfg: { ...__game.vets[0].cfg }, modes: __game.cats.map((c) => c.mode) }));
+    ok(st.n === 2 && st.pos[0][0] === 5 * 32 + 16 && st.pos[0][1] === 1 * 32 + 16 && st.pos[1][0] === 30 * 32 + 16, "cada gato começa no centro do tile que a fase manda");
+    ok(st.cfg.speed >= st.vcfg.speed * 1.4 && st.cfg.chaseSpeed >= st.vcfg.chaseSpeed * 1.1 && st.cfg.sight > st.vcfg.sight, `o gato é mais rápido que o agente da Fase 10 (patrulha ${st.cfg.speed} contra ${st.vcfg.speed}; perseguição ${st.cfg.chaseSpeed} contra ${st.vcfg.chaseSpeed} px/s) e enxerga mais longe (${st.cfg.sight} contra ${st.vcfg.sight} px)`);
+
+    // ---- velocidade medida: perseguição (sem bote) e patrulha ----
+    await setup([[3, 1]], { dog: [52, 1], chase: true });
+    const run = await ev(page, () => {
+      const c = __game.cats[0]; let d = 0, t = 0;
+      for (let i = 0; i < 120; i++) { const x0 = c.cx, y0 = c.cy; __game.tick(1 / 60); d += Math.hypot(c.cx - x0, c.cy - y0); t += 1 / 60; }
+      return { speed: d / t, mode: c.mode, pounce: c.pounce };
+    });
+    ok(run.mode === "chase" && Math.abs(run.speed - 200) < 4, `perseguindo, o gato anda a 200 px/s (medido ${run.speed.toFixed(1)})`);
+    await setup([[10, 20]], { dog: [58, 2] });
+    const pat = await ev(page, () => {
+      const c = __game.cats[0]; let d = 0, t = 0, moving = 0;
+      for (let i = 0; i < 1800; i++) { const x0 = c.cx, y0 = c.cy; __game.tick(1 / 60); if (c.mode === "patrol" && c.leg) { d += Math.hypot(c.cx - x0, c.cy - y0); t += 1 / 60; moving++; } }
+      return { speed: t ? d / t : 0, moving };
+    });
+    ok(pat.moving > 300 && Math.abs(pat.speed - 130) < 5, `patrulhando, o gato anda a 130 px/s (medido ${pat.speed.toFixed(1)} em ${pat.moving} quadros)`);
+
+    // ---- bote: a menos de 4 tiles e à vista ele dispara a 1,3 x a velocidade por 0,7 s e depois descansa do bote ----
+    await setup([[20, 1]], { dog: [24, 1], chase: true, pounce: true });
+    const pn = await ev(page, () => {
+      const c = __game.cats[0]; const out = { started: false, speeds: [] };
+      for (let i = 0; i < 90; i++) { const x0 = c.cx, y0 = c.cy; __game.tick(1 / 60); if (c.pounce > 0) out.started = true; out.speeds.push([c.pounce > 0, Math.hypot(c.cx - x0, c.cy - y0) * 60]); }
+      return out;
+    });
+    const pSp = pn.speeds.filter(([on, v]) => on && v > 1).map((x) => x[1]), nSp = pn.speeds.filter(([on, v]) => !on && v > 1).map((x) => x[1]);
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+    ok(pn.started && pSp.length > 15 && avg(pSp) > 240 && avg(pSp) < 280, `a menos de 4 tiles o gato dá o bote: ${avg(pSp).toFixed(0)} px/s (1,3 x 200) por ${(pSp.length / 60).toFixed(1)} s`);
+    ok(nSp.length === 0 || avg(nSp) < 215, "depois do bote ele volta à velocidade normal e não dá outro logo em seguida");
+
+    // ---- pulo: o gato corta caminho por cima da caixa "X" (o agente e o cachorrinho têm de dar a volta) ----
+    // Fase 10: a caixa (27,17) tem parede em cima; o gato em (26,17) e o cachorrinho em (28,17): por cima da caixa são 2 passos, por fora 4
+    await setup([[26, 17]], { dog: [28, 17], chase: true });
+    const jump = await ev(page, () => {
+      const c = __game.cats[0], seen = new Set(); let first = null;
+      for (let i = 0; i < 40; i++) { __game.tick(1 / 60); if (!first && c.leg) first = c.leg.slice(); seen.add(Math.floor(c.cx / 32) + "," + Math.floor(c.cy / 32)); }
+      const m = __game.levels[9].map;
+      return { first, crossed: seen.has("27,17"), crate: m[17][27] };
+    });
+    ok(jump.crate === "X" && jump.crossed && jump.first && jump.first[0] === 27 && jump.first[1] === 17, "o gato pula a caixa X: vai direto por cima dela em vez de dar a volta");
+
+    // ---- ouvido: ele persegue pelo som, atrás de paredes, a até 7 passos (o agente só persegue o que vê) ----
+    const spots = await ev(page, () => {
+      const m = __game.levels[9].map, R = m.length, C = m[0].length, free = (c, r) => c >= 0 && r >= 0 && c < C && r < R && m[r][c] !== "#" && m[r][c] !== "X";
+      const los = (a, b) => { const ax = a[0] * 32 + 16, ay = a[1] * 32 + 16, dx = b[0] * 32 + 16 - ax, dy = b[1] * 32 + 16 - ay, dist = Math.hypot(dx, dy); for (let d = 0; d < dist; d += 8) if (!free(Math.floor((ax + dx * d / dist) / 32), Math.floor((ay + dy * d / dist) / 32))) return false; return true; };
+      const out = [];
+      for (const from of [[6, 9], [40, 10], [20, 25], [50, 20], [30, 31]]) {
+        const dist = new Map([[from.join(), 0]]), q = [from];
+        for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = dist.get(c + "," + r); for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr, k = nc + "," + nr; if (free(nc, nr) && !dist.has(k)) { dist.set(k, d + 1); q.push([nc, nr]); } } }
+        for (const [k, d] of dist) { const [c, r] = k.split(",").map(Number); if (d >= 5 && d <= 7 && !los(from, [c, r]) && Math.hypot(c - from[0], r - from[1]) < 8) { out.push([from, [c, r], d]); break; } }
+      }
+      return out;
+    });
+    ok(spots.length >= 2, `há lugares a 5 a 7 passos de distância sem linha de visão para testar o ouvido (${spots.length})`);
+    const heard = [];
+    for (const [cat, dog] of spots.slice(0, 3)) {
+      await setup([cat], { dog });
+      heard.push(await ev(page, () => { const c = __game.cats[0]; let chased = false; for (let i = 0; i < 90; i++) { __game.tick(1 / 60); if (c.mode === "chase") { chased = true; break; } } return chased; }));
+    }
+    ok(heard.length >= 2 && heard.every(Boolean), `o gato ouve o cachorrinho a 5 a 7 passos, sem ver, e começa a perseguir (${heard.join(", ")})`);
+    const far = await (async () => { await setup([[5, 1]], { dog: [58, 2] }); return ev(page, () => { const c = __game.cats[0]; let chased = false; for (let i = 0; i < 90; i++) { __game.tick(1 / 60); if (c.mode === "chase") chased = true; } return chased; }); })();
+    ok(!far, "longe demais (sem ver e sem ouvir) ele não persegue");
+
+    // ---- antecipação: corre para onde o cachorrinho vai estar; o gato de número ímpar fecha o caminho da saída ----
+    await setup([[5, 1], [6, 2]], { dog: [30, 1], chase: true });
+    const lead = await ev(page, () => {
+      const p = __game.player; p.moving = true; p.facing = "right";
+      const t0 = __game.catTarget(0), t1 = __game.catTarget(1);
+      p.moving = false; const t0s = __game.catTarget(0);
+      p.moving = true; p.facing = "left"; const t0l = __game.catTarget(0);
+      return { t0, t1, t0s, t0l, dogSteps: __game.exitSteps(30, 1), t1Steps: __game.exitSteps(t1[0], t1[1]) };
+    });
+    ok(lead.t0[0] === 34 && lead.t0[1] === 1 && lead.t0s[0] === 30 && lead.t0l[0] === 26, `o gato corre para onde o cachorrinho vai estar: 4 tiles à frente indo para a direita (coluna ${lead.t0[0]}), 4 para trás indo para a esquerda (${lead.t0l[0]}) e no próprio tile se ele está parado (${lead.t0s[0]})`);
+    ok(lead.t1Steps < lead.dogSteps && lead.t1Steps >= lead.dogSteps - 8, `o segundo gato fecha o caminho da saída: o alvo dele (${lead.t1}) está ${lead.dogSteps - lead.t1Steps} passos mais perto da saída que o cachorrinho`);
+
+    // ---- procura: perdeu o cachorrinho? vai até onde o viu por último e procura por perto antes de patrulhar ----
+    await setup([[10, 1]], { dog: [22, 1] });
+    const srch = await ev(page, () => {
+      const c = __game.cats[0], out = { modes: [], minDist: 1e9, seen: null };
+      for (let i = 0; i < 30; i++) __game.tick(1 / 60); // vê o cachorrinho em (22,1)
+      const p = __game.player; p.x = 58 * 32 + 4; p.y = 2 * 32 + 4; // some: longe demais para ver ou ouvir
+      for (let i = 0; i < 60 * 11; i++) {
+        __game.tick(1 / 60);
+        if (i % 30 === 0) out.modes.push(c.mode[0]);
+        if (c.mode === "search" || (i < 60 * 6)) out.minDist = Math.min(out.minDist, Math.hypot(c.cx - (22 * 32 + 16), c.cy - (1 * 32 + 16)) / 32);
+      }
+      out.seen = c.seen; out.sawSearch = out.modes.includes("s");
+      return out;
+    });
+    ok(srch.sawSearch && srch.minDist < 2, `perdendo o cachorrinho de vista o gato entra em modo de procura e vai até onde o viu (chegou a ${srch.minDist.toFixed(1)} tiles; modos: ${srch.modes.join("")})`);
+    ok(srch.modes.join("").endsWith("p"), "depois de procurar uns 6 s ele volta a patrulhar");
+
+    // ---- os gatos não andam um em cima do outro ----
+    await setup([[5, 1], [6, 2], [7, 1]], { dog: [50, 2], chase: true });
+    const stack = await ev(page, () => { // (até o primeiro gato chegar perto do cachorrinho parado: lá, sem captura, todos acabam no mesmo tile)
+      let close = 0, frames = 0; const p = __game.player;
+      for (let i = 0; i < 60 * 12; i++) { __game.tick(1 / 60); const cs = __game.cats; if (cs.some((c) => Math.hypot(c.cx - p.x - 12, c.cy - p.y - 12) < 160)) break; frames++; if (cs.some((a, i) => cs.some((b, j) => j > i && Math.hypot(a.cx - b.cx, a.cy - b.cy) < 24))) close++; }
+      return { close, frames };
+    });
+    ok(stack.frames > 300 && stack.close / stack.frames < 0.04, `3 gatos perseguindo não andam sobrepostos (${stack.close} de ${stack.frames} quadros a menos de 24 px)`);
+
+    // ---- captura e proteção ----
+    await setup([[40, 1]], { dog: [30, 1], noCatch: false });
+    const cap = await ev(page, () => { const c = __game.cats[0]; c.cx = __game.player.x + 12; c.cy = __game.player.y + 12; c.cool = 99; const l0 = __game.lives; __game.tick(0.016); return { l0, l1: __game.lives, atPost: c.cx === c.sx && c.cy === c.sy, inv: __game.invuln }; });
+    ok(cap.l1 === cap.l0 - 1 && cap.atPost && cap.inv > 1.5, `encostar num gato custa uma vida, o gato volta ao posto e o cachorrinho ganha proteção (${cap.l0} → ${cap.l1} vidas)`);
+    const cap2 = await ev(page, () => { const c = __game.cats[0]; c.cx = __game.player.x + 12; c.cy = __game.player.y + 12; const l0 = __game.lives; for (let i = 0; i < 60; i++) __game.tick(0.016); return { l0, l1: __game.lives }; });
+    ok(cap2.l1 === cap2.l0, "protegido, não perde outra vida em seguida");
+
+    // ---- poder do osso: o gato foge (esperto e rápido), quem o toca ganha +100 e ele volta tonto ----
+    await setup([[36, 1], [38, 2]], { dog: [30, 1], noCatch: false });
+    const pw = await ev(page, () => {
+      const b = __game.items.find((i) => i.bone), p = __game.player;
+      b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso
+      const modes = __game.cats.map((c) => c.mode), power = __game.power;
+      const d0 = __game.cats.map((c) => Math.hypot(c.cx - (p.x + 12), c.cy - (p.y + 12)));
+      let dist = 0, t = 0; const c0 = __game.cats[0];
+      for (let i = 0; i < 90; i++) { const x0 = c0.cx, y0 = c0.cy; __game.tick(1 / 60); dist += Math.hypot(c0.cx - x0, c0.cy - y0); t += 1 / 60; }
+      const d1 = __game.cats.map((c) => Math.hypot(c.cx - (p.x + 12), c.cy - (p.y + 12)));
+      return { modes, power, d0, d1, speed: dist / t, lives: __game.lives, toast: document.getElementById("toast").textContent };
+    });
+    ok(pw.power > 0 && pw.modes.every((m) => m === "flee") && /gatos/.test(pw.toast), `ao pegar o osso todos os gatos fogem (${pw.modes.join(", ")}) e o aviso diz isso`);
+    ok(pw.d1.every((d, i) => d > pw.d0[i] + 40), `fugindo, os gatos se afastam do cachorrinho (${pw.d0.map((d) => d.toFixed(0)).join("/")} → ${pw.d1.map((d) => d.toFixed(0)).join("/")} px)`);
+    ok(Math.abs(pw.speed - 144) < 12 && pw.lives === 3, `o gato foge a cerca de 144 px/s (0,72 x 200), mais rápido que o carteiro (medido ${pw.speed.toFixed(0)}), e o cachorrinho não é pego`);
+    const scare = await ev(page, () => {
+      const c = __game.cats[0], p = __game.player, s0 = __game.score; c.cx = p.x + 12; c.cy = p.y + 12; c.leg = null; __game.tick(0.016);
+      const got = { gain: __game.score - s0, slow: c.slow, hit: c.hitCool, atPost: Math.hypot(c.cx - c.sx, c.cy - c.sy) < 40, toast: document.getElementById("toast").textContent };
+      const s1 = __game.score; c.cx = p.x + 12; c.cy = p.y + 12; __game.tick(0.016); got.again = __game.score - s1; // de novo no mesmo poder: não vale
+      return got;
+    });
+    ok(scare.gain === 100 && scare.slow && scare.hit > 1.5 && scare.atPost && /assustou o gato/.test(scare.toast) && scare.again === 0, `tocar um gato com o poder vale +100, ele volta ao posto tonto e mais lento, e não vale de novo no mesmo poder (${JSON.stringify(scare)})`);
+    const endp = await ev(page, () => { for (let i = 0; i < 60 * 36 && __game.power > 0; i++) __game.tick(1 / 60); return { power: __game.power, modes: __game.cats.map((c) => c.mode), slow: __game.cats.map((c) => c.slow), toast: document.getElementById("toast").textContent }; });
+    ok(endp.power <= 0 && endp.modes.every((m) => m === "patrol") && endp.slow.every((x) => !x) && /gatos/.test(endp.toast), "quando o poder acaba os gatos voltam a patrulhar na velocidade normal");
+
+    // ---- agentes e gatos juntos: congelar os agentes não congela os gatos e vice-versa; o gancho de teste padrão congela os dois ----
+    await setup([[10, 20]], { dog: [58, 2] });
+    const fz = await ev(page, () => { const c = __game.cats[0], v = __game.vets[0]; const c0 = [c.cx, c.cy], v0 = [v.cx, v.cy]; for (let i = 0; i < 180; i++) __game.tick(1 / 60); const a = { catMoved: Math.hypot(c.cx - c0[0], c.cy - c0[1]) > 20, vetMoved: Math.hypot(v.cx - v0[0], v.cy - v0[1]) > 1 }; __game.catsThaw = false; const c1 = [c.cx, c.cy]; for (let i = 0; i < 180; i++) __game.tick(1 / 60); a.frozenToo = Math.hypot(c.cx - c1[0], c.cy - c1[1]) < 0.01; return a; });
+    ok(fz.catMoved && !fz.vetMoved && fz.frozenToo, "com os agentes congelados os gatos andam; sem 'descongelar' o gancho de teste congela os dois");
+
+    // ---- o desenho: pelagens diferentes, "!" ao perseguir ----
+    await setup([[10, 9], [12, 9], [14, 9], [16, 9]], { dog: [8, 10] });
+    const looks = await ev(page, async () => {
+      __game.catsThaw = false;
+      const cs = __game.cats; cs.forEach((c, i) => { c.mode = i === 0 ? "chase" : "patrol"; c.dir = 1; c.leg = null; });
+      __game.tick(0.001);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const k = __game.view.k * __game.view.zoom, ctx = document.getElementById("game").getContext("2d"), out = [];
+      const near = (d, i, c, t) => Math.abs(d[i] - c[0]) < t && Math.abs(d[i + 1] - c[1]) < t && Math.abs(d[i + 2] - c[2]) < t;
+      const FUR = [[232, 144, 58], [141, 150, 166], [58, 59, 69], [239, 233, 223]];
+      cs.forEach((c, idx) => {
+        const R = Math.round(16 * k), cx = Math.round((c.cx - __game.view.camX) * k), cy = Math.round((c.cy - __game.view.camY) * k);
+        const d = ctx.getImageData(cx - R, cy - R, 2 * R, 2 * R).data; let fur = 0, red = 0;
+        for (let i = 0; i < d.length; i += 4) { if (near(d, i, FUR[idx], 8)) fur++; }
+        const d2 = ctx.getImageData(cx - R, Math.max(0, cy - Math.round(36 * k)), 2 * R, Math.round(20 * k)).data;
+        for (let i = 0; i < d2.length; i += 4) if (d2[i] > 235 && d2[i + 1] < 100 && d2[i + 2] < 100) red++;
+        out.push({ fur, red });
+      });
+      return out;
+    });
+    ok(looks.every((l) => l.fur > 40) && looks[0].red > 10 && looks.slice(1).every((l) => l.red === 0), `cada gato tem a sua pelagem (laranja, cinza, preto, branco) e só o que persegue mostra o "!" vermelho (${looks.map((l) => l.fur + "/" + l.red).join(" ")})`);
+
+    // ---- o miau: um só a cada 4 s, mesmo com vários gatos notando juntos ----
+    await setup([[20, 1], [22, 2]], { dog: [26, 1] });
+    const meow = await ev(page, () => { const n0 = __game.sounds.filter((e) => e.name === "meow").length; for (let i = 0; i < 60; i++) __game.tick(1 / 60); const a = __game.sounds.filter((e) => e.name === "meow").length - n0; for (let i = 0; i < 60 * 3; i++) __game.tick(1 / 60); return { a, b: __game.sounds.filter((e) => e.name === "meow").length - n0 }; });
+    ok(meow.a === 1 && meow.b === 1, `dois gatos que notam o cachorrinho juntos dão um miau só, e nenhum outro nos 4 s seguintes (${meow.a}, ${meow.b})`);
+
+    // ---- estabilidade: 4 gatos e o cachorrinho passeando por 90 s: ninguém entra em parede, some ou trava ----
+    await setup([[5, 1], [30, 9], [50, 20], [20, 31]], { dog: [10, 10] });
+    const sim = await ev(page, () => {
+      const m = __game.levels[9].map, cs = __game.cats, start = cs.map((c) => [c.cx, c.cy]), bad = [], dirs = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"];
+      let travelled = cs.map(() => 0), last = cs.map((c) => [c.cx, c.cy]), key = null;
+      for (let i = 0; i < 90 * 60; i++) {
+        if (i % 120 === 0) { if (key) window.dispatchEvent(new KeyboardEvent("keyup", { key })); key = dirs[Math.floor(__game.time * 3) % 4]; window.dispatchEvent(new KeyboardEvent("keydown", { key })); }
+        __game.tick(1 / 60);
+        cs.forEach((c, j) => { const col = Math.floor(c.cx / 32), row = Math.floor(c.cy / 32); if (!Number.isFinite(c.cx) || !Number.isFinite(c.cy) || m[row][col] === "#") bad.push([j, col, row, m[row] && m[row][col]]); travelled[j] += Math.hypot(c.cx - last[j][0], c.cy - last[j][1]); last[j] = [c.cx, c.cy]; });
+      }
+      window.dispatchEvent(new KeyboardEvent("keyup", { key }));
+      return { bad: bad.slice(0, 3), travelled: travelled.map((t) => Math.round(t)), lives: __game.lives, state: __game.state };
+    });
+    ok(sim.bad.length === 0 && sim.travelled.every((t) => t > 600), `em 90 s ninguém entra em parede nem trava (andaram ${sim.travelled.join(", ")} px)${sim.bad.length ? " — problema: " + JSON.stringify(sim.bad) : ""}`);
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };

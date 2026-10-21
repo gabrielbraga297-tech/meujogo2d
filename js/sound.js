@@ -16,9 +16,9 @@
   else root.Sound = api;
 })(typeof window !== "undefined" ? window : globalThis, function (root) {
   const KEY = "cachorrinho.som.v1";   // preferência guardada: {"m":0|1 (mudo),"v":volume 0..1}
-  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick"]);
+  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "meow"]);
   // Duração máxima de cada som, em segundos (o som audível nunca passa disso).
-  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2 });
+  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, meow: 0.45 });
   const DEFAULT_VOLUME = 0.35;        // ganho mestre padrão (baixo e agradável)
   const MIN_GAP_MS = 60;              // o mesmo som não repete antes disso
   const MAX_VOICES = 8;               // no máximo 8 sons ao mesmo tempo
@@ -238,6 +238,12 @@
       });
     },
 
+    // O gato nota o cachorrinho: "miau" curto. Dente de serra que sobe (520 -> 880 Hz) e desce (880 -> 480 Hz) por um passa-baixa que abre e fecha como a vogal "iau", com vibrato no fim.
+    meow(s) {
+      s.tone({ at: 0, dur: 0.15, f: 520, f2: 880, type: "sawtooth", lp: 900, lp2: 2600, q: 4, gain: 0.4, a: 0.02, r: 0.03, sus: 0.8 });
+      s.tone({ at: 0.14, dur: 0.26, f: 880, f2: 480, type: "sawtooth", lp: 2600, lp2: 700, q: 4, vib: [18, 12], gain: 0.4, a: 0.02, r: 0.09, sus: 0.45 });
+    },
+
     // Escolher um reforço no menu: "plim" senoidal curto.
     pick(s) {
       s.tone({ at: 0, dur: 0.18, f: hz("G6"), type: "sine", gain: 0.55, a: 0.01, r: 0.04, sus: 0.02 });
@@ -246,7 +252,7 @@
   };
 
   // Ajuste fino de volume de cada som (para todos soarem com força parecida).
-  const LEVEL = { ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2 };
+  const LEVEL = { ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2, meow: 1.0 };
 
   // Agenda o som `name` em `destination` (um nó de um BaseAudioContext qualquer, real ou offline) a partir do instante `t0` (s).
   // Devolve a duração do som em segundos (0 se o nome não existe). Não depende de nenhum estado: pode ser chamada à vontade.
