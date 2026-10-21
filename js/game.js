@@ -3099,7 +3099,7 @@
   // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
     if (power > 0) return;
-    const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão)
+    const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0) + (fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? 26 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão e da faixa dos efeitos)
     for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
       const dx = v.cx - ox, dy = v.cy - oy;
