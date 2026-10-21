@@ -3894,30 +3894,107 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("0.10.0: cidade de ruas largas nas Fases 4 a 10 (vários caminhos, sem labirinto)", async () => {
-    const NV = { 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6 };
-    const city = {}, paths = [];
-    for (const n of [4, 5, 6, 7, 8, 9, 10]) {
-      const G = n === 4 ? G4 : n === 5 ? G5 : grid(mapOf(n)), M = G.MAP, R = M.length, C = M[0].length, P = G.find("P")[0], E = G.find("E"), V = G.find("V");
-      let floors = 0, corridors = 0, ends = 0;
-      for (let r = 1; r < R - 1; r++) for (let c = 1; c < C - 1; c++) if (G.free(c, r)) {
-        floors++; const k = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => G.free(c + dc, r + dr)).length; if (k <= 2) corridors++; if (k === 1) ends++;
+  await section("0.10.0: labirintos com desenho de cidade nas Fases 1 a 10 (quarteirões ligados por ruas; Fases 1 a 5 mais fáceis, 9 e 10 as mais difíceis)", async () => {
+    await fresh(page);
+    const LV = await ev(page, () => __game.levels.map((l) => ({ id: l.id, map: l.map, maze: l.maze, blocks: l.blocks, nv: l.vets.length })));
+    const SIZE = { 1: [25, 18], 2: [25, 18], 3: [25, 18], 4: [41, 29], 5: [43, 29], 6: [51, 31], 7: [51, 39], 8: [53, 39], 9: [61, 39], 10: [63, 41] };
+    const NV = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6 };
+    const DOORS = { 1: 0, 2: 0, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 6, 10: 6 }, WALLS = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 3, 6: 4, 7: 4, 8: 5, 9: 6, 10: 6 };
+    const ROUTES = { 1: 3, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3, 9: 3, 10: 3 };
+    const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    // caminhos entre duas células sem célula em comum (fluxo máximo com capacidade 1 por célula)
+    const disjoint = (adj, s, t) => {
+      const cap = new Map(), g = new Map(), add = (u, v, c) => { cap.set(u + ">" + v, (cap.get(u + ">" + v) || 0) + c); if (!cap.has(v + ">" + u)) cap.set(v + ">" + u, 0); (g.get(u) || g.set(u, []).get(u)).push(v); (g.get(v) || g.set(v, []).get(v)).push(u); };
+      for (const [v, ns] of adj) { add(v + "i", v + "o", v === s || v === t ? 99 : 1); for (const n of ns) add(v + "o", n + "i", 1); }
+      let flow = 0;
+      for (;;) {
+        const prev = new Map([[s + "i", null]]), q = [s + "i"];
+        for (let k = 0; k < q.length && !prev.has(t + "o"); k++) for (const v of g.get(q[k]) || []) if (!prev.has(v) && cap.get(q[k] + ">" + v) > 0) { prev.set(v, q[k]); q.push(v); }
+        if (!prev.has(t + "o")) return flow;
+        for (let v = t + "o"; prev.get(v) !== null; v = prev.get(v)) { const u = prev.get(v); cap.set(u + ">" + v, cap.get(u + ">" + v) - 1); cap.set(v + ">" + u, cap.get(v + ">" + u) + 1); }
+        flow++;
       }
-      const cx = C >> 1, cy = R >> 1, d = G.distances(P), routes = G.routes(P, E);
-      const exitD = Math.min(...E.map((t) => d.get(t + "") ?? 1e9));
-      paths.push(exitD);
-      city[n] = { C, R, floors, corridors, ends, routes, exitD, nV: V.length, border: [...M[0], ...M[R - 1], ...M.map((r) => r[0]), ...M.map((r) => r[C - 1])].every((ch) => ch === "#"),
-        opposite: (P[0] < C / 2) !== (E[0][0] < C / 2) && (P[1] < R / 2) !== (E[0][1] < R / 2),
-        yard: V.every(([c, r]) => Math.abs(c - cx) <= 2 && Math.abs(r - cy) <= 1) && [[-3, -2], [3, -2], [-3, 2], [3, 2]].every(([dc, dr]) => M[cy + dr][cx + dc] === "X"),
-        reach: V.every((t) => d.has(t + "")) };
+    };
+    const info = {};
+    for (const L of LV) {
+      const M = L.map, R = M.length, C = M[0].length, ch = (c, r) => (c >= 0 && r >= 0 && c < C && r < R ? M[r][c] : "#");
+      const free = (c, r) => ch(c, r) !== "#" && ch(c, r) !== "X";
+      const { x: cx, y: cy, p, e } = L.maze, nx = cx.length, ny = cy.length;
+      const inCell = (c, r) => cx.some(([x0, w]) => c >= x0 && c < x0 + w) && cy.some(([y0, h]) => r >= y0 && r < y0 + h);
+      let cellsOpen = true;
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let c = cx[i][0]; c < cx[i][0] + cx[i][1]; c++) for (let r = cy[j][0]; r < cy[j][0] + cy[j][1]; r++) if (ch(c, r) === "#") cellsOpen = false;
+      // ruas: duas células vizinhas estão ligadas se há chão no prédio entre elas (dentro da faixa da célula)
+      const adj = new Map(), widths = [];
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) adj.set(i + "," + j, []);
+      const link = (a, b, w) => { adj.get(a).push(b); adj.get(b).push(a); widths.push(w); };
+      let inBand = 0;
+      const band = new Set();
+      for (let i = 0; i < nx - 1; i++) for (let j = 0; j < ny; j++) {
+        const gx0 = cx[i][0] + cx[i][1], gx1 = cx[i + 1][0] - 1; let w = 0;
+        for (let r = cy[j][0]; r < cy[j][0] + cy[j][1]; r++) { if (free(gx0, r)) w++; for (let c = gx0; c <= gx1; c++) band.add(r * C + c); }
+        if (w) link(i + "," + j, i + 1 + "," + j, w);
+      }
+      for (let i = 0; i < nx; i++) for (let j = 0; j < ny - 1; j++) {
+        const gy0 = cy[j][0] + cy[j][1], gy1 = cy[j + 1][0] - 1; let w = 0;
+        for (let c = cx[i][0]; c < cx[i][0] + cx[i][1]; c++) { if (free(c, gy0)) w++; for (let r = gy0; r <= gy1; r++) band.add(r * C + c); }
+        if (w) link(i + "," + j, i + "," + (j + 1), w);
+      }
+      let stray = 0, floors = 0;
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (free(c, r)) { floors++; if (!inCell(c, r) && !band.has(r * C + c)) stray++; }
+      const deg = [...adj.values()].map((a) => a.length), cells = nx * ny, edges = widths.length;
+      const P = []; const E = []; const V = []; for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) { const k = ch(c, r); if (k === "P") P.push([c, r]); if (k === "E") E.push([c, r]); if (k === "V") V.push([c, r]); }
+      // distância em passos do início à saída (tudo aberto)
+      const dist = new Map([[P[0] + "", 0]]), q = [P[0]];
+      for (let k = 0; k < q.length; k++) for (const [dc, dr] of DIRS) { const n = [q[k][0] + dc, q[k][1] + dr]; if (free(n[0], n[1]) && !dist.has(n + "")) { dist.set(n + "", dist.get(q[k] + "") + 1); q.push(n); } }
+      info[L.id] = { C, R, M, ch, free, cx, cy, nx, ny, p, e, cellsOpen, stray, cells, edges, dead: deg.filter((d) => d === 1).length, wide: widths.filter((w) => w !== 1).length, viela: widths.filter((w) => w === 1).length,
+        routes: disjoint(adj, p[0] + "," + p[1], e[0] + "," + e[1]), P, E, V, exitD: Math.min(...E.map((t) => dist.get(t + "") ?? 1e9)), reach: V.every((t) => dist.has(t + "")), floors,
+        border: [...M[0], ...M[R - 1], ...M.map((r) => r[0]), ...M.map((r) => r[C - 1])].every((k) => k === "#"), blocks: L.blocks };
     }
-    for (const n of [4, 5, 6, 7, 8, 9, 10]) {
-      const c = city[n];
-      ok(c.border && c.nV === NV[n] && c.opposite && c.reach, `Fase ${n}: cidade de ${c.C} × ${c.R} tiles cercada por prédios, ${c.nV} agentes da carrocinha alcançáveis, início e saída em cantos opostos`);
-      ok(c.corridors / c.floors < 0.08 && c.ends / c.floors < 0.015, `Fase ${n}: ruas largas, sem labirinto (só ${(100 * c.corridors / c.floors).toFixed(1)}% dos tiles são corredores, curvas ou pontas e ${c.ends} pontas sem saída)`);
-      ok(c.routes >= 3 && c.yard, `Fase ${n}: do início à saída há ${c.routes} caminhos que não dividem nenhum tile, e os postos dos agentes ficam no pátio da praça central (com as 4 vans nos cantos)`);
+    for (let n = 1; n <= 10; n++) {
+      const c = info[n];
+      ok(c.C === SIZE[n][0] && c.R === SIZE[n][1] && c.border && c.P.length === 1 && c.E.length === 6 && c.V.length === NV[n] && c.reach, `Fase ${n}: labirinto de ${c.C} × ${c.R} tiles cercado por prédios, 1 início, saída 3 × 2 e ${c.V.length} agentes da carrocinha alcançáveis`);
+      ok(c.cellsOpen && c.stray === 0 && c.P[0][0] === c.cx[c.p[0]][0] && c.E.every(([x, y]) => x >= c.cx[c.e[0]][0] && x < c.cx[c.e[0]][0] + c.cx[c.e[0]][1] && y >= c.cy[c.e[1]][0] && y < c.cy[c.e[1]][0] + c.cy[c.e[1]][1]) && c.p[0] === 0 && c.e[0] === c.nx - 1,
+        `Fase ${n}: desenho de cidade: ${c.nx} × ${c.ny} quarteirões-células abertos ligados por ${c.edges} ruas (${c.wide} largas e ${c.viela} vielas de 1 tile); todo o chão é célula, rua ou nicho, nenhum pedaço solto (${c.stray}); início na borda esquerda e saída na direita`);
+      ok(c.routes >= ROUTES[n], `Fase ${n}: do início à saída há ${c.routes} caminhos que não passam pela mesma célula (pelo menos ${ROUTES[n]})`);
+      ok(c.blocks.filter((b) => !b.wall).length === DOORS[n] && c.blocks.filter((b) => b.wall).length === WALLS[n] && c.viela >= DOORS[n], `Fase ${n}: ${DOORS[n]} portas de bloco e ${WALLS[n]} paredes que se movem`);
     }
-    ok(paths.every((p, i) => i === 0 || p > paths[i - 1]) && paths[0] >= 60, `o caminho do início à saída cresce de uma fase para a seguinte (${paths.join(" < ")} passos)`);
+    // pátio da praça (Fases 4 a 10): célula central 7 × 5 com os postos dos agentes e as 4 vans nos cantos
+    for (let n = 4; n <= 10; n++) {
+      const c = info[n], cx0 = c.C >> 1, cy0 = c.R >> 1, mi = c.nx >> 1, mj = c.ny >> 1;
+      ok(c.cx[mi][1] === 7 && c.cy[mj][1] === 5 && c.V.every(([x, y]) => Math.abs(x - cx0) <= 2 && Math.abs(y - cy0) <= 1) && [[-3, -2], [3, -2], [-3, 2], [3, 2]].every(([dc, dr]) => c.ch(cx0 + dc, cy0 + dr) === "X"), `Fase ${n}: a praça da carrocinha (7 × 5) fica no centro, com os postos dos agentes e as 4 vans nos cantos`);
+    }
+    // quão confuso é: poucos becos sem saída nas Fases 1 a 5, muitos nas 9 e 10, e cada fase de 4 a 10 tem mais becos, quarteirões e caminho que a anterior
+    const deadN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => info[n].dead), cellsN = [4, 5, 6, 7, 8, 9, 10].map((n) => info[n].cells), pathN = [4, 5, 6, 7, 8, 9, 10].map((n) => info[n].exitD);
+    ok(deadN.slice(0, 5).every((d) => d <= 3) && deadN[8] >= 15 && deadN[9] >= 15, `becos sem saída por fase: ${deadN.join(", ")} (no máximo 3 nas Fases 1 a 5 e 15 ou mais nas Fases 9 e 10)`);
+    ok([4, 5, 6, 7, 8, 9].every((i) => deadN[i] >= deadN[i - 1]) && deadN[9] > deadN[3] + 10, `a partir da Fase 4 cada fase tem pelo menos tantos becos sem saída quanto a anterior (${deadN.slice(3).join(" ≤ ")})`);
+    ok(cellsN.every((v, i) => i === 0 || v >= cellsN[i - 1]) && cellsN[0] >= 30 && cellsN[6] >= 70, `o labirinto das Fases 4 a 10 tem cada vez mais quarteirões (${cellsN.join(", ")})`);
+    ok(pathN.every((v, i) => i === 0 || v > pathN[i - 1]) && pathN[0] >= 40, `o caminho do início à saída cresce de uma fase para a seguinte (${pathN.join(" < ")} passos)`);
+    // peças móveis: trilhos em chão livre, longe uma da outra e do início, da saída e dos postos; o chão fica ligado em qualquer posição delas
+    const problems = [];
+    for (let n = 3; n <= 10; n++) {
+      const c = info[n], tiles = (b, k) => { const [x, y] = b[k], [w, h] = b.size || [1, 1], o = []; for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) o.push([x + i, y + j]); return o; };
+      const tracks = c.blocks.map((b) => [...tiles(b, "from"), ...tiles(b, "to")]);
+      tracks.forEach((t, i) => { if (!t.every(([x, y]) => c.ch(x, y) === ".")) problems.push(`F${n} peça ${i}: trilho fora do chão`); });
+      for (let i = 0; i < tracks.length; i++) for (let j = i + 1; j < tracks.length; j++) { const d = Math.min(...tracks[i].flatMap((a) => tracks[j].map((b) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]))))); if (d < 3) problems.push(`F${n} peças ${i} e ${j} a ${d} tiles`); }
+      tracks.forEach((t, i) => { const near = (pts, lim) => Math.min(...t.flatMap((a) => pts.map((b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1])))) < lim; if (near(c.P, 6) || near(c.E, 5) || near(c.V, 3)) problems.push(`F${n} peça ${i} perto do início, da saída ou de um posto`); });
+      c.blocks.forEach((b, i) => { // portas: o nicho tem uma só saída (a viela); paredes: sempre sobra 1 tile livre na rua
+        if (!b.wall) { const [nx_, ny_] = b.to; if (DIRS.filter(([dc, dr]) => c.free(nx_ + dc, ny_ + dr)).length !== 1) problems.push(`F${n} porta ${i}: nicho com mais de uma saída`); }
+        else { const [fx, fy] = b.from, [tx, ty] = b.to, [w, h] = b.size, side = w === 1; const lane = side ? h + 1 : w + 1; if (Math.abs(fx - tx) + Math.abs(fy - ty) !== 1 || lane < 3 || lane > 5) problems.push(`F${n} parede ${i}: formato`); }
+      });
+      const trackSet = new Set(tracks.flat().map((t) => t + "")), fixed = [];
+      for (let r = 0; r < c.R; r++) for (let col = 0; col < c.C; col++) if (c.free(col, r) && !trackSet.has([col, r] + "")) fixed.push([col, r]);
+      const nb = c.blocks.length;
+      let worst = 0, bad = 0;
+      for (let mask = 0; mask < 1 << nb; mask++) {
+        const occ = new Set(); c.blocks.forEach((b, i) => { for (const t of tiles(b, (mask >> i) & 1 ? "to" : "from")) occ.add(t + ""); });
+        const seen = new Set([c.P[0] + ""]), q = [c.P[0]];
+        for (let k = 0; k < q.length; k++) for (const [dc, dr] of DIRS) { const nn = [q[k][0] + dc, q[k][1] + dr], key = nn + ""; if (c.free(nn[0], nn[1]) && !occ.has(key) && !seen.has(key)) { seen.add(key); q.push(nn); } }
+        if (!fixed.every((t) => seen.has(t + ""))) bad++;
+        if (!c.E.some((t) => seen.has(t + ""))) bad++;
+      }
+      if (bad) problems.push(`F${n}: em ${bad} combinações de posição das peças o chão não fica ligado ou a saída fica isolada`);
+    }
+    ok(problems.length === 0, `peças móveis das Fases 3 a 10: trilhos em chão livre, afastados (3+ tiles entre si, 6 do início, 5 da saída, 3 dos postos), nichos fechados, sempre 1 tile livre ao lado das paredes e o chão fica ligado em todas as combinações${problems.length ? " — problema: " + problems.slice(0, 4).join("; ") : ""}`);
     // desenho: asfalto nas ruas, telhado nos prédios (a partir da Fase 4); as Fases 1 a 3 mantêm o visual de antes
     const px = async (id) => ev(page, (id) => {
       __game.start(id); __game.freezeVets = true; __game.noCatch = true;
