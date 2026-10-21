@@ -5802,9 +5802,14 @@ const PAGE_HELPERS = () => {
     await page.reload(); await page.evaluate(PAGE_HELPERS); await injectFx(); await page.click("#btn-continue");
     const upBack = await state();
     ok(Object.values(upBack.up).join() === "2,1,1,0,3,0,0,0", `um jogo salvo antigo com reforços continua com os mesmos níveis e os novos em 0 (${Object.values(upBack.up).join(",")})`);
-    // um jogo salvo da 0.15.6 numa fase com tipos novos (Fases 11 a 20) só tem ossos comuns: não combina com a fase e é recusado sem erro
+    // um jogo salvo da 0.15.6 numa fase com tipos novos (Fases 11 a 20) só tem ossos comuns: é aceito e os tipos da fase são sorteados ao carregar (os que faltam pegar ganham primeiro os comuns)
     const old17 = clone((c) => { c.up = c.up.slice(0, 5); delete c.fx; for (const it of c.items) if (it[4] > 0) it[4] = 1; });
-    ok(await parse(old17) === false, "um jogo salvo da 0.15.6 numa Fase 11 a 20 (só ossos comuns) é recusado: a composição de ossos da fase mudou (ele não quebra o jogo, só não pode ser continuado)");
+    ok(await parse(old17) === true, "um jogo salvo da 0.15.6 numa Fase 11 a 20 (só ossos comuns) é aceito (os tipos de osso da fase são sorteados ao carregar)");
+    const mig = await ev(page, (sv) => { const st = Records.createStore(localStorage); st.setPlayer("Totó"); st.saveGame("Totó", sv); return true; }, old17);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
+    const migKinds = await ev(page, () => ({ level: __game.level, kinds: __game.items.filter((i) => i.bone).map((i) => i.kind).sort().join(), untakenScare: __game.items.filter((i) => i.bone && !i.taken && i.kind === "scare").length, untaken: __game.items.filter((i) => i.bone && !i.taken).length, want: null }));
+    const wantMix = await ev(page, (n) => JSON.stringify(__game.levels[n - 1].bones), migKinds.level);
+    ok(mig && migKinds.kinds.split(",").length === Number(wantMix) && migKinds.kinds.includes("scare") && migKinds.untakenScare >= Math.min(3, migKinds.untaken), `o jogo salvo da 0.15.6 continua com os tipos de osso da Fase ${migKinds.level} (${migKinds.kinds}); os ossos que faltam pegar têm os comuns primeiro (${migKinds.untakenScare} de ${migKinds.untaken})`);
   });
 
   // =====================================================================
@@ -5969,7 +5974,7 @@ const PAGE_HELPERS = () => {
     for (let k = 0; k <= 3; k++) hearRes.push([k, hear - k, await heardAt(k, pairs[hear - k]), await heardAt(k, pairs[hear - k + 1])]);
     ok(hearRes.every(([, , yes, no]) => yes === true && no === false), `Patas de veludo: o gato ouve o cachorrinho a ${hearRes.map(([, h]) => h).join(", ")} passos com ${hearRes.map(([k]) => k).join(", ")} níveis (a 1 passo a mais, sem ver, ainda não ouve: ${hearRes.map(([k, h, yes, no]) => `${k}: ${h} passos ${yes ? "ouve" : "NÃO ouve"}, ${h + 1} ${no ? "ouve" : "não ouve"}`).join("; ")})`);
 
-    // ---- Faro: seta dourada para o osso mais perto e, no nível 2, seta verde para a saída aberta (pixels em volta do cachorrinho) ----
+    // ---- Faro: seta laranja para o osso mais perto e, no nível 2, seta verde para a saída aberta (pixels em volta do cachorrinho) ----
     const arrows = async (lvl) => ev(page, async ([lvl]) => {
       const out = { lvl };
       const setup = (open, boneAt) => { // a Fase 11 com o cachorrinho num ponto qualquer; todos os itens pegos (saída aberta) ou só um osso que falta, `boneAt` = [dx, dy] dele em relação ao cachorrinho
@@ -5982,16 +5987,16 @@ const PAGE_HELPERS = () => {
         if (!open) __fx.putAt(last, boneAt[0], boneAt[1]);
         return { open: __game.state === "playing", last };
       };
-      const arrowAt = (tx, ty) => { // (px do canvas do ponto a 36 px do cachorrinho na direção (tx, ty) do mundo)
+      const arrowAt = (tx, ty) => { // (px do canvas do ponto a 40 px do cachorrinho na direção (tx, ty) do mundo)
         const p = __game.player, ox = p.x + 12, oy = p.y + 12, a = Math.atan2(ty - oy, tx - ox);
-        return __fx.px(ox + Math.cos(a) * 36, oy + Math.sin(a) * 36);
+        return __fx.px(ox + Math.cos(a) * 40, oy + Math.sin(a) * 40);
       };
-      const GOLD = [255, 210, 63], GREEN = [61, 220, 132];
+      const GOLD = [255, 159, 28], GREEN = [61, 220, 132];
       // 1) saída fechada, falta um osso a 150 px à direita (osso mais perto)
       setup(false, [150, 0]); await __fx.frame();
       let last = __game.items.find((i) => i.bone && !i.taken), [x, y, sx] = arrowAt(last.x + 8, last.y + 8);
       const e = __game.exit, [gx, gy] = arrowAt(e.x + e.w / 2, e.y + e.h / 2);
-      out.sx = sx; out.goldRight = __fx.count(x, y, 12 * sx, GOLD, 20); out.goldOther = [[-36, 0], [0, 36], [0, -36]].map(([dx, dy]) => { const p = __game.player; const [ox, oy] = __fx.px(p.x + 12 + dx, p.y + 12 + dy); return __fx.count(ox, oy, 12 * sx, GOLD, 20); });
+      out.sx = sx; out.goldRight = __fx.count(x, y, 12 * sx, GOLD, 20); out.goldOther = [[-40, 0], [0, 40], [0, -40]].map(([dx, dy]) => { const p = __game.player; const [ox, oy] = __fx.px(p.x + 12 + dx, p.y + 12 + dy); return __fx.count(ox, oy, 12 * sx, GOLD, 20); });
       out.greenClosed = __fx.count(gx, gy, 12 * sx, GREEN, 20); out.openClosed = __game.state;
       // o osso mais perto muda de lado: agora a 150 px embaixo
       __fx.putAt(last, 0, 150); await __fx.frame();
@@ -6000,7 +6005,7 @@ const PAGE_HELPERS = () => {
       // osso perto demais (60 px < 70): sem seta
       __fx.putAt(last, 60, 0); await __fx.frame();
       [x, y] = arrowAt(last.x + 8, last.y + 8); out.goldNear = __fx.count(x, y, 12 * sx, GOLD, 20);
-      // 2) tudo pego: a saída abre (seta verde, só no nível 2); não há mais osso (sem seta dourada)
+      // 2) tudo pego: a saída abre (seta verde, só no nível 2); não há mais osso (sem seta laranja)
       setup(true); await __fx.frame();
       const e2 = __game.exit, [hx, hy] = arrowAt(e2.x + e2.w / 2, e2.y + e2.h / 2);
       out.openState = __game.state; out.greenOpen = __fx.count(hx, hy, 12 * sx, GREEN, 20); out.noBone = __game.items.filter((i) => i.bone && !i.taken).length;
@@ -6008,8 +6013,8 @@ const PAGE_HELPERS = () => {
     }, [lvl]);
     const [a0, a1, a2] = [await arrows(0), await arrows(1), await arrows(2)];
     const th = 10 * a1.sx * a1.sx;
-    ok(a0.goldRight < 5 && a1.goldRight >= th && a2.goldRight >= th && a1.goldOther.every((n) => n < 5) && a1.goldDown >= th && a1.goldRightAfter < 5, `Faro: a seta dourada aparece do lado do osso mais perto só com o reforço (sem: ${a0.goldRight} pixels dourados; nível 1: ${a1.goldRight}; nível 2: ${a2.goldRight}), muda de lado quando o osso muda (embaixo: ${a1.goldDown}; o lado antigo: ${a1.goldRightAfter}) e não aparece nos outros lados (${a1.goldOther.join("/")})`);
-    ok(a1.goldNear < 5 && a2.goldNear < 5, `Faro: sem seta quando o osso está perto (a 60 px, menos de 70: ${a1.goldNear} e ${a2.goldNear} pixels dourados)`);
+    ok(a0.goldRight < 5 && a1.goldRight >= th && a2.goldRight >= th && a1.goldOther.every((n) => n < 5) && a1.goldDown >= th && a1.goldRightAfter < 5, `Faro: a seta laranja aparece do lado do osso mais perto só com o reforço (sem: ${a0.goldRight} pixels laranja; nível 1: ${a1.goldRight}; nível 2: ${a2.goldRight}), muda de lado quando o osso muda (embaixo: ${a1.goldDown}; o lado antigo: ${a1.goldRightAfter}) e não aparece nos outros lados (${a1.goldOther.join("/")})`);
+    ok(a1.goldNear < 5 && a2.goldNear < 5, `Faro: sem seta quando o osso está perto (a 60 px, menos de 70: ${a1.goldNear} e ${a2.goldNear} pixels laranja)`);
     ok(a2.openState === "playing" && a2.noBone === 0 && a2.greenOpen - a1.greenOpen >= th && Math.abs(a0.greenOpen - a1.greenOpen) < 6 && Math.abs(a2.greenClosed - a1.greenClosed) < 6, `Faro: a seta verde da saída só aparece com a saída aberta e o nível 2 (aberta: sem ${a0.greenOpen}, nível 1 ${a1.greenOpen}, nível 2 ${a2.greenOpen} pixels verdes; fechada: nível 1 ${a1.greenClosed}, nível 2 ${a2.greenClosed})`);
 
     // ---- Ímã de ração: raios de 80, 112 e 144 px (rações à vista vêm sozinhas, sempre ligado), nada atrás de parede nem além do raio ----

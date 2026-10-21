@@ -2322,7 +2322,10 @@
       }
       if (lifeItems < L.lifeMin || lifeItems > L.lifeMax || boneItems !== L.bones) return null; // a fase tem de ter a quantidade prevista de vidas extras e de ossos
       if (items4.filter((it) => it[3] === 1 && it[4] > 0).length > 1) return null; // no máximo 1 osso traz vida
-      if (items4.filter((it) => it[4] > 0).map((it) => BONE_KINDS[it[4] - 1]).sort().join() !== L.boneMix.slice().sort().join()) return null; // os tipos de osso têm de ser os da fase
+      let legacyBones = false; // jogo salvo da 0.15.6 numa fase com ossos de tipos novos: todos os ossos eram comuns; os tipos da fase são sorteados ao carregar (applySnapshot)
+      if (items4.filter((it) => it[4] > 0).map((it) => BONE_KINDS[it[4] - 1]).sort().join() !== L.boneMix.slice().sort().join()) { // os tipos de osso têm de ser os da fase
+        if (L.boneMixed && sv.fx === undefined && items4.every((it) => it[4] <= 1)) legacyBones = true; else return null;
+      }
       const pw = sv.pw === undefined ? 0 : sv.pw, vd = sv.vd === undefined ? L.vetSpawns.map(() => 0) : sv.vd;
       if (!num(pw, 0, 120) || pw > (L.bonePower ? L.bonePower + REINFORCE_BONE * upv.bone : 0) || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
       let bl = [], ba = [];
@@ -2357,7 +2360,7 @@
         }
       }
       if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, up: UP_KEYS.map((k) => upv[k]) };
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, legacyBones, up: UP_KEYS.map((k) => upv[k]) };
     } catch { return null; }
   }
 
@@ -2375,6 +2378,10 @@
   function applySnapshot(sv) {
     reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba, upgrades: Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])) });
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b > 0, b > 0 ? BONE_KINDS[b - 1] : null), { taken: t === 1 }));
+    if (sv.legacyBones) { // (jogo salvo da 0.15.6) os ossos que faltam pegar ganham primeiro os comuns, para a missão de sustos continuar possível
+      const mix = lv.boneMix.slice().sort((a, b) => (a === "scare" ? 0 : 1) - (b === "scare" ? 0 : 1)), bn = items.filter((i) => i.bone);
+      [...bn.filter((i) => !i.taken), ...bn.filter((i) => i.taken)].forEach((it, k) => { it.kind = mix[k]; });
+    }
     blocks.forEach((b, i) => { b.bt = normBt(b.d, sv.bl[i]); const r = blockRectAt(b.d, b.bt); b.rect.x = r.x; b.rect.y = r.y; });
     refreshBlockTiles();
     time = sv.time; livesLost = sv.lost; started = autoStart || sv.time > 0;
@@ -3226,11 +3233,11 @@
   // Efeitos dos ossos de tipo novo no cachorrinho: escudo dourado (pisca no fim), rastro do turbo e círculo do ímã.
   function drawDogFx() {
     const x = player.x + 12, y = player.y + 12;
-    if (fx.magnet > 0 && (fx.magnet > 2 || calm || Math.floor(time * 8) % 2 === 0)) { ctx.strokeStyle = "rgba(190,130,255,.45)"; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(x, y, MAGNET_RADIUS, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+    if (fx.magnet > 0 && (fx.magnet > 2 || calm || Math.floor(time * 8) % 2 === 0)) { ctx.setLineDash([8, 7]); ctx.beginPath(); ctx.arc(x, y, MAGNET_RADIUS, 0, Math.PI * 2); ctx.strokeStyle = "rgba(20,10,40,.45)"; ctx.lineWidth = 4.5; ctx.stroke(); ctx.strokeStyle = "rgba(205,150,255,.9)"; ctx.lineWidth = 2.5; ctx.stroke(); ctx.setLineDash([]); } // (contorno escuro: o círculo aparece também sobre chão claro)
     if (fx.turbo > 0) {
       const back = { left: [1, 0], right: [-1, 0], up: [0, 1], down: [0, -1] }[player.facing] || [-1, 0];
-      ctx.strokeStyle = "rgba(255,150,60,.85)"; ctx.lineWidth = 3;
-      for (const o of [-6, 0, 6]) { const px = x + back[0] * 14 + (back[1] ? o : 0), py = y + back[1] * 14 + (back[0] ? o : 0); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + back[0] * 12, py + back[1] * 12); ctx.stroke(); }
+      ctx.lineWidth = 4;
+      for (const [k, o] of [-8, -4, 0, 4, 8].entries()) { ctx.strokeStyle = k % 2 ? "rgba(255,214,60,.95)" : "rgba(255,120,40,.95)"; const px = x + back[0] * 14 + (back[1] ? o : 0), py = y + back[1] * 14 + (back[0] ? o : 0), len = 14 + (k % 2) * 6; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + back[0] * len, py + back[1] * len); ctx.stroke(); }
     }
     if (fx.shield > 0 && (fx.shield > 2 || calm || Math.floor(time * 8) % 2 === 0)) {
       ctx.fillStyle = "rgba(255,214,90,.2)"; ctx.strokeStyle = "rgba(255,214,90,.95)"; ctx.lineWidth = 3;
@@ -3244,12 +3251,12 @@
     const arrow = (tx, ty, color) => {
       const dx = tx - ox, dy = ty - oy, d = Math.hypot(dx, dy);
       if (d < 70) return; // já está perto: não precisa de seta
-      const a = Math.atan2(dy, dx), x = ox + Math.cos(a) * 36, y = oy + Math.sin(a) * 36;
-      ctx.fillStyle = color; ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * 9, y + Math.sin(a) * 9); ctx.lineTo(x + Math.cos(a + 2.5) * 7, y + Math.sin(a + 2.5) * 7); ctx.lineTo(x + Math.cos(a - 2.5) * 7, y + Math.sin(a - 2.5) * 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      const a = Math.atan2(dy, dx), x = ox + Math.cos(a) * 40, y = oy + Math.sin(a) * 40, r1 = 14, r2 = 11; // (setas maiores, com contorno claro e escuro: aparecem em qualquer chão)
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.lineTo(x + Math.cos(a + 2.5) * r2, y + Math.sin(a + 2.5) * r2); ctx.lineTo(x + Math.cos(a - 2.5) * r2, y + Math.sin(a - 2.5) * r2); ctx.closePath();
+      ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 2.5; ctx.stroke(); ctx.fillStyle = color; ctx.fill();
     };
     let best = null; for (const it of items) if (it.bone && !it.taken) { const d = Math.hypot(it.x + 8 - ox, it.y + 8 - oy); if (!best || d < best.d) best = { d, x: it.x + 8, y: it.y + 8 }; }
-    if (best) arrow(best.x, best.y, "#ffd23f");
+    if (best) arrow(best.x, best.y, "#ff9f1c");
     if (up.scent >= 2 && exitOpen()) arrow(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2, "#3ddc84");
   }
 
