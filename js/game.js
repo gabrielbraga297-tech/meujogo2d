@@ -2988,11 +2988,11 @@
   }
 
   // Indicador de perseguição (0.10.0): nas ruas largas o agente liga o "!" de longe, muitas vezes fora da tela (no celular, com zoom, quase sempre).
-  // Um agente que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
+  // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
     if (power > 0) return;
     const m = 16, ox = player.x + player.w / 2, oy = player.y + player.h / 2;
-    for (const v of vets) {
+    for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
       const dx = v.cx - ox, dy = v.cy - oy;
       let t = Infinity; // da posição do cachorrinho até a borda da tela (menos a margem), na direção do agente
