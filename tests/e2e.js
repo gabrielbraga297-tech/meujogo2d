@@ -144,6 +144,9 @@ const PAGE_HELPERS = () => {
     __game.freezeVets = true;
     for (let i = 0; i < n; i++) __game.tick(0.05);
     for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+    // 0.15.6 (Fases 11 a 20): a saída também exige a missão. Com o poder do osso ainda ligado (os ossos já foram pegos), leva os agentes e os gatos até o cachorro para os sustos que faltam
+    const M = __game.levels[__game.level - 1].mission;
+    if (M && M.scare) for (const a of [...__game.vets, ...__game.cats]) { if (__game.postmen >= M.scare) break; if (a.slow) continue; const p = __game.player; a.cx = p.x + 12; a.cy = p.y + 12; a.leg = null; __game.tick(0.01); }
     const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
   }, Math.round(seconds / 0.05));
   // A Próxima fase abre a tela de reforços: escolhe `id` (por padrão "Pelo grosso", que não muda vidas nem velocidades) e clica em Próxima fase
@@ -3583,7 +3586,7 @@ const PAGE_HELPERS = () => {
     ok(f2.level === 2 && f2.state === "playing" && f2.up.bone === 1, "Começar a Fase 2 leva o reforço para a Fase 2");
     // ---- a última fase não tem reforço nem Próxima fase ----
     await playLevel(page, 20, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] }); await finishNow(page, 20);
-    ok(await page.isHidden("#reinforce") && await page.isHidden("#btn-next"), "depois da Fase 20 (a última) não há reforço para escolher");
+    ok(await ev(page, () => __game.state) === "won" && await page.isHidden("#reinforce") && await page.isHidden("#btn-next"), "depois da Fase 20 (a última) não há reforço para escolher (e a Fase 20 foi mesmo vencida: com a missão cumprida pelo finishNow)");
 
     // ---- efeitos de cada reforço (começando a Fase 2 com os níveis pedidos) ----
     const eff = await ev(page, () => {
@@ -5229,6 +5232,391 @@ const PAGE_HELPERS = () => {
     }
     await m.context().close();
   });
+
+  // =====================================================================
+  await section("0.15.6: missão para passar de fase (Fases 11 a 20), mais vidas e bônus", async () => {
+    // Nada aqui usa coordenadas fixas: os itens, os agentes e os gatos vêm do próprio jogo (ganchos __game.items, vets, cats, exit, postmen...); o cachorrinho é
+    // "teleportado" para cima do que o teste quer pegar (como finishNow) e os agentes e gatos são levados até ele para o susto.
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    const head = readme.indexOf("### Fases 11 a 20");
+    const secR = readme.slice(head, readme.indexOf("**Labirintos com desenho de cidade", head));
+    const T = {};
+    for (const l of secR.split("\n")) { if (!l.startsWith("| ") || /^\|[-| ]+\|$/.test(l)) continue; const c = l.split("|").slice(1, -1).map((x) => x.trim().replace(/\*/g, "")); T[c[0]] = c.slice(1); }
+    const row = (prefix) => { const k = Object.keys(T).find((x) => x.startsWith(prefix)); return k ? T[k] : []; };
+    const capRow = row("Máximo de vidas").map(Number), missRow = row("Missão"), bonusRow = row("Bônus por cumprir").map((x) => Number(x.replace(/\D/g, ""))), minRow = row("Perda por vida").map((x) => x.split("/").map((y) => Number(y.replace(/\D/g, ""))));
+    const SPEC = {}; // o que o README manda para cada fase de 11 a 20
+    missRow.forEach((cell, i) => {
+      const m = (re) => (re.test(cell) ? Number(cell.match(re)[1]) : 0);
+      SPEC[11 + i] = { cap: capRow[i], bonus: bonusRow[i], pen: (minRow[i] || [])[0], min: (minRow[i] || [])[1], bones: m(/todos os (\d+) ossos/), scare: m(/assustar (\d+)/), rations: m(/(\d+) rações/), cell };
+    });
+    const CAPS = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10]; // máximo de vidas de cada fase (sem reforço)
+    await fresh(page);
+
+    // ---- ferramentas dentro da página ----
+    const injectKit = () => ev(page, () => {
+      const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const el = (id) => document.getElementById(id);
+      const lcg = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+      const tp = (it) => { __game.player.x = it.x - 4; __game.player.y = it.y - 4; };
+      const agents = () => [...__game.vets, ...__game.cats];
+      const K = window.__mk = {
+        frame,
+        wait(sec) { for (let i = 0, n = Math.round(sec / 0.05); i < n && __game.state === "playing"; i++) __game.tick(0.05); },
+        // começa a fase com os agentes parados e fora do caminho (longe de qualquer item), ninguém pega o cachorrinho e nenhum item tem vida extra
+        setup(id, o = {}) {
+          __game.autoStart = true; __game.setRand(lcg(o.seed || 11)); __game.start(id, o.start); __game.setRand(null);
+          __game.freezeVets = true; __game.catsThaw = false; __game.noCatch = true;
+          for (let k = 0; k < (o.lose || 0); k++) { // perde vidas de verdade (cada uma custa os pontos da fase)
+            __game.noCatch = true; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05); // (passa a proteção sem risco de esmagamento)
+            __game.noCatch = false; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.noCatch = true;
+          }
+          if (!o.keepLife) for (const it of __game.items) it.life = false; // (o jogo salvo exige a quantidade sorteada de vidas escondidas: os testes que salvam mantêm)
+          if (!o.keepAgents) for (const a of agents()) { a.cx = -1000; a.cy = -1000; }
+          return K.info();
+        },
+        info() { const L = __game.levels[__game.level - 1]; return { id: L.id, rations: L.rations, bones: L.bones, minPoints: L.minPoints, lifePenalty: L.lifePenalty, bonusStep: L.bonusStep, mission: L.mission, missionBonus: L.missionBonus, lifeCap: L.lifeCap, vets: L.vets.length, cats: L.cats.length }; },
+        items(kind) { return __game.items.filter((it) => !it.taken && (kind === "bone" ? it.bone : kind === "ration" ? !it.bone : true)); },
+        grab(kind, n = 999) { let g = 0; for (const it of K.items(kind)) { if (g >= n || __game.state !== "playing") break; tp(it); __game.tick(0.01); g++; } return g; },
+        // assusta `n` (ainda não assustados neste poder), alternando agente e gato: leva cada um até o cachorrinho; depois o guarda longe de novo
+        scare(n, who = "mix", park = true) {
+          const V = __game.vets, C = __game.cats;
+          const list = who === "vet" ? V : who === "cat" ? C : Array.from({ length: Math.max(V.length, C.length) * 2 }, (_, i) => (i % 2 ? C : V)[i >> 1]).filter(Boolean);
+          let g = 0;
+          for (const a of list) {
+            if (g >= n || __game.state !== "playing") break;
+            if (a.slow) continue;
+            const before = __game.postmen, p = __game.player; a.cx = p.x + 12; a.cy = p.y + 12; a.leg = null; __game.tick(0.01);
+            if (__game.postmen > before) g++;
+            if (park) { a.cx = -1000; a.cy = -1000; }
+          }
+          return g;
+        },
+        home() { const L = __game.levels[__game.level - 1], r = L.map.findIndex((row) => row.includes("P")); __game.player.x = L.map[r].indexOf("P") * 32 + 4; __game.player.y = r * 32 + 4; },
+        toExit() { const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); },
+        finish() { K.grab("bone"); const M = __game.levels[__game.level - 1].mission; if (M && M.scare) K.scare(M.scare); K.grab("ration"); K.toExit(); return __game.state; },
+        async snap() {
+          await frame(); const b = el("mission-bar");
+          return { state: __game.state, collected: __game.collected, bones: __game.bonesGot, postmen: __game.postmen, power: __game.power, score: __game.score, lives: __game.lives, toast: el("toast").textContent, bar: b.textContent, hidden: b.classList.contains("hidden") || getComputedStyle(b).display === "none", done: b.classList.contains("done") };
+        },
+        // a fase com a missão cumprida MENOS a parte `missing` ("bones", "scare", "rations" ou null = nada falta) e os pontos mínimos já alcançados; depois cumpre o que faltava e sai
+        async scenario(id, missing, o = {}) {
+          const I = K.setup(id, o), M = I.mission, out = { id, missing, info: I };
+          K.grab("bone", M.bones ? (missing === "bones" ? I.bones - 1 : I.bones) : (M.scare ? 1 : 0));
+          if (M.scare) K.scare(missing === "scare" ? M.scare - 1 : M.scare);
+          if (M.rations) K.grab("ration", missing === "rations" ? M.rations - 1 : M.rations);
+          while (__game.score < I.minPoints && __game.collected < I.rations - 1 && !(missing === "rations" && __game.collected >= M.rations - 1)) K.grab("ration", 1);
+          out.pre = { collected: __game.collected, bones: __game.bonesGot, postmen: __game.postmen, score: __game.score, power: __game.power };
+          K.wait(3.1); out.t1 = await K.snap(); // o aviso de pontos suficientes (ou de meta e missão cumpridas) já saiu
+          K.wait(3); K.toExit(); out.closed = await K.snap(); // ao tocar a saída
+          if (missing) {
+            K.home(); // sai de cima da saída
+            if (missing === "bones") { K.grab("bone"); K.wait(2.8); } else if (missing === "scare") K.scare(1); else K.grab("ration", 1);
+            K.wait(0.1); out.open = await K.snap();
+            K.toExit(); out.won = await K.snap();
+          }
+          if (__game.state === "won") {
+            const ms = Math.round(__game.time * 10) * 100, bonus = Records.timeBonus(ms, I.bonusStep);
+            out.calc = { expect: __game.collected * 100 + __game.bonesGot * 150 + __game.postmen * 100 + bonus + I.missionBonus - __game.livesLost * I.lifePenalty - __game.retries * 100, bonus, lost: __game.livesLost, collected: __game.collected, bones: __game.bonesGot, postmen: __game.postmen, shown: Number(el("win-points").textContent), breakdown: el("win-breakdown").textContent, title: el("win-title").textContent };
+          }
+          return out;
+        },
+      };
+    });
+    await injectKit();
+    const partText = (L, m) => ({ bones: `ossos ${L.bones - (m === "bones" ? 1 : 0)}/${L.bones}`, scare: `sustos ${L.mission.scare - (m === "scare" ? 1 : 0)}/${L.mission.scare}`, rations: `rações ${L.mission.rations - (m === "rations" ? 1 : 0)}/${L.mission.rations}` });
+    const missionText = (L) => [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean).join(" e ");
+
+    // =====================================================================
+    // (a) os dados: o jogo tem a missão, o máximo de vidas e o bônus que o README diz
+    // =====================================================================
+    const LV = await ev(page, () => __game.levels.map((l) => ({ id: l.id, rations: l.rations, bones: l.bones, minPoints: l.minPoints, lifePenalty: l.lifePenalty, bonePower: l.bonePower, lifeCap: l.lifeCap, mission: l.mission, missionBonus: l.missionBonus, vets: l.vets.length, cats: l.cats.length })));
+    ok(LV.length === 20 && Object.keys(SPEC).length === 10 && Object.values(SPEC).every((s) => s.cap >= 6 && s.bonus >= 200 && s.min >= 2300 && s.cell), `o README traz o máximo de vidas, a missão e o bônus das 10 fases (${Object.keys(SPEC).length} colunas lidas: caps ${capRow.join(",")}; bônus ${bonusRow.join(",")})`);
+    ok(LV.slice(0, 10).every((l) => !l.mission && l.missionBonus === 0 && l.lifeCap === 5), "as Fases 1 a 10 não têm missão, nem bônus de missão, e o máximo de vidas é 5");
+    const dataBad = [];
+    for (let n = 11; n <= 20; n++) {
+      const L = LV[n - 1], S = SPEC[n], M = L.mission || {};
+      if (L.lifeCap !== S.cap || S.cap !== CAPS[n - 1]) dataBad.push(`F${n}: vidas ${L.lifeCap} / README ${S.cap}`);
+      if (!L.mission || !!M.bones !== (S.bones > 0) || (S.bones && S.bones !== L.bones) || (M.scare || 0) !== S.scare || (M.rations || 0) !== S.rations) dataBad.push(`F${n}: missão ${JSON.stringify(M)} / README "${S.cell}"`);
+      if (L.missionBonus !== S.bonus || S.bonus !== 200 + 50 * (n - 11)) dataBad.push(`F${n}: bônus ${L.missionBonus} / README ${S.bonus}`);
+      if (L.minPoints !== S.min || L.lifePenalty !== S.pen) dataBad.push(`F${n}: pontos ${L.minPoints}/${L.lifePenalty} / README ${S.min}/${S.pen}`);
+      if (L.mission && !(L.mission.bones || L.mission.scare || L.mission.rations)) dataBad.push(`F${n}: missão vazia`);
+      if (M.rations > L.rations) dataBad.push(`F${n}: exige mais rações (${M.rations}) do que há (${L.rations})`);
+      if (M.scare && !(L.bonePower > 0 && L.bones > 0 && L.vets + L.cats >= M.scare)) dataBad.push(`F${n}: sustos impossíveis`);
+    }
+    ok(dataBad.length === 0, `Fases 11 a 20: a missão, o máximo de vidas (${CAPS.slice(10).join(", ")}) e o bônus (200 a 650, de 50 em 50) do jogo são os do README, e todas as missões têm jeito de ser cumpridas${dataBad.length ? " — problema: " + dataBad.join("; ") : ""}`);
+    ok(Object.values(SPEC).map((s) => (s.bones ? "B" : "") + (s.scare ? "S" : "") + (s.rations ? "R" : "")).join(" ") === "B S R BS S R BS SR BS BSR", `os tipos de missão de cada fase: ${Object.values(SPEC).map((s) => (s.bones ? "ossos" : "") + (s.scare ? "+sustos" : "") + (s.rations ? "+rações" : "")).join(" | ")}`);
+
+    // =====================================================================
+    // (b)(c)(d)(e) cada missão, uma parte de cada vez: tudo cumprido menos UMA parte (e os pontos mínimos já alcançados): a saída fica fechada; cumprida a parte, abre e vence
+    // =====================================================================
+    const bad = [], seen = [];
+    let winText = "";
+    for (let n = 11; n <= 20; n++) {
+      const L = { ...LV[n - 1] }, M = L.mission, parts = ["bones", "scare", "rations"].filter((k) => M[k]);
+      for (const miss of [...parts, null]) {
+        const r = await ev(page, ([n, miss]) => __mk.scenario(n, miss), [n, miss]), tag = `Fase ${n} sem ${miss || "nada"}`;
+        const problems = [];
+        if (r.pre.score < L.minPoints) problems.push(`os pontos não bastavam (${r.pre.score})`);
+        if (r.pre.collected >= L.rations && r.pre.bones >= L.bones) problems.push("já pegou tudo");
+        if (miss) {
+          const left = partText(L, miss)[miss === "bones" ? "bones" : miss];
+          // (o aviso sai quando os pontos chegam ao mínimo; um osso pego há pouco (aviso do poder) o adia até o fim do aviso dele. Sem osso, ele sai na hora, quando ainda faltam rações)
+          const atCross = miss === "rations" && !M.bones && !M.scare ? `rações ${Math.ceil(L.minPoints / 100)}/${M.rations}` : left;
+          if (r.t1.toast !== `Pontos suficientes! Falta a missão: ${atCross}.`) problems.push(`aviso dos pontos: "${r.t1.toast}" (esperado "${atCross}")`);
+          if (r.t1.bar !== `Missão: ${left}` || r.t1.hidden || r.t1.done) problems.push(`faixa: "${r.t1.bar}" ${r.t1.hidden ? "oculta" : ""}${r.t1.done ? " .done" : ""}`);
+          if (r.closed.state !== "playing") problems.push(`a saída venceu sem ${miss}`);
+          if (r.closed.toast !== `Falta a missão: ${missionText(L)} (${left}).`) problems.push(`aviso da saída: "${r.closed.toast}"`);
+          if (r.open.state !== "playing" || r.open.bar !== "Missão cumprida!" || !r.open.done || r.open.toast !== `Meta de ${L.minPoints} pontos e missão cumpridas! A saída está aberta.`) problems.push(`ao cumprir: ${r.open.state} "${r.open.bar}" ${r.open.done ? ".done" : "sem .done"} "${r.open.toast}"`);
+          if (r.won.state !== "won") problems.push("cumprida a missão, a saída não venceu");
+        } else {
+          if (r.t1.toast !== `Meta de ${L.minPoints} pontos e missão cumpridas! A saída está aberta.` || r.t1.bar !== "Missão cumprida!" || !r.t1.done) problems.push(`com tudo cumprido: aviso "${r.t1.toast}", faixa "${r.t1.bar}"`);
+          if (r.closed.state !== "won") problems.push("com tudo cumprido a saída não venceu");
+        }
+        const c = r.calc;
+        if (!c) problems.push("sem tela de vitória");
+        else {
+          const m = c.breakdown.match(/Rações: (\d+)(?: \+ ossos: (\d+))?(?: \+ [^:]+: (\d+))? \+ bônus de tempo: (\d+) \+ missão: (\d+)/);
+          if (!m || Number(m[1]) !== c.collected * 100 || Number(m[2]) !== c.bones * 150 || Number(m[4]) !== c.bonus || Number(m[5]) !== L.missionBonus || (c.postmen ? Number(m[3]) !== c.postmen * 100 : m[3] !== undefined)) problems.push(`tela de vitória: "${c.breakdown}"`);
+          if (c.shown !== c.expect || (m && Number(m[1]) + Number(m[2] || 0) + Number(m[3] || 0) + Number(m[4]) + Number(m[5]) !== c.shown)) problems.push(`pontos ${c.shown} ≠ ${c.expect}`);
+          if (!new RegExp(`^Fase ${n} concluída`).test(c.title)) problems.push(`título "${c.title}"`);
+          if (n === 12 && miss === "scare") winText = c.breakdown + " = " + c.shown;
+        }
+        if (problems.length) bad.push(`${tag}: ${problems.join("; ")}`);
+        seen.push(tag);
+      }
+    }
+    ok(bad.length === 0, `Fases 11 a 20, ${seen.length} cenários (tudo cumprido menos uma parte da missão, com os pontos mínimos já alcançados, e depois cumprindo a parte): a saída só abre com a missão inteira; avisos "Pontos suficientes! Falta a missão", "Falta a missão" ao tocar a saída e "Meta de N pontos e missão cumpridas!"; a faixa mostra só o que falta e depois "Missão cumprida!"; a vitória soma o bônus da missão (por exemplo: ${winText})${bad.length ? " — problema: " + bad.join(" || ") : ""}`);
+
+    // ---- os sustos: carteiros e gatos contam; o mesmo agente só uma vez por poder, e a soma é de todos os poderes da fase; sem poder não conta ----
+    const sc = await ev(page, async () => {
+      const K = __mk, out = {};
+      K.setup(12, { keepAgents: true });
+      out.start = await K.snap();
+      K.grab("bone", 1); out.power1 = __game.power;
+      K.scare(1, "vet"); out.s1 = (await K.snap()).bar;
+      const v0 = __game.vets[0]; const p = __game.player; v0.cx = p.x + 12; v0.cy = p.y + 12; v0.leg = null; __game.tick(0.01); out.again = __game.postmen; // o mesmo carteiro de novo, no mesmo poder: não conta
+      K.scare(1, "cat"); out.s2 = (await K.snap()); // um gato: conta
+      K.grab("bone", 1); // outro osso: poder novo, todos podem ser assustados de novo
+      const g = K.scare(1, "vet"); out.afterBone = { g, postmen: __game.postmen };
+      out.fin = await K.snap(); // 3 sustos: missão cumprida (os pontos ainda não bastam)
+      K.wait(40); const pp = __game.player, v1 = __game.vets[3]; v1.cx = pp.x + 12; v1.cy = pp.y + 12; v1.leg = null; __game.tick(0.01); out.noPower = { power: __game.power, postmen: __game.postmen, lives: __game.lives };
+      return out;
+    });
+    ok(sc.start.bar === "Missão: sustos 0/3" && sc.power1 > 30 && sc.s1 === "Missão: sustos 1/3" && sc.again === 1 && sc.s2.postmen === 2 && sc.s2.bar === "Missão: sustos 2/3" && /gato/.test(sc.s2.toast) && sc.afterBone.g === 1 && sc.afterBone.postmen === 3 && sc.fin.bar === "Missão cumprida!" && sc.fin.state === "playing",
+      `Fase 12: um carteiro e um gato assustados contam (1/3, 2/3), o mesmo carteiro não conta duas vezes no mesmo poder, e um osso novo deixa assustar de novo: 3/3 = "${sc.fin.bar}" (aviso do gato: "${sc.s2.toast}")`);
+    ok(sc.noPower.power <= 0 && sc.noPower.postmen === 3 && sc.noPower.lives === 3, `sem o poder do osso encostar num agente não vale susto (${sc.noPower.postmen} sustos; sem poder ${sc.noPower.power})`);
+
+    // ---- pontos que faltam: a missão pode estar cumprida e a saída ainda fechada (aviso antigo "Faltam N pontos") ----
+    const few = await ev(page, async () => {
+      const K = __mk; K.setup(11); K.grab("bone"); K.wait(3.1);
+      const a = await K.snap(); K.toExit(); const b = await K.snap();
+      return { a, b, min: __game.minPoints };
+    });
+    ok(few.a.bar === "Missão cumprida!" && few.a.score < few.min && few.a.state === "playing" && few.b.state === "playing" && few.b.toast === `Faltam ${few.min - few.b.score} pontos para abrir a saída (meta: ${few.min}).` && !/missão/i.test(few.b.toast),
+      `Fase 11 com todos os ossos (${few.a.score} pontos de ${few.min}): a missão está cumprida mas a saída fica fechada pelos pontos ("${few.b.toast}")`);
+
+    // ---- a Fase 10 (sem missão) continua como era: meta de pontos atingida abre a saída, sem falar de missão ----
+    const f10 = await ev(page, async () => {
+      const K = __mk; K.setup(10);
+      while (__game.score < __game.minPoints) K.grab("ration", 1);
+      const t = (await K.snap()); K.toExit(); const w = await K.snap();
+      return { t, w, min: __game.minPoints, bar: document.getElementById("mission-bar").textContent, win: document.getElementById("win-breakdown").textContent };
+    });
+    ok(f10.t.toast === `Meta de ${f10.min} pontos atingida! A saída está aberta.` && f10.t.hidden && f10.w.state === "won" && !/missão/.test(f10.win), `Fase 10 (sem missão): "${f10.t.toast}", faixa oculta, vence na saída e a vitória não fala de missão (${f10.win})`);
+
+    // ---- (c) a faixa: oculta nas Fases 1 a 10, aparece nas 11 a 20 com o texto de cada missão, e o acessível diz a missão ----
+    const barInfo = await ev(page, async () => {
+      const out = [];
+      for (let id = 1; id <= 20; id++) {
+        __mk.setup(id); const s = await __mk.snap(), b = document.getElementById("mission-bar");
+        out.push({ id, bar: s.bar, hidden: s.hidden, done: s.done, aria: b.getAttribute("aria-label"), role: b.getAttribute("role"), toast: s.toast });
+      }
+      return out;
+    });
+    ok(barInfo.slice(0, 10).every((b) => b.hidden && !/missão/i.test(b.toast)), "a faixa da missão fica oculta nas Fases 1 a 10 (e o aviso do começo da fase não fala de missão)");
+    const barBad = [];
+    for (let n = 11; n <= 20; n++) {
+      const L = LV[n - 1], b = barInfo[n - 1], want = `Missão: ${[L.mission.bones ? `ossos 0/${L.bones}` : "", L.mission.scare ? `sustos 0/${L.mission.scare}` : "", L.mission.rations ? `rações 0/${L.mission.rations}` : ""].filter(Boolean).join(" · ")}`;
+      if (b.bar !== want || b.hidden || b.done) barBad.push(`F${n}: "${b.bar}" ≠ "${want}"`);
+      if (!b.aria.includes(missionText(L)) || !b.aria.includes(`+${L.missionBonus} pontos`) || b.role !== "group") barBad.push(`F${n}: rótulo "${b.aria}"`);
+      if (!b.toast.includes(` · missão: ${missionText(L)}`)) barBad.push(`F${n}: aviso do começo "${b.toast}"`);
+    }
+    ok(barBad.length === 0, `a faixa de cada fase de 11 a 20 mostra a missão inteira no começo (Fase 11: "${barInfo[10].bar}"; Fase 14: "${barInfo[13].bar}"; Fase 20: "${barInfo[19].bar}"), tem rótulo para leitor de tela e o aviso do começo da fase diz "· missão: ..." (Fase 18: "${barInfo[17].toast.slice(-110)}")${barBad.length ? " — problema: " + barBad.join("; ") : ""}`);
+    const barBack = await ev(page, async () => { __mk.setup(11); const a = await __mk.snap(); __mk.setup(3); const b = await __mk.snap(); return [a.hidden, b.hidden]; });
+    ok(barBack[0] === false && barBack[1] === true, "ir da Fase 11 para a Fase 3 esconde a faixa de novo");
+    const barCol = await ev(page, async () => {
+      __mk.setup(13); const e = document.getElementById("mission-bar"); await __mk.frame(); const c0 = getComputedStyle(e).color;
+      __mk.grab("ration", 36); await __mk.frame(); const c1 = getComputedStyle(e).color, t1 = e.textContent;
+      return { c0, c1, t1, green: getComputedStyle(document.documentElement).getPropertyValue("--green").trim() };
+    });
+    ok(barCol.t1 === "Missão cumprida!" && barCol.c0 !== barCol.c1, `a faixa muda de cor quando a missão é cumprida (${barCol.c0} → ${barCol.c1})`);
+
+    // ---- (d) a lista de fases cita a missão só nas Fases 11 a 20; o Como jogar explica a missão e as vidas até 10 ----
+    await fresh(page, { done: Array.from({ length: 19 }, (_, i) => i + 1) }); await injectKit(); await page.click("#btn-start");
+    const subs = await page.$$eval("#levels-list button", (bs) => bs.map((b) => b.querySelector(".sub").textContent));
+    const listBad = [];
+    subs.forEach((t, i) => { const want = i >= 10 ? ` · missão: ${missionText(LV[i])}` : null; if (want ? !t.includes(want) : /missão/i.test(t)) listBad.push(`F${i + 1}: "${t.slice(-120)}"`); });
+    ok(subs.length === 20 && listBad.length === 0, `a lista de fases cita a missão (" · missão: ...") só nas Fases 11 a 20 (Fase 13: "${(subs[12] || "").slice(-70)}")${listBad.length ? " — problema: " + listBad.join("; ") : ""}`);
+    await page.keyboard.press("Escape");
+    const how = await ev(page, () => { document.getElementById("btn-howto").click(); return document.getElementById("howto").textContent; });
+    ok(/Missão \(a partir da Fase 11\)/.test(how) && /saída só abre com a missão cumprida/.test(how) && /pontos extras/.test(how) && /a partir da Fase 11 o máximo sobe até 10/.test(how) && /1 a 5/.test(how) && /até 8 com o reforço/.test(how) && /Gatos \(a partir da Fase 11\)/.test(how), "o Como jogar tem o item da missão (saída só abre com a missão, pontos extras) e diz que a partir da Fase 11 o máximo de vidas sobe até 10");
+    await page.keyboard.press("Escape");
+
+    // ---- (e) com vidas perdidas: a pontuação = rações + ossos + sustos + bônus de tempo + bônus da missão − perdas ----
+    const lostRun = await ev(page, () => __mk.scenario(13, null, { lose: 2 }));
+    const lc = lostRun.calc;
+    ok(lc && lc.lost === 2 && lc.shown === lc.expect && lc.breakdown.includes(" + missão: 300") && lc.breakdown.includes(` − vidas perdidas: ${2 * lostRun.info.lifePenalty}`) && lc.shown === lc.collected * 100 + lc.bones * 150 + lc.postmen * 100 + lc.bonus + 300 - 2 * 325,
+      `Fase 13 perdendo 2 vidas (−325 cada): ${lc && lc.breakdown} = ${lc && lc.shown} pontos (rações + ossos + bônus de tempo + 300 da missão − 650)`);
+    const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { pb: s.personalBest("Totó", 13) && s.personalBest("Totó", 13).p }; });
+    ok(rec.pb === lc.shown, `o recorde da Fase 13 guarda o total com o bônus da missão (${rec.pb})`);
+
+    // =====================================================================
+    // (f) missão impossível: pegou tudo, o poder acabou e os sustos não chegaram
+    // =====================================================================
+    const imp = async (id, scares) => {
+      const r = await ev(page, async ([id, scares]) => {
+        const K = __mk, I = K.setup(id); K.grab("bone"); if (scares) K.scare(scares); K.grab("ration");
+        const mid = await K.snap(); // pegou tudo, mas o poder ainda vale: ainda dá tempo de assustar
+        K.wait(40);
+        const T = (x) => document.getElementById(x).textContent;
+        return { mid, state: __game.state, title: T("lose-title"), lead: T("lose-lead"), text: T("lose-text"), chances: T("lose-chances"), score: __game.score, I };
+      }, [id, scares]);
+      r.visible = await page.isVisible("#lose");
+      return r;
+    };
+    const impBad = [];
+    for (const [id, nsc] of [[12, 0], [12, 2], [14, 0], [14, 1], [15, 3], [17, 2], [18, 4], [19, 3], [20, 4]]) {
+      const r = await imp(id, nsc), L = LV[id - 1], M = L.mission, left = `sustos ${nsc}/${M.scare}`;
+      if (!(r.mid.state === "playing" && r.mid.power > 0 && r.mid.bar === `Missão: ${left}`)) impBad.push(`F${id}/${nsc}: no meio (${r.mid.state}, poder ${r.mid.power}, faixa "${r.mid.bar}")`);
+      if (!(r.state === "lost" && r.visible && r.title === "A missão não foi cumprida!" && r.lead === `Você pegou tudo, mas faltou a missão: ${missionText(L)} (${left}).` && r.score >= L.minPoints && r.text.includes(`mínimo ${L.minPoints}`))) impBad.push(`F${id}/${nsc}: ${r.state} "${r.title}" / "${r.lead}" / ${r.score} pontos`);
+      if (!/Você ainda pode tentar a Fase \d+ de novo 3 vezes/.test(r.chances)) impBad.push(`F${id}: tentativas "${r.chances}"`);
+    }
+    ok(impBad.length === 0, `missão impossível (pegou tudo, o poder acabou e os sustos não bastaram): a tentativa acaba com "A missão não foi cumprida!" e o que faltou, nas Fases 12, 14, 15, 17, 18, 19 e 20; enquanto o poder vale ainda continua jogando${impBad.length ? " — problema: " + impBad.join("; ") : ""}`);
+    const retry = await ev(page, () => { document.getElementById("btn-retry").click(); return { state: __game.state, level: __game.level, retries: __game.retries, lives: __game.lives, bar: document.getElementById("mission-bar").textContent }; });
+    ok(retry.state === "playing" && retry.level === 20 && retry.retries === 1 && retry.lives === 3, `"Tentar de novo" depois da missão impossível recomeça a Fase 20 do zero (tentativa ${retry.retries} de 3, ${retry.lives} vidas, faixa "${retry.bar}")`);
+    // a derrota normal de pontos continua "Os pontos não bastaram!": Fase 4 (perde 4 vidas) e Fase 20 (perde 9 vidas de 400 e pega tudo)
+    for (const [id, start, lose, minShort] of [[4, { lives: 5, retries: 3 }, 4, 800], [20, { lives: 10 }, 9, 4000]]) {
+      const r = await ev(page, ([id, start, lose]) => {
+        const K = __mk; K.setup(id, { start, lose }); K.grab("bone"); K.grab("ration"); K.wait(40);
+        const T = (x) => document.getElementById(x).textContent;
+        return { state: __game.state, title: T("lose-title"), lead: T("lose-lead"), text: T("lose-text"), score: __game.score, lost: __game.livesLost };
+      }, [id, start, lose]);
+      ok(r.state === "lost" && r.title === "Os pontos não bastaram!" && r.lead === "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." && r.score < minShort && r.text.includes(`(mínimo ${minShort})`) && r.lost === lose,
+        `Fase ${id}: com ${r.lost} vidas perdidas e tudo pego (${r.score} pontos, mínimo ${minShort}) a derrota continua "${r.title}" (${id === 20 ? "Fase com missão: sem pontos suficientes vale a derrota dos pontos" : "fase sem missão"})`);
+    }
+    // enquanto sobra ração ou osso o jogo continua mesmo sem como cumprir a missão (só termina quando tudo foi pego)
+    const soft = await ev(page, () => { const K = __mk; K.setup(12); K.grab("bone"); K.wait(40); return { state: __game.state, power: __game.power, rations: K.items("ration").length }; });
+    console.log(`INFO observação de design: Fase 12 com todos os ossos pegos, o poder acabado, 0 sustos e ${soft.rations} rações no chão continua "${soft.state}" (a missão já é impossível, mas o jogo só dá a derrota quando tudo foi pego)`);
+
+    // =====================================================================
+    // (g) vidas: o máximo de cada fase (Coração maior soma até 10), vida extra no máximo, corações no placar, reforços e jogo salvo
+    // =====================================================================
+    const caps = await ev(page, () => {
+      const out = [];
+      for (let id = 1; id <= 20; id++) { const row = []; for (let h = 0; h <= 3; h++) { __game.autoStart = true; __game.start(id, { upgrades: { speed: 0, bone: 0, heart: h, shield: 0, slow: 0 }, lives: 99 }); row.push([__game.maxLives, __game.lives]); } out.push(row); }
+      return out;
+    });
+    const capBad = [];
+    caps.forEach((row, i) => row.forEach(([mx, lv], h) => { const want = Math.min(10, CAPS[i] + h); if (mx !== want || lv !== want) capBad.push(`F${i + 1} com ${h} Coração maior: máximo ${mx} (esperado ${want}), começou com ${lv}`); }));
+    ok(capBad.length === 0, `máximo de vidas: ${caps.slice(0, 10).map((r) => r[0][0]).join(",")} nas Fases 1 a 10 e ${caps.slice(10).map((r) => r[0][0]).join(",")} nas 11 a 20; com Coração maior ×3: ${caps.map((r) => r[3][0]).join(",")} (nunca passa de 10; começar com vidas demais é limitado ao máximo)${capBad.length ? " — problema: " + capBad.slice(0, 4).join("; ") : ""}`);
+    ok(caps[9][3][0] === 8 && caps[10][3][0] === 9 && caps[12][3][0] === 10 && caps[19][3][0] === 10 && caps[10][1][0] === 7 && caps[18][1][0] === 10, `exemplos: Fase 10 com Coração maior ×3 = 8; Fase 11 ×3 = 9 (6 + 3); Fase 13 ×3 = 10 (7 + 3 = 10); Fase 20 ×3 = 10; Fase 11 ×1 = 7; Fase 19 ×1 = 10`);
+
+    // vida extra: abaixo do máximo soma 1 (até o novo máximo), no máximo avisa e não passa
+    const lifeRes = [];
+    for (const [id, h] of [[5, 0], [10, 0], [10, 3], [11, 0], [13, 3], [15, 0], [20, 0], [20, 3]]) {
+      const r = await ev(page, ([id, h]) => {
+        const up = { speed: 0, bone: 0, heart: h, shield: 0, slow: 0 }, out = {};
+        const first = (bone) => __game.items.findIndex((it) => !it.taken && !!it.bone === bone);
+        // abaixo do máximo: +1 vida (numa ração)
+        __mk.setup(id, { start: { upgrades: up, lives: 99 } }); const cap = __game.maxLives; __game.setLives(cap - 1);
+        __game.items[first(false)].life = true; __mk.grab("ration", 1); out.below = { lives: __game.lives, toast: document.getElementById("toast").textContent, cap };
+        // no máximo: a vida extra de uma ração não passa
+        __game.items[first(false)].life = true; __mk.grab("ration", 1); out.atMax = { lives: __game.lives, toast: document.getElementById("toast").textContent };
+        // e a de um osso também (com o poder do osso no aviso)
+        __game.items[first(true)].life = true; __mk.grab("bone", 1); out.bone = { lives: __game.lives, toast: document.getElementById("toast").textContent };
+        return out;
+      }, [id, h]);
+      const cap = r.below.cap, want = `tinha uma vida extra, mas você já está com o máximo (${cap} vidas)`;
+      lifeRes.push([id, h, cap, r.below.lives === cap && /Vida extra! \+1 vida/.test(r.below.toast) && r.atMax.lives === cap && r.atMax.toast.startsWith(`Esta ração ${want}`) && r.bone.lives === cap && r.bone.toast.startsWith(`Este osso ${want}`) && /Poder do osso/.test(r.bone.toast), r]);
+    }
+    ok(lifeRes.every((x) => x[3]), `vida extra: abaixo do máximo soma 1 (até ${lifeRes.map((x) => x[2]).join(", ")} vidas) e no máximo avisa "tinha uma vida extra, mas você já está com o máximo (N vidas)" sem passar, em ração e em osso${lifeRes.filter((x) => !x[3]).map((x) => ` — problema Fase ${x[0]}/${x[1]}: ${JSON.stringify(x[4])}`).join("")}`);
+    const five = await ev(page, () => { __mk.setup(11, { start: { lives: 5 } }); const a = __game.lives; __game.items.find((i) => !i.bone && !i.taken).life = true; __mk.grab("ration", 1); return [a, __game.lives, __game.maxLives]; });
+    ok(five.join() === "5,6,6", `o 6º coração: com 5 vidas na Fase 11, uma vida extra leva a 6 (era o limite antigo de 5): ${five.join(" → ")}`);
+
+    // o placar: 10 corações no DOM, os visíveis conforme as vidas (e o espaço reservado para o máximo da fase)
+    const hud = async (id, lives, heart) => {
+      await ev(page, ([id, lives, heart]) => { __game.autoStart = true; __game.start(id, { upgrades: { speed: 0, bone: 0, heart, shield: 0, slow: 0 }, lives }); __game.freezeVets = true; __game.noCatch = true; }, [id, lives, heart]);
+      await ev(page, () => __mk.frame());
+      return ev(page, () => { const hs = [...document.querySelectorAll("#hud-lives .heart")], vis = hs.filter((h) => !h.classList.contains("hidden")); return { total: hs.length, visible: vis.length, lost: vis.filter((h) => h.classList.contains("lost")).length, lives: __game.lives, cssVar: document.getElementById("hud-lives").style.getPropertyValue("--hearts"), aria: document.getElementById("hud-lives").getAttribute("aria-label") }; });
+    };
+    const hb = [];
+    for (const [id, lives, heart, vis, cssVar] of [[1, 3, 0, 3, "5"], [5, 5, 0, 5, "5"], [11, 3, 0, 3, "6"], [11, 6, 0, 6, "6"], [13, 7, 0, 7, "7"], [15, 8, 0, 8, "8"], [19, 10, 0, 10, "10"], [20, 3, 3, 6, "10"], [20, 10, 3, 10, "10"], [10, 3, 3, 6, "8"], [13, 9, 3, 9, "10"]]) {
+      const h = await hud(id, lives, heart), lostN = vis - lives;
+      if (!(h.total === 10 && h.visible === vis && h.lost === lostN && h.lives === lives && h.cssVar === cssVar && h.aria === `${lives} vidas`)) hb.push(`F${id}/${lives} vidas/${heart} CM: ${JSON.stringify(h)} (esperado ${vis} visíveis, ${lostN} vazios, espaço ${cssVar})`);
+    }
+    ok(hb.length === 0, `o placar tem 10 corações no DOM; mostra 3 no começo (+1 vazio por Coração maior), as vidas até 10, e reserva o espaço do máximo da fase (--hearts)${hb.length ? " — problema: " + hb.join("; ") : ""}`);
+    await ev(page, () => { __mk.setup(11, { start: { lives: 5 } }); __game.items.find((i) => !i.bone && !i.taken).life = true; __mk.grab("ration", 1); });
+    ok(await ev(page, async () => { await __mk.frame(); return document.querySelectorAll("#hud-lives .heart:not(.hidden)").length; }) === 6, "ganhar a 6ª vida na Fase 11 mostra o 6º coração");
+
+    // os reforços depois de uma fase: a Vida extra e o Coração maior usam o máximo da PRÓXIMA fase
+    const offer = async (id, start, fixed) => {
+      await ev(page, ([id, start, fixed]) => { __game.offerFixed = fixed; __mk.setup(id, { start }); __mk.finish(); }, [id, start, fixed]);
+      await page.click("#btn-next");
+      return page.$$eval("#reinforce-list button", (bs) => bs.map((b) => ({ id: b.dataset.id, sub: b.querySelector(".sub").textContent })));
+    };
+    const ids = (o) => o.map((x) => x.id).join();
+    const UP0 = { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0 };
+    // Fase 10 com 5 vidas → Fase 11 (máximo 6): a Vida extra é oferecida ("você tem 5 de 6") e leva a 6
+    const oA = await offer(10, { lives: 5 }, ["life", "heart", "shield"]);
+    ok(ids(oA).includes("life") && ids(oA).includes("heart") && /você tem 5 de 6/.test(oA.find((x) => x.id === "life").sub), `depois da Fase 10 com 5 vidas a Vida extra é oferecida, usando o máximo da Fase 11: "${(oA.find((x) => x.id === "life") || {}).sub}"`);
+    await page.click('#reinforce-list button[data-id="life"]');
+    const gA = await ev(page, () => ({ carried: __game.carriedLives, msg: document.getElementById("reinforce-msg").textContent }));
+    ok(gA.carried === 6 && /Você leva 6 vidas/.test(gA.msg), `escolher a Vida extra leva 6 vidas para a Fase 11 (${gA.msg})`);
+    await page.click("#btn-reinforce-go");
+    const gA2 = await ev(page, () => ({ level: __game.level, lives: __game.lives, max: __game.maxLives }));
+    ok(gA2.level === 11 && gA2.lives === 6 && gA2.max === 6, `a Fase 11 começa com 6 vidas, no máximo de 6 (${JSON.stringify(gA2)})`);
+    // Fase 11 com 6 vidas → Fase 12 (máximo 6): a Vida extra não é oferecida; o Coração maior leva a 7
+    const oB = await offer(11, { lives: 6 }, ["life", "heart", "shield"]);
+    ok(!ids(oB).includes("life") && ids(oB).includes("heart") && oB.length === 3, `depois da Fase 11 com 6 vidas (o máximo da Fase 12 é 6) a Vida extra não é oferecida (${ids(oB)})`);
+    await page.click('#reinforce-list button[data-id="heart"]');
+    const gB = await ev(page, () => ({ carried: __game.carriedLives, next: __game.nextUpgrades, msg: document.getElementById("reinforce-msg").textContent }));
+    ok(gB.carried === 7 && gB.next.heart === 1 && /7 vidas no máximo/.test(gB.msg), `o Coração maior depois da Fase 11 leva 7 vidas e diz "7 vidas no máximo" (máximo da Fase 12 = 6 + 1): "${gB.msg}"`);
+    await page.click("#btn-reinforce-go");
+    const gB2 = await ev(page, () => ({ level: __game.level, lives: __game.lives, max: __game.maxLives, up: __game.upgrades.heart, toast: document.getElementById("toast").textContent }));
+    ok(gB2.level === 12 && gB2.lives === 7 && gB2.max === 7 && gB2.up === 1 && /7 vidas no máximo/.test(gB2.toast), `a Fase 12 começa com 7 vidas (máximo 7) e o aviso do começo diz "7 vidas no máximo" (${gB2.toast.slice(-60)})`);
+    // o Coração maior some das ofertas quando o máximo da próxima fase já é 10 (Fase 18 → Fase 19, e Fase 16 com 1 nível → Fase 17)
+    const oC = await offer(18, {}, ["heart", "life", "shield"]);
+    ok(!ids(oC).includes("heart") && ids(oC).includes("life") && /você tem 3 de 10/.test((oC.find((x) => x.id === "life") || {}).sub), `depois da Fase 18 (o máximo da Fase 19 já é 10) o Coração maior não é oferecido, e a Vida extra diz "você tem 3 de 10" (${ids(oC)})`);
+    const oD = await offer(16, {}, ["heart", "life", "shield"]);
+    ok(ids(oD).includes("heart") && /agora 0\/3/.test(oD.find((x) => x.id === "heart").sub), `depois da Fase 16 sem reforços o Coração maior ainda é oferecido (máximo da Fase 17 = 9; ${ids(oD)})`);
+    const oE = await offer(16, { upgrades: { ...UP0, heart: 1 } }, ["heart", "life", "shield"]);
+    ok(!ids(oE).includes("heart"), `depois da Fase 16 com 1 Coração maior (9 + 1 = 10 na Fase 17) ele não é mais oferecido (${ids(oE)})`);
+    const oF = await offer(19, { lives: 10 }, ["life", "heart", "shield"]);
+    ok(!ids(oF).includes("life") && !ids(oF).includes("heart"), `depois da Fase 19 com 10 vidas (máximo da Fase 20 = 10) nem a Vida extra nem o Coração maior são oferecidos (${ids(oF)})`);
+
+    // o jogo salvo confere as vidas com o máximo da fase (e o Coração maior do próprio jogo salvo)
+    const snapOf = (id, upgrades) => ev(page, ([id, upgrades]) => { __game.autoStart = true; __game.start(id, { upgrades }); __game.freezeVets = true; __game.save(); const sv = JSON.parse(localStorage.getItem("cachorrinho.save.v1")); return sv.saves[Object.keys(sv.saves)[0]].snap; }, [id, upgrades]);
+    const accepts = (snap, lives, heart) => ev(page, ([s, l, h]) => { s = JSON.parse(JSON.stringify(s)); s.lives = l; if (h !== undefined) s.up = [0, 0, h, 0, 0]; return __game.parseSave(s); }, [snap, lives, heart]);
+    const sv15 = await snapOf(15, UP0), sv20 = await snapOf(20, UP0), sv11 = await snapOf(11, UP0), sv10 = await snapOf(10, UP0);
+    const acc = {
+      "Fase 15: 8 vidas": [await accepts(sv15, 8, 0), true], "Fase 15: 9 vidas": [await accepts(sv15, 9, 0), false], "Fase 15, 1 Coração maior: 9 vidas": [await accepts(sv15, 9, 1), true], "Fase 15, 1 Coração maior: 10 vidas": [await accepts(sv15, 10, 1), false],
+      "Fase 20: 10 vidas": [await accepts(sv20, 10, 0), true], "Fase 20: 11 vidas": [await accepts(sv20, 11, 0), false], "Fase 20, 3 Coração maior: 11 vidas": [await accepts(sv20, 11, 3), false],
+      "Fase 11: 6 vidas": [await accepts(sv11, 6, 0), true], "Fase 11: 7 vidas": [await accepts(sv11, 7, 0), false], "Fase 11, 3 Coração maior: 9 vidas": [await accepts(sv11, 9, 3), true],
+      "Fase 10: 5 vidas": [await accepts(sv10, 5, 0), true], "Fase 10: 6 vidas": [await accepts(sv10, 6, 0), false], "Fase 10, 3 Coração maior: 8 vidas": [await accepts(sv10, 8, 3), true], "Fase 10, 3 Coração maior: 9 vidas": [await accepts(sv10, 9, 3), false],
+    };
+    ok(Object.values(acc).every(([got, want]) => got === want), `jogo salvo e o máximo de vidas da fase: ${Object.entries(acc).map(([k, [got, want]]) => `${k}: ${got ? "aceito" : "recusado"}${got === want ? "" : " (ERRADO)"}`).join("; ")}`);
+
+    // a missão num jogo salvo: a missão deriva do que já estava salvo (ossos pegos, sustos, rações): continua de onde parou
+    await fresh(page, { keepSave: true }); await injectKit();
+    const sv = await ev(page, () => { __mk.setup(12, { keepAgents: true, keepLife: true, seed: 5 }); __mk.grab("bone", 1); __mk.scare(2, "mix", false); __game.save(); return { postmen: __game.postmen, bones: __game.bonesGot, power: __game.power }; });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectKit();
+    ok(await page.isVisible("#btn-continue"), "recarregar a página no meio da Fase 12 (1 osso, 2 sustos) deixa Continuar jogo");
+    await page.click("#btn-continue");
+    const cont = await ev(page, async () => { __game.freezeVets = true; __game.noCatch = true; const a = await __mk.snap(); __mk.scare(1, "mix"); const b = await __mk.snap(); __mk.wait(2); __mk.home(); __mk.toExit(); const c = await __mk.snap(); return { a, b, c, min: __game.minPoints }; });
+    ok(cont.a.state === "playing" && cont.a.postmen === 2 && cont.a.bones === 1 && cont.a.bar === "Missão: sustos 2/3" && cont.a.power > 20 && cont.b.postmen === 3 && cont.b.bar === "Missão cumprida!" && cont.c.state === "playing" && cont.c.toast === `Faltam ${cont.min - cont.c.score} pontos para abrir a saída (meta: ${cont.min}).`,
+      `continuar o jogo salvo da Fase 12 mantém a missão (faixa "${cont.a.bar}" com poder de ${cont.a.power.toFixed(0)} s), o 3º susto cumpre ("${cont.b.bar}") e a saída segue fechada pelos pontos ("${cont.c.toast}")`);
+  });
+
 
   console.log("erros JS:", errs);
   if (errs.length) failed++;
