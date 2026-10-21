@@ -3709,10 +3709,10 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => __game.retries) === 1 && await ev(page, () => __game.upgrades.speed) === 2 && await ev(page, () => __game.upgrades.slow) === 1, "Tentar novamente mantém os reforços da partida");
     await ev(page, () => { __game.freezeVets = true; }); await finishNow(page, 10);
     await page.click("#btn-again");
-    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0", "Jogar novamente começa a fase sem reforços");
+    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0,0,0,0", "Jogar novamente começa a fase sem reforços");
     await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
     await page.click("#btn-start"); await ev(page, () => { /* escolhe a fase mais alta liberada pelo botão focado */ });
-    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0" && await page.isHidden("#hud-up-item"), "começar uma fase pelo menu também começa sem reforços (e o placar esconde REFORÇOS)");
+    ok(await ev(page, () => Object.values(__game.upgrades).join()) === "0,0,0,0,0,0,0,0" && await page.isHidden("#hud-up-item"), "começar uma fase pelo menu também começa sem reforços (e o placar esconde REFORÇOS)");
 
     // ---- jogo salvo: guarda, valida e continua com os reforços ----
     const sv = await ev(page, () => {
@@ -3722,7 +3722,7 @@ const PAGE_HELPERS = () => {
       return { up: snap.up, okBase: __game.parseSave(snap), badLen: __game.parseSave(clone((c) => { c.up = [1, 2, 1, 1]; })), badNeg: __game.parseSave(clone((c) => { c.up[0] = -1; })), badMax: __game.parseSave(clone((c) => { c.up[1] = 5; })), badFrac: __game.parseSave(clone((c) => { c.up[2] = 0.5; })), badType: __game.parseSave(clone((c) => { c.up = "x"; })),
         lives7: __game.parseSave(clone((c) => { c.lives = 7; })), lives6NoHeart: __game.parseSave(clone((c) => { c.up[2] = 0; })), inv5: __game.parseSave(clone((c) => { c.invuln = 3; })), inv4: __game.parseSave(clone((c) => { c.invuln = 1.5; })), noUp: __game.parseSave(clone((c) => { delete c.up; c.lives = 5; })), noUpTooMany: __game.parseSave(clone((c) => { delete c.up; c.lives = 6; })), pwOk: __game.parseSave(clone((c) => { c.pw = 45; c.vd = c.vd.map(() => 0); })), pwBad: __game.parseSave(clone((c) => { c.pw = 47; })) };
     });
-    ok(sv.up.join() === "1,2,1,1,1" && sv.okBase, `o jogo salvo guarda os reforços (${sv.up.join(",")}) e continua válido`);
+    ok(sv.up.join() === "1,2,1,1,1,0,0,0" && sv.okBase, `o jogo salvo guarda os reforços (${sv.up.join(",")}) e continua válido`);
     ok(!sv.badLen && !sv.badNeg && !sv.badMax && !sv.badFrac && !sv.badType, "reforços adulterados (tamanho, negativo, acima do máximo, fracionário, texto) tornam o jogo salvo inválido");
     ok(sv.lives7 === false && sv.lives6NoHeart === false && sv.inv5 === true && sv.inv4 === true, "o limite de vidas e de proteção do jogo salvo acompanha os reforços (6 vidas só com Coração maior; 3 s só com Pelo grosso)");
     ok(sv.noUp === true && sv.noUpTooMany === false && sv.pwOk === true && sv.pwBad === false, "jogo salvo antigo (sem reforços) continua válido com até 5 vidas; o poder do osso salvo respeita os +8 s por nível");
@@ -4176,7 +4176,8 @@ const PAGE_HELPERS = () => {
     const look = (id, mode) => ev(page, async ([id, mode]) => {
       __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
       const v = __game.vets[0], p = __game.player;
-      if (mode === "power") { const b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); }
+      if (mode === "power") { const b = __game.items.find((i) => i.bone && i.kind === "scare"); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); } // (osso comum: os de ouro, gelo, turbo e ímã das Fases 11 a 20 não dão o poder)
+      __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // (nenhum item perto do agente: pegar um por acaso mudaria o desenho do agente)
       p.x = v.cx + 130; p.y = v.cy - 12; __game.tick(0.01);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, cx = Math.round((v.cx - __game.view.camX) * k), cy = Math.round((v.cy - __game.view.camY) * k), R = Math.round(24 * k);
@@ -4542,6 +4543,7 @@ const PAGE_HELPERS = () => {
     __game.setRand(((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(o.seed || 7));
     __game.freezeVets = true; __game.catsThaw = false; __game.noCatch = o.noCatch !== false;
     const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = o.facing || "right"; p.moving = false;
+    for (const it of __game.items) if (Math.hypot(it.x + 8 - (p.x + 12), it.y + 8 - (p.y + 12)) < 48) { it.x = -500; it.y = -500; } // (0.15.7: nenhum item sorteado debaixo do cachorrinho: um osso de ouro ou de gelo pego por acaso mudaria o teste)
     for (const c of __game.cats) { c.cool = 0; c.idle = 0; c.think = 0; }
     if (o.chase) for (const c of __game.cats) Object.assign(c, { mode: "chase", modeT: 99, chaseAge: 0, pounceCd: o.pounce ? 0 : 99 });
     return { n: __game.cats.length };
@@ -4716,7 +4718,7 @@ const PAGE_HELPERS = () => {
       const fr = hrun(m, 22);
       await setup(n, [[fr.c + 4, fr.r], [fr.c + 18, fr.r]], { dog: [fr.c + 11, fr.r], noCatch: false }); // um gato de cada lado do cachorrinho: nenhum fecha a fuga do outro
       const pw = await go(() => {
-        const b = __game.items.find((i) => i.bone), p = __game.player;
+        const b = __game.items.find((i) => i.bone && i.kind === "scare"), p = __game.player;
         b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso
         const modes = __game.cats.map((c) => c.mode), power = __game.power;
         const d0 = __game.cats.map((c) => Math.hypot(c.cx - (p.x + 12), c.cy - (p.y + 12)));
@@ -4923,7 +4925,7 @@ const PAGE_HELPERS = () => {
         const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))), cv = document.getElementById("game"), ctx = cv.getContext("2d");
         const count = () => { const d = ctx.getImageData(Math.round(cv.width * 0.9), 0, Math.round(cv.width * 0.1), cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 235 && d[i + 1] < 110 && d[i + 2] < 110) n++; return n; };
         const a = __game.cats[0], p = __game.player; a.mode = "chase"; a.modeT = 99; await frame(); const before = count();
-        const b = __game.items.find((i) => i.bone); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso: o gato foge
+        const b = __game.items.find((i) => i.bone && i.kind === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // pega um osso: o gato foge
         await frame();
         return { mode: a.mode, power: __game.power, before, after: count() };
       });
@@ -4959,7 +4961,7 @@ const PAGE_HELPERS = () => {
     await setup(16, null, { dog: model(16).P });
     const sv1 = await go(() => {
       for (let i = 0; i < 240; i++) __game.tick(1 / 60);
-      const p = __game.player, b = __game.items.find((i) => i.bone); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // osso: poder
+      const p = __game.player, b = __game.items.find((i) => i.bone && i.kind === "scare"); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); // osso: poder
       const c = __game.cats[2]; c.cx = p.x + 12; c.cy = p.y + 12; c.leg = null; __game.tick(0.016); // assusta o gato 2: +100, volta ao posto, lento
       for (let i = 0; i < 120; i++) __game.tick(1 / 60);
       __game.save();
@@ -5270,6 +5272,787 @@ const PAGE_HELPERS = () => {
     await m.context().close();
   });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // ===== 0.15.7 BEGIN =====
+  // =====================================================================
+  // ---- Kit dos testes da 0.15.7 (ossos de tipos novos e reforços novos). Nada usa coordenadas fixas: as posições vêm do mapa (kit dos gatos acima) e do estado do jogo. ----
+  const boneMixOf = (n) => { // o boneMix de cada fase, lido do código-fonte (as Fases 1 a 10 não têm: só ossos comuns)
+    const a = src.indexOf(`id: ${n}, title:`);
+    let b = src.indexOf(`id: ${n + 1}, title:`, a); if (b < 0) b = src.indexOf("const LEVEL_IDS", a);
+    const mt = src.slice(a, b).match(/\bboneMix: (\[[^\]]*\])/);
+    return mt ? eval(mt[1]) : null;
+  };
+  // ferramentas dentro da página (depois de `fresh`): começar a fase com semente, pegar o osso de um tipo, contar pixels de uma cor no canvas
+  const injectFx = () => ev(page, () => {
+    const lcg = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    // vence a fase atual na hora (sem agentes nem esmagamento): vai para a tela de vitória, que já sorteou a oferta de reforços
+    window.__win = () => { __game.freezeVets = true; __game.noCatch = true; for (let i = 0; i < 20; i++) __game.tick(0.05); for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01); return __game.state; };
+    window.__fx = {
+      lcg,
+      frame: () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+      // começa a fase `n` com a semente, agentes e gatos parados, sem captura e sem vidas extras escondidas; `o.up` = reforços, `o.dog` = tile do cachorrinho, `o.cats` = onde ficam os gatos
+      begin(n, o = {}) {
+        __game.autoStart = true; __game.setRand(lcg(o.seed || 7)); if (o.cats !== undefined) __game.catOverride = o.cats;
+        __game.start(n, o.up ? { upgrades: o.up } : undefined); __game.catOverride = null;
+        __game.freezeVets = !o.free; __game.catsThaw = false; __game.noCatch = o.noCatch !== false;
+        if (o.dog) { const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = "right"; p.moving = false; for (const it of __game.items) if (Math.hypot(it.x + 8 - (p.x + 12), it.y + 8 - (p.y + 12)) < 48) { it.x = -500; it.y = -500; } } // (nenhum item sorteado debaixo do cachorrinho)
+        if (!o.keepLife) __game.items.forEach((i) => { i.life = false; }); // (um jogo salvo precisa das vidas escondidas da fase: quem salva usa keepLife)
+        return __game.items.filter((i) => i.bone).length;
+      },
+      bone: (kind) => __game.items.find((i) => i.bone && !i.taken && i.kind === kind),
+      pick(kind) { const p = __game.player, b = this.bone(kind); b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); return b; }, // o osso vai para cima do cachorrinho e ele o pega
+      rations: () => __game.items.filter((i) => !i.bone && !i.taken),
+      // põe um item com o centro a (dx, dy) px do centro do cachorrinho
+      putAt(it, dx, dy) { const p = __game.player; it.x = p.x + 12 + dx - 8; it.y = p.y + 12 + dy - 8; },
+      toast: () => document.getElementById("toast").textContent,
+      // canvas: (x, y) em px do canvas de um ponto do mundo, e quantos pixels da janela (lado 2 × half, centrada em (x, y)) estão perto da cor `rgb`
+      px(wx, wy) { const v = __game.view, sx = v.k * v.zoom; return [(wx - v.camX) * sx, (wy - v.camY) * sx, sx]; },
+      count(x, y, half, rgb, tol = 12) {
+        const cv = document.getElementById("game"), ctx = cv.getContext("2d");
+        const x0 = Math.max(0, Math.round(x - half)), y0 = Math.max(0, Math.round(y - half)), w = Math.min(cv.width, Math.round(x + half)) - x0, h = Math.min(cv.height, Math.round(y + half)) - y0;
+        if (w <= 0 || h <= 0) return 0;
+        const d = ctx.getImageData(x0, y0, w, h).data; let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - rgb[0]) <= tol && Math.abs(d[i + 1] - rgb[1]) <= tol && Math.abs(d[i + 2] - rgb[2]) <= tol) n++;
+        return n;
+      },
+    };
+  });
+  const wallPairOf = (m, k, td = 2) => { // dois tiles de chão em linha reta com k − 1 tiles de parede no meio (para pôr uma ração do outro lado de uma parede), a `td` tiles ou mais dos trilhos das peças móveis
+    const okTile = (c, r) => m.MAP[r][c] === "." && m.tdist[r][c] >= td;
+    for (let r = 1; r < m.R - 1; r++) for (let c = 1; c < m.C - 1; c++) for (const [dc, dr] of [[1, 0], [0, 1]]) {
+      const ec = c + dc * k, er = r + dr * k;
+      if (ec >= m.C - 1 || er >= m.R - 1 || !okTile(c, r) || !okTile(ec, er)) continue;
+      if (Array.from({ length: k - 1 }, (_, i) => m.MAP[r + dr * (i + 1)][c + dc * (i + 1)]).every((ch) => ch === "#")) return { dog: [c, r], ration: [ec, er], k };
+    }
+    return null;
+  };
+  const BONE_KINDS = ["scare", "gold", "ice", "turbo", "magnet"]; // os tipos de osso (BONE_KINDS em js/game.js; no jogo salvo vale 1 + a posição aqui)
+  const FX_KINDS = { // o que cada osso novo faz (chave do efeito em __game.fx, segundos, aviso ao pegar e aviso ao acabar)
+    gold: { key: "shield", sec: 10, label: "Osso de ouro", on: /^Osso de ouro: escudo dourado por (\d+) s: nada pega o cachorrinho!$/, off: "O escudo acabou." },
+    ice: { key: "ice", sec: 6, label: "Osso de gelo", on: /^Osso de gelo: agentes e gatos congelados por (\d+) s!$/, off: "O gelo derreteu!" },
+    turbo: { key: "turbo", sec: 8, label: "Osso turbo", on: /^Osso turbo: \+40% de velocidade por (\d+) s!$/, off: "O turbo acabou." },
+    magnet: { key: "magnet", sec: 12, label: "Osso ímã", on: /^Osso ímã: as rações vêm sozinhas por (\d+) s!$/, off: "O ímã acabou." },
+  };
+  const BONE_FILL = { scare: [246, 241, 227], gold: [255, 210, 63], ice: [191, 234, 255], turbo: [255, 159, 67], magnet: [216, 180, 255] }; // cor de dentro de cada osso (BONE_LOOK em js/game.js)
+
+  // =====================================================================
+  await section("0.15.7: ossos de tipos novos (composição por fase, sorteio, aviso, duração, contagem e fim de cada efeito)", async () => {
+    await fresh(page); await loadKit(); await injectFx();
+
+    // ---- (a) dados: cada fase 11 a 20 tem o seu boneMix; as Fases 1 a 10 só têm ossos comuns ----
+    const mixes = Array.from({ length: 20 }, (_, i) => boneMixOf(i + 1));
+    const lv = await ev(page, () => __game.levels.map((l) => ({ bones: l.bones, rations: l.rations })));
+    ok(mixes.slice(0, 10).every((m) => m === null) && mixes.slice(10).every((m) => Array.isArray(m)), "as Fases 11 a 20 têm boneMix em LEVELS e as Fases 1 a 10 não (só ossos comuns)");
+    const mixBad = [];
+    for (let n = 11; n <= 20; n++) {
+      const m = mixes[n - 1];
+      if (m.length !== lv[n - 1].bones) mixBad.push(`F${n}: ${m.length} tipos para ${lv[n - 1].bones} ossos`);
+      if (m.filter((k) => k === "scare").length < 3) mixBad.push(`F${n}: menos de 3 ossos comuns`);
+      if (!m.every((k) => BONE_KINDS.includes(k))) mixBad.push(`F${n}: tipo inválido`);
+      if (new Set(m).size < 3) mixBad.push(`F${n}: pouca variedade (${[...new Set(m)].join(",")})`);
+    }
+    ok(mixBad.length === 0, `Fases 11 a 20: o boneMix tem um tipo para cada osso da fase (${lv.slice(10).map((l) => l.bones).join(", ")}), pelo menos 3 comuns e só tipos válidos${mixBad.length ? " — problema: " + mixBad.join("; ") : ""}`);
+    const draws = await ev(page, () => {
+      const out = [];
+      for (let n = 1; n <= 20; n++) for (let seed = 1; seed <= 12; seed++) {
+        __fx.begin(n, { seed });
+        const bones = __game.items.filter((i) => i.bone), rations = __game.items.filter((i) => !i.bone);
+        out.push({ n, seed, kinds: bones.map((i) => i.kind), rk: rations.map((i) => i.kind), nr: rations.length, tiles: bones.map((i) => `${(i.x - 8) / 32},${(i.y - 8) / 32}:${i.kind}`) });
+      }
+      return out;
+    });
+    const sorted = (a) => a.slice().sort().join();
+    const oldBad = draws.filter((d) => d.n <= 10 && (d.kinds.length !== lv[d.n - 1].bones || !d.kinds.every((k) => k === "scare") || d.rk.some((k) => k !== null)));
+    ok(oldBad.length === 0, `Fases 1 a 10 (12 sorteios cada): todo osso é comum ("scare"), na quantidade da fase, e as rações não têm tipo`);
+    const compBad = draws.filter((d) => d.n >= 11 && (sorted(d.kinds) !== sorted(mixes[d.n - 1]) || d.rk.some((k) => k !== null) || d.nr !== lv[d.n - 1].rations));
+    ok(compBad.length === 0, `Fases 11 a 20 (12 sorteios cada): os tipos dos ossos sorteados são exatamente os do boneMix da fase${compBad.length ? " — problema: " + compBad.slice(0, 2).map((d) => `F${d.n} semente ${d.seed}: ${d.kinds.join(",")}`).join("; ") : ""}`);
+    const varBad = [], varInfo = [];
+    for (let n = 11; n <= 20; n++) {
+      const ds = draws.filter((d) => d.n === n), seqs = new Set(ds.map((d) => d.kinds.join()));
+      const spots = ["gold", "ice", "turbo", "magnet"].filter((k) => mixes[n - 1].includes(k)).map((k) => [k, new Set(ds.map((d) => d.tiles.find((t) => t.endsWith(":" + k)))).size]); // lugares diferentes de cada tipo novo
+      varInfo.push(seqs.size);
+      if (seqs.size < 4 || spots.some(([, c]) => c < 6)) varBad.push(`F${n}: ${seqs.size} arranjos; lugares de cada tipo novo: ${spots.map(([k, c]) => k + " " + c).join(", ")}`);
+    }
+    ok(varBad.length === 0, `a posição de cada tipo é sorteada: em 12 jogos de cada fase os ossos aparecem em arranjos e lugares diferentes (arranjos diferentes nas Fases 11 a 20: ${varInfo.join(", ")})${varBad.length ? " — problema: " + varBad.join("; ") : ""}`);
+    // o README: a linha "Ossos de tipo novo" da tabela das Fases 11 a 20 e os números de cada efeito batem com o jogo
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    const sec = readme.slice(readme.indexOf("### Fases 11 a 20"), readme.indexOf("**Labirintos com desenho de cidade", readme.indexOf("### Fases 11 a 20")));
+    const row = sec.split("\n").find((l) => l.startsWith("| Ossos de tipo novo")), cells = row ? row.split("|").slice(2, -1).map((x) => x.trim()) : [];
+    const PT = { gold: ["ouro", "ouros"], ice: ["gelo", "gelos"], turbo: ["turbo", "turbos"], magnet: ["ímã", "ímãs"] };
+    const wantCell = (mix) => ["gold", "ice", "turbo", "magnet"].filter((k) => mix.includes(k)).map((k) => { const n = mix.filter((x) => x === k).length; return n > 1 ? `${n} ${PT[k][1]}` : PT[k][0]; }).join(", ");
+    const readmeBad = mixes.slice(10).map((m, i) => (cells[i] === wantCell(m) ? null : `Fase ${11 + i}: "${cells[i]}" ≠ "${wantCell(m)}"`)).filter(Boolean);
+    ok(cells.length === 10 && readmeBad.length === 0, `a tabela das Fases 11 a 20 do README tem a linha "Ossos de tipo novo (além de 3 comuns)" igual ao boneMix de cada fase (${cells.slice(0, 3).join(" | ")} ...)${readmeBad.length ? " — problema: " + readmeBad.join("; ") : ""}`);
+    const rd = readme.slice(readme.indexOf("## Ossos de tipos novos"), readme.indexOf("## Os gatos"));
+    ok(/escudo dourado por 10 s/.test(rd) && /congela agentes e gatos por 6 s/.test(rd) && /\+40% de velocidade por 8 s/.test(rd) && /rações a até 4 quadrados, à vista, vêm sozinhas por 12 s/.test(rd) && /\+4 s por nível/.test(rd) && /pelo menos 3 ossos comuns/.test(rd) && /150 pontos/.test(rd) && /\+10% de velocidade/.test(rd), "o README descreve os números certos de cada osso (10 s de escudo, 6 s de gelo, +40% por 8 s de turbo, 4 quadrados por 12 s de ímã, +4 s por nível do Osso poderoso, pelo menos 3 comuns, 150 pontos e +10% de velocidade)");
+    const rr = readme.slice(readme.indexOf("## Reforços (0.8.0)"), readme.indexOf("- Começar uma fase pelo menu", readme.indexOf("## Reforços (0.8.0)")));
+    ok(/\*\*Patas de veludo\*\*[^\n]*3 níveis/.test(rr) && /\*\*Faro\*\*[^\n]*2 níveis/.test(rr) && /\*\*Ímã de ração\*\*[^\n]*2,5 \/ 3,5 \/ 4,5 quadrados[^\n]*3 níveis/.test(rr) && /9 a partir da Fase 11/.test(rr), "o README lista os 3 reforços novos com os máximos (3, 2 e 3 níveis), os raios de 2,5 / 3,5 / 4,5 quadrados e diz que são 9 reforços a partir da Fase 11");
+    // o mesmo jogo (mesma semente) repete os mesmos ossos nos mesmos lugares
+    const again = await ev(page, () => { const f = () => { __fx.begin(17, { seed: 5 }); return __game.items.map((i) => `${i.x},${i.y},${i.kind}`).join("|"); }; return [f(), f()]; });
+    ok(again[0] === again[1], "a mesma semente sorteia os mesmos ossos nos mesmos lugares (o sorteio só depende do gerador de números)");
+
+    // ---- (b) cada tipo: aviso, duração (também com o Osso poderoso), contagem regressiva, fim; não liga o poder de assustar; conta como osso ----
+    const eff = await ev(page, (kinds) => {
+      const out = {};
+      for (const [kind, k] of Object.entries(kinds)) for (const lvl of [0, 2]) {
+        const nb = __fx.begin(17, { seed: 3, up: lvl ? { bone: lvl } : undefined });
+        const score0 = __game.score, got0 = __game.bonesGot, speed0 = __game.dogSpeed;
+        __fx.pick(kind);
+        const r = { nb, fx: __game.fx, toast: __fx.toast(), power: __game.power, postmen: __game.postmen, got: __game.bonesGot - got0, pts: __game.score - score0, ratio: __game.dogSpeed / speed0, modes: [...__game.vets, ...__game.cats].map((e) => e.mode), taken: !!__game.items.find((i) => i.kind === kind).taken };
+        let t = 0, at3 = null;
+        for (let i = 0; i < 1000 && __game.fx[k.key] > 0; i++) { __game.tick(0.05); t += 0.05; if (i === 59) at3 = __game.fx[k.key]; }
+        r.t = t; r.at3 = at3; r.endToast = __fx.toast(); r.after = __game.fx; r.state = __game.state;
+        out[kind + lvl] = r;
+      }
+      return out;
+    }, FX_KINDS);
+    const shown = [];
+    for (const [kind, k] of Object.entries(FX_KINDS)) for (const lvl of [0, 2]) {
+      const r = eff[kind + lvl], want = k.sec + 4 * lvl, m = r.toast.match(k.on), others = Object.keys(r.fx).filter((x) => x !== k.key);
+      const good = r.taken && Math.abs(r.fx[k.key] - want) < 1e-9 && others.every((x) => r.fx[x] === 0) && m && +m[1] === want && r.power === 0 && r.postmen === 0 && r.modes.every((md) => md !== "flee")
+        && r.got === 1 && r.pts === 150 && Math.abs(r.ratio - (kind === "turbo" ? 1.1 * 1.4 : 1.1)) < 1e-9
+        && Math.abs(r.at3 - (want - 3)) < 0.01 && Math.abs(r.t - want) <= 0.06 && r.endToast === k.off && Object.values(r.after).every((x) => x === 0) && r.state === "playing";
+      ok(good, `${k.label}${lvl ? " com Osso poderoso 2" : ""}: o aviso diz "${want} s" (${r.toast}), __game.fx.${k.key} = ${want} (${r.fx[k.key]}), nada de poder de assustar (poder ${r.power}, carteiros ${r.postmen}, ninguém foge), conta como osso (+${r.got} osso, +${r.pts} pontos, velocidade × ${r.ratio.toFixed(2)}), aos 3 s faltam ${r.at3 && r.at3.toFixed(2)} s, acaba aos ${r.t.toFixed(2)} s com o aviso "${r.endToast}"`);
+    }
+    // o osso comum continua dando o poder de assustar (e não liga nenhum efeito novo)
+    const scare = await ev(page, () => {
+      __fx.begin(17, { seed: 3 }); __fx.pick("scare");
+      return { fx: __game.fx, power: __game.power, toast: __fx.toast(), modes: [...__game.vets, ...__game.cats].map((e) => e.mode), got: __game.bonesGot };
+    });
+    ok(Object.values(scare.fx).every((x) => x === 0) && scare.power > 30 && /Poder do osso por \d+ s/.test(scare.toast) && scare.modes.every((md) => md === "flee") && scare.got === 1, `o osso comum (branco) continua dando o poder de assustar (${scare.power} s, todos fogem) e nenhum efeito novo`);
+    // o osso novo conta para a missão "pegar todos os ossos" (faixa da missão) e leva à saída aberta quando é o último
+    await ev(page, () => { __fx.begin(17, { seed: 3 }); __fx.pick("gold"); });
+    ok(await hudIs(page, "#mission-bar", "Missão: ossos 1/7 · sustos 0/3"), `um osso de ouro conta na missão da Fase 17 (faixa: "${await page.textContent("#mission-bar")}")`);
+    const mission = await ev(page, () => {
+      __fx.begin(17, { seed: 3 });
+      for (const kind of ["gold", "ice", "turbo", "magnet", "scare", "scare", "scare"]) __fx.pick(kind);
+      return { got: __game.bonesGot, bones: __game.items.filter((i) => i.bone && i.taken).length };
+    });
+    ok(mission.got === 7 && mission.bones === 7, `pegar os 4 ossos novos e os 3 comuns dá os 7 ossos da fase (bonesGot ${mission.got}, itens pegos ${mission.bones})`);
+    // pegar outro osso do mesmo tipo recomeça a contagem (não soma); tipos diferentes têm contagens separadas
+    const two = await ev(page, () => {
+      __fx.begin(19, { seed: 4 });
+      const golds = __game.items.filter((i) => i.bone && i.kind === "gold"), p = __game.player, out = { golds: golds.length };
+      golds[0].x = p.x + 4; golds[0].y = p.y + 4; __game.tick(0.01);
+      for (let i = 0; i < 80; i++) __game.tick(0.05); // 4 s
+      out.before = __game.fx.shield;
+      golds[1].x = p.x + 4; golds[1].y = p.y + 4; __game.tick(0.01);
+      out.after = __game.fx.shield;
+      __fx.pick("ice"); for (let i = 0; i < 40; i++) __game.tick(0.05); // 2 s
+      __fx.pick("turbo");
+      out.mixed = __game.fx;
+      return out;
+    });
+    ok(two.golds === 2 && Math.abs(two.before - 6) < 0.01 && two.after === 10, `pegar outro osso de ouro recomeça o escudo (${two.before.toFixed(1)} s → ${two.after} s, não soma 16 s)`);
+    ok(Math.abs(two.mixed.shield - 8) < 0.05 && Math.abs(two.mixed.ice - 4) < 0.05 && two.mixed.turbo === 8 && two.mixed.magnet === 0, `efeitos de tipos diferentes contam separado e ao mesmo tempo (escudo ${two.mixed.shield.toFixed(1)}, gelo ${two.mixed.ice.toFixed(1)}, turbo ${two.mixed.turbo}, ímã ${two.mixed.magnet})`);
+    // o osso novo pode esconder uma vida extra: o aviso diz a vida e o efeito
+    const lifeBone = await ev(page, () => {
+      __fx.begin(17, { seed: 3 }); __game.setLives(2);
+      const b = __fx.bone("ice"); b.life = true; __fx.pick("ice");
+      return { lives: __game.lives, toast: __fx.toast(), ice: __game.fx.ice };
+    });
+    ok(lifeBone.lives === 3 && /Vida extra! \+1 vida · Osso de gelo!/.test(lifeBone.toast) && lifeBone.ice === 6, `um osso de gelo com vida extra dá a vida (+1) e o gelo juntos (aviso: "${lifeBone.toast}")`);
+  });
+
+  // =====================================================================
+  await section("0.15.7: ossos de tipos novos (o que cada efeito faz: escudo de ouro, gelo, turbo e ímã)", async () => {
+    await fresh(page); await loadKit(); await injectFx();
+    const M17 = model(17), M11 = model(11);
+
+    // ---- (c) ouro: durante o escudo encostar num agente ou num gato não tira vida; depois tira ----
+    const touchRun = (who, shield) => ev(page, ([who, shield]) => {
+      __fx.begin(17, { seed: 3, noCatch: false });
+      const p = __game.player, out = { shieldAfterPick: 0 };
+      if (shield) { __fx.pick("gold"); out.shieldAfterPick = __game.fx.shield; }
+      const e = who === "cat" ? __game.cats[0] : __game.vets[0], lives0 = __game.lives, log = [];
+      for (let i = 0; i < 300 && __game.lives === lives0; i++) { e.cx = p.x + 12; e.cy = p.y + 12; __game.tick(0.05); log.push(__game.fx.shield > 0); }
+      out.lost = __game.lives === lives0 - 1; out.ticks = log.length; out.shieldWhenLost = log[log.length - 1]; out.at = log.length * 0.05; out.score = __game.score;
+      return out;
+    }, [who, shield]);
+    const [vNo, vSh, cNo, cSh] = [await touchRun("vet", false), await touchRun("vet", true), await touchRun("cat", false), await touchRun("cat", true)];
+    ok(vNo.lost && vNo.ticks <= 2 && cNo.lost && cNo.ticks <= 2, `sem escudo, encostar num agente ou num gato tira 1 vida na hora (controle: ${vNo.ticks} e ${cNo.ticks} quadros)`);
+    ok(vSh.shieldAfterPick === 10 && vSh.lost && vSh.shieldWhenLost === false && Math.abs(vSh.at - 10) <= 0.1 && cSh.lost && cSh.shieldWhenLost === false && Math.abs(cSh.at - 10) <= 0.1,
+      `com o escudo de ouro o agente e o gato encostam por 10 s sem tirar vida; a vida só se perde quando o escudo acaba (agente aos ${vSh.at.toFixed(2)} s, gato aos ${cSh.at.toFixed(2)} s)`);
+    // o escudo também vale com vários inimigos em cima e com o poder de assustar ligado ao mesmo tempo (nada muda de regra: com poder o contato assusta)
+    const both = await ev(page, () => {
+      __fx.begin(17, { seed: 3, noCatch: false }); __fx.pick("gold"); __fx.pick("scare");
+      const p = __game.player, e = __game.vets[0]; e.cx = p.x + 12; e.cy = p.y + 12; const l0 = __game.lives, s0 = __game.score; __game.tick(0.05);
+      return { lives: __game.lives, l0, gain: __game.score - s0, shield: __game.fx.shield, power: __game.power };
+    });
+    ok(both.lives === both.l0 && both.shield > 9 && both.power > 30 && both.gain === 100, `o escudo e o poder do osso comum valem juntos (escudo ${both.shield.toFixed(1)} s, poder ${both.power.toFixed(0)} s; encostar no carteiro dá +${both.gain})`);
+
+    // ---- (c) ouro: o bloco que esmaga (as Fases 11 a 20 têm blocos que esmagam) não esmaga com o escudo ----
+    ok(await ev(page, () => __game.levels.slice(10).every((l) => l.crush === true && l.blocks.some((b) => b.wall))), "as Fases 11 a 20 têm blocos que esmagam (crush) e paredes que se movem");
+    const crush = (shield) => ev(page, (shield) => {
+      __fx.begin(11, { seed: 3, noCatch: false, up: shield ? { bone: 1 } : undefined }); // (Osso poderoso 1: o escudo dura 14 s e cobre o instante em que a parede chega)
+      const wl = __game.levels[10].blocks[0], [ww, wh] = wl.size, fp = (at) => { const o = []; for (let i = 0; i < ww; i++) for (let j = 0; j < wh; j++) o.push(at[0] + i + "," + (at[1] + j)); return o; };
+      const fromSet = new Set(fp(wl.from)), nt = fp(wl.to).find((t) => !fromSet.has(t)).split(",").map(Number); // um tile que a parede 1 ainda não cobre e vai cobrir
+      if (shield) __fx.pick("gold");
+      const left0 = shield ? __game.fx.shield : 0;
+      for (let i = 0; i < 9 * 60 + 30; i++) __game.tick(1 / 60); // 9,5 s
+      const p = __game.player; p.x = nt[0] * 32 + 4; p.y = nt[1] * 32 + 4; const x0 = p.x, y0 = p.y;
+      const r = { lives0: __game.lives, left: shield ? __game.fx.shield : 0, left0 }; let t = 9.5, over = 0;
+      for (let i = 0; i < 90; i++) {
+        __game.tick(1 / 60); t += 1 / 60;
+        const b = __game.blocks[0]; if (b.x < p.x + p.w && b.x + b.def.w > p.x && b.y < p.y + p.h && b.y + b.def.h > p.y) over++;
+        if (__game.lives < r.lives0 && r.at === undefined) { r.at = t; r.toast = __fx.toast(); }
+      }
+      r.lives = __game.lives; r.over = over; r.moved = Math.hypot(p.x - x0, p.y - y0); r.shieldEnd = __game.fx.shield;
+      return r;
+    }, shield);
+    const crNo = await crush(false), crSh = await crush(true);
+    ok(crNo.lives === crNo.lives0 - 1 && crNo.at > 10 && crNo.at < 10.8 && /Esmagado por um bloco/.test(crNo.toast), `Fase 11, sem escudo: a parede que se move esmaga o cachorrinho parado onde ela chega (controle: perde 1 vida aos ${crNo.at && crNo.at.toFixed(2)} s)`);
+    ok(crSh.left > 3 && crSh.lives === crSh.lives0 && crSh.over === 0 && crSh.moved > 1 && crSh.shieldEnd > 0, `Fase 11, com o escudo de ouro: a mesma parede não esmaga, só empurra o cachorrinho para o lado (vidas ${crSh.lives0} → ${crSh.lives}, empurrado ${crSh.moved.toFixed(0)} px, ${crSh.over} quadros dentro do bloco, ainda faltavam ${crSh.shieldEnd.toFixed(1)} s de escudo)`);
+
+    // ---- (d) gelo: agentes e gatos não se mexem por 6 s, encostar neles não tira vida; depois voltam a andar e o cachorrinho ganha 1 s de proteção ----
+    const iceRun = (ice) => ev(page, (ice) => {
+      __fx.begin(17, { seed: 3, free: true, noCatch: true });
+      __game.catsThaw = true; // (agentes e gatos soltos de verdade)
+      const p = __game.player, all = () => [...__game.vets, ...__game.cats], snap = () => all().map((e) => [e.cx, e.cy]);
+      for (let i = 0; i < 40; i++) __game.tick(0.05); // 2 s: já estão andando
+      if (ice) __fx.pick("ice");
+      const t0 = snap(), left0 = __game.fx.ice;
+      for (let i = 0; i < 118; i++) __game.tick(0.05); // 5,9 s
+      const t1 = snap(), left1 = __game.fx.ice;
+      const moved = t0.map(([x, y], k) => Math.hypot(t1[k][0] - x, t1[k][1] - y));
+      return { n: t0.length, vets: __game.vets.length, cats: __game.cats.length, left0, left1, movedMin: Math.min(...moved), movedMax: Math.max(...moved), movedCount: moved.filter((d) => d > 3).length, same: t0.every(([x, y], k) => t1[k][0] === x && t1[k][1] === y) };
+    }, ice);
+    const iceNo = await iceRun(false), iceOn = await iceRun(true);
+    ok(iceNo.movedCount >= iceNo.n * 0.7 && !iceNo.same, `(controle) sem gelo, em 5,9 s a maioria dos ${iceNo.n} agentes e gatos anda (${iceNo.movedCount} se mexeram, até ${iceNo.movedMax.toFixed(0)} px)`);
+    ok(iceOn.same && iceOn.movedMax === 0 && iceOn.left0 === 6 && iceOn.left1 > 0 && iceOn.left1 < 0.2 && iceOn.vets >= 5 && iceOn.cats >= 4, `com o osso de gelo os ${iceOn.vets} agentes e os ${iceOn.cats} gatos da Fase 17 não saem do lugar por 5,9 s (posições idênticas; faltam ${iceOn.left1.toFixed(2)} s de gelo)`);
+    const iceEnd = await ev(page, () => {
+      __fx.begin(17, { seed: 3, free: true, noCatch: false }); __game.catsThaw = true;
+      const p = __game.player, all = () => [...__game.vets, ...__game.cats];
+      for (let i = 0; i < 20; i++) __game.tick(0.05);
+      __fx.pick("ice");
+      const lives0 = __game.lives, out = { touches: 0 };
+      // durante os 6 s o agente e o gato ficam em cima do cachorrinho: nenhuma vida se perde
+      let k = 0; for (; k < 400 && __game.fx.ice > 0; k++) { for (const e of [__game.vets[0], __game.cats[0]]) { e.cx = p.x + 12; e.cy = p.y + 12; } __game.tick(0.05); out.touches++; if (__game.fx.ice > 0 && __game.lives !== lives0) out.lostDuring = true; }
+      out.ticks = k; out.lives = __game.lives; out.lives0 = lives0; out.endToast = __fx.toast(); out.invuln = __game.invuln; out.cools = all().map((e) => e.cool);
+      // acabou o gelo: 1 s de proteção, mesmo com os dois ainda em cima; depois a vida se perde
+      let lostAt = null;
+      for (let i = 0; i < 60 && lostAt === null; i++) { for (const e of [__game.vets[0], __game.cats[0]]) { e.cx = p.x + 12; e.cy = p.y + 12; } __game.tick(0.05); if (__game.lives < lives0) lostAt = (i + 1) * 0.05; }
+      out.lostAt = lostAt;
+      return out;
+    });
+    ok(!iceEnd.lostDuring && iceEnd.lives === iceEnd.lives0 && iceEnd.touches >= 119 && iceEnd.endToast === "O gelo derreteu!", `durante o gelo o agente e o gato em cima do cachorrinho (${iceEnd.touches} quadros) não tiram vida (vidas ${iceEnd.lives0} → ${iceEnd.lives}); aviso ao acabar: "${iceEnd.endToast}"`);
+    ok(iceEnd.invuln > 0.9 && iceEnd.invuln <= 1 && iceEnd.cools.every((c) => c >= 1.4) && iceEnd.lostAt !== null && iceEnd.lostAt >= 0.9 && iceEnd.lostAt <= 1.1, `ao acabar o gelo o cachorrinho ganha 1 s de proteção (${iceEnd.invuln.toFixed(2)} s) e todos esperam 1,5 s para perseguir (cool ≥ ${Math.min(...iceEnd.cools).toFixed(2)}); só perde a vida aos ${iceEnd.lostAt && iceEnd.lostAt.toFixed(2)} s`);
+    const thaw = await ev(page, () => {
+      __fx.begin(17, { seed: 3, free: true, noCatch: true }); __game.catsThaw = true;
+      const all = () => [...__game.vets, ...__game.cats];
+      for (let i = 0; i < 40; i++) __game.tick(0.05);
+      __fx.pick("ice");
+      for (let i = 0; i < 125; i++) __game.tick(0.05); // 6,25 s: o gelo já acabou
+      const t0 = all().map((e) => [e.cx, e.cy]);
+      for (let i = 0; i < 80; i++) __game.tick(0.05); // mais 4 s
+      return { ice: __game.fx.ice, moved: all().map((e, k) => Math.hypot(e.cx - t0[k][0], e.cy - t0[k][1])).filter((d) => d > 3).length, n: all().length };
+    });
+    ok(thaw.ice === 0 && thaw.moved >= thaw.n * 0.7, `depois que o gelo derrete agentes e gatos voltam a andar (${thaw.moved} de ${thaw.n} se mexeram em 4 s)`);
+    // com o gelo, o poder do osso comum continua funcionando: encostar num gato congelado assusta (+100) em vez de perder vida
+    const icePower = await ev(page, () => {
+      __fx.begin(17, { seed: 3, free: true, noCatch: false }); __game.catsThaw = true;
+      __fx.pick("ice"); __fx.pick("scare");
+      const p = __game.player, c = __game.cats[0]; c.cx = p.x + 12; c.cy = p.y + 12; const s0 = __game.score, l0 = __game.lives; __game.tick(0.02);
+      return { gain: __game.score - s0, lives: __game.lives, l0, ice: __game.fx.ice };
+    });
+    ok(icePower.gain === 100 && icePower.lives === icePower.l0 && icePower.ice > 5, `gelo e poder do osso juntos: encostar no gato congelado assusta (+${icePower.gain} pontos) e não custa vida`);
+
+    // ---- (e) turbo: em 1 s o cachorrinho anda 1,4 vezes o normal ----
+    const run = hrun(M17, 18);
+    ok(!!run, `(teste) há uma rua reta de 18 tiles livres na Fase 17 para medir a velocidade (${run && run.c + "," + run.r})`);
+    const dist = (kind) => ev(page, ([kind, run]) => {
+      __fx.begin(17, { seed: 3, dog: [run.c, run.r] });
+      __fx.pick(kind); // (os dois ossos dão +10%: a diferença é só o turbo)
+      const p = __game.player, x0 = p.x, s = __game.dogSpeed; __t.hold("d", 60);
+      return { d: p.x - x0, speed: s, turbo: __game.fx.turbo };
+    }, [kind, run]);
+    const dGold = await dist("gold"), dTurbo = await dist("turbo");
+    ok(dGold.d > 150 && Math.abs(dTurbo.d / dGold.d - 1.4) < 0.02 && Math.abs(dTurbo.speed / dGold.speed - 1.4) < 1e-9 && dTurbo.turbo > 6.9 && dTurbo.turbo < 7.1, `com o osso turbo o cachorrinho anda ${dTurbo.d.toFixed(0)} px em 1 s, contra ${dGold.d.toFixed(0)} px com outro osso: × ${(dTurbo.d / dGold.d).toFixed(3)} (esperado 1,4)`);
+    const dEnd = await ev(page, ([run]) => { // depois dos 8 s a velocidade volta ao normal (só o +10% do osso)
+      __fx.begin(17, { seed: 3, dog: [run.c, run.r] }); const s0 = __game.dogSpeed; __fx.pick("turbo"); const s1 = __game.dogSpeed;
+      for (let i = 0; i < 170; i++) __game.tick(0.05);
+      return { s0, s1, s2: __game.dogSpeed, fx: __game.fx.turbo };
+    }, [run]);
+    ok(Math.abs(dEnd.s1 / dEnd.s0 - 1.54) < 1e-9 && dEnd.fx === 0 && Math.abs(dEnd.s2 / dEnd.s0 - 1.1) < 1e-9, `o turbo acaba e a velocidade volta ao normal (× ${(dEnd.s1 / dEnd.s0).toFixed(2)} com o turbo, × ${(dEnd.s2 / dEnd.s0).toFixed(2)} depois)`);
+
+    // ---- (f) ímã (osso): rações à vista a menos de 4 tiles vêm sozinhas; atrás de parede ou mais longe, não ----
+    const wp = (() => { for (const n of [13, 14, 15, 16, 17, 18, 19, 20]) { const m = model(n), f = wallPairOf(m, 3); if (f) return { n, ...f }; } return null; })();
+    ok(!!wp, `(teste) há dois tiles de chão com uma parede de 2 tiles no meio (a 96 px, dentro do alcance do ímã), para a ração atrás da parede (Fase ${wp && wp.n}: cachorrinho em ${wp && wp.dog}, ração em ${wp && wp.ration})`);
+    const magnet = await ev(page, ([run, wp]) => {
+      const out = {};
+      __fx.begin(17, { seed: 3, dog: [run.c + 9, run.r] });
+      const [a, b, c, d] = __fx.rations(); // a: 124 px à direita (dentro), b: 132 px à esquerda (fora), c: 40 px à esquerda (dentro), d: 180 px à direita (fora)
+      __fx.putAt(a, 124, 0); __fx.putAt(b, -132, 0); __fx.putAt(c, -40, 0); __fx.putAt(d, 180, 0);
+      __fx.rations().slice(4).forEach((it) => { it.x = -500; it.y = -500; }); // (as outras rações ficam longe: nenhuma cai por perto por sorteio)
+      const s0 = __game.score, c0 = __game.collected; __fx.pick("magnet");
+      out.taken = [a, b, c, d].map((it) => it.taken); out.gain = __game.score - s0 - Records.BONE_POINTS; out.collected = __game.collected - c0; out.rp = Records.RATION_POINTS; // (menos os pontos do próprio osso)
+      for (let i = 0; i < 40; i++) __game.tick(0.05); // com o dog parado e o ímã ligado, b e d continuam fora do alcance
+      out.after = [a, b, c, d].map((it) => it.taken);
+      // ração atrás de parede, a 96 px (2 tiles de parede no meio): fica
+      __fx.begin(wp.n, { seed: 3, dog: wp.dog }); const r = __fx.rations()[0]; r.x = wp.ration[0] * 32 + 8; r.y = wp.ration[1] * 32 + 8;
+      const dd = Math.hypot(r.x + 8 - (__game.player.x + 12), r.y + 8 - (__game.player.y + 12));
+      __fx.pick("magnet"); for (let i = 0; i < 20; i++) __game.tick(0.05);
+      out.wallTaken = r.taken; out.wallDist = dd; out.wallFx = __game.fx.magnet;
+      return out;
+    }, [run, wp]);
+    ok(JSON.stringify(magnet.taken) === "[true,false,true,false]" && magnet.collected === 2 && magnet.gain === 2 * magnet.rp && JSON.stringify(magnet.after) === "[true,false,true,false]", `osso ímã: a ração a 124 px e a de 40 px são pegas sozinhas (+${magnet.gain} pontos, ${magnet.collected} rações: pegas ${JSON.stringify(magnet.taken)}); a de 132 px (à esquerda) e a de 180 px (à direita) não`);
+    ok(magnet.wallTaken === false && magnet.wallDist < 128 && magnet.wallFx > 0, `osso ímã: a ração a ${magnet.wallDist.toFixed(0)} px mas atrás de uma parede não vem (o ímã segue ligado: ${magnet.wallFx.toFixed(1)} s)`);
+    const magEnd = await ev(page, ([run]) => { // acabou o ímã: a ração a 40 px fica onde está
+      __fx.begin(17, { seed: 3, dog: [run.c + 9, run.r] }); __fx.pick("magnet"); for (let i = 0; i < 245; i++) __game.tick(0.05);
+      const [a] = __fx.rations(); __fx.putAt(a, 40, 0); const fxNow = __game.fx.magnet; for (let i = 0; i < 20; i++) __game.tick(0.05);
+      return { fx: fxNow, taken: a.taken };
+    }, [run]);
+    ok(magEnd.fx === 0 && magEnd.taken === false, "depois dos 12 s o ímã desliga: a ração a 40 px não vem mais");
+  });
+
+  // =====================================================================
+  await section("0.15.7: ossos de tipos novos (desenho: cores dos ossos, escudo, gelo, turbo e ímã; faixa dos efeitos)", async () => {
+    await fresh(page); await loadKit(); await injectFx();
+    const m = model(17);
+    // um trecho reto e livre de 16 tiles: o cachorrinho fica no meio dele e os ossos numa fileira à direita
+    const run = hrun(m, 16);
+    ok(!!run, `(teste) há uma rua reta de 16 tiles livres na Fase 17 (${run && run.c + "," + run.r})`);
+    const DOG = [run.c + 3, run.r];
+
+    // ---- (g) cada tipo de osso tem a sua cor (pixels do canvas no osso de cada tipo) ----
+    const colors = await ev(page, async ([DOG, fills]) => {
+      __fx.begin(17, { seed: 3, dog: DOG });
+      for (const e of [...__game.vets, ...__game.cats]) { e.cx = -300; e.cy = -300; } // (ninguém por perto)
+      const kinds = Object.keys(fills), bones = kinds.map((k) => __fx.bone(k));
+      __game.items.forEach((i) => { if (!bones.includes(i)) { i.x = -500; i.y = -500; } });
+      bones.forEach((b, i) => __fx.putAt(b, 70 + i * 50, 0));
+      await __fx.frame();
+      const out = {};
+      kinds.forEach((k, i) => {
+        const [x, y, sx] = __fx.px(bones[i].x + 8, bones[i].y + 8), half = 12 * sx;
+        out[k] = { sx, own: __fx.count(x, y, half, fills[k], 10), others: Object.keys(fills).filter((o) => o !== k).map((o) => __fx.count(x, y, half, fills[o], 10)) };
+      });
+      const [ex, ey] = __fx.px(bones[0].x + 8, bones[0].y + 8 - 60); // uma janela vazia, sem osso
+      out.empty = Object.values(fills).map((f) => __fx.count(ex, ey, 12 * out.scare.sx, f, 10));
+      return out;
+    }, [DOG, BONE_FILL]);
+    const colorBad = Object.keys(BONE_FILL).filter((k) => colors[k].own < 20 * colors[k].sx * colors[k].sx || colors[k].others.some((n) => n > 3));
+    ok(colorBad.length === 0 && colors.empty.every((n) => n <= 3), `cada osso tem a sua cor: pixels da cor própria no osso (${Object.keys(BONE_FILL).map((k) => `${k} ${colors[k].own}`).join(", ")}; da cor de outro tipo: no máximo ${Math.max(...Object.keys(BONE_FILL).flatMap((k) => colors[k].others))}; num lugar sem osso: ${Math.max(...colors.empty)})${colorBad.length ? " — problema: " + colorBad.join(",") : ""}`);
+
+    // ---- (g) escudo, turbo, ímã e gelo aparecem no desenho (com o efeito ligado há mais pixels da cor dele; sem, não) ----
+    const look = await ev(page, async ([DOG]) => {
+      __fx.begin(17, { seed: 3, dog: DOG });
+      __game.items.forEach((i) => { i.x = -500; i.y = -500; });
+      const all = [...__game.vets, ...__game.cats], p = __game.player;
+      all.forEach((e) => { e.cx = -300; e.cy = -300; });
+      // o agente e o gato ao lado do cachorrinho, para ver o gelo
+      const v = __game.vets[0], c = __game.cats[0]; v.cx = p.x + 12 + 90; v.cy = p.y + 12 - 20; c.cx = p.x + 12 + 90; c.cy = p.y + 12 + 40;
+      const shot = async (fx) => {
+        __game.fx = fx; await __fx.frame();
+        const [dx, dy, sx] = __fx.px(p.x + 12, p.y + 12), [vx, vy] = __fx.px(v.cx, v.cy), [cx, cy] = __fx.px(c.cx, c.cy), cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+        return {
+          sx, d,
+          gold: __fx.count(dx, dy, 30 * sx, [255, 214, 90], 20),                // anel dourado do escudo
+          orange: __fx.count(dx - 22 * sx, dy, 14 * sx, [255, 150, 60], 30),    // rastro do turbo (o cachorrinho olha para a direita: o rastro fica à esquerda)
+          iceV: __fx.count(vx, vy, 26 * sx, [235, 250, 255], 14), iceC: __fx.count(cx, cy, 26 * sx, [235, 250, 255], 14), // contorno branco do bloco de gelo
+          dx, dy,
+        };
+      };
+      const base = await shot({}), sh = await shot({ shield: 40 }), tb = await shot({ turbo: 40 }), ic = await shot({ ice: 40 }), mg = await shot({ magnet: 40 }), base2 = await shot({});
+      // o ímã: o círculo tracejado de 128 px em volta do cachorrinho muda pixels bem perto desse raio (controle: dois quadros sem efeito quase não mudam)
+      const sx = mg.sx, cv = document.getElementById("game"), W = cv.width, H = cv.height;
+      const ringDiff = (a, b) => { let n = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const r = Math.hypot(x - a.dx, y - a.dy); if (r < 124 * sx || r > 132 * sx) continue; const i = (y * W + x) * 4; if (Math.abs(a.d[i] - b.d[i]) + Math.abs(a.d[i + 1] - b.d[i + 1]) + Math.abs(a.d[i + 2] - b.d[i + 2]) > 40) n++; } return n; };
+      __game.fx = {};
+      const strip = (o) => { const { d, ...rest } = o; return rest; };
+      return { base: strip(base), sh: strip(sh), tb: strip(tb), ic: strip(ic), mg: strip(mg), ring: ringDiff(mg, base), noise: ringDiff(base2, base), sx };
+    }, [DOG]);
+    ok(look.sh.gold - look.base.gold >= 60 * look.sx && look.base.gold < 15, `escudo de ouro: o anel dourado aparece em volta do cachorrinho (${look.base.gold} → ${look.sh.gold} pixels dourados)`);
+    ok(look.tb.orange - look.base.orange >= 20 * look.sx && look.base.orange < 10, `turbo: o rastro laranja aparece atrás do cachorrinho (${look.base.orange} → ${look.tb.orange} pixels laranja)`);
+    ok(look.ic.iceV - look.base.iceV >= 80 * look.sx && look.ic.iceC - look.base.iceC >= 80 * look.sx, `gelo: o agente (${look.base.iceV} → ${look.ic.iceV}) e o gato (${look.base.iceC} → ${look.ic.iceC}) ganham o bloco de gelo de contorno branco`);
+    ok(look.ring >= 150 * look.sx && look.noise < 30, `ímã: o círculo tracejado de 4 tiles (128 px) em volta do cachorrinho muda ${look.ring} pixels bem no raio (dois quadros sem o efeito mudam só ${look.noise})`);
+    await ev(page, () => { __game.fx = {}; });
+
+    // ---- (g) a faixa dos efeitos (#fx-bar): texto certo, na ordem escudo, gelo, turbo, ímã, e oculta sem efeito ----
+    const bar = (fx) => ev(page, async (fx) => { __game.fx = fx; await __fx.frame(); const e = document.getElementById("fx-bar"); return { text: e.textContent, hidden: e.classList.contains("hidden") || getComputedStyle(e).display === "none" }; }, fx);
+    const b0 = await bar({}), b1 = await bar({ shield: 8 }), b2 = await bar({ shield: 8, ice: 3 }), b3 = await bar({ ice: 2.5, magnet: 12 }), b4 = await bar({ shield: 8, ice: 3, turbo: 5, magnet: 12 }), b5 = await bar({});
+    ok(b0.hidden && b5.hidden && b0.text === "" && b5.text === "", "a faixa dos efeitos fica oculta quando não há nenhum efeito (e some quando o último acaba)");
+    ok(!b1.hidden && b1.text === "Escudo 8 s" && b2.text === "Escudo 8 s · Gelo 3 s" && b3.text === "Gelo 3 s · Ímã 12 s" && b4.text === "Escudo 8 s · Gelo 3 s · Turbo 5 s · Ímã 12 s", `a faixa mostra o nome e os segundos de cada efeito (arredondando para cima), na ordem escudo, gelo, turbo e ímã ("${b2.text}"; "${b3.text}"; "${b4.text}")`);
+    const live = await ev(page, async () => { __fx.begin(17, { seed: 3 }); __fx.pick("gold"); await __fx.frame(); const a = document.getElementById("fx-bar").textContent; __fx.pick("ice"); await __fx.frame(); return [a, document.getElementById("fx-bar").textContent]; });
+    ok(live[0] === "Escudo 10 s" && live[1] === "Escudo 10 s · Gelo 6 s", `pegar o osso de ouro e depois o de gelo liga a faixa na hora ("${live[0]}" → "${live[1]}")`);
+    const none = await ev(page, async () => { __game.start(5); await __fx.frame(); return document.getElementById("fx-bar").classList.contains("hidden"); });
+    ok(none, "nas fases sem ossos de tipo novo (Fase 5) a faixa dos efeitos fica oculta");
+
+    // ---- a faixa dos efeitos não cobre a faixa da missão nem o placar, em vários tamanhos de tela ----
+    const layout = [];
+    for (const [w, h] of [[1280, 720], [1000, 700], [390, 760], [360, 640], [320, 568], [568, 320], [844, 390]]) {
+      await page.setViewportSize({ width: w, height: h }); await page.waitForTimeout(250); // (espera o jogo ajustar o tamanho do canvas)
+      const r = await ev(page, async () => {
+        __fx.begin(20, { seed: 3 }); __game.fx = { shield: 28, ice: 14, turbo: 16, magnet: 20 }; await __fx.frame();
+        const q = (id) => document.getElementById(id).getBoundingClientRect(), f = q("fx-bar"), ms = q("mission-bar"), hud = q("hud"), st = q("stage");
+        const inter = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        // estresse: se a faixa da missão quebrar em várias linhas (texto comprido numa tela estreita), a dos efeitos desce junto em vez de ficar por cima dela
+        const mb = document.getElementById("mission-bar"), mbText = mb.textContent;
+        mb.textContent = "Missão: " + "ossos 0/8 · sustos 0/5 · rações 0/48 · ".repeat(3); await __fx.frame();
+        const f2 = q("fx-bar"), ms2 = q("mission-bar"), stress = { lines: Math.round(ms2.height / 20), over: inter(f2, ms2) };
+        mb.textContent = mbText; await __fx.frame(); // (o placar só reescreve o texto quando ele muda: devolve o de antes)
+        return { stress, f: [f.left, f.top, f.right, f.bottom].map(Math.round), ms: [ms.left, ms.top, ms.right, ms.bottom].map(Math.round), overMission: inter(f, ms), overHud: inter(f, hud), inCanvas: f.left >= st.left - 1 && f.right <= st.right + 1 && f.top >= st.top - 1, text: document.getElementById("fx-bar").textContent, missionText: document.getElementById("mission-bar").textContent, fh: f.height, fontPx: parseFloat(getComputedStyle(document.getElementById("fx-bar")).fontSize) };
+      });
+      layout.push({ w, h, ...r });
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const layBad = layout.filter((l) => l.overMission > 0 || l.overHud > 0 || !l.inCanvas || l.fontPx < 10.5 || l.stress.over > 0 || l.stress.lines < 2);
+    ok(layBad.length === 0, `a faixa dos efeitos (os 4 de uma vez) não cobre a faixa da missão nem o placar e cabe no jogo em ${layout.length} tamanhos de tela, nem quando a faixa da missão quebra em várias linhas (${layout.map((l) => l.stress.lines + " linhas").join(", ")}) (${layout.map((l) => `${l.w}x${l.h}: faixa ${l.f.join(",")} / missão ${l.ms.join(",")}`).join("; ")})${layBad.length ? " — problema: " + layBad.map((l) => `${l.w}x${l.h} (sobre a missão ${l.overMission}, sobre o placar ${l.overHud}, dentro do jogo ${l.inCanvas}, letra ${l.fontPx}px, com a missão em ${l.stress.lines} linhas: sobre ela ${l.stress.over})`).join("; ") : ""}`);
+  });
+
+  // =====================================================================
+  await section("0.15.7: ossos de tipos novos (jogo salvo: efeitos e tipos de osso, saves adulterados e jogo salvo antigo)", async () => {
+    await fresh(page, { keepSave: true }); await loadKit(); await injectFx();
+    const saveOf = () => page.evaluate(() => JSON.parse(localStorage.getItem("cachorrinho.save.v1")));
+    const state = () => ev(page, () => ({ level: __game.level, state: __game.state, fx: __game.fx, got: __game.bonesGot, up: __game.upgrades, power: __game.power, items: __game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32, i.taken ? 1 : 0, i.life ? 1 : 0, i.bone ? i.kind : "-"].join(":")).sort(), nbones: __game.items.filter((i) => i.bone).length }));
+    // Fase 17: pega um osso de ouro, 3 s depois o turbo e uma ração, e salva
+    await ev(page, () => {
+      __fx.begin(17, { seed: 3, keepLife: true }); __fx.pick("gold");
+      for (let i = 0; i < 60; i++) __game.tick(0.05); __fx.pick("turbo");
+      const r = __fx.rations()[0], p = __game.player; r.x = p.x + 4; r.y = p.y + 4; __game.tick(0.01);
+      __game.save();
+    });
+    const before = await state(), real = await saveOf(), snap = real.saves.toto.snap;
+    ok(snap.fx.length === 4 && Math.abs(snap.fx[0] - 6.98) < 0.05 && snap.fx[1] === 0 && Math.abs(snap.fx[2] - 7.99) < 0.05 && snap.fx[3] === 0, `o jogo salvo guarda os efeitos que faltam [escudo, gelo, turbo, ímã] (${JSON.stringify(snap.fx)})`);
+    const kindsSaved = snap.items.filter((it) => it[4] > 0).map((it) => BONE_KINDS[it[4] - 1]).sort().join();
+    ok(snap.up.length === 8 && kindsSaved === boneMixOf(17).slice().sort().join() && snap.items.every((it) => it.length === 5 && it[4] >= 0 && it[4] <= 5), `o jogo salvo guarda o tipo de cada osso (item[4] = 1 a 5: ${kindsSaved}) e os 8 reforços (up com ${snap.up.length} posições)`);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectFx();
+    ok(await page.isVisible("#btn-continue"), "recarregar a página no meio da Fase 17 com efeitos ligados deixa Continuar jogo");
+    await page.click("#btn-continue");
+    const back = await state();
+    ok(back.level === 17 && back.state === "playing" && JSON.stringify(back.items) === JSON.stringify(before.items) && back.got === 2 && back.nbones === 7, `Continuar volta com os mesmos 7 ossos, cada tipo no mesmo tile (e quais já foram pegos): ${back.items.filter((s) => !s.endsWith(":-")).length} ossos conferem com os de antes`);
+    ok(Math.abs(back.fx.shield - snap.fx[0]) < 1.5 && back.fx.shield <= snap.fx[0] && Math.abs(back.fx.turbo - snap.fx[2]) < 1.5 && back.fx.turbo <= snap.fx[2] && back.fx.ice === 0 && back.fx.magnet === 0, `e com os mesmos efeitos (escudo ${back.fx.shield.toFixed(2)} e turbo ${back.fx.turbo.toFixed(2)} s; salvos ${snap.fx[0]} e ${snap.fx[2]})`);
+    const resumed = await ev(page, async () => { await __fx.frame(); return { bar: document.getElementById("fx-bar").textContent, sp: __game.dogSpeed }; });
+    ok(/^Escudo \d+ s · Turbo \d+ s$/.test(resumed.bar), `a faixa dos efeitos volta ligada depois de continuar ("${resumed.bar}")`);
+    // e os efeitos acabam normalmente depois de continuar
+    const endAfter = await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; for (let i = 0; i < 200 && (__game.fx.shield > 0 || __game.fx.turbo > 0); i++) __game.tick(0.05); return { fx: __game.fx, toast: __fx.toast() }; });
+    ok(Object.values(endAfter.fx).every((x) => x === 0), "os efeitos do jogo continuado acabam no tempo que faltava");
+
+    // saves adulterados (feitos a partir do save real da Fase 17) e jogo salvo antigo
+    const clone = (f) => { const c = JSON.parse(JSON.stringify(snap)); f(c); return c; };
+    const parse = (s) => ev(page, (s) => __game.parseSave(s), s);
+    const firstBone = (c, kind) => c.items.find((it) => it[4] === kind); // (kind = o código salvo: 1 comum, 2 ouro, 3 gelo, 4 turbo, 5 ímã)
+    const bad = {
+      "tipo de osso 6 (fora de 1 a 5)": (c) => { firstBone(c, 2)[4] = 6; },
+      "tipo de osso negativo": (c) => { firstBone(c, 2)[4] = -1; },
+      "tipo de osso fracionário": (c) => { firstBone(c, 2)[4] = 1.5; },
+      "tipo de osso em texto": (c) => { firstBone(c, 2)[4] = "2"; },
+      "o osso de ouro virou comum (composição diferente da fase)": (c) => { firstBone(c, 2)[4] = 1; },
+      "dois ossos de gelo no lugar de um de gelo e um de ímã": (c) => { firstBone(c, 5)[4] = 3; },
+      "uma ração virou osso novo (ossos a mais)": (c) => { c.items.find((it) => it[4] === 0)[4] = 3; },
+      "um osso virou ração (ossos a menos)": (c) => { firstBone(c, 4)[4] = 0; },
+      "fx com 3 posições": (c) => { c.fx = [1, 2, 3]; },
+      "fx com 5 posições": (c) => { c.fx = [1, 2, 3, 4, 5]; },
+      "fx negativo": (c) => { c.fx = [-1, 0, 0, 0]; },
+      "fx acima de 60 s": (c) => { c.fx = [61, 0, 0, 0]; },
+      "fx em texto": (c) => { c.fx = ["8", 0, 0, 0]; },
+      "fx que não é lista": (c) => { c.fx = 5; },
+      "fx nulo": (c) => { c.fx = null; },
+      "up com 6 posições": (c) => { c.up = c.up.slice(0, 6); },
+      "up com 9 posições": (c) => { c.up = [...c.up, 0]; },
+      "Patas de veludo acima do máximo (4 de 3)": (c) => { c.up[5] = 4; },
+      "Faro acima do máximo (3 de 2)": (c) => { c.up[6] = 3; },
+      "Ímã de ração acima do máximo (4 de 3)": (c) => { c.up[7] = 4; },
+    };
+    const good = {
+      "o save real": () => {},
+      "fx zerado": (c) => { c.fx = [0, 0, 0, 0]; },
+      "sem o campo fx": (c) => { delete c.fx; },
+      "fx no limite (60 s)": (c) => { c.fx = [60, 60, 60, 60]; },
+      "reforços novos no máximo (3, 2 e 3)": (c) => { c.up = [0, 0, 0, 0, 0, 3, 2, 3]; },
+      "up antigo de 5 posições (0.15.6): os novos valem 0": (c) => { c.up = c.up.slice(0, 5); },
+    };
+    const res = [];
+    for (const [w, f] of Object.entries(bad)) res.push([w, false, await parse(clone(f))]);
+    for (const [w, f] of Object.entries(good)) res.push([w, true, await parse(clone(f))]);
+    ok(res.every(([, want, got]) => want === got), `jogo salvo adulterado: ${res.filter(([w]) => w in bad).map(([w, , got]) => `${w}: ${got ? "ACEITO (ERRADO)" : "recusado"}`).join("; ")}`);
+    ok(res.filter(([w]) => w in good).every(([, want, got]) => want === got), `jogo salvo válido: ${res.filter(([w]) => w in good).map(([w, , got]) => `${w}: ${got ? "aceito" : "RECUSADO (ERRADO)"}`).join("; ")}`);
+    // vidas máximas acompanham o Coração maior, mesmo com os reforços novos no up de 8 posições
+    ok(await parse(clone((c) => { c.up = [0, 0, 0, 0, 0, 3, 2, 3]; c.lives = 10; })) === false && await parse(clone((c) => { c.up = [0, 0, 1, 0, 0, 3, 2, 3]; c.lives = 10; })) === true, "o limite de vidas do jogo salvo continua seguindo o Coração maior com os 8 reforços (na Fase 17 o máximo é 9: 10 vidas sem o Coração maior é recusado; com 1 nível dele, aceito)");
+
+    // jogo salvo antigo: uma fase sem ossos novos (Fase 5) com o up de 5 posições e ossos 0/1; recarregar e continuar de verdade
+    await ev(page, () => { __fx.begin(5, { seed: 3, keepLife: true }); __game.save(); });
+    const real5 = await saveOf(), s5 = real5.saves.toto.snap;
+    ok(s5.l === 5 && s5.up.length === 8 && s5.fx === undefined && s5.items.every((it) => it[4] === 0 || it[4] === 1), `o jogo salvo de uma fase sem ossos novos (Fase 5) só tem ossos 0 e 1 e não tem fx (up com ${s5.up.length} posições)`);
+    const old5 = JSON.parse(JSON.stringify(real5)); old5.saves.toto.snap.up = old5.saves.toto.snap.up.slice(0, 5);
+    ok(await parse(JSON.parse(JSON.stringify(old5.saves.toto.snap))) === true && await parse(clone((c) => { c.l = 5; })) === false, "o jogo salvo antigo da Fase 5 (up com 5 posições) é aceito; e o save da Fase 17 renomeado para a Fase 5 não (a composição e a lista de itens não combinam)");
+    const fx5 = JSON.parse(JSON.stringify(s5)); fx5.fx = [5, 0, 0, 0];
+    ok(await parse(fx5) === false, "uma fase sem ossos de tipo novo (Fase 5) com efeitos no jogo salvo (fx) é recusada");
+    await page.evaluate((sv) => localStorage.setItem("cachorrinho.save.v1", JSON.stringify(sv)), old5);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectFx();
+    ok(await page.isVisible("#btn-continue"), "o jogo salvo antigo (up de 5 posições) aparece como Continuar jogo");
+    await page.click("#btn-continue");
+    const cont5 = await state();
+    ok(cont5.level === 5 && cont5.state === "playing" && Object.values(cont5.up).join() === "0,0,0,0,0,0,0,0" && Object.values(cont5.fx).every((x) => x === 0) && cont5.nbones === 2, `e o jogo antigo continua na Fase 5 com os 8 reforços em 0 (${Object.values(cont5.up).join(",")}), sem efeitos e com os 2 ossos comuns`);
+    // jogo salvo antigo com reforços (up de 5 posições com níveis): os níveis ficam e os novos começam em 0
+    await ev(page, () => { __fx.begin(5, { seed: 3, keepLife: true, up: { speed: 2, bone: 1, heart: 1, shield: 0, slow: 3 } }); __game.save(); });
+    const upOld = await saveOf(); upOld.saves.toto.snap.up = upOld.saves.toto.snap.up.slice(0, 5);
+    await page.evaluate((sv) => localStorage.setItem("cachorrinho.save.v1", JSON.stringify(sv)), upOld);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectFx(); await page.click("#btn-continue");
+    const upBack = await state();
+    ok(Object.values(upBack.up).join() === "2,1,1,0,3,0,0,0", `um jogo salvo antigo com reforços continua com os mesmos níveis e os novos em 0 (${Object.values(upBack.up).join(",")})`);
+    // um jogo salvo da 0.15.6 numa fase com tipos novos (Fases 11 a 20) só tem ossos comuns: é aceito e os tipos da fase são sorteados ao carregar (os que faltam pegar ganham primeiro os comuns)
+    const old17 = clone((c) => { c.up = c.up.slice(0, 5); delete c.fx; for (const it of c.items) if (it[4] > 0) it[4] = 1; });
+    ok(await parse(old17) === true, "um jogo salvo da 0.15.6 numa Fase 11 a 20 (só ossos comuns) é aceito (os tipos de osso da fase são sorteados ao carregar)");
+    const mig = await ev(page, (sv) => { const st = Records.createStore(localStorage); st.setPlayer("Totó"); st.saveGame("Totó", sv); return true; }, old17);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await page.click("#btn-continue");
+    const migKinds = await ev(page, () => ({ level: __game.level, kinds: __game.items.filter((i) => i.bone).map((i) => i.kind).sort().join(), untakenScare: __game.items.filter((i) => i.bone && !i.taken && i.kind === "scare").length, untaken: __game.items.filter((i) => i.bone && !i.taken).length, want: null }));
+    const wantMix = await ev(page, (n) => JSON.stringify(__game.levels[n - 1].bones), migKinds.level);
+    ok(mig && migKinds.kinds.split(",").length === Number(wantMix) && migKinds.kinds.includes("scare") && migKinds.untakenScare >= Math.min(3, migKinds.untaken), `o jogo salvo da 0.15.6 continua com os tipos de osso da Fase ${migKinds.level} (${migKinds.kinds}); os ossos que faltam pegar têm os comuns primeiro (${migKinds.untakenScare} de ${migKinds.untaken})`);
+  });
+
+  // =====================================================================
+  const NEW_UPS = { // os reforços da 0.15.7 (só a partir da Fase 11): nome, texto, máximo e o que o aviso/pausa diz em cada nível
+    stealth: { name: "Patas de veludo", max: 3, text: "agentes e gatos notam você 1 quadrado mais tarde", eff: (n) => `inimigos notam você ${n} ${n === 1 ? "quadrado" : "quadrados"} mais tarde` },
+    scent: { name: "Faro", max: 2, text: "uma seta mostra o osso mais perto (e, no nível 2, a saída aberta)", eff: (n) => (n >= 2 ? "setas para o osso e para a saída" : "seta para o osso mais perto") },
+    lure: { name: "Ímã de ração", max: 3, text: "as rações perto de você vêm sozinhas", eff: (n) => `rações a até ${[2.5, 3.5, 4.5][n - 1].toString().replace(".", ",")} quadrados vêm sozinhas` },
+  };
+  const ALL_UPS = { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, stealth: 0, scent: 0, lure: 0 };
+  await section("0.15.7: reforços novos (oferta só depois da Fase 10, escolha, textos na tela, na pausa e no placar, máximos e crescimento)", async () => {
+    await fresh(page); await loadKit(); await injectFx();
+    const offerFor = (n, fixed, up) => ev(page, ([n, fixed, up]) => { __fx.begin(n, { seed: 3, up }); __game.offerFixed = fixed; const st = __win(); return { st, ids: __game.reinforceOffer }; }, [n, fixed, up]);
+    const NEW = Object.keys(NEW_UPS);
+
+    // ---- (i) a oferta: depois da Fase 10 podem entrar os 3 novos; depois da Fase 9 (ou antes) não ----
+    const f10 = await offerFor(10, NEW), f9 = await offerFor(9, NEW), f1 = await offerFor(1, NEW);
+    ok(f10.st === "won" && f10.ids.join() === NEW.join(), `depois de vencer a Fase 10 a oferta forçada (offerFixed) traz os 3 reforços novos: ${f10.ids.join(", ")}`);
+    ok(f9.st === "won" && f9.ids.length === 3 && f9.ids.every((id) => !NEW.includes(id)) && f1.ids.length === 3 && f1.ids.every((id) => !NEW.includes(id)), `depois de vencer a Fase 9 (e a 1) os novos NÃO entram, mesmo forçados (Fase 9: ${f9.ids.join(", ")}; Fase 1: ${f1.ids.join(", ")})`);
+    // sorteio normal: depois da Fase 10 os novos aparecem, depois da Fase 9 nunca
+    const rnd = await ev(page, ([N]) => {
+      const run = (n) => { const o = []; for (let i = 0; i < 30; i++) { __fx.begin(n, { seed: 100 + i }); __game.offerFixed = null; __win(); o.push(__game.reinforceOffer); } return o; };
+      return { r10: run(10), r9: run(9) };
+    }, [NEW]);
+    const seen10 = new Set(rnd.r10.flat()), seen9 = new Set(rnd.r9.flat());
+    ok(rnd.r10.every((o) => o.length === 3 && new Set(o).size === 3) && NEW.every((id) => seen10.has(id)) && [...seen10].length === 9, `sorteio normal depois da Fase 10 (30 vitórias): sempre 3 opções diferentes e já apareceram os 9 reforços (os 3 novos também: ${NEW.map((id) => id + " " + rnd.r10.filter((o) => o.includes(id)).length + "x").join(", ")})`);
+    ok(rnd.r9.every((o) => o.length === 3 && !o.some((id) => NEW.includes(id))) && seen9.size === 6, `sorteio normal depois da Fase 9 (30 vitórias): nenhum reforço novo aparece, só os 6 de antes (${[...seen9].join(", ")})`);
+    ok(rnd.r10.every((o) => o.join() === ["speed", "bone", "life", "heart", "shield", "slow", "stealth", "scent", "lure"].filter((id) => o.includes(id)).join()), "as 3 opções continuam na ordem da lista de reforços, com os novos no fim");
+
+    // ---- (i) na tela de reforços: nome, texto e estado "agora 0/N"; escolher entra em up; aviso, pausa, placar e tela de reforços dizem o efeito ----
+    for (const id of NEW) {
+      const U = NEW_UPS[id];
+      await playLevel(page, 10); await injectFx();
+      await ev(page, (fixed) => { __game.freezeVets = true; __game.noCatch = true; __game.offerFixed = fixed; }, [id, ...NEW.filter((x) => x !== id)]);
+      await finishNow(page, 5);
+      await page.click("#btn-next");
+      const opts = await page.$$eval("#reinforce-list button", (bs) => bs.map((b) => ({ id: b.dataset.id, name: b.querySelector("strong").textContent, sub: b.querySelector(".sub").textContent })));
+      const mine = opts.find((o) => o.id === id);
+      ok(opts.length === 3 && mine && mine.name === U.name && mine.sub === `${U.text} · agora 0/${U.max}`, `${U.name}: aparece na escolha com o nome, o texto e o estado ("${mine && mine.sub}")`);
+      await page.click(`#reinforce-list button[data-id="${id}"]`);
+      const picked = await ev(page, () => ({ next: __game.nextUpgrades, cur: __game.upgrades, chosen: __game.chosenReinforce, msg: document.getElementById("reinforce-msg").textContent, sub: document.querySelector("#reinforce-list button.chosen .sub").textContent }));
+      ok(picked.chosen === id && picked.next[id] === 1 && picked.cur[id] === 0 && picked.msg.includes(`Reforço escolhido: ${U.name} — ${U.text}. Ele vale a partir da Fase 11.`) && picked.msg.includes(`Com ele você terá: ${U.eff(1)}.`) && picked.sub === `${U.text} · agora 1/${U.max}`, `${U.name}: escolher entra em up para a próxima fase e a tela diz o efeito ("${picked.msg.replace(/^.*Com ele/, "Com ele")}")`);
+      await page.click("#btn-reinforce-go");
+      const f11 = await ev(page, () => ({ level: __game.level, state: __game.state, up: __game.upgrades, toast: document.getElementById("toast").textContent, growth: __game.growth }));
+      ok(f11.level === 11 && f11.state === "playing" && f11.up[id] === 1 && Object.entries(f11.up).every(([k, v]) => k === id || v === 0) && f11.toast.includes(`Reforços valendo: ${U.eff(1)}`), `${U.name}: a Fase 11 começa com o reforço em nível 1 e o aviso do começo diz o efeito ("...${f11.toast.slice(f11.toast.indexOf("Reforços valendo"))}")`);
+      ok(await hudIs(page, "#hud-up", "1") && await page.isVisible("#hud-up-item") && (await page.getAttribute("#hud-up-item", "title")) === `Reforços ativos: ${U.name} 1/${U.max}`, `${U.name}: o placar mostra REFORÇOS 1 e a lista no balãozinho ("${await page.getAttribute("#hud-up-item", "title")}")`);
+      await page.click("#btn-pause");
+      const pauseTxt = await page.textContent("#pause-up");
+      ok(pauseTxt.includes(`Reforços: ${U.name} 1/${U.max}. Efeitos: ${U.eff(1)}.`), `${U.name}: a pausa lista o reforço e o efeito ("${pauseTxt.trim()}")`);
+      await page.click("#btn-resume");
+    }
+
+    // os textos em cada nível (aviso do começo da fase e pausa), incluindo os 3 juntos com os antigos
+    const lvls = [];
+    for (const [id, U] of Object.entries(NEW_UPS)) for (let n = 1; n <= U.max; n++) {
+      const r = await ev(page, ([id, n]) => { __game.start(11, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, stealth: 0, scent: 0, lure: 0, [id]: n } }); const t = document.getElementById("toast").textContent; document.getElementById("btn-pause").click(); const p = document.getElementById("pause-up").textContent; document.getElementById("btn-resume").click(); return { t, p }; }, [id, n]);
+      lvls.push([id, n, r]);
+    }
+    const lvlBad = lvls.filter(([id, n, r]) => !r.t.includes(`Reforços valendo: ${NEW_UPS[id].eff(n)}`) || !r.p.includes(`Reforços: ${NEW_UPS[id].name} ${n}/${NEW_UPS[id].max}. Efeitos: ${NEW_UPS[id].eff(n)}.`));
+    ok(lvlBad.length === 0, `em todos os níveis o aviso do começo da fase e a pausa dizem o efeito (${lvls.map(([id, n]) => NEW_UPS[id].eff(n)).join("; ")})${lvlBad.length ? " — problema: " + lvlBad.map(([id, n, r]) => `${id} ${n}: "${r.t}" / "${r.p}"`).join(" | ") : ""}`);
+    const all3 = await ev(page, () => { __game.start(11, { upgrades: { speed: 1, bone: 1, heart: 0, shield: 0, slow: 0, stealth: 3, scent: 2, lure: 3 } }); const t = document.getElementById("toast").textContent; document.getElementById("btn-pause").click(); const p = document.getElementById("pause-up").textContent; document.getElementById("btn-resume").click(); return { t, p, n: document.getElementById("hud-up").textContent, title: document.getElementById("hud-up-item").title }; });
+    ok(all3.t.includes("inimigos notam você 3 quadrados mais tarde") && all3.t.includes("setas para o osso e para a saída") && all3.t.includes("rações a até 4,5 quadrados vêm sozinhas") && all3.p.includes("Patas de veludo 3/3 · Faro 2/2 · Ímã de ração 3/3"), `com os reforços novos no máximo o aviso e a pausa listam os três ("${all3.p.trim()}")`);
+    ok(await hudIs(page, "#hud-up", "10"), `o placar soma os níveis dos 5 reforços ativos (REFORÇOS ${await page.textContent("#hud-up")}: 1 + 1 + 3 + 2 + 3)`);
+
+    // ---- (i) os máximos (3, 2 e 3) fazem o reforço sumir da oferta ----
+    const maxed = await offerFor(10, NEW, { ...ALL_UPS, stealth: 3, scent: 2, lure: 3 });
+    ok(maxed.st === "won" && maxed.ids.length === 3 && maxed.ids.every((id) => !NEW.includes(id)), `com Patas de veludo 3/3, Faro 2/2 e Ímã de ração 3/3 nenhum dos três é oferecido, mesmo forçado (${maxed.ids.join(", ")})`);
+    const each = [];
+    for (const id of NEW) { const o = await offerFor(10, NEW, { ...ALL_UPS, [id]: NEW_UPS[id].max }); each.push([id, o.ids]); }
+    ok(each.every(([id, ids]) => !ids.includes(id) && NEW.filter((x) => x !== id).every((x) => ids.includes(x))), `com só um deles no máximo, só ele sai da oferta (${each.map(([id, ids]) => `${id} no máximo → ${ids.join("/")}`).join("; ")})`);
+    // um nível antes do máximo ainda é oferecido e mostra "agora 2/3", "agora 1/2" e "agora 2/3"; escolher leva ao máximo
+    await ev(page, (up) => { __fx.begin(10, { seed: 3, up }); __game.offerFixed = ["stealth", "scent", "lure"]; __game.freezeVets = true; __game.noCatch = true; }, { ...ALL_UPS, stealth: 2, scent: 1, lure: 2 });
+    await finishNow(page, 5); await page.click("#btn-next");
+    const subs = await page.$$eval("#reinforce-list button", (bs) => bs.map((b) => b.dataset.id + ": " + b.querySelector(".sub").textContent.split(" · ").pop()));
+    ok(subs.join() === "stealth: agora 2/3,scent: agora 1/2,lure: agora 2/3", `um nível antes do máximo os três ainda são oferecidos com o estado certo (${subs.join(", ")})`);
+    await page.click('#reinforce-list button[data-id="scent"]'); await page.click("#btn-reinforce-go");
+    const atMax = await ev(page, () => ({ up: __game.upgrades, level: __game.level, toast: document.getElementById("toast").textContent }));
+    ok(atMax.level === 11 && atMax.up.scent === 2 && atMax.up.stealth === 2 && atMax.up.lure === 2 && atMax.toast.includes("setas para o osso e para a saída") && atMax.toast.includes("inimigos notam você 2 quadrados mais tarde"), `escolher o Faro em nível 1 leva ao nível 2 (setas para o osso e para a saída) e os outros ficam (${JSON.stringify(atMax.up)})`);
+    // um reforço novo acima do máximo ou desconhecido nunca entra (a partida começa sem reforços)
+    const inv = await ev(page, () => { __game.start(11, { upgrades: { stealth: 4 } }); const a = __game.upgrades; __game.start(11, { upgrades: { lure: 4 } }); const b = __game.upgrades; __game.start(11, { upgrades: { scent: 3 } }); return [a, b, __game.upgrades].map((u) => Object.values(u).join()); });
+    ok(inv.every((s) => s === "0,0,0,0,0,0,0,0"), "reforços novos acima do máximo (Patas de veludo 4, Ímã de ração 4, Faro 3) são recusados na partida");
+
+    // ---- (j) o crescimento do cachorrinho conta os níveis dos reforços novos (0,35 por nível; só se vê nas Fases 1 a 9, mas a conta vale em todas) ----
+    const gr = await ev(page, () => { const g = (up) => { __game.start(1, { upgrades: up }); return [__game.growth, __game.stage]; }; return { none: g({}), s3: g({ stealth: 3 }), all: g({ stealth: 3, scent: 2, lure: 3 }), mix: g({ speed: 1, stealth: 1, scent: 1, lure: 1 }), old: g({ speed: 4, bone: 4 }), l11: (() => { __game.start(11, { upgrades: { stealth: 1 } }); return __game.growth; })() }; });
+    // o Como jogar fala dos ossos de cores e dos reforços novos
+    await fresh(page); await page.click("#btn-howto");
+    const how = await page.textContent("#howto");
+    ok(/Ossos de cores diferentes \(a partir da Fase 11\)/.test(how) && /osso de ouro<?[^.]*escudo/i.test(how) && /osso de gelo[^.]*congela/i.test(how) && /osso turbo[^.]*mais rápido/i.test(how) && /osso ímã[^.]*puxa as rações/i.test(how) && /faixa no alto do jogo/.test(how), "o Como jogar explica os ossos de cores (ouro: escudo, gelo: congela, turbo: mais rápido, ímã: puxa as rações) e a faixa de efeitos");
+    ok(/conjunto de 6/.test(how) && /a partir da Fase 11 entram mais 3: patas de veludo, faro e ímã de ração/.test(how), "o Como jogar diz que os reforços são 6 e que a partir da Fase 11 entram patas de veludo, faro e ímã de ração");
+    ok(gr.none[0] === 0 && Math.abs(gr.s3[0] - (0.35 * 3) / 9) < 1e-9 && Math.abs(gr.all[0] - (0.35 * 8) / 9) < 1e-9 && Math.abs(gr.mix[0] - (0.35 * 4) / 9) < 1e-9 && Math.abs(gr.old[0] - (0.35 * 8) / 9) < 1e-9 && gr.all[1] === "filhote" && gr.mix[1] === "filhote" && gr.l11 === 1, `o crescimento conta os níveis dos reforços novos como os dos antigos (0,35 por nível ÷ 9: Patas de veludo 3 → ${gr.s3[0].toFixed(3)}; os 8 níveis dos três → ${gr.all[0].toFixed(3)}, igual aos 8 de Patas ligeiras e Osso poderoso: ${gr.old[0].toFixed(3)}; na Fase 11 o cachorrinho já é adulto: ${gr.l11})`);
+  });
+
+  // =====================================================================
+  await section("0.15.7: reforços novos (o que cada um faz: Patas de veludo, Faro e Ímã de ração)", async () => {
+    await fresh(page); await loadKit(); await injectFx();
+    const m11 = model(11), m17 = model(17);
+
+    // ---- Patas de veludo: o alcance do "!" dos agentes cai 1 quadrado por nível (probe como no teste do "alcance do !") ----
+    const alert11 = await ev(page, () => { __game.start(11); return __game.alertTiles; });
+    const run19 = hrun(m11, alert11 + 3, 3);
+    ok(alert11 === 16 && !!run19, `(teste) a Fase 11 tem alcance do ! de ${alert11} quadrados e uma reta livre de ${alert11 + 3} tiles para medir (${run19 && run19.c + "," + run19.r})`);
+    const probe = (k, dx) => ev(page, ([k, dx, run]) => {
+      __fx.begin(11, { seed: 3, up: k ? { stealth: k } : undefined, free: true, cats: [] });
+      const v = __game.vets[0], p = __game.player;
+      __game.vets.forEach((o, i) => { if (i) o.cool = 999; });
+      v.cx = run.c * 32 + 16; v.cy = run.r * 32 + 16; v.leg = null; v.route = []; v.mode = "patrol"; v.cool = 0; v.think = 0; v.idle = 99; // parado
+      p.x = v.cx + dx - 12; p.y = v.cy - 12;
+      let at = null;
+      for (let i = 0; i < 40; i++) { __game.tick(0.05); if (v.mode === "chase") { at = Math.round((i + 1) * 5) / 100; break; } }
+      return at;
+    }, [k, dx, run19]);
+    const sightRes = [];
+    for (let k = 0; k <= 3; k++) { const edge = (alert11 - k) * 32; sightRes.push([k, await probe(k, edge - 6), await probe(k, edge + 6)]); }
+    ok(sightRes.every(([, inside, outside]) => inside !== null && inside <= 0.1 && outside === null), `Patas de veludo: o ! do agente liga a até ${sightRes.map(([k]) => alert11 - k).join(", ")} quadrados com ${sightRes.map(([k]) => k).join(", ")} níveis (liga a 6 px de cada borda e não liga 6 px depois: ${sightRes.map(([k, a, b]) => `${k}: ${a}/${b}`).join(" ")})`);
+    // o agente que via o cachorrinho a 15,5 quadrados (nível 0) deixa de ver com 1 nível, e o que via a 14,5 deixa de ver com 2
+    const [s15a, s15b] = [await probe(0, 15.5 * 32), await probe(1, 15.5 * 32)], [s14a, s14b] = [await probe(1, 14.5 * 32), await probe(2, 14.5 * 32)];
+    ok(s15a !== null && s15b === null && s14a !== null && s14b === null, `a 15 quadrados e meio: sem o reforço vê, com 1 nível não (${s15a} / ${s15b}); a 14 quadrados e meio: com 1 nível vê, com 2 não (${s14a} / ${s14b})`);
+    // quem já está perseguindo continua perseguindo (o reforço só muda o primeiro aviso, não tira o agente da perseguição); o alcance de perto não muda
+    ok(await probe(3, 4 * 32) !== null && await probe(3, 32) !== null, "mesmo com 3 níveis, de perto (4 quadrados e 1 quadrado) o agente continua vendo e ligando o !");
+
+    // ---- Patas de veludo: o alcance de visão do gato (alcance do ! + 4 quadrados) também cai 1 quadrado por nível ----
+    const catSight = await ev(page, () => { __fx.begin(11, { seed: 3 }); return __game.cats[0].cfg.sight / 32; });
+    const runCat = hrun(m11, catSight + 3, 3);
+    ok(catSight === alert11 + 4 && !!runCat, `(teste) o gato da Fase 11 enxerga a ${catSight} quadrados (alcance do ! mais 4) e há uma reta livre de ${catSight + 3} tiles para medir (${runCat && runCat.c + "," + runCat.r})`);
+    const catProbe = (k, dx) => ev(page, ([k, dx, run]) => {
+      __fx.begin(11, { seed: 3, up: k ? { stealth: k } : undefined, cats: [[run.c, run.r]], dog: [run.c, run.r], free: true });
+      const c = __game.cats[0], p = __game.player;
+      __game.vets.forEach((o) => { o.cool = 999; });
+      Object.assign(c, { cool: 0, idle: 99, think: 0, mode: "patrol", leg: null, route: [] });
+      p.x = c.cx + dx - 12; p.y = c.cy - 12; // o gato parado, o cachorrinho a dx px na mesma linha
+      let chased = false;
+      for (let i = 0; i < 6 && !chased; i++) { __game.tick(0.05); chased = c.mode === "chase"; }
+      return chased;
+    }, [k, dx, runCat]);
+    const catRes = [];
+    for (let k = 0; k <= 3; k++) { const edge = (catSight - k) * 32; catRes.push([k, await catProbe(k, edge - 6), await catProbe(k, edge + 6)]); }
+    ok(catRes.every(([, yes, no]) => yes === true && no === false), `Patas de veludo: o gato enxerga o cachorrinho a até ${catRes.map(([k]) => catSight - k).join(", ")} quadrados com ${catRes.map(([k]) => k).join(", ")} níveis (6 px antes da borda persegue, 6 px depois não: ${catRes.map(([k, a, b]) => `${k}: ${a ? "persegue" : "NÃO"}/${b ? "PERSEGUE" : "não"}`).join(" ")})`);
+
+    // ---- Patas de veludo: o ouvido do gato cai 1 passo por nível ----
+    const hearPair = (m, d) => { // gato e cachorrinho a exatamente d passos (pelo chão do gato, fora dos trilhos), sem linha de visão
+      const stride = Math.max(1, Math.floor(m.floor.length / 220));
+      for (let i = 0; i < m.floor.length; i += stride) {
+        const dog = m.floor[i], d1 = dmap(m, [dog]), d2 = dmap(m, [dog], { avoid: m.trackSet });
+        for (const [k, dd] of d1) {
+          if (dd !== d || d2.get(k) !== d) continue;
+          const cat = [k % m.C, Math.floor(k / m.C)];
+          if (m.MAP[cat[1]][cat[0]] === "." && m.safe(cat[0], cat[1], 3) && !los(m, cat, dog)) return { cat, dog, d };
+        }
+      }
+      return null;
+    };
+    const hear = m11.cat.hear, pairs = {};
+    for (let d = hear - 3; d <= hear + 1; d++) pairs[d] = hearPair(m11, d);
+    ok(Object.values(pairs).every(Boolean), `(teste) há pares gato/cachorrinho sem linha de visão a ${Object.keys(pairs).join(", ")} passos na Fase 11 (ouvido de ${hear} passos)`);
+    const heardAt = (k, pair) => ev(page, ([k, pair]) => {
+      __fx.begin(11, { seed: 7, up: k ? { stealth: k } : undefined, cats: [pair.cat], dog: pair.dog });
+      for (const c of __game.cats) { c.cool = 0; c.idle = 0; c.think = 0; }
+      __game.catsThaw = true; let chased = false;
+      for (let i = 0; i < 3; i++) { __game.tick(1 / 60); if (__game.cats[0].mode === "chase") chased = true; }
+      __game.catsThaw = false; return chased;
+    }, [k, pair]);
+    const hearRes = [];
+    for (let k = 0; k <= 3; k++) hearRes.push([k, hear - k, await heardAt(k, pairs[hear - k]), await heardAt(k, pairs[hear - k + 1])]);
+    ok(hearRes.every(([, , yes, no]) => yes === true && no === false), `Patas de veludo: o gato ouve o cachorrinho a ${hearRes.map(([, h]) => h).join(", ")} passos com ${hearRes.map(([k]) => k).join(", ")} níveis (a 1 passo a mais, sem ver, ainda não ouve: ${hearRes.map(([k, h, yes, no]) => `${k}: ${h} passos ${yes ? "ouve" : "NÃO ouve"}, ${h + 1} ${no ? "ouve" : "não ouve"}`).join("; ")})`);
+
+    // ---- Faro: seta laranja para o osso mais perto e, no nível 2, seta verde para a saída aberta (pixels em volta do cachorrinho) ----
+    const arrows = async (lvl) => ev(page, async ([lvl]) => {
+      const out = { lvl };
+      const setup = (open, boneAt) => { // a Fase 11 com o cachorrinho num ponto qualquer; todos os itens pegos (saída aberta) ou só um osso que falta, `boneAt` = [dx, dy] dele em relação ao cachorrinho
+        __fx.begin(11, { seed: 3, up: lvl ? { scent: lvl } : undefined, keepLife: false });
+        for (const e of [...__game.vets, ...__game.cats]) { e.cx = -300; e.cy = -300; }
+        const p = __game.player, e = __game.exit, last = __game.items.filter((i) => i.bone && i.kind === "scare").pop();
+        if (!open) { last.x = -500; last.y = -500; } // (o osso que fica não é pego por engano quando o cachorrinho passa por outro item)
+        for (const it of __game.items) if (it !== last || open) { p.x = it.x - 4; p.y = it.y - 4; __game.tick(0.01); }
+        p.x = e.x - 150; p.y = e.y + 4; p.facing = "right"; p.moving = false; __game.tick(0.01); // longe da saída (a 150 px) e do osso que falta
+        if (!open) __fx.putAt(last, boneAt[0], boneAt[1]);
+        return { open: __game.state === "playing", last };
+      };
+      const arrowAt = (tx, ty) => { // (px do canvas do ponto a 40 px do cachorrinho na direção (tx, ty) do mundo)
+        const p = __game.player, ox = p.x + 12, oy = p.y + 12, a = Math.atan2(ty - oy, tx - ox);
+        return __fx.px(ox + Math.cos(a) * 40, oy + Math.sin(a) * 40);
+      };
+      const GOLD = [255, 159, 28], GREEN = [61, 220, 132];
+      // 1) saída fechada, falta um osso a 150 px à direita (osso mais perto)
+      setup(false, [150, 0]); await __fx.frame();
+      let last = __game.items.find((i) => i.bone && !i.taken), [x, y, sx] = arrowAt(last.x + 8, last.y + 8);
+      const e = __game.exit, [gx, gy] = arrowAt(e.x + e.w / 2, e.y + e.h / 2);
+      out.sx = sx; out.goldRight = __fx.count(x, y, 12 * sx, GOLD, 20); out.goldOther = [[-40, 0], [0, 40], [0, -40]].map(([dx, dy]) => { const p = __game.player; const [ox, oy] = __fx.px(p.x + 12 + dx, p.y + 12 + dy); return __fx.count(ox, oy, 12 * sx, GOLD, 20); });
+      out.greenClosed = __fx.count(gx, gy, 12 * sx, GREEN, 20); out.openClosed = __game.state;
+      // o osso mais perto muda de lado: agora a 150 px embaixo
+      __fx.putAt(last, 0, 150); await __fx.frame();
+      [x, y] = arrowAt(last.x + 8, last.y + 8); out.goldDown = __fx.count(x, y, 12 * sx, GOLD, 20);
+      const p0 = __game.player, [rx, ry] = __fx.px(p0.x + 12 + 36, p0.y + 12); out.goldRightAfter = __fx.count(rx, ry, 12 * sx, GOLD, 20); // (o lado direito esvaziou)
+      // osso perto demais (60 px < 70): sem seta
+      __fx.putAt(last, 60, 0); await __fx.frame();
+      [x, y] = arrowAt(last.x + 8, last.y + 8); out.goldNear = __fx.count(x, y, 12 * sx, GOLD, 20);
+      // 2) tudo pego: a saída abre (seta verde, só no nível 2); não há mais osso (sem seta laranja)
+      setup(true); await __fx.frame();
+      const e2 = __game.exit, [hx, hy] = arrowAt(e2.x + e2.w / 2, e2.y + e2.h / 2);
+      out.openState = __game.state; out.greenOpen = __fx.count(hx, hy, 12 * sx, GREEN, 20); out.noBone = __game.items.filter((i) => i.bone && !i.taken).length;
+      return out;
+    }, [lvl]);
+    const [a0, a1, a2] = [await arrows(0), await arrows(1), await arrows(2)];
+    const th = 10 * a1.sx * a1.sx;
+    ok(a0.goldRight < 5 && a1.goldRight >= th && a2.goldRight >= th && a1.goldOther.every((n) => n < 5) && a1.goldDown >= th && a1.goldRightAfter < 5, `Faro: a seta laranja aparece do lado do osso mais perto só com o reforço (sem: ${a0.goldRight} pixels laranja; nível 1: ${a1.goldRight}; nível 2: ${a2.goldRight}), muda de lado quando o osso muda (embaixo: ${a1.goldDown}; o lado antigo: ${a1.goldRightAfter}) e não aparece nos outros lados (${a1.goldOther.join("/")})`);
+    ok(a1.goldNear < 5 && a2.goldNear < 5, `Faro: sem seta quando o osso está perto (a 60 px, menos de 70: ${a1.goldNear} e ${a2.goldNear} pixels laranja)`);
+    ok(a2.openState === "playing" && a2.noBone === 0 && a2.greenOpen - a1.greenOpen >= th && Math.abs(a0.greenOpen - a1.greenOpen) < 6 && Math.abs(a2.greenClosed - a1.greenClosed) < 6, `Faro: a seta verde da saída só aparece com a saída aberta e o nível 2 (aberta: sem ${a0.greenOpen}, nível 1 ${a1.greenOpen}, nível 2 ${a2.greenOpen} pixels verdes; fechada: nível 1 ${a1.greenClosed}, nível 2 ${a2.greenClosed})`);
+
+    // ---- Ímã de ração: raios de 80, 112 e 144 px (rações à vista vêm sozinhas, sempre ligado), nada atrás de parede nem além do raio ----
+    const run18 = hrun(m17, 18);
+    const wp = (() => { for (const n of [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]) { const m = model(n), f = wallPairOf(m, 3); if (f) return { n, ...f }; } return null; })();
+    ok(!!run18 && !!wp, `(teste) uma reta livre de 18 tiles na Fase 17 (${run18 && run18.c + "," + run18.r}) e dois tiles com 2 tiles de parede no meio na Fase ${wp && wp.n} (${wp && wp.dog} e ${wp && wp.ration})`);
+    const lure = (lvl, inside, outside) => ev(page, ([lvl, inside, outside, run]) => {
+      __fx.begin(17, { seed: 3, up: lvl ? { lure: lvl } : undefined, dog: [run.c + 9, run.r] });
+      const [a, b] = __fx.rations(); __fx.rations().slice(2).forEach((it) => { it.x = -500; it.y = -500; });
+      __fx.putAt(a, inside, 0); __fx.putAt(b, -outside, 0);
+      const s0 = __game.score, c0 = __game.collected; __game.tick(0.02);
+      for (let i = 0; i < 20; i++) __game.tick(0.05);
+      return { a: a.taken, b: b.taken, gain: __game.score - s0, got: __game.collected - c0, rp: Records.RATION_POINTS, radius: lvl ? 48 + 32 * lvl : 0 };
+    }, [lvl, inside, outside, run18]);
+    const lr = [];
+    for (const lvl of [1, 2, 3]) { const rad = 48 + 32 * lvl; lr.push([lvl, rad, await lure(lvl, rad - 4, rad + 4)]); }
+    ok(lr.every(([, , r]) => r.a === true && r.b === false && r.got === 1 && r.gain === r.rp), `Ímã de ração: com 1, 2 e 3 níveis a ração dentro do raio de ${lr.map(([, rad]) => rad).join(", ")} px vem sozinha (+${lr[0][2].rp} pontos, sempre ligado, sem osso) e a 4 px além do raio não (${lr.map(([l, rad, r]) => `${l}: ${rad - 4} px ${r.a ? "vem" : "NÃO VEM"}, ${rad + 4} px ${r.b ? "VEM" : "não vem"}`).join("; ")})`);
+    const none = await lure(0, 40, 40);
+    ok(none.a === false && none.b === false, "sem o reforço (e sem o osso ímã) uma ração a 40 px do cachorrinho parado não vem");
+    const lw = await ev(page, ([wp]) => {
+      const out = [];
+      for (const lvl of [2, 3]) { // 112 e 144 px: a ração a 96 px, mas atrás de 2 tiles de parede, fica
+        __fx.begin(wp.n, { seed: 3, up: { lure: lvl }, dog: wp.dog }); const r = __fx.rations()[0]; r.x = wp.ration[0] * 32 + 8; r.y = wp.ration[1] * 32 + 8;
+        for (let i = 0; i < 20; i++) __game.tick(0.05); out.push([lvl, r.taken]);
+      }
+      return out;
+    }, [wp]);
+    ok(lw.every(([, taken]) => taken === false), `Ímã de ração: a ração a 96 px, mas atrás de uma parede, não vem (Fase ${wp.n}: níveis ${lw.map(([l]) => l).join(" e ")})`);
+    // o reforço e o osso ímã valem juntos: vale o maior raio
+    const both = await ev(page, ([run]) => {
+      __fx.begin(17, { seed: 3, up: { lure: 1 }, dog: [run.c + 9, run.r] });
+      const [a, b] = __fx.rations(); __fx.rations().slice(2).forEach((it) => { it.x = -500; it.y = -500; }); __fx.putAt(a, 120, 0); __fx.putAt(b, 140, 0);
+      __game.tick(0.02); const before = [a.taken, b.taken]; __fx.pick("magnet"); for (let i = 0; i < 5; i++) __game.tick(0.05);
+      return { before, after: [a.taken, b.taken] };
+    }, [run18]);
+    ok(both.before.join() === "false,false" && both.after.join() === "true,false", `o Ímã de ração (80 px) e o osso ímã (128 px) valem juntos: a ração a 120 px só vem depois do osso, a de 140 px nunca (${both.before.join("/")} → ${both.after.join("/")})`);
+  });
+  // ===== 0.15.7 END =====
   // =====================================================================
   await section("0.15.6: missão para passar de fase (Fases 11 a 20), mais vidas e bônus", async () => {
     // Nada aqui usa coordenadas fixas: os itens, os agentes e os gatos vêm do próprio jogo (ganchos __game.items, vets, cats, exit, postmen...); o cachorrinho é
@@ -5312,8 +6095,8 @@ const PAGE_HELPERS = () => {
           return K.info();
         },
         info() { const L = __game.levels[__game.level - 1]; return { id: L.id, rations: L.rations, bones: L.bones, minPoints: L.minPoints, lifePenalty: L.lifePenalty, bonusStep: L.bonusStep, mission: L.mission, missionBonus: L.missionBonus, lifeCap: L.lifeCap, vets: L.vets.length, cats: L.cats.length }; },
-        items(kind) { return __game.items.filter((it) => !it.taken && (kind === "bone" ? it.bone : kind === "ration" ? !it.bone : true)); },
-        grab(kind, n = 999) { let g = 0; for (const it of K.items(kind)) { if (g >= n || __game.state !== "playing") break; tp(it); __game.tick(0.01); g++; } return g; },
+        items(kind) { return __game.items.filter((it) => !it.taken && (kind === "bone" ? it.bone : kind === "ration" ? !it.bone : true)).sort((a, b) => (b.kind === "scare") - (a.kind === "scare")); }, // (0.15.7: os ossos comuns primeiro: só eles dão o poder de assustar; os de ouro, gelo, turbo e ímã vêm depois)
+        grab(kind, n = 999) { let g = 0; for (const it of K.items(kind)) { if (g >= n || __game.state !== "playing") break; tp(it); __game.tick(0.01); if (it.bone && it.kind !== "scare") __game.fx = {}; g++; } return g; }, // (0.15.7: os efeitos dos ossos de ouro, gelo, turbo e ímã não importam para a missão: sem eles os avisos de fim de efeito não escondem os avisos da saída)
         // assusta `n` (ainda não assustados neste poder), alternando agente e gato: leva cada um até o cachorrinho; depois o guarda longe de novo
         scare(n, who = "mix", park = true) {
           const V = __game.vets, C = __game.cats;
@@ -5565,7 +6348,7 @@ const PAGE_HELPERS = () => {
     for (const [id, h] of [[5, 0], [10, 0], [10, 3], [11, 0], [13, 3], [15, 0], [20, 0], [20, 3]]) {
       const r = await ev(page, ([id, h]) => {
         const up = { speed: 0, bone: 0, heart: h, shield: 0, slow: 0 }, out = {};
-        const first = (bone) => __game.items.findIndex((it) => !it.taken && !!it.bone === bone);
+        const first = (bone) => __game.items.findIndex((it) => !it.taken && !!it.bone === bone && (!bone || it.kind === "scare"));
         // abaixo do máximo: +1 vida (numa ração)
         __mk.setup(id, { start: { upgrades: up, lives: 99 } }); const cap = __game.maxLives; __game.setLives(cap - 1);
         __game.items[first(false)].life = true; __mk.grab("ration", 1); out.below = { lives: __game.lives, toast: document.getElementById("toast").textContent, cap };
