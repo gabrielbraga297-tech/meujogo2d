@@ -4043,6 +4043,90 @@ const PAGE_HELPERS = () => {
     ok(await ev(page, () => { __game.start(4); return __game.items.length === 17 && __game.vets.length === 3 && __game.minPoints === 800; }), "mudar o visual não mexe nas regras (Fase 4: 17 itens, 3 agentes, 800 pontos)");
   });
 
+  // =====================================================================
+  await section("0.15.0: o cachorrinho começa filhote e vai ficando adulto (fases e reforços)", async () => {
+    await fresh(page);
+    // ---- quanto ele cresceu: só depende da fase e dos reforços ----
+    const rows = await ev(page, () => { const o = []; for (let id = 1; id <= 10; id++) { __game.start(id); o.push([id, __game.growth, __game.stage]); } return o; });
+    const stages = rows.map((r) => r[2]);
+    ok(rows[0][1] === 0 && stages[0] === "filhote" && rows[9][1] === 1 && stages[9] === "adulto", `na Fase 1 ele é filhote (crescimento 0) e na Fase 10 é adulto (crescimento 1)`);
+    ok(rows.every((r, i) => i === 0 || r[1] > rows[i - 1][1]), `a cada fase ele cresce mais (${rows.map((r) => r[1].toFixed(2)).join(" → ")})`);
+    ok(stages.join(",") === "filhote,filhote,filhote,filhote,jovem,jovem,jovem,adulto,adulto,adulto", `filhote nas Fases 1 a 4, jovem nas 5 a 7 e adulto nas 8 a 10 (${stages.join(",")})`);
+    const withUp = await ev(page, () => {
+      __game.start(1, { upgrades: { speed: 2 } }); const a = __game.growth;
+      __game.start(5); const noUp = __game.growth;
+      __game.start(5, { upgrades: { speed: 2, bone: 2 } }); const four = __game.growth;
+      __game.start(10, { upgrades: { speed: 4, bone: 4, heart: 3, shield: 3, slow: 4 } }); const top = __game.growth;
+      return { a, noUp, four, top };
+    });
+    ok(withUp.a > 0 && withUp.four > withUp.noUp && withUp.top === 1, `cada reforço também faz crescer (Fase 1 com 2 reforços: ${withUp.a.toFixed(2)}; Fase 5: ${withUp.noUp.toFixed(2)} → ${withUp.four.toFixed(2)} com 4 reforços; nunca passa de 1)`);
+    // ---- o desenho: o filhote é menor que o adulto e a coleira muda de cor ----
+    const look = (ups) => ev(page, async (ups) => {
+      __game.autoStart = true; __game.start(1, { upgrades: ups }); __game.freezeVets = true; __game.noCatch = true;
+      __game.items.splice(0); // nada por perto além do cachorrinho
+      const M = __game.levels[0].map; let spot = null;
+      for (let r = 1; r < M.length - 3 && !spot; r++) for (let c = 1; c < M[0].length - 3 && !spot; c++) { let free = true; for (let dr = 0; dr < 3 && free; dr++) for (let dc = 0; dc < 3; dc++) if (M[r + dr][c + dc] !== ".") { free = false; break; } if (free) spot = [c, r]; }
+      const p = __game.player; p.facing = "right"; p.moving = false; p.x = (spot[0] + 1) * 32 + 4; p.y = (spot[1] + 1) * 32 + 4; __game.tick(0.01);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const v = __game.view, k = v.k * v.zoom, ctx = document.getElementById("game").getContext("2d");
+      const cx = Math.round((p.x + p.w / 2 - v.camX) * k), cy = Math.round((p.y + p.h / 2 - v.camY) * k), R = Math.round(22 * k);
+      const d = ctx.getImageData(cx - R, cy - R, 2 * R, 2 * R).data;
+      let n = 0, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1, red = 0, blue = 0, green = 0, gold = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2], px = (i / 4) % (2 * R), py = Math.floor(i / 4 / (2 * R));
+        if (Math.abs(r - 217) < 12 && Math.abs(g - 72) < 14 && Math.abs(b - 59) < 14) red++;
+        if (Math.abs(r - 59) < 10 && Math.abs(g - 111) < 12 && Math.abs(b - 201) < 12) blue++;
+        if (Math.abs(r - 47) < 8 && Math.abs(g - 143) < 8 && Math.abs(b - 90) < 8) green++;
+        if (r > 225 && g > 175 && g < 210 && b < 70) gold++;
+        if (g > r + 20 && g > b + 20) continue; // grama (e a sombra dele): não é o cachorrinho
+        n++; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+      }
+      return { n, w: (x1 - x0 + 1) / k, h: (y1 - y0 + 1) / k, red, blue, green, gold, stage: __game.stage, pw: p.w, ph: p.h };
+    }, ups);
+    const pup = await look({}), teen = await look({ speed: 4, bone: 4, slow: 4 }), adult = await look({ speed: 4, bone: 4, slow: 4, heart: 3, shield: 3 });
+    ok(pup.stage === "filhote" && teen.stage === "jovem" && adult.stage === "adulto", `a mesma fase mostra os três tamanhos conforme os reforços (${pup.stage}, ${teen.stage}, ${adult.stage})`);
+    ok(pup.n > 80 && pup.n < teen.n * 0.9 && teen.n < adult.n * 0.97 && pup.h < adult.h, `o filhote ocupa menos tela que o jovem e o jovem menos que o adulto (${pup.n} < ${teen.n} < ${adult.n} pixels; altura ${pup.h.toFixed(1)} < ${adult.h.toFixed(1)})`);
+    ok(pup.red > 3 && pup.blue === 0 && pup.green === 0 && teen.blue > 3 && teen.red === 0 && adult.green > 3 && adult.red === 0 && adult.gold > 0 && pup.gold === 0, `coleira vermelha no filhote, azul no jovem e verde com plaquinha dourada no adulto (vermelho ${pup.red}, azul ${teen.blue}, verde ${adult.green}, plaquinha ${adult.gold})`);
+    ok([pup, teen, adult].every((d) => d.pw === 24 && d.ph === 24), "o tamanho de contato do cachorrinho é o mesmo nos três (24 x 24): só o desenho muda");
+    // ---- as outras direções também mudam de tamanho (de frente e de costas) ----
+    const dirs = await ev(page, async () => {
+      const out = {};
+      for (const [name, ups] of [["filhote", {}], ["adulto", { speed: 4, bone: 4, slow: 4, heart: 3, shield: 3 }]]) for (const f of ["down", "up", "left"]) {
+        __game.autoStart = true; __game.start(1, { upgrades: ups }); __game.freezeVets = true; __game.noCatch = true; __game.items.splice(0);
+        const M = __game.levels[0].map; let spot = null;
+        for (let r = 1; r < M.length - 3 && !spot; r++) for (let c = 1; c < M[0].length - 3 && !spot; c++) { let free = true; for (let dr = 0; dr < 3 && free; dr++) for (let dc = 0; dc < 3; dc++) if (M[r + dr][c + dc] !== ".") { free = false; break; } if (free) spot = [c, r]; }
+        const p = __game.player; p.facing = f; p.moving = false; p.x = (spot[0] + 1) * 32 + 4; p.y = (spot[1] + 1) * 32 + 4; __game.tick(0.01);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const v = __game.view, k = v.k * v.zoom, ctx = document.getElementById("game").getContext("2d");
+        const cx = Math.round((p.x + p.w / 2 - v.camX) * k), cy = Math.round((p.y + p.h / 2 - v.camY) * k), R = Math.round(22 * k);
+        const d = ctx.getImageData(cx - R, cy - R, 2 * R, 2 * R).data; let n = 0;
+        for (let i = 0; i < d.length; i += 4) if (!(d[i + 1] > d[i] + 20 && d[i + 1] > d[i + 2] + 20)) n++;
+        out[name + "-" + f] = n;
+      }
+      return out;
+    });
+    ok(["down", "up", "left"].every((f) => dirs["filhote-" + f] > 60 && dirs["filhote-" + f] < dirs["adulto-" + f] * 0.9), `de frente, de costas e para a esquerda o filhote também é menor (${["down", "up", "left"].map((f) => `${f}: ${dirs["filhote-" + f]} < ${dirs["adulto-" + f]}`).join(", ")})`);
+    // ---- a pausa diz em que fase de crescimento ele está ----
+    await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => document.getElementById("btn-pause").click());
+    ok((await page.textContent("#pause-up")).trim() === "Cachorrinho: filhote.", "na pausa da Fase 1 o jogo diz 'Cachorrinho: filhote.'");
+    await ev(page, () => document.getElementById("btn-resume").click());
+    await playLevel(page, 5, undefined, { upgrades: { speed: 2, slow: 1 } }); await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => document.getElementById("btn-pause").click());
+    ok(/^Cachorrinho: jovem\. Reforços: Patas ligeiras 2\/4 · Carrocinha lenta 1\/4\.$/.test((await page.textContent("#pause-up")).trim()), "na pausa da Fase 5 com 2 reforços ele é jovem e a pausa lista os reforços");
+    await ev(page, () => document.getElementById("btn-resume").click());
+    // ---- o jogo salvo e retomado mantém o tamanho (depende só da fase e dos reforços) ----
+    await playLevel(page, 6, { keepSave: true }, { upgrades: { speed: 1, bone: 1 } }); await ev(page, () => { __game.freezeVets = true; });
+    const sv = await ev(page, () => { __game.tick(1); __game.save(); return { g0: __game.growth, s0: __game.stage }; });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    await page.click("#btn-continue");
+    const back = await ev(page, () => ({ g: __game.growth, s: __game.stage, level: __game.level }));
+    ok(back.level === 6 && Math.abs(back.g - sv.g0) < 1e-9 && back.s === sv.s0 && back.s === "jovem", `ao continuar um jogo salvo ele está do mesmo tamanho (${back.s}, ${back.g.toFixed(3)})`);
+    // ---- o Como jogar explica o crescimento ----
+    await fresh(page); await page.click("#btn-howto");
+    ok(/Crescer:[\s\S]*filhote[\s\S]*jovem[\s\S]*adulto/.test(await page.textContent("#howto")), "o Como jogar explica que o cachorrinho começa filhote e cresce");
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };

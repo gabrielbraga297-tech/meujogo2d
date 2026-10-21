@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.14.0 · 20/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.0 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -131,6 +131,17 @@ Cada fase é um **lugar que o cachorrinho conhece**, com chão, paredes e "caixa
 | 10 | **Central da carrocinha** | concreto com faixas de alerta | paredes de aço com grades | jaulas | blocos de aço |
 
 O aviso de começar cada fase diz o lugar (*Casa — Fase 3: 2 agentes da carrocinha*), a lista de fases mostra **Fase 3 · Casa** e a vitória começa por *Casa · Vidas restantes…*. Nas cidades (Fases 4 a 10) as 4 caixas dos cantos do pátio da praça central são **vans da carrocinha**. O teste `0.14.0` confere os 10 nomes, o aviso, a lista, a vitória, que a cor média do chão de cada lugar é diferente das outras e o mar da Praia.
+
+## Crescimento do cachorrinho (0.15.0)
+O cachorrinho **começa filhote** e vai ficando adulto à medida que passa de fase e ganha reforços. O crescimento é `clamp((fase − 1 + 0,35 × reforços) ÷ 9, 0, 1)` (reforços = soma dos níveis de Patas ligeiras, Osso poderoso, Coração maior, Pelo grosso e Carrocinha lenta; a *Vida extra* não conta) e dá três tamanhos:
+
+| Tamanho | Crescimento | Fases (sem reforços) | Desenho |
+|---|---|---|---|
+| **Filhote** | até 0,34 | 1 a 4 | corpo a 66%, cabeça, orelhas e olhos grandes, rabinho curto, pelo claro, coleira **vermelha** |
+| **Jovem** | de 0,34 a 0,67 | 5 a 7 | tamanho intermediário, coleira **azul** |
+| **Adulto** | a partir de 0,67 | 8 a 10 | corpo inteiro, pelo mais escuro, rabo comprido, coleira **verde** com plaquinha dourada |
+
+O corpo muda de tamanho de forma contínua (`drawDog` em `js/game.js`), mas o tamanho de contato (24 × 24), a velocidade e as regras **não mudam**; os pés ficam no mesmo lugar. Os ganchos de teste `__game.growth` e `__game.stage` mostram o valor; a pausa diz *Cachorrinho: jovem.* O teste `0.15.0` confere as fases de crescimento, o efeito dos reforços, o desenho em pixels (de frente, de costas e de lado), as cores da coleira, o contato 24 × 24, a pausa e o jogo salvo.
 
 ## Reforços (0.8.0)
 Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 opções**, sorteadas a cada vitória entre os 6 que ainda valem (se sobram 3 ou menos, aparecem todos; sempre na mesma ordem da tabela abaixo), e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**: o botão *Próxima fase* da vitória abre a tela **Escolha um reforço**, e a fase seguinte só começa depois da escolha (com *Voltar* ou Esc se volta ao resultado). Os reforços empilham em níveis até um máximo:

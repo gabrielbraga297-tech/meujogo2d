@@ -1446,7 +1446,7 @@
     saveNow(); // pausar também salva
     setState("paused");
     $("pause-msg").textContent = "";
-    $("pause-up").textContent = upSummary(up) ? `Reforços: ${upSummary(up)}.` : "";
+    $("pause-up").textContent = `Cachorrinho: ${dogStage(dogGrowth())}.${upSummary(up) ? ` Reforços: ${upSummary(up)}.` : ""}`;
     showScreen("pause");
   }
   function resumeGame() { if (state !== "paused") return; setState("playing"); showScreen(null); last = performance.now(); }
@@ -1913,42 +1913,54 @@
     ctx.strokeStyle = m[2]; ctx.lineWidth = 2; ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
   }
 
+  // O cachorrinho cresce (0.15.0): começa filhote na Fase 1 e vai ficando adulto conforme passa de fase e ganha reforços (só o desenho; o tamanho de contato é sempre o mesmo).
+  // Crescimento de 0 (filhote) a 1 (adulto): 1/9 por fase (a Fase 10 já é adulto) e mais 0,35/9 por nível de reforço.
+  const DOG_GROW_LEVELS = 9, DOG_GROW_PER_UP = 0.35;
+  const dogGrowth = () => clamp((levelId - 1 + DOG_GROW_PER_UP * UP_KEYS.reduce((n, k) => n + up[k], 0)) / DOG_GROW_LEVELS, 0, 1);
+  const dogStage = (gr) => (gr < 0.34 ? "filhote" : gr < 0.67 ? "jovem" : "adulto");
+  const mixHex = (a, b, t) => { const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16)); return "#" + pa.map((v, k) => Math.round(v + (pb[k] - v) * t).toString(16).padStart(2, "0")).join(""); };
   function drawDog(p) {
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
-    const wag = calm ? 0 : Math.sin(time * 16) * (p.moving ? 5 : 2);
+    const gr = dogGrowth(), sc = 0.66 + 0.34 * gr, hd = 1.28 - 0.28 * gr, ear = 1.3 - 0.3 * gr, tl = 0.6 + 0.4 * gr; // tamanho do corpo, da cabeça, das orelhas e do rabo
+    const wag = calm ? 0 : Math.sin(time * 16) * (p.moving ? 5 : 2) * (1.15 - 0.15 * gr);
     const leg = p.moving ? Math.sin(time * 18) * 3 : 0;
-    const TAN = "#d9a066", DARK = "#7a4a22", LIGHT = "#f1d2a6";
+    const TAN = mixHex("#ecc592", "#d9a066", gr), DARK = mixHex("#9a6a3c", "#7a4a22", gr), LIGHT = "#f1d2a6", COLLAR = gr < 0.34 ? "#d9483b" : gr < 0.67 ? "#3b6fc9" : "#2f8f5a";
+    ctx.save(); ctx.translate(cx, cy + 11); ctx.scale(sc, sc); ctx.translate(-cx, -(cy + 11)); // os pés ficam no mesmo lugar: o filhote só é menor
     ellipse(cx, cy + 10, 12, 4, "rgba(0,0,0,.25)");
     ctx.lineCap = "round";
     if (p.facing === "left" || p.facing === "right") {
       const s = p.facing === "right" ? 1 : -1;
       ctx.strokeStyle = DARK; ctx.lineWidth = 3; // rabo
-      ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * 15, cy - 5 + wag, cx - s * 14, cy - 9 + wag); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - s * 9, cy - 1); ctx.quadraticCurveTo(cx - s * (9 + 6 * tl), cy - 5 + wag, cx - s * (9 + 5 * tl), cy - 9 * tl + wag); ctx.stroke();
       ctx.fillStyle = DARK; // patas
       ctx.fillRect(cx - s * 7 - 2 + leg, cy + 4, 4, 7); ctx.fillRect(cx + s * 4 - 2 - leg, cy + 4, 4, 7);
       ellipse(cx - s * 2, cy + 1, 10, 7, TAN);                 // corpo
       ellipse(cx - s * 4, cy - 1, 5, 4, DARK);                 // mancha
-      ellipse(cx + s * 8, cy - 3, 7, 6.5, TAN);                // cabeça
-      ellipse(cx + s * 13, cy - 1, 4, 3, LIGHT);               // focinho
-      ellipse(cx + s * 15.5, cy - 1.5, 1.6, 1.4, "#222");      // nariz
-      ellipse(cx + s * 4, cy - 4, 2.6, 5, DARK, s * 0.25);     // orelha
-      ellipse(cx + s * 10, cy - 5, 1.4, 1.4, "#222");          // olho
+      ellipse(cx + s * (7 + hd), cy - 3, 7 * hd, 6.5 * hd, TAN);                // cabeça
+      ellipse(cx + s * (11 + 2 * hd), cy - 1, 4, 3, LIGHT);               // focinho
+      ellipse(cx + s * (13.5 + 2 * hd), cy - 1.5, 1.6, 1.4, "#222");      // nariz
+      ellipse(cx + s * 4, cy - 4, 2.6 * ear, 5 * ear, DARK, s * 0.25);     // orelha
+      ellipse(cx + s * (8 + 2 * hd), cy - 5, 1.4 * (1 + 0.5 * (1 - gr)), 1.4 * (1 + 0.5 * (1 - gr)), "#222");          // olho (maior no filhote)
+      ctx.fillStyle = COLLAR; ctx.fillRect(cx + s * 3 - 1.5, cy - 2, 3, 7); // coleira (vermelha no filhote, azul no jovem, verde no adulto)
+      if (gr >= 0.67) ellipse(cx + s * 3, cy + 5.5, 1.3, 1.3, "#f2c230"); // plaquinha do adulto
     } else {
       const s = p.facing === "down" ? 1 : -1;
       ctx.strokeStyle = DARK; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * 13); ctx.stroke(); // rabo
+      ctx.beginPath(); ctx.moveTo(cx, cy - s * 6); ctx.lineTo(cx + wag, cy - s * (6 + 7 * tl)); ctx.stroke(); // rabo
       ctx.fillStyle = DARK;
       ctx.fillRect(cx - 8, cy - 2 + leg, 4, 6); ctx.fillRect(cx + 4, cy - 2 - leg, 4, 6);
       ellipse(cx, cy - s * 1, 8, 9, TAN);                      // corpo
-      ellipse(cx, cy + s * 8, 7, 6.5, TAN);                    // cabeça
-      ellipse(cx - 7, cy + s * 7, 2.6, 5, DARK, -0.2);         // orelhas
-      ellipse(cx + 7, cy + s * 7, 2.6, 5, DARK, 0.2);
+      ctx.fillStyle = COLLAR; ctx.fillRect(cx - 5, cy + s * 5 - 1.5, 10, 3); // coleira
+      ellipse(cx, cy + s * (7 + hd), 7 * hd, 6.5 * hd, TAN);                    // cabeça
+      ellipse(cx - 6.5 * hd, cy + s * (6 + hd), 2.6 * ear, 5 * ear, DARK, -0.2);         // orelhas
+      ellipse(cx + 6.5 * hd, cy + s * (6 + hd), 2.6 * ear, 5 * ear, DARK, 0.2);
       if (s === 1) {
-        ellipse(cx, cy + 11, 3.6, 2.8, LIGHT);
-        ellipse(cx, cy + 12, 1.6, 1.3, "#222");
-        ellipse(cx - 3, cy + 7, 1.3, 1.3, "#222"); ellipse(cx + 3, cy + 7, 1.3, 1.3, "#222");
+        ellipse(cx, cy + 3 + 8 * hd, 3.6, 2.8, LIGHT);
+        ellipse(cx, cy + 4 + 8 * hd, 1.6, 1.3, "#222");
+        const eye = 1.3 * (1 + 0.5 * (1 - gr)); ellipse(cx - 3, cy + 6 + hd, eye, eye, "#222"); ellipse(cx + 3, cy + 6 + hd, eye, eye, "#222");
       }
     }
+    ctx.restore();
   }
 
   // Carteiro (os agentes enquanto dura o poder do osso): uniforme azul, boné com distintivo amarelo, bolsa de correspondência e uma carta.
@@ -2368,6 +2380,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
+    get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
     get sounds() { return sound.events; }, get sound() { return sound; }, // os pedidos de som (nome, quando, se tocou) e o tocador, para os testes
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },

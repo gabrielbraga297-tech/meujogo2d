@@ -1,8 +1,14 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.14.0 · 20/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.15.0 · 21/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.15.0 — 21/10/2026 (em preparação)
+- **O cachorrinho começa filhote e vai ficando adulto:** na Fase 1 ele é um **filhote** (corpo pequeno, cabeça, orelhas e olhos grandes, rabinho curto, pelo claro e coleira **vermelha**). A cada fase vencida e a cada reforço escolhido ele cresce: nas Fases 5 a 7 (ou antes, com reforços) vira um cachorro **jovem** (coleira **azul**) e a partir da Fase 8 um cachorro **adulto** (pelo mais escuro, rabo comprido, coleira **verde com plaquinha dourada**). O crescimento vai de 0 a 1 por `(fase − 1 + 0,35 × reforços) ÷ 9`.
+- Só o **desenho** muda: o tamanho de contato (24 × 24), a velocidade e as regras são os mesmos em qualquer tamanho; os pés ficam no mesmo lugar.
+- A **pausa** diz em que fase de crescimento ele está (*Cachorrinho: jovem.*) antes da lista de reforços, o **Como jogar** explica (*Crescer*) e o jogo salvo volta do mesmo tamanho (ele só depende da fase e dos reforços).
+- **Testes:** as fases de crescimento nas 10 fases, o efeito dos reforços, o desenho de verdade em pixels (filhote < jovem < adulto de frente, de costas e de lado), as cores da coleira, o contato 24 × 24, a pausa, o jogo salvo e o Como jogar.
 
 ## 0.14.0 — 20/10/2026 (em preparação)
 - **Cada fase é um lugar que o cachorrinho conhece:** 1 **Quintal**, 2 **Campo**, 3 **Casa**, 4 **Rua do bairro**, 5 **Condomínio**, 6 **Praça**, 7 **Parque canino**, 8 **Feira**, 9 **Praia** e 10 **Central da carrocinha**. Cada ambiente tem chão, paredes e "caixas" próprios (grama e cerca de madeira com vasos; pasto, muros de pedra e fardos de feno; tábua corrida, papel de parede e pufes; asfalto, calçadas e telhados; concreto com jardins e prédios com janelas; pedras claras, canteiros e bancos; grama, cerca branca e cones de agilidade; paralelepípedo, barracas de toldo listrado e caixas de frutas; areia, quiosques de palha, guarda-sóis e o mar no anel de fora; concreto com faixas de alerta, paredes de aço com grades e jaulas). As portas e paredes que se movem também ganham o estilo do lugar (portão de madeira, grade de ferro, aço...), mantendo os cantos amarelos de aviso.
