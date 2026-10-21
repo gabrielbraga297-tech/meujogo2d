@@ -964,13 +964,13 @@ const PAGE_HELPERS = () => {
       left.sort((a, b) => G2.bfs(here, a).length - G2.bfs(here, b).length);
       await ev(page, (p) => __t.walk(p), G2.bfs(here, left[0]));
     }
-    ok(await ev(page, () => __game.collected) === 7 && await ev(page, () => __game.bonesGot) === 2 && await hudIs(page, "#hud-points", String(1000 + 100 * await ev(page, () => __game.postmen))), "caminhando pela Fase 2 dá para pegar as 7 rações e os 2 ossos (700 + 300 = 1000 pontos, mais 100 por carteiro encostado no caminho)");
+    ok(await ev(page, () => __game.collected) === 7 && await ev(page, () => __game.bonesGot) === 2 && await hudIs(page, "#hud-points", String(1000 + 100 * await ev(page, () => __game.postmen) + 50 * await ev(page, () => __game.balls.filter((b) => b.taken).length))), "caminhando pela Fase 2 dá para pegar as 7 rações e os 2 ossos (700 + 300 = 1000 pontos, mais 100 por carteiro e 50 por bolinha encostados no caminho)");
     ok(await ev(page, () => __game.state) === "playing", "com as 7 rações, a vitória só vem ao chegar na saída");
     await ev(page, (p) => __t.walk(p), G2.bfs(await cur(), G2.find("E")[0]));
     ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#win"), `a Fase 2 termina ao chegar na saída com as 7 rações (cachorro em ${await tileOfPlayer(page)}, estado ${await ev(page, () => __game.state)})`);
     const wt = await page.textContent("#win-breakdown"), wp = Number(await page.textContent("#win-points"));
-    const wm = wt.match(/Rações: (\d+) \+ ossos: (\d+)(?: \+ carteiros: (\d+))? \+ bônus de tempo: (\d+)/);
-    ok(/Fase 2 concluída/.test(await page.textContent("#win-title")) && wm && Number(wm[1]) === 700 && Number(wm[2]) === 300 && wp === 1000 + Number(wm[3] || 0) + Number(wm[4]), `pontuação da Fase 2 = 700 (rações) + 300 (ossos) + bônus de tempo (${wp}; ${wt})`);
+    const wm = wt.match(/Rações: (\d+) \+ ossos: (\d+)(?: \+ carteiros: (\d+))?(?: \+ bolinhas: (\d+))? \+ bônus de tempo: (\d+)/), wBalls = await ev(page, () => __game.balls.filter((b) => b.taken).length); // (0.15.8: o cachorrinho que passeia pode esbarrar na bolinha da Fase 2: +50)
+    ok(/Fase 2 concluída/.test(await page.textContent("#win-title")) && wm && Number(wm[1]) === 700 && Number(wm[2]) === 300 && Number(wm[4] || 0) === 50 * wBalls && wp === 1000 + Number(wm[3] || 0) + Number(wm[4] || 0) + Number(wm[5]), `pontuação da Fase 2 = 700 (rações) + 300 (ossos) + bolinhas (50 cada; ${wBalls} pega) + bônus de tempo (${wp}; ${wt})`);
     ok(await page.isVisible("#btn-next") && /Próxima fase \(Fase 3\)/.test(await page.textContent("#btn-next")), "depois da Fase 2 há a Fase 3: aparece Próxima fase (Fase 3)");
     const rec = await ev(page, () => { const s = Records.createStore(localStorage); return { l2: s.personalBest("Totó", 2), l1: s.personalBest("Totó", 1), total: s.totalScore("Totó", [1, 2]) }; });
     ok(rec.l2 && rec.l2.p === wp && rec.l1 === null && rec.total === wp, "a pontuação da Fase 2 é guardada à parte da Fase 1");
@@ -1964,6 +1964,7 @@ const PAGE_HELPERS = () => {
     // fase sem saída: tudo pego, poder acabado e pontos abaixo do mínimo: a tentativa termina
     const dead = await ev(page, () => {
       __game.start(4, { lives: 5, retries: 3 }); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      __game.balls = []; // (0.15.8: sem bolinhas por pegar; com elas a tentativa só acaba se nem elas completarem os 800 pontos: veja as seções das bolinhas)
       for (let k = 0; k < 4; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.freezeVets = false; __game.tick(0.01); __game.freezeVets = true; }
       const lost = __game.livesLost; for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
       const mid = { state: __game.state, power: __game.power, score: __game.score };
@@ -3984,6 +3985,7 @@ const PAGE_HELPERS = () => {
     // "os pontos não bastaram" (sem agente): só o fim de jogo
     await ev(page, () => {
       __game.start(4, { lives: 5, retries: 3 }); __game.noCatch = false; __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
+      __game.balls = []; // (0.15.8: sem bolinhas por pegar; com elas a tentativa só acaba se nem elas completarem os 800 pontos: veja as seções das bolinhas)
       for (let k = 0; k < 4; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.items.forEach((i) => { i.life = false; }); }
       __game.sound.reset(); __game.noCatch = true;
       for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
@@ -6086,6 +6088,7 @@ const PAGE_HELPERS = () => {
         setup(id, o = {}) {
           __game.autoStart = true; __game.setRand(lcg(o.seed || 11)); __game.start(id, o.start); __game.setRand(null);
           __game.freezeVets = true; __game.catsThaw = false; __game.noCatch = true;
+          if (!o.keepBalls) __game.balls = []; // (0.15.8: os cenários de pontos exatos e de derrota por pontos não esbarram em bolinhas; elas têm seções próprias)
           for (let k = 0; k < (o.lose || 0); k++) { // perde vidas de verdade (cada uma custa os pontos da fase)
             __game.noCatch = true; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05); // (passa a proteção sem risco de esmagamento)
             __game.noCatch = false; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.noCatch = true;
@@ -6439,6 +6442,852 @@ const PAGE_HELPERS = () => {
       `continuar o jogo salvo da Fase 12 mantém a missão (faixa "${cont.a.bar}" com poder de ${cont.a.power.toFixed(0)} s), o 3º susto cumpre ("${cont.b.bar}") e a saída segue fechada pelos pontos ("${cont.c.toast}")`);
   });
 
+
+  // =====================================================================
+  // 0.15.8: bolinhas. Nada aqui usa coordenadas fixas: os lugares vêm do mapa e do estado do jogo (ganchos __game.balls, items, blocks, levels...). As bolinhas de teste
+  // são colocadas com o setter `__game.balls = [...]` e o cachorrinho é "teleportado" (como em finishNow); tudo o que precisa ser exato roda dentro de UM page.evaluate
+  // (síncrono: o laço de tempo real do jogo não anda no meio).
+  const BALLS_WANT = [0, 1, 1, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5];
+  const BALL_R = +src.match(/const BALL_R = (\d+)/)[1], BALL_SCARE = +src.match(/BALL_SCARE = (\d+) \* TILE/)[1] * 32, BALL_FRICTION = +src.match(/BALL_FRICTION = (\d+)/)[1];
+  const kickOf = eval(src.match(/const ballKick = (\(levelNumber\) => [^;]+);/)[1]); // px/s do chute em cada fase
+  const BALL_COLORS = eval(src.match(/const BALL_COLORS = (\[[^\]]*\]);/)[1]);
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(BALL_COLORS[h].slice(i, i + 2), 16)), near = (c, h, tol = 12) => c.every((v, i) => Math.abs(v - rgb(h)[i]) <= tol); // cor do hue (#rrggbb → [r, g, b]) e se uma cor medida no canvas é (quase) ela
+  const gridCache = {};
+  const gridOf = (n) => gridCache[n] || (gridCache[n] = grid(mapOf(n)));
+  const injectBK = (pg = page) => ev(pg, () => {
+    const lcg = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const K = window.__bk = {
+      lcg, DIRS,
+      frame: () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+      L: () => (K._c && K._c.id === __game.level ? K._c.L : (K._c = { id: __game.level, L: __game.levels[__game.level - 1] }).L), // (o gancho __game.levels copia todas as fases: guarda o resultado)
+      ch: (c, r) => { const m = K.L().map[r]; return m ? m[c] : undefined; },
+      solid: (c, r) => { const ch = K.ch(c, r); return ch === undefined || ch === "#" || ch === "X"; },
+      ctr: (c, r) => [c * 32 + 16, r * 32 + 16],
+      tileOf: (x, y) => [Math.floor(x / 32), Math.floor(y / 32)],
+      // tiles por onde as peças móveis da fase passam (de todas, entrem ou não no jogo)
+      track() {
+        const s = new Set();
+        for (const b of K.L().blocks) { const [ac, ar] = b.from, [bc, br] = b.to, [bw, bh] = b.size || [1, 1]; for (let c = Math.min(ac, bc); c <= Math.max(ac, bc) + bw - 1; c++) for (let r = Math.min(ar, br); r <= Math.max(ar, br) + bh - 1; r++) s.add(c + "," + r); }
+        return s;
+      },
+      // tiles que os testes evitam para não pegar nada sem querer: trilhos, rações/ossos, saída, início e agentes
+      busy() {
+        const s = K.track();
+        for (const it of __game.items) s.add((it.x - 8) / 32 + "," + (it.y - 8) / 32);
+        K.L().map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "E" || ch === "P" || ch === "V") s.add(c + "," + r); }));
+        return s;
+      },
+      // começa a fase com os agentes parados e longe, ninguém pega o cachorrinho e nenhum item esconde vida extra
+      setup(id, o = {}) {
+        __game.autoStart = true; __game.setRand(lcg(o.seed || 5)); __game.start(id, o.start); __game.setRand(null);
+        __game.freezeVets = true; __game.catsThaw = false; __game.noCatch = true;
+        if (!o.keepLife) for (const it of __game.items) it.life = false;
+        if (!o.keepAgents) for (const a of [...__game.vets, ...__game.cats]) { a.cx = -1000; a.cy = -1000; }
+        return K.L();
+      },
+      put(list) { __game.balls = list.map((p, i) => ({ x: p[0], y: p[1], vx: p[2] || 0, vy: p[3] || 0, taken: false, hue: p[4] ?? i % 4 })); return __game.balls; },
+      dog(x, y) { __game.player.x = x - 12; __game.player.y = y - 12; },
+      dogAt() { const p = __game.player; return [p.x + 12, p.y + 12]; },
+      // trecho reto na direção d: `behind` tiles antes de B, B e `ahead` depois, tudo chão livre e fora de `busy`; com `wall`, o tile seguinte ao último é parede. Devolve [c, r] de B.
+      line(d, behind, ahead, o = {}) {
+        const bz = K.busy(), L = K.L(); let n = 0;
+        for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) {
+          let good = true;
+          for (let k = -behind; k <= ahead && good; k++) { const cc = c + d[0] * k, rr = r + d[1] * k; if (K.solid(cc, rr) || bz.has(cc + "," + rr)) good = false; }
+          if (good && o.wall && !K.solid(c + d[0] * (ahead + 1), r + d[1] * (ahead + 1))) good = false;
+          if (good && o.sideWalls && (!K.solid(c + d[1], r + d[0]) || !K.solid(c - d[1], r - d[0]))) good = false; // (corredor de 1 tile: paredes dos dois lados de B)
+          if (good && n++ >= (o.skip || 0)) return [c, r];
+        }
+        return null;
+      },
+      // D (cachorrinho) e B (bolinha) em chão livre, a 2 tiles um do outro na direção d, com uma parede (ou caixa) no meio
+      between(d) {
+        const bz = K.busy(), L = K.L();
+        for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) {
+          const D = [c, r], W = [c + d[0], r + d[1]], B = [c + 2 * d[0], r + 2 * d[1]];
+          if (K.solid(...D) || !K.solid(...W) || K.solid(...B) || K.ch(...W) === undefined || bz.has(D + "") || bz.has(B + "")) continue;
+          return { D, W, B };
+        }
+        return null;
+      },
+      // nicho sem saída: B é chão livre com uma só saída (direção f, para o tile S, a rua); B e S fora de `busy`
+      nook(skip = 0) {
+        const bz = K.busy(), L = K.L(); let n = 0;
+        for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) {
+          if (K.solid(c, r)) continue;
+          const ex = DIRS.filter((d) => !K.solid(c + d[0], r + d[1]));
+          if (ex.length !== 1) continue;
+          const f = ex[0], S = [c + f[0], r + f[1]];
+          if (bz.has(c + "," + r) || bz.has(S + "")) continue;
+          if (n++ >= skip) return { B: [c, r], f, S };
+        }
+        return null;
+      },
+      // tile com todos os 8 vizinhos livres (uma praça), fora de `busy`
+      open3(o = {}) {
+        const bz = K.busy(), L = K.L(); let n = 0;
+        for (let r = 1; r < L.map.length - 1; r++) for (let c = 1; c < L.map[0].length - 1; c++) {
+          let good = true;
+          for (let dr = -1; dr <= 1 && good; dr++) for (let dc = -1; dc <= 1; dc++) if (K.solid(c + dc, r + dr) || bz.has(c + dc + "," + (r + dr))) { good = false; break; }
+          if (good && n++ >= (o.skip || 0)) return [c, r];
+        }
+        return null;
+      },
+      // um ponto de chão livre (centro de tile) entre min e max px de `pt`, fora de `busy`, que não seja o tile da própria bolinha
+      near(pt, min, max) {
+        const bz = K.busy(), L = K.L(); let best = null;
+        for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) {
+          if (K.solid(c, r) || bz.has(c + "," + r)) continue;
+          const [x, y] = K.ctr(c, r), d = Math.hypot(x - pt[0], y - pt[1]);
+          if (d >= min && d <= max && (!best || d < best.d)) best = { x, y, d };
+        }
+        return best && [best.x, best.y];
+      },
+      // a bolinha está dentro de uma parede ou caixa do mapa? (os blocos que se movem não contam)
+      inWall(b) {
+        const c1 = Math.floor((b.x - 7) / 32), c2 = Math.floor((b.x + 7 - 0.001) / 32), r1 = Math.floor((b.y - 7) / 32), r2 = Math.floor((b.y + 7 - 0.001) / 32);
+        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) if (K.solid(c, r)) return true;
+        return false;
+      },
+      // linha reta livre (só paredes e caixas do mapa) entre dois pontos?
+      clear(ax, ay, bx, by) { const dist = Math.hypot(bx - ax, by - ay); for (let d = 0; d <= dist; d += 8) { const [c, r] = K.tileOf(ax + (dist ? ((bx - ax) * d) / dist : 0), ay + (dist ? ((by - ay) * d) / dist : 0)); if (K.solid(c, r)) return false; } return true; },
+      inBlock(b) { return __game.blocks.some((k) => b.x + 7 > k.x && b.x - 7 < k.x + k.def.w && b.y + 7 > k.y && b.y - 7 < k.y + k.def.h); },
+      snap() { return __game.balls.map((b) => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, taken: b.taken, hue: b.hue })); },
+      run(n, dt = 1 / 60) { for (let i = 0; i < n && __game.state === "playing"; i++) __game.tick(dt); },
+      // `n` lugares (centros de tile, em px) para bolinhas: trechos retos horizontais de chão livre, a pelo menos `gap` px um do outro
+      spots(n, gap = 200) {
+        const out = [];
+        for (let s = 0; s < 600 && out.length < n; s++) { const t = K.line([1, 0], 3, 3, { skip: s }); if (!t) break; const p = K.ctr(...t); if (out.every((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) >= gap)) out.push(p); }
+        return out;
+      },
+      // tira o cachorrinho do caminho (para um ponto de chão livre distante das bolinhas)
+      away(pts, min = 200) {
+        const L = K.L(), bz = K.busy();
+        for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) {
+          if (K.solid(c, r) || bz.has(c + "," + r)) continue;
+          const [x, y] = K.ctr(c, r);
+          if (pts.every((p) => Math.hypot(p[0] - x, p[1] - y) >= min)) return [x, y];
+        }
+        return null;
+      },
+    };
+    // extras de desenho: medem pixels do canvas em volta de uma bolinha (precisam de requestAnimationFrame: rodam em page.evaluate assíncrono)
+    Object.assign(__bk, {
+      // recorte do canvas (px do aparelho) de 20 x 20 px do mundo em volta da bolinha; só lê, nunca desenha
+      crop(b) {
+        const v = __game.view, sx = v.k * v.zoom, c = document.getElementById("game").getContext("2d"), n = Math.max(2, Math.round(20 * sx));
+        const x0 = Math.round((b.x - 10 - v.camX) * sx), y0 = Math.round((b.y - 10 - v.camY) * sx);
+        return { x0, y0, n, sx, cx: (b.x - v.camX) * sx - x0, cy: (b.y - v.camY) * sx - y0, d: c.getImageData(x0, y0, n, n).data };
+      },
+      // o campo com a bolinha i e sem ela (a esconde por 2 quadros): devolve quantos pixels mudam, a cor do corpo dela e a cor do chão embaixo
+      async look(i) {
+        const K = __bk, b = __game.balls[i]; await K.frame();
+        const A = K.crop(b), was = b.taken; b.taken = true; await K.frame();
+        const B = K.crop(b); b.taken = was; await K.frame();
+        const R = (7 * A.sx), ch = [[], [], []], floor = [[], [], []]; let diff = 0;
+        for (let y = 0; y < A.n; y++) for (let x = 0; x < A.n; x++) {
+          const k = (y * A.n + x) * 4, dd = Math.abs(A.d[k] - B.d[k]) + Math.abs(A.d[k + 1] - B.d[k + 1]) + Math.abs(A.d[k + 2] - B.d[k + 2]), r = Math.hypot(x + 0.5 - A.cx, y + 0.5 - A.cy);
+          if (dd > 60) diff++;
+          if (r <= R * 0.8 && dd > 60) for (let q = 0; q < 3; q++) ch[q].push(A.d[k + q]);
+          if (r <= R * 0.8) for (let q = 0; q < 3; q++) floor[q].push(B.d[k + q]);
+        }
+        const med = (a) => (a.length ? a.slice().sort((p, q) => p - q)[a.length >> 1] : -1);
+        (K.bgs ||= {})[i] = { d: B.d };
+        return { diff, area: Math.PI * R * R, color: ch.map(med), floor: floor.map(med), sx: A.sx };
+      },
+      // ângulo (rad) da faixa branca da bolinha: o centro dos pixels quase brancos entre 2,8 e 6,8 px do centro (sem o brilho fixo no alto à esquerda)
+      stripe(i) {
+        const K = __bk, A = K.crop(__game.balls[i]); let sx = 0, sy = 0, n = 0;
+        for (let y = 0; y < A.n; y++) for (let x = 0; x < A.n; x++) {
+          const k = (y * A.n + x) * 4, dx = (x + 0.5 - A.cx) / A.sx, dy = (y + 0.5 - A.cy) / A.sx, r = Math.hypot(dx, dy);
+          if (r < 2.8 || r > 6.8 || Math.hypot(dx + 2.2, dy + 2.4) < 3 || Math.min(A.d[k], A.d[k + 1], A.d[k + 2]) < 215) continue;
+          sx += dx / r; sy += dy / r; n++;
+        }
+        return { angle: Math.atan2(sy, sx), n };
+      },
+      // quantos pixels do recorte em volta da bolinha i mudaram em relação ao fundo sem ela guardado pela última `look(i)`
+      async same(i) {
+        const K = __bk, b = __game.balls[i], bg = K.bgs[i]; await K.frame(); const A = K.crop(b); let diff = 0;
+        for (let k = 0; k < A.d.length; k += 4) if (Math.abs(A.d[k] - bg.d[k]) + Math.abs(A.d[k + 1] - bg.d[k + 1]) + Math.abs(A.d[k + 2] - bg.d[k + 2]) > 60) diff++;
+        return diff;
+      },
+    });
+  });
+  const bkStart = async (opts) => { await fresh(page, opts); await injectBK(); };
+
+  await section("0.15.8: bolinhas (quantidade por fase, README, sorteio à parte e lugar das bolinhas)", async () => {
+    await bkStart(); const e0 = errs.length;
+
+    // ---- (a) quantas bolinhas há em cada fase ----
+    const levelBalls = await ev(page, () => __game.levels.map((l) => l.balls));
+    ok(levelBalls.join() === BALLS_WANT.join(), `bolinhas por fase: ${levelBalls.join(",")} (0 na Fase 1; 1 nas Fases 2 e 3; 2 nas 4 e 5; 3 nas 6 a 10; 4 nas 11 a 15; 5 nas 16 a 20)`);
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8");
+    // a linha "Bolinhas" das três tabelas das fases do README (Fases 1 a 5, 6 a 10 e 11 a 20); "—" = nenhuma
+    const rRows = readme.split("\n").filter((l) => /^\| Bolinhas/.test(l)).map((l) => l.split("|").slice(2, -1).map((x) => x.trim().replace(/\*/g, "")).map((x) => (x === "—" ? 0 : Number(x))));
+    ok(rRows.length === 3 && rRows.map((r) => r.length).join() === "5,5,10" && rRows.flat().join() === BALLS_WANT.join(), `a linha "Bolinhas" das 3 tabelas das fases do README (${rRows.map((r) => r.join(" ")).join(" | ")}) bate com o jogo`);
+    const rk = readme.match(/(\d+) px\/s na Fase 2, (\d+) na Fase 20/);
+    ok(readme.includes("## Bolinhas (0.15.8") && /1 nas Fases 2 e 3, 2 nas Fases 4 e 5, 3 nas Fases 6 a 10, 4 nas Fases 11 a 15 e 5 nas Fases 16 a 20/.test(readme) && rk && +rk[1] === kickOf(2) && +rk[2] === kickOf(20) && /50 por bolinha/.test(readme),
+      `o README tem a seção Bolinhas, com as quantidades, a velocidade do chute (${rk && rk[1]} px/s na Fase 2 e ${rk && rk[2]} na Fase 20 = ${kickOf(2)} e ${kickOf(20)} do jogo) e os 50 pontos na pontuação`);
+    ok(/## 0\.15\.8/.test(changelog) && /Bolinhas/.test(changelog.slice(changelog.indexOf("## 0.15.8"), changelog.indexOf("## 0.15.7"))), "o CHANGELOG tem a entrada da 0.15.8 falando das bolinhas");
+    const per = await ev(page, () => { const out = []; for (let n = 1; n <= 20; n++) { __bk.setup(n); out.push([n, __game.balls.length, __game.balls.every((b) => !b.taken && b.vx === 0 && b.vy === 0)]); } return out; });
+    ok(per.every(([n, k, still]) => k === BALLS_WANT[n - 1] && still), `ao começar cada uma das 20 fases o jogo tem a quantidade certa de bolinhas, todas paradas e ainda não pegas (${per.map((p) => p[1]).join(",")})`);
+    ok(await ev(page, () => { __bk.setup(1); return __game.balls.length; }) === 0 && await ev(page, () => { __game.balls = []; __game.tick(0.5); return __game.score; }) === 0, "a Fase 1 não tem bolinhas (e o jogo anda sem elas)");
+
+    // ---- (b) onde as bolinhas nascem: chão livre alcançável, longe de itens, trilhos e início; em várias execuções ----
+    const runs = await ev(page, () => {
+      const out = [], K = __bk;
+      for (let n = 2; n <= 20; n++) for (let i = 0; i < ([2, 4, 11, 20].includes(n) ? 12 : 3); i++) {
+        K.setup(n, { seed: 100 + i, keepLife: true });
+        out.push({ n, balls: __game.balls.map((b) => [b.x, b.y, b.hue]), items: __game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32]), track: [...K.track()] });
+      }
+      return out;
+    });
+    const bad = [], layouts = {};
+    for (const r of runs) {
+      const G = gridOf(r.n), start = G.find("P")[0], dist = G.distances(start), exits = G.find("E").map((t) => t + ""), items = new Set(r.items.map((t) => t + "")), track = new Set(r.track), seen = new Set();
+      r.balls.forEach(([x, y, hue], i) => {
+        const c = Math.floor(x / 32), rr = Math.floor(y / 32), t = [c, rr] + "";
+        const why = [];
+        if (!G.free(c, rr)) why.push("fora do chão livre");
+        if (x !== c * 32 + 16 || y !== rr * 32 + 16) why.push("fora do centro do tile");
+        if (!dist.has(t)) why.push("inalcançável");
+        else if (dist.get(t) < 4) why.push(`a ${dist.get(t)} passos do início`);
+        if (items.has(t)) why.push("em cima de um item");
+        if (track.has(t)) why.push("no trilho de um bloco");
+        if (exits.includes(t)) why.push("na saída");
+        if (seen.has(t)) why.push("no mesmo tile de outra bolinha");
+        if (hue !== i % 4) why.push(`cor ${hue}`);
+        seen.add(t);
+        if (why.length) bad.push(`Fase ${r.n} bolinha ${i}: ${why.join(", ")}`);
+      });
+      (layouts[r.n] ||= new Set()).add(r.balls.map((b) => b[0] + "," + b[1]).join(";"));
+    }
+    ok(bad.length === 0, `${runs.length} jogos (Fases 2 a 20; 12 em cada uma das Fases 2, 4, 11 e 20): toda bolinha nasce no centro de um tile de chão livre alcançável, a 4 passos ou mais do início, fora de itens, trilhos de blocos e saída, sem repetir tile${bad.length ? " — " + bad.slice(0, 4).join("; ") : ""}`);
+    ok([2, 4, 11, 20].every((n) => layouts[n].size >= 4), `o lugar das bolinhas é sorteado a cada jogo (layouts diferentes em 12 jogos: Fase 2 ${layouts[2].size}, Fase 4 ${layouts[4].size}, Fase 11 ${layouts[11].size}, Fase 20 ${layouts[20].size})`);
+
+    // ---- o sorteio das bolinhas é à parte: itens, vidas escondidas, agentes, gatos e blocos só dependem da semente do jogo (setRand), não de Math.random ----
+    const indep = await ev(page, () => {
+      const K = __bk, real = Math.random, out = [];
+      const dump = () => ({
+        items: __game.items.map((i) => [i.x, i.y, i.life ? 1 : 0, i.bone ? 1 : 0, i.kind].join()).join("|"), vets: __game.vets.map((v) => [v.cx, v.cy].join()).join("|"), cats: __game.cats.map((c) => [c.cx, c.cy].join()).join("|"),
+        blocks: __game.blocks.map((b) => b.i + ":" + b.x + ":" + b.y).join(","), balls: __game.balls.map((b) => b.x + "," + b.y).join("|"),
+      });
+      __game.allBlocks = false; // (a quantidade e a escolha dos blocos também usam o sorteio do jogo)
+      try {
+        for (const id of [2, 4, 6, 11, 20]) {
+          const take = (mr, lose) => {
+            Math.random = mr; let calls = 0; const r = K.lcg(4242 + id);
+            __game.setRand(() => { calls++; return r(); }); __game.start(id); __game.freezeVets = true; __game.noCatch = true;
+            const a = dump(); let b = null;
+            if (lose) { // perder uma vida sorteia os itens de novo (com o sorteio do jogo, que as bolinhas não podem ter mudado)
+              __game.noCatch = false; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05);
+              const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); b = dump();
+            }
+            __game.setRand(null); Math.random = real;
+            return { a, b, calls, lives: __game.lives };
+          };
+          const low = take(() => 0.01), high = take(() => 0.99), mid = take(() => 0.5), loseLow = take(() => 0.05, true), loseHigh = take(() => 0.95, true);
+          const pick = (k) => (o) => o[k];
+          out.push({ id, sameItems: low.a.items === high.a.items && high.a.items === mid.a.items, sameVets: low.a.vets === high.a.vets && low.a.cats === high.a.cats, sameBlocks: low.a.blocks === high.a.blocks && high.a.blocks === mid.a.blocks,
+            ballsDiffer: low.a.balls !== high.a.balls, sameCalls: low.calls === high.calls && high.calls === mid.calls && low.calls > 0, redraw: loseLow.b.items === loseHigh.b.items && loseLow.b.items !== loseLow.a.items, lost: loseLow.lives === loseHigh.lives && loseLow.lives === 2, blocksN: __game.blocks.length });
+        }
+      } finally { Math.random = real; __game.allBlocks = true; __game.setRand(null); }
+      return out;
+    });
+    ok(indep.every((o) => o.sameItems && o.sameVets && o.sameBlocks), `com a mesma semente (setRand) os itens (rações, ossos, vidas escondidas), os agentes, os gatos e os blocos são os mesmos, não importa o que Math.random devolva (Fases ${indep.map((o) => o.id).join(", ")})`);
+    ok(indep.every((o) => o.ballsDiffer), "(e as bolinhas, sim, dependem de Math.random: o sorteio delas é à parte)");
+    ok(indep.every((o) => o.sameCalls), `o jogo chama o sorteio dele (setRand) o mesmo número de vezes qualquer que seja o Math.random (Fases ${indep.map((o) => o.id).join(", ")})`);
+    ok(indep.every((o) => o.redraw && o.lost), "depois de perder uma vida, o novo sorteio dos itens também é igual com a mesma semente (o sorteio do jogo continua o mesmo depois das bolinhas)");
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
+
+
+  // =====================================================================
+  await section("0.15.8: bolinhas (o chute, o atrito, o quique, a bolinha encurralada e a perseguição)", async () => {
+    await bkStart(); const e0 = errs.length;
+    const FR = BALL_FRICTION, DT = 1 / 60, LV = [2, 3, 4, 8, 11, 20]; // (Fases com e sem blocos que se movem, mapas pequenos e enormes)
+    const dirName = ["direita", "esquerda", "baixo", "cima"];
+
+    // ---- (c) o chute: a bolinha parada, com o cachorrinho a menos de 3 tiles em linha reta livre, é chutada para longe pelo eixo certo (4 direções), com a velocidade da fase ----
+    const kick = await ev(page, ([LV, DT]) => {
+      const K = __bk, out = [];
+      for (const id of LV) for (let di = 0; di < 4; di++) {
+        const d = K.DIRS[di]; K.setup(id);
+        const t = K.line(d, 2, 2); if (!t) { out.push({ id, di, none: true }); continue; }
+        const [bx, by] = K.ctr(...t); K.put([[bx, by]]); K.dog(bx - d[0] * 64, by - d[1] * 64);
+        __game.tick(DT);
+        const b = __game.balls[0];
+        out.push({ id, di, vx: b.vx, vy: b.vy, mx: b.x - bx, my: b.y - by, taken: b.taken });
+      }
+      return out;
+    }, [LV, DT]);
+    const kbad = [];
+    for (const r of kick) {
+      if (r.none) { kbad.push(`Fase ${r.id} ${dirName[r.di]}: sem lugar no mapa`); continue; }
+      const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][r.di], along = r.vx * d[0] + r.vy * d[1], across = r.vx * d[1] + r.vy * d[0], want = kickOf(r.id) - FR * DT;
+      if (Math.abs(along - want) > 0.5 || Math.abs(across) > 0.001) kbad.push(`Fase ${r.id} ${dirName[r.di]}: velocidade (${r.vx.toFixed(1)}, ${r.vy.toFixed(1)}), esperado ${want.toFixed(1)} no eixo`);
+      if (r.mx * d[0] + r.my * d[1] <= 0 || Math.abs(r.mx * d[1] + r.my * d[0]) > 0.001) kbad.push(`Fase ${r.id} ${dirName[r.di]}: andou (${r.mx.toFixed(1)}, ${r.my.toFixed(1)})`);
+    }
+    ok(kbad.length === 0, `o cachorrinho a 2 tiles chuta a bolinha parada para longe pelo eixo dele nas 4 direções, com ${LV.map((n) => `${kickOf(n)} px/s na Fase ${n}`).join(", ")} (menos o atrito do 1º quadro)${kbad.length ? " — " + kbad.slice(0, 4).join("; ") : ""}`);
+    ok(kickOf(2) < kickOf(20) && [2, 5, 11, 20].every((n) => kickOf(n) < kickOf(n + 1)), "o chute cresce a cada fase (196 na Fase 2 até 340 na Fase 20)");
+
+    // limites: a 95 px chuta, a 97 px não (3 tiles = 96 px); sem linha livre (parede ou caixa no meio) não se mexe, mesmo bem perto
+    const gate = await ev(page, ([LV, DT]) => {
+      const K = __bk, out = { far: [], near: [], wall: [] };
+      for (const id of LV) {
+        K.setup(id);
+        const t = K.line([1, 0], 3, 2);
+        if (t) for (const dist of [95, 97]) {
+          const [bx, by] = K.ctr(...t); K.put([[bx, by]]); K.dog(bx - dist, by);
+          K.run(60, DT); const b = __game.balls[0];
+          (dist === 95 ? out.near : out.far).push({ id, moved: Math.hypot(b.x - bx, b.y - by), v: Math.hypot(b.vx, b.vy) });
+        }
+        for (let di = 0; di < 4; di++) {
+          const d = K.DIRS[di], w = K.between(d); if (!w) continue;
+          const [bx, by] = K.ctr(...w.B), [dx, dy] = K.ctr(...w.D); K.put([[bx, by]]); K.dog(dx, dy);
+          K.run(90, DT); const b = __game.balls[0];
+          out.wall.push({ id, di, moved: Math.hypot(b.x - bx, b.y - by), v: Math.hypot(b.vx, b.vy), dist: Math.hypot(bx - dx, by - dy), ch: K.ch(...w.W) });
+        }
+      }
+      return out;
+    }, [LV, DT]);
+    ok(gate.near.length === LV.length && gate.near.every((r) => r.moved > 20), `a 95 px do cachorrinho (menos de 3 tiles) a bolinha é chutada (andou ${gate.near.map((r) => r.moved.toFixed(0)).join(", ")} px em 1 s)`);
+    ok(gate.far.length === LV.length && gate.far.every((r) => r.moved === 0 && r.v === 0), `a 97 px (mais de 3 tiles) a bolinha não se mexe (${gate.far.map((r) => r.moved).join(", ")} px em 1 s)`);
+    ok(gate.wall.length >= 8 && gate.wall.every((r) => r.moved === 0 && r.v === 0 && r.dist === 64), `com uma parede (ou caixa) entre o cachorrinho e a bolinha, a 2 tiles de distância, ela não se mexe (${gate.wall.length} casos: ${[...new Set(gate.wall.map((r) => r.ch))].join(" e ")}; andou ${Math.max(...gate.wall.map((r) => r.moved))} px)`);
+
+    // o eixo é o de maior distância: numa praça, com o cachorrinho na diagonal, ela vai para o lado em que ele está mais longe (empate: horizontal)
+    const axis = await ev(page, ([LV, DT]) => {
+      const K = __bk, out = [];
+      for (const id of LV) {
+        K.setup(id); const t = K.open3(); if (!t) { out.push({ id, none: true }); continue; }
+        const [bx, by] = K.ctr(...t);
+        for (const [ox, oy, want] of [[-36, -18, "+x"], [36, 18, "-x"], [-18, -36, "+y"], [18, 36, "-y"], [-28, -28, "+x"], [28, 28, "-x"], [20, -34, "+y"]]) {
+          K.put([[bx, by]]); K.dog(bx + ox, by + oy); __game.tick(DT);
+          const b = __game.balls[0], got = (b.vx > 0 ? "+x" : b.vx < 0 ? "-x" : b.vy > 0 ? "+y" : b.vy < 0 ? "-y" : "parada");
+          out.push({ id, ox, oy, want, got, other: b.vx !== 0 && b.vy !== 0 });
+        }
+      }
+      return out;
+    }, [[2, 4, 11]]);
+    ok(axis.every((r) => !r.none && r.got === r.want && !r.other), `a bolinha foge sempre por UM eixo (o de maior distância; empate: horizontal): ${axis.length} casos em praças das Fases 2, 4 e 11${axis.filter((r) => r.got !== r.want).length ? " — erros: " + axis.filter((r) => r.got !== r.want).map((r) => `Fase ${r.id} (${r.ox},${r.oy}) deu ${r.got}, esperado ${r.want}`).join("; ") : ""}`);
+
+    // ---- o atrito: a velocidade só cai, a bolinha para sozinha e anda ≈ v²/(2·150) ----
+    const roll = await ev(page, ([LV, DT, FR]) => {
+      const K = __bk, out = [];
+      for (const id of LV) for (const di of [0, 2]) {
+        const d = K.DIRS[di], k = 180 + 8 * id, want = (k * k) / (2 * FR), ahead = Math.ceil(want / 32) + 3;
+        K.setup(id); const t = K.line(d, 2, ahead); if (!t) { out.push({ id, di, none: true, ahead }); continue; }
+        const [bx, by] = K.ctr(...t); K.put([[bx, by]]); K.dog(bx - d[0] * 64, by - d[1] * 64);
+        let prev = Infinity, up = 0, stop = null, side = 0, f = 0;
+        for (; f < 600; f++) {
+          __game.tick(DT); const b = __game.balls[0], sp = Math.hypot(b.vx, b.vy);
+          if (sp > prev + 1e-6) up++;
+          side = Math.max(side, Math.abs((b.x - bx) * d[1] + (b.y - by) * d[0]));
+          prev = sp; if (sp === 0 && stop === null) stop = f + 1;
+          if (stop !== null && f > stop + 20) break;
+        }
+        const b = __game.balls[0], at = [b.x, b.y]; K.run(120, DT); const b2 = __game.balls[0];
+        out.push({ id, di, ahead, want, dist: Math.hypot(at[0] - bx, at[1] - by), stopSec: stop === null ? null : stop * DT, up, side, still: b2.x === at[0] && b2.y === at[1] && b2.vx === 0 && b2.vy === 0, taken: b2.taken, k });
+      }
+      return out;
+    }, [LV, DT, FR]);
+    const rbad = roll.filter((r) => r.none || r.up || r.side > 0.001 || r.stopSec === null || !r.still || r.taken || Math.abs(r.dist - r.want) > r.want * 0.05 + 2 || Math.abs(r.stopSec - (r.k - 8) / FR) > 0.15);
+    ok(roll.length === LV.length * 2 && rbad.length === 0, `depois do chute a velocidade só cai (atrito de ${FR} px/s²), a bolinha anda ≈ v²/(2·${FR}) e para sozinha, e fica parada (${roll.filter((r) => !r.none && r.di === 0).map((r) => `F${r.id}: ${r.dist.toFixed(0)} de ${r.want.toFixed(0)} px em ${r.stopSec && r.stopSec.toFixed(2)} s`).join("; ")})${rbad.length ? " — problema: " + JSON.stringify(rbad[0]) : ""}`);
+
+    // ---- quica na parede: a velocidade inverte e cai 30% ----
+    const bounce = await ev(page, ([LV, DT, FR]) => {
+      const K = __bk, out = [];
+      for (const id of LV) for (let di = 0; di < 4; di++) {
+        const d = K.DIRS[di]; K.setup(id);
+        let B = null, m = 0; for (let mm = 1; mm <= 3 && !B; mm++) { B = K.line(d, 0, mm, { wall: true }); if (B) m = mm; }
+        if (!B) { out.push({ id, di, none: true }); continue; }
+        const [bx, by] = K.ctr(...B); K.dog(...K.away([[bx, by]], 260)); K.put([[bx, by, d[0] * 240, d[1] * 240]]);
+        let inWall = 0, hit = null, prevSp = 240, ticks = 0;
+        for (let f = 0; f < 300; f++) {
+          const b = __game.balls[0], before = b.vx * d[0] + b.vy * d[1], sp0 = Math.hypot(b.vx, b.vy);
+          __game.tick(DT); ticks++;
+          const c = __game.balls[0]; if (K.inWall(c)) inWall++;
+          const after = c.vx * d[0] + c.vy * d[1];
+          if (hit === null && before > 0 && after < 0) hit = { before: sp0, after: Math.hypot(c.vx, c.vy), f };
+          if (c.vx === 0 && c.vy === 0 && f > 5) break;
+        }
+        const e = __game.balls[0];
+        out.push({ id, di, m, hit, inWall, ended: [e.x - bx, e.y - by], other: Math.abs((e.x - bx) * d[1] + (e.y - by) * d[0]), taken: e.taken });
+      }
+      return out;
+    }, [LV, DT, FR]);
+    const bb = bounce.filter((r) => !r.none && (!r.hit || r.inWall || r.other > 0.001 || Math.abs(r.hit.after / (r.hit.before - FR * DT) - 0.7) > 0.01));
+    ok(bounce.length === LV.length * 4 && bounce.every((r) => !r.none) && bb.length === 0, `a bolinha que bate numa parede quica: inverte e fica com 70% da velocidade (${bounce.filter((r) => r.hit).length} quiques em ${LV.length * 4} casos; ex.: ${bounce[0].hit && bounce[0].hit.before.toFixed(0)} → ${bounce[0].hit && bounce[0].hit.after.toFixed(0)} px/s), nunca entra na parede e fica no mesmo eixo${bb.length ? " — problema: " + JSON.stringify(bb[0]) : ""}`);
+
+    // quica no bloco móvel (parado numa das pontas do ciclo)
+    const blk = await ev(page, ([DT]) => {
+      const K = __bk, out = [];
+      for (const id of [3, 4, 5, 8]) {
+        K.setup(id);
+        // espera um bloco parado por mais de 0,8 s (os blocos andam de tempos em tempos)
+        const restLeft = (b) => { const d = b.def; if (b.bt < d.every) return d.every - b.bt; const u = (b.bt - d.every) % d.period; return u < d.slide ? 0 : u < d.every ? d.every - u : u < d.every + d.slide ? 0 : d.period - u; };
+        let pick = null;
+        for (let w = 0; w < 80 && !pick; w++) { pick = __game.blocks.find((b) => restLeft(b) > 0.8); if (!pick) K.run(5, 0.1); }
+        if (!pick) { out.push({ id, none: "sem bloco parado" }); continue; }
+        // um tile livre ao lado do bloco, do lado esquerdo, direito, de cima ou de baixo (o primeiro que existir), e a bolinha vem em direção ao bloco
+        const w = pick.def.w, h = pick.def.h, c0 = Math.round(pick.x / 32), r0 = Math.round(pick.y / 32);
+        const sides = [[-1, 0, c0 - 1, r0], [1, 0, c0 + w / 32, r0], [0, -1, c0, r0 - 1], [0, 1, c0, r0 + h / 32]];
+        let done = false;
+        for (const [sx, sy, c, r] of sides) {
+          if (K.solid(c, r)) continue;
+          const [bx, by] = K.ctr(c, r); if (K.inBlock({ x: bx, y: by })) continue;
+          K.dog(...K.away([[bx, by]], 260)); K.put([[bx, by, -sx * 200, -sy * 200]]);
+          const rest = restLeft(__game.blocks.find((b) => b.i === pick.i)); let hit = null, inBlock = 0, inWall = 0;
+          for (let f = 0; f < 12; f++) {
+            const b = __game.balls[0], before = b.vx * -sx + b.vy * -sy; __game.tick(0.01);
+            const c2 = __game.balls[0]; if (K.inBlock(c2)) inBlock++; if (K.inWall(c2)) inWall++;
+            if (!hit && before > 0 && c2.vx * -sx + c2.vy * -sy < 0) hit = f;
+          }
+          out.push({ id, side: [sx, sy], rest, hit, inBlock, inWall, kind: pick.def.kind });
+          done = true; break;
+        }
+        if (!done) out.push({ id, none: "sem lado livre" });
+      }
+      return out;
+    }, [DT]);
+    ok(blk.length === 4 && blk.every((r) => !r.none && r.hit !== null && r.inBlock === 0 && r.inWall === 0 && r.rest > 0.5), `a bolinha também quica num bloco móvel parado (${blk.map((r) => r.none || `Fase ${r.id}: bloco ${r.kind === "W" ? "parede" : "porta"}, quicou no quadro ${r.hit}`).join("; ")}) e não entra nele`);
+
+    // ---- a bolinha que já rola (mais de 40 px/s) não é chutada de novo: vem na direção do cachorrinho e é pega ----
+    const toward = await ev(page, ([DT]) => {
+      const K = __bk, out = [];
+      for (const id of [2, 4, 11]) {
+        K.setup(id); const t = K.line([1, 0], 4, 1); if (!t) { out.push({ id, none: true }); continue; }
+        const [bx, by] = K.ctr(...t); K.put([[bx, by, -200, 0]]); K.dog(bx - 90, by); // dentro dos 3 tiles, rolando para o cachorrinho
+        __game.tick(DT); const v1 = __game.balls[0].vx; let got = null;
+        for (let f = 0; f < 120 && got === null; f++) { __game.tick(DT); if (__game.balls[0].taken) got = f; }
+        out.push({ id, v1, got, score: __game.score });
+      }
+      return out;
+    }, [DT]);
+    ok(toward.every((r) => !r.none && r.v1 < -150 && r.got !== null && r.score === 50), `uma bolinha que rola para o cachorrinho (200 px/s, a 90 px) não é chutada de novo: continua vindo e é pega (Fases 2, 4 e 11)`);
+
+    // ---- encurralada: num corredor fechado (parede logo atrás da bolinha, a 0, 1 ou 2 tiles) o cachorrinho a persegue até a parede ----
+    const trap = await ev(page, ([DT]) => {
+      const K = __bk, out = [], KEY = { "1,0": "d", "-1,0": "a", "0,1": "s", "0,-1": "w" };
+      for (const id of [2, 4, 11, 20]) for (let di = 0; di < 4; di++) for (const m of [0, 1, 2]) {
+        const d = K.DIRS[di]; K.setup(id);
+        const B = K.line(d, 2, m, { wall: true }); if (!B) { out.push({ id, di, m, none: true }); continue; }
+        const [bx, by] = K.ctr(...B); K.put([[bx, by]]); K.dog(bx - d[0] * 64, by - d[1] * 64);
+        __t.press(KEY[d + ""], true); let got = null, inWall = 0, hit = false;
+        for (let f = 0; f < 240 && got === null; f++) { __game.tick(DT); const b = __game.balls[0]; if (b.taken) got = f * DT; else { if (K.inWall(b)) inWall++; if (b.vx * d[0] + b.vy * d[1] < 0) hit = true; } }
+        __t.press(KEY[d + ""], false);
+        out.push({ id, di, m, got, inWall, hit, score: __game.score });
+      }
+      return out;
+    }, [DT]);
+    const tr = trap.filter((r) => !r.none), trBad = tr.filter((r) => r.got === null || r.inWall || (r.m <= 1 && !r.hit) || r.score !== 50);
+    ok(tr.length >= 20 && trBad.length === 0, `num corredor fechado (parede a 0, 1 ou 2 tiles atrás da bolinha) o cachorrinho a persegue: ela é chutada contra a parede, bate, volta e é pega (${tr.length} casos nas 4 direções, em ${Math.max(...tr.filter((r) => r.got !== null).map((r) => r.got)).toFixed(2)} s no máximo; nunca dentro da parede)${trBad.length ? " — problema: " + JSON.stringify(trBad.slice(0, 3)) : ""}`);
+
+    // ---- perseguição: 20 s simulados correndo atrás das bolinhas; nunca atravessam parede, caixa nem a borda, nem saltam ou passam do chute ----
+    await ev(page, () => {
+      __bk.chase = (id, sec, herd) => { // herd: o cachorrinho não chega perto demais (para não pegar logo) e fica empurrando as bolinhas pelo mapa
+        const K = __bk, DT = 1 / 60, L = K.setup(id), rows = L.map.length, cols = L.map[0].length, kick = 180 + 8 * id;
+        const b0 = __game.balls[0], spot = K.near([b0.x, b0.y], 130, 220); K.dog(...spot);
+        const st = { id, frames: 0, wall: 0, border: 0, jump: 0, fast: 0, inBlock: 0, kicks: 0, moved: 0, taken: 0, total: __game.balls.length, bounces: 0 };
+        const start = __game.balls.map((b) => [b.x, b.y]); let last = __game.balls.map((b) => [b.x, b.y, 0, 0]), path = [], pi = 0;
+        const nav = () => {
+          const [pc, pr] = K.tileOf(...K.dogAt()), key = (c, r) => r * cols + c, prev = new Map([[key(pc, pr), null]]), dist = new Map([[key(pc, pr), 0]]), q = [[pc, pr]];
+          for (let i = 0; i < q.length; i++) { const [c, r] = q[i]; for (const d of K.DIRS) { const nc = c + d[0], nr = r + d[1]; if (K.solid(nc, nr) || prev.has(key(nc, nr))) continue; prev.set(key(nc, nr), [c, r]); dist.set(key(nc, nr), dist.get(key(c, r)) + 1); q.push([nc, nr]); } }
+          let goal = null, gd = Infinity;
+          for (const b of __game.balls) if (!b.taken) { const t = K.tileOf(b.x, b.y), dd = dist.get(key(...t)); if (dd !== undefined && dd < gd) { gd = dd; goal = t; } }
+          if (!goal) return [];
+          const out = []; for (let cur = goal; cur; cur = prev.get(key(...cur))) out.unshift(cur); return out.slice(1);
+        };
+        for (let f = 0; f < sec * 60 && __game.state === "playing"; f++) {
+          if (f % 12 === 0) { path = nav(); pi = 0; }
+          const [px, py] = K.dogAt(); let dx = 0, dy = 0;
+          while (pi < path.length - 1 && Math.abs(K.ctr(...path[pi])[0] - px) <= 3 && Math.abs(K.ctr(...path[pi])[1] - py) <= 3) pi++;
+          if (path[pi]) { const [tx, ty] = K.ctr(...path[pi]); dx = tx - px; dy = ty - py; }
+          if (herd && __game.balls.some((b) => !b.taken && Math.hypot(b.x - px, b.y - py) < 58 && K.clear(px, py, b.x, b.y))) { dx = 0; dy = 0; }
+          __t.press("d", dx > 3); __t.press("a", dx < -3); __t.press("s", dy > 3); __t.press("w", dy < -3);
+          __game.tick(DT); st.frames++;
+          __game.balls.forEach((b, i) => {
+            if (b.taken) { if (last[i]) { st.taken++; last[i] = null; } return; }
+            const l = last[i], sp = Math.hypot(b.vx, b.vy), disp = Math.hypot(b.x - l[0], b.y - l[1]);
+            if (K.inWall(b)) st.wall++;
+            if (b.x < 7 || b.y < 7 || b.x > cols * 32 - 7 || b.y > rows * 32 - 7) st.border++;
+            if (disp > sp * DT + 0.6 && disp > l[2] * DT + 0.6) st.jump++;
+            if (sp > kick + 0.5) st.fast++;
+            if (sp > l[2] + 40) st.kicks++;
+            if (l[3] > 0 && b.vx * l[4] + b.vy * l[5] < 0) st.bounces++;
+            if (K.inBlock(b)) st.inBlock++;
+            last[i] = [b.x, b.y, sp, sp > 0 ? 1 : 0, b.vx, b.vy];
+          });
+        }
+        for (const k of "wasd") __t.press(k, false);
+        st.moved = __game.balls.filter((b, i) => b.taken || Math.hypot(b.x - start[i][0], b.y - start[i][1]) >= 16).length; st.state = __game.state;
+        return st;
+      };
+    });
+    const chases = [], herds = [];
+    for (const id of [2, 4, 11, 20]) { chases.push(await ev(page, (id) => __bk.chase(id, 20), id)); herds.push(await ev(page, (id) => __bk.chase(id, 20, true), id)); }
+    const bad = (s) => s.frames < 1190 || s.wall || s.border || s.jump || s.fast;
+    ok(!chases.some(bad) && !herds.some(bad), `20 s simulados atrás das bolinhas nas Fases 2, 4, 11 e 20, pegando-as (${chases.map((s) => `${s.kicks} chutes, ${s.bounces} quiques`).join(" | ")}) e só empurrando-as sem pegar (${herds.map((s) => `${s.kicks} chutes, ${s.bounces} quiques`).join(" | ")}): nenhuma bolinha atravessa parede, caixa ou borda, salta de lugar ou passa da velocidade do chute${[...chases, ...herds].some(bad) ? " — " + JSON.stringify([...chases, ...herds].filter(bad)) : ""}`);
+    ok([...chases, ...herds].every((s) => s.kicks >= 1 && s.moved >= 1) && herds.reduce((n, s) => n + s.kicks, 0) >= 8 && herds.reduce((n, s) => n + s.bounces, 0) >= 3, `a perseguição foi de verdade: o cachorrinho chutou bolinhas em todas as fases, e empurrando-as sem pegar são ${herds.map((s) => s.kicks).join(", ")} chutes e ${herds.map((s) => s.bounces).join(", ")} quiques (${chases.map((s) => `${s.taken} de ${s.total}`).join(", ")} bolinhas pegas na primeira; ${herds.map((s) => s.inBlock).join(", ")} quadros de bolinha dentro de bloco móvel)`);
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
+
+
+  // =====================================================================
+  await section("0.15.8: bolinhas (pegar: +50, placar, aviso, desenho, vitória, recorde e pontos mínimos)", async () => {
+    await bkStart({ name: "Totó" }); const e0 = errs.length;
+
+    // ---- (d) pegar a bolinha: +50 pontos, BOLINHAS 1/2 no placar, aviso, som, nuvenzinha, some do desenho e não vale duas vezes (Fase 4: pontos mínimos 800) ----
+    const S = await ev(page, () => {
+      const K = __bk; K.setup(4); const [p1, p2] = K.spots(2); K.put([[p1[0], p1[1], 0, 0, 0], [p2[0], p2[1], 0, 0, 1]]); K.dog(...K.near(p1, 130, 200)); __game.sounds.splice(0);
+      return { p1, p2, score: __game.score, minPoints: __game.minPoints, got: __game.balls.filter((b) => b.taken).length };
+    });
+    ok(S.p1 && S.p2 && S.score === 0 && S.minPoints === 800 && Math.hypot(S.p1[0] - S.p2[0], S.p1[1] - S.p2[1]) >= 200, "Fase 4 pronta: 2 bolinhas em lugares diferentes, nada pego, 0 pontos (meta 800)");
+    ok(await hudIs(page, "#hud-balls", "0/2") && await hudIs(page, "#hud-points", "0 / 800") && await page.isVisible("#hud-balls-item"), "o placar mostra BOLINHAS 0/2 e PONTOS 0 / 800");
+    const look0 = await ev(page, () => __bk.look(0));
+    ok(look0.diff >= look0.area * 0.8 && near(look0.color, 0), `a bolinha 0 (vermelha) é desenhada no campo: ${look0.diff} pixels mudam quando ela some (disco de ${look0.area.toFixed(0)}), cor do corpo ${look0.color}`);
+    const got1 = await ev(page, () => {
+      const K = __bk, b = __game.balls[0], score0 = __game.score; K.dog(b.x, b.y); __game.tick(0.01);
+      const t = document.getElementById("toast");
+      return { taken: __game.balls[0].taken, other: __game.balls[1].taken, score: __game.score, d: __game.score - score0, toast: t.textContent, shown: t.classList.contains("show"), sounds: __game.sounds.filter((s) => s.name === "pick").length, state: __game.state, v: [b.vx, b.vy] };
+    });
+    ok(got1.taken && !got1.other && got1.d === 50 && got1.score === 50 && got1.sounds === 1 && got1.state === "playing" && got1.v.join() === "0,0", `encostar na bolinha dá +50 pontos (score ${got1.score}) e toca o som "pick" (${got1.sounds}×)`);
+    ok(got1.shown && got1.toast === "Bolinha! +50 pontos (1/2)", `aviso ao pegar: "${got1.toast}"`);
+    ok(await hudIs(page, "#hud-balls", "1/2") && await hudIs(page, "#hud-points", "50 / 800"), "o placar passa a BOLINHAS 1/2 e PONTOS 50 / 800");
+    await ev(page, () => { __bk.run(60); __bk.dog(...__bk.near([__game.balls[0].x, __game.balls[0].y], 130, 200)); }); // (a nuvenzinha do plim dura 0,4 s)
+    const gone = await ev(page, () => __bk.same(0));
+    ok(gone <= look0.diff * 0.1, `a bolinha pega some do desenho (${gone} pixels diferentes do campo sem ela, contra ${look0.diff} com ela)`);
+    const second = await ev(page, () => { const K = __bk, b2 = __game.balls[1]; K.dog(...K.near([b2.x, b2.y], 130, 200)); return K.look(1).then((r) => ({ diff: r.diff, area: r.area, color: r.color })); });
+    ok(second.diff >= second.area * 0.8 && near(second.color, 1), `a outra bolinha (amarela) continua no campo (${second.diff} pixels, cor ${second.color})`);
+    // não pode ser pega duas vezes: passar de novo no mesmo lugar não dá pontos, avisos nem sons
+    const twice = await ev(page, () => {
+      const K = __bk, b = __game.balls[0]; K.run(90); // o aviso da 1ª bolinha (1,4 s) sai
+      const before = { score: __game.score, sounds: __game.sounds.length, shown: document.getElementById("toast").classList.contains("show") };
+      K.dog(b.x, b.y); __game.tick(0.01); K.dog(b.x + 5, b.y - 3); __game.tick(0.01); K.run(30);
+      return { before, score: __game.score, sounds: __game.sounds.length, shown: document.getElementById("toast").classList.contains("show"), taken: __game.balls.filter((x) => x.taken).length };
+    });
+    ok(twice.before.score === 50 && !twice.before.shown && twice.score === 50 && twice.sounds === twice.before.sounds && !twice.shown && twice.taken === 1, "passar de novo por cima da bolinha já pega não dá pontos, som nem aviso (50 pontos, 1 pega)");
+    const last = await ev(page, () => { const K = __bk, b = __game.balls[1]; K.dog(b.x, b.y); __game.tick(0.01); return { score: __game.score, toast: document.getElementById("toast").textContent, taken: __game.balls[1].taken, sounds: __game.sounds.filter((s) => s.name === "pick").length }; });
+    ok(last.taken && last.score === 100 && last.toast === "Bolinha! +50 pontos (2/2)" && last.sounds === 2 && await hudIs(page, "#hud-balls", "2/2") && await hudIs(page, "#hud-points", "100 / 800"), `a 2ª bolinha: ${last.score} pontos, aviso "${last.toast}", placar BOLINHAS 2/2`);
+
+    // o aviso de um osso (poder) não é coberto pelo da bolinha, mas os 50 pontos entram do mesmo jeito
+    const withBone = await ev(page, () => {
+      const K = __bk; K.setup(4); const [p] = K.spots(1); K.put([]); // (sem bolinhas até o osso: o cachorrinho teleportado até ele não chuta nenhuma)
+      const bone = __game.items.find((i) => i.bone && !i.taken); K.dog(bone.x + 8, bone.y + 8); __game.tick(0.01); K.put([[p[0], p[1]]]);
+      const t1 = document.getElementById("toast").textContent; K.dog(p[0], p[1]); __game.tick(0.01);
+      const t2 = document.getElementById("toast").textContent, s2 = __game.score;
+      return { t1, t2, s2 };
+    });
+    ok(/Poder do osso/.test(withBone.t1) && withBone.t2 === withBone.t1 && withBone.s2 === 150 + 50, `com o aviso de um osso na tela, pegar a bolinha não troca o aviso ("${withBone.t2.slice(0, 40)}…") mas soma os 50 pontos (${withBone.s2})`);
+
+    // ---- (e) a bolinha não é necessária: pegar tudo sem bolinhas abre a saída e vence; com bolinhas a pontuação sobe 50 cada e o resumo diz "+ bolinhas: N" ----
+    await ev(page, () => {
+      __bk.win = (id, withBalls) => {
+        const K = __bk; K.setup(id); const L = K.L(), out = { id, N: __game.balls.length, rations: L.rations, bones: L.bones, bonusStep: L.bonusStep, lifePenalty: L.lifePenalty };
+        const tp = (x, y) => { K.dog(x, y); __game.tick(0.01); };
+        const keep = __game.balls; __game.balls = []; // (as bolinhas esperam: teleportar pelos itens chutaria as que estão perto)
+        for (const it of __game.items) if (!it.taken) tp(it.x + 8, it.y + 8);
+        __game.balls = keep;
+        out.afterItems = { score: __game.score, collected: __game.collected, bones: __game.bonesGot, balls: __game.balls.filter((b) => b.taken).length, state: __game.state };
+        if (withBalls) for (const b of __game.balls) if (!b.taken) tp(b.x, b.y);
+        out.afterBalls = { score: __game.score, balls: __game.balls.filter((b) => b.taken).length };
+        const e = __game.exit; K.dog(e.x + e.w / 2, e.y + e.h / 2); __game.tick(0.01);
+        out.state = __game.state; out.points = Number(document.getElementById("win-points").textContent); out.breakdown = document.getElementById("win-breakdown").textContent;
+        out.ms = Math.round(__game.time * 10) * 100; out.expect = Records.levelPoints(out.afterItems.collected, out.ms, 0, 0, { bones: out.afterItems.bones, postmen: 0, balls: out.afterBalls.balls, bonusStep: L.bonusStep, lifePenalty: L.lifePenalty });
+        const st = Records.createStore(localStorage), pb = st.personalBest("Totó", id); out.pb = pb && pb.p; out.title = document.getElementById("win-title").textContent;
+        return out;
+      };
+    });
+    const wins = [];
+    for (const id of [2, 4, 6]) for (const withBalls of [false, true]) wins.push({ withBalls, ...(await ev(page, ([id, w]) => __bk.win(id, w), [id, withBalls])) });
+    const wbad = [];
+    for (const w of wins) {
+      const tag = `Fase ${w.id} ${w.withBalls ? "com" : "sem"} bolinhas`, N = w.withBalls ? w.N : 0;
+      const m = w.breakdown.match(/Rações: (\d+) \+ ossos: (\d+)(?: \+ bolinhas: (\d+))? \+ bônus de tempo: (\d+)/);
+      if (w.state !== "won") wbad.push(`${tag}: não venceu (${w.state}; a saída não pode depender das bolinhas)`);
+      if (w.afterItems.balls !== 0 || w.afterItems.collected !== w.rations || w.afterItems.bones !== w.bones) wbad.push(`${tag}: pegou ${w.afterItems.collected} rações, ${w.afterItems.bones} ossos e ${w.afterItems.balls} bolinhas sem querer`);
+      if (w.afterBalls.balls !== N || w.afterBalls.score - w.afterItems.score !== 50 * N) wbad.push(`${tag}: ${w.afterBalls.balls} bolinhas, pontos +${w.afterBalls.score - w.afterItems.score} (esperado +${50 * N})`);
+      if (!m || (N ? Number(m[3]) !== 50 * N : m[3] !== undefined) || Number(m[1]) !== w.rations * 100 || Number(m[2]) !== w.bones * 150) wbad.push(`${tag}: resumo "${w.breakdown}"`);
+      if (m && Number(m[1]) + Number(m[2]) + Number(m[3] || 0) + Number(m[4]) !== w.points) wbad.push(`${tag}: as parcelas do resumo não somam os ${w.points} pontos`);
+      if (w.points !== w.expect || w.pb !== w.points) wbad.push(`${tag}: pontos ${w.points}, Records.levelPoints ${w.expect}, recorde guardado ${w.pb}`);
+    }
+    ok(wbad.length === 0, `Fases 2, 4 e 6: sem bolinhas a saída abre e a fase termina (resumo sem "bolinhas"); com bolinhas cada uma soma 50 (placar e resumo "+ bolinhas: N"), Records.levelPoints bate com a tela e o recorde guardado é o mostrado${wbad.length ? " — " + wbad.slice(0, 3).join("; ") : ""}`);
+    const w4 = wins.find((w) => w.id === 4 && w.withBalls), w4n = wins.find((w) => w.id === 4 && !w.withBalls), w6 = wins.find((w) => w.id === 6 && w.withBalls);
+    ok(w4.points - w4n.points === 100 && /bolinhas: 100 \+/.test(w4.breakdown) && w6.points - wins.find((w) => w.id === 6 && !w.withBalls).points === 150 && /bolinhas: 150 \+/.test(w6.breakdown), `a diferença na vitória é 50 por bolinha: Fase 4 +${w4.points - w4n.points} ("${w4.breakdown.match(/bolinhas: \d+/)}"), Fase 6 +${w6.points - wins.find((w) => w.id === 6 && !w.withBalls).points} ("${w6.breakdown.match(/bolinhas: \d+/)}")`);
+    ok(await ev(page, () => Records.BALL_POINTS === 50 && Records.levelPoints(3, 0, 0, 0, { balls: 2, bonusStep: 10 }) === Records.levelPoints(3, 0, 0, 0, { bonusStep: 10 }) + 100 && Records.levelPoints(0, 0, 0, 0, { balls: -1 }) === Records.levelPoints(0, 0, 0, 0, {}) && Records.levelPoints(0, 0, 0, 0, { balls: 1.5 }) === Records.levelPoints(0, 0, 0, 0, {})), "Records.levelPoints: 50 por bolinha (BALL_POINTS), e valores inválidos (negativo, fracionário) não contam");
+
+    // ---- (f) pontos mínimos (Fases 4+): as bolinhas contam para abrir a saída; caso de fronteira: falta exatamente 50 pontos ----
+    await ev(page, () => {
+      __bk.edge = async (id) => {
+        const K = __bk; K.setup(id); const L = K.L(), N = L.balls, min = L.minPoints, r = (min - 50 * N) / 100, out = { id, N, min, r };
+        const tp = (x, y) => { K.dog(x, y); __game.tick(0.01); };
+        if (!Number.isInteger(r) || r > L.rations) return { ...out, none: true };
+        const e = __game.exit, toExit = () => { tp(e.x + e.w / 2, e.y + e.h / 2); const o = { state: __game.state, toast: document.getElementById("toast").textContent, score: __game.score }; K.dog(...K.away([[e.x, e.y], ...__game.balls.map((b) => [b.x, b.y])], 200)); return o; };
+        K.run(600); // (o aviso do começo da fase, com o nome do lugar, sai da tela)
+        const keep = __game.balls; __game.balls = []; // (as bolinhas esperam onde nasceram)
+        for (const it of __game.items.filter((i) => !i.bone).slice(0, r)) tp(it.x + 8, it.y + 8);
+        __game.balls = keep;
+        K.dog(...K.away([[e.x, e.y]], 200)); K.run(120); out.rations = { score: __game.score, ...toExit() };
+        K.run(120);
+        const balls = __game.balls; // as bolinhas ficam onde o jogo as sorteou; o cachorrinho vai de uma em uma
+        for (let i = 0; i < N - 1; i++) tp(balls[i].x, balls[i].y);
+        K.dog(...K.away([[e.x, e.y], ...balls.map((b) => [b.x, b.y])], 200)); K.run(120); out.almost = { score: __game.score, balls: balls.filter((b) => b.taken).length, hud: (await K.frame(), document.getElementById("hud-points").textContent), ...toExit() };
+        K.run(120);
+        tp(balls[N - 1].x, balls[N - 1].y); out.last = { score: __game.score, toast: document.getElementById("toast").textContent, hudBalls: (await K.frame(), document.getElementById("hud-balls").textContent), hud: document.getElementById("hud-points").textContent };
+        K.dog(...K.away([[e.x, e.y], ...balls.map((b) => [b.x, b.y])], 200)); K.run(2); const o = toExit(); out.open = o; return out;
+      };
+    });
+    const edges = [];
+    for (const id of [4, 5, 6, 8]) edges.push(await ev(page, (id) => __bk.edge(id), id));
+    const ebad = [];
+    for (const r of edges) {
+      if (r.none) { ebad.push(`Fase ${r.id}: sem caso de fronteira (r=${r.r})`); continue; }
+      if (r.rations.score !== 100 * r.r || r.rations.state !== "playing" || r.rations.toast !== `Faltam ${50 * r.N} pontos para abrir a saída (meta: ${r.min}).`) ebad.push(`Fase ${r.id} com ${r.r} rações: ${JSON.stringify(r.rations)}`);
+      if (r.almost.score !== r.min - 50 || r.almost.balls !== r.N - 1 || r.almost.state !== "playing" || r.almost.toast !== `Faltam 50 pontos para abrir a saída (meta: ${r.min}).` || r.almost.hud !== `${r.min - 50} / ${r.min}`) ebad.push(`Fase ${r.id} faltando 50: ${JSON.stringify(r.almost)}`);
+      if (r.last.score !== r.min || r.last.toast !== `Meta de ${r.min} pontos atingida! A saída está aberta.` || r.last.hudBalls !== `${r.N}/${r.N}` || r.last.hud !== `${r.min} / ${r.min}`) ebad.push(`Fase ${r.id} com a última bolinha: ${JSON.stringify(r.last)}`);
+      if (r.open.state !== "won") ebad.push(`Fase ${r.id}: a saída aberta pelas bolinhas não venceu (${r.open.state}: ${r.open.toast})`);
+    }
+    ok(ebad.length === 0, `pontos mínimos: sem a última bolinha faltam exatamente 50 pontos e a saída segue fechada ("Faltam 50 pontos…"); com ela a meta é atingida ("Meta de N pontos atingida!"), o placar vai a "N / N" e a saída vence (Fases 4, 5, 6 e 8: ${edges.map((r) => `${r.r} rações + ${r.N} bolinhas = ${r.min}`).join("; ")})${ebad.length ? " — " + ebad.slice(0, 2).join("; ") : ""}`);
+
+    // ---- "Os pontos não bastaram": com tudo pego a tentativa só acaba se nem as bolinhas que sobraram completarem o mínimo (Fase 4 com 3 tentativas gastas e 4 vidas perdidas: 1800 − 1100 = 700 de 800) ----
+    const shortRun = await ev(page, () => {
+      const K = __bk, out = {};
+      const loseAll = () => { for (let k = 0; k < 4; k++) { __game.noCatch = false; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.noCatch = true; v.cx = -1000; v.cy = -1000; } };
+      const tp = (x, y) => { K.dog(x, y); __game.tick(0.01); };
+      for (const scene of ["duas bolinhas", "uma bolinha", "sem bolinhas"]) {
+        K.setup(4, { start: { lives: 5, retries: 3 } }); loseAll();
+        if (scene === "uma bolinha") K.put([K.spots(1)[0]]);
+        if (scene === "sem bolinhas") __game.balls = [];
+        const before = { score: __game.score, lives: __game.lives, lost: __game.livesLost, balls: __game.balls.length };
+        const keep = __game.balls; __game.balls = [];
+        for (const it of __game.items) if (!it.taken) tp(it.x + 8, it.y + 8);
+        __game.balls = keep;
+        const all = { score: __game.score, state: __game.state, collected: __game.collected, bones: __game.bonesGot };
+        K.dog(...K.away(__game.balls.map((b) => [b.x, b.y]), 200)); K.run(800, 0.05); // o poder dos ossos (30 s) acaba
+        const later = { state: __game.state, power: __game.power, score: __game.score, lose: document.getElementById("lose").textContent };
+        const o = { before, all, later };
+        if (__game.state === "playing") { for (const b of __game.balls) if (!b.taken) tp(b.x, b.y); const e = __game.exit; tp(e.x + e.w / 2, e.y + e.h / 2); o.end = { state: __game.state, score: __game.score, balls: __game.balls.filter((b) => b.taken).length }; }
+        out[scene] = o;
+      }
+      return out;
+    });
+    const sr = shortRun;
+    ok(sr["duas bolinhas"].before.score === -1100 && sr["duas bolinhas"].before.lost === 4 && sr["duas bolinhas"].all.score === 700 && sr["duas bolinhas"].all.collected === 15 && sr["duas bolinhas"].all.bones === 2 && sr["duas bolinhas"].later.state === "playing" && sr["duas bolinhas"].later.power <= 0 && sr["duas bolinhas"].end.state === "won" && sr["duas bolinhas"].end.balls === 2,
+      `tudo pego com 700 de 800 pontos e 2 bolinhas por pegar: a tentativa NÃO acaba (mesmo sem o poder dos ossos); pegando as 2 bolinhas chega a 800, a saída abre e a Fase 4 termina (${JSON.stringify(sr["duas bolinhas"])})`);
+    ok(["uma bolinha", "sem bolinhas"].every((k) => sr[k].all.score === 700 && sr[k].later.state === "lost" && /Os pontos não bastaram/.test(sr[k].later.lose)), `com 700 de 800 e só 1 bolinha (+50 = 750) ou nenhuma por pegar, nem as bolinhas bastam: "Os pontos não bastaram!" como antes (${sr["uma bolinha"].later.state}, ${sr["sem bolinhas"].later.state})`);
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
+
+
+  // =====================================================================
+  await section("0.15.8: bolinhas (agentes e gatos as ignoram, vidas perdidas, efeitos dos ossos e reforços)", async () => {
+    await bkStart({ name: "Totó" }); const e0 = errs.length;
+
+    // ---- (g) agentes da carrocinha e gatos ignoram as bolinhas: ficam em cima delas, passeiam, e elas não se mexem nem são pegas ----
+    const ign = await ev(page, () => {
+      const K = __bk, out = [];
+      for (const id of [2, 11, 20]) {
+        K.setup(id, { keepAgents: true }); const sp = K.spots(3); K.put(sp.map((p) => [p[0], p[1]])); K.dog(...K.away(sp, 250));
+        const agents = [...__game.vets, ...__game.cats]; agents.forEach((a, i) => { if (i < sp.length) { a.cx = sp[i][0]; a.cy = sp[i][1]; a.leg = null; } });
+        const start = agents.slice(0, 3).map((a) => [a.cx, a.cy]), before = K.snap(), score0 = __game.score;
+        __game.freezeVets = false; __game.catsThaw = true;
+        let min = Infinity; for (let f = 0; f < 900; f++) { __game.tick(1 / 60); for (const p of sp) for (const a of agents) min = Math.min(min, Math.hypot(a.cx - p[0], a.cy - p[1])); }
+        const after = K.snap(), moved = agents.slice(0, 3).filter((a, i) => Math.hypot(a.cx - start[i][0], a.cy - start[i][1]) > 20).length;
+        out.push({ id, agents: agents.length, cats: __game.cats.length, same: JSON.stringify(before) === JSON.stringify(after), moved, min, score: __game.score - score0, state: __game.state });
+        __game.freezeVets = true; __game.catsThaw = false;
+      }
+      return out;
+    });
+    ok(ign.every((r) => r.same && r.moved >= 1 && r.score === 0 && r.state === "playing"), `15 s com agentes da carrocinha${ign.some((r) => r.cats) ? " e gatos" : ""} em cima das bolinhas e passeando por elas (Fases ${ign.map((r) => `${r.id}: ${r.agents} agentes, ${r.moved} se mexeram`).join("; ")}): as bolinhas não se mexem, não são pegas e os pontos não mudam`);
+
+    // ---- perder uma vida não muda as bolinhas (posições, pegas, pontos delas); perder todas e tentar de novo sorteia bolinhas novas ----
+    const life = await ev(page, () => {
+      const K = __bk; K.setup(4); const sp = K.spots(2); K.put(sp.map((p) => [p[0], p[1]])); K.dog(sp[0][0], sp[0][1]); __game.tick(0.01); K.dog(...K.away(sp, 300)); K.run(10);
+      const s1 = K.snap(), score1 = __game.score;
+      __game.noCatch = false; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05);
+      const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01);
+      const s2 = K.snap(); __game.noCatch = true;
+      return { s1, s2, lives: __game.lives, lost: __game.livesLost, score1, score2: __game.score, pen: K.L().lifePenalty };
+    });
+    ok(life.lives === 2 && life.lost === 1 && JSON.stringify(life.s1) === JSON.stringify(life.s2) && life.s2.filter((b) => b.taken).length === 1 && life.score1 === 50 && life.score2 === 50 - life.pen, `perder uma vida (Fase 4): as 2 bolinhas ficam onde estavam e a pega continua pega; a pontuação é 50 − ${life.pen} = ${life.score2}`);
+    await ev(page, () => {
+      const K = __bk; K.setup(4); const [p] = K.spots(1); K.put([[p[0], p[1]]]); K.dog(p[0], p[1]); __game.tick(0.01); K.dog(...K.away([p], 300));
+      __game.setLives(1); __game.noCatch = false; for (let j = 0; j < 200 && __game.invuln > 0; j++) __game.tick(0.05);
+      const v = __game.vets[0], pl = __game.player; v.cx = pl.x + 12; v.cy = pl.y + 12; __game.tick(0.01);
+    });
+    ok(await ev(page, () => __game.state) === "lost" && await page.isVisible("#btn-retry"), "(sem vidas na Fase 4, com uma bolinha pega)");
+    await page.click("#btn-retry");
+    const retry = await ev(page, () => ({ state: __game.state, n: __game.balls.length, taken: __game.balls.filter((b) => b.taken).length, still: __game.balls.every((b) => b.vx === 0 && b.vy === 0), score: __game.score, retries: __game.retries }));
+    ok(retry.state === "playing" && retry.n === 2 && retry.taken === 0 && retry.still && retry.retries === 1 && retry.score === -100 && await hudIs(page, "#hud-balls", "0/2"), `Tentar novamente recomeça a fase com as 2 bolinhas novas, nenhuma pega (placar BOLINHAS 0/2) e a pontuação −100 da tentativa (${retry.score})`);
+
+    // ---- efeitos dos ossos (Fase 11+): escudo, gelo, turbo e ímã não mudam o chute nem o pega; o ímã e o reforço Ímã de ração só puxam rações ----
+    const fxr = await ev(page, () => {
+      const K = __bk, out = {};
+      for (const kind of ["nenhum", "escudo", "gelo", "turbo", "escudo+gelo"]) {
+        K.setup(11); __game.fx = kind === "escudo" ? { shield: 9 } : kind === "gelo" ? { ice: 5 } : kind === "turbo" ? { turbo: 6 } : kind === "escudo+gelo" ? { shield: 9, ice: 5 } : {};
+        const t = K.line([1, 0], 2, 9), [bx, by] = K.ctr(...t); K.put([[bx, by]]); K.dog(bx - 64, by); __game.tick(1 / 60);
+        const v = __game.balls[0].vx; K.run(120); const rolled = __game.balls[0].x - bx;
+        const b = __game.balls[0]; K.dog(b.x, b.y); __game.tick(0.01);
+        out[kind] = { v, rolled, taken: __game.balls[0].taken, score: __game.score, lives: __game.lives, fx: __game.fx, state: __game.state };
+      }
+      for (const [name, o] of [["ímã (osso)", { fx: { magnet: 12 } }], ["Ímã de ração (reforço)", { up: 3 }]]) {
+        K.setup(11, { start: o.up ? { upgrades: { lure: o.up } } : undefined }); if (o.fx) __game.fx = o.fx;
+        const t = K.line([1, 0], 4, 1), [bx, by] = K.ctr(...t); K.put([[bx, by]]); K.dog(bx - 112, by); // a 3,5 tiles: dentro do raio do ímã (128 px), fora do susto (96 px)
+        K.run(180); const b = __game.balls[0];
+        out[name] = { moved: Math.hypot(b.x - bx, b.y - by), taken: b.taken, score: __game.score };
+      }
+      return out;
+    });
+    const want = kickOf(11) - BALL_FRICTION / 60;
+    ok(["nenhum", "escudo", "gelo", "turbo", "escudo+gelo"].every((k) => Math.abs(fxr[k].v - want) < 0.5 && fxr[k].rolled > 100 && fxr[k].taken && fxr[k].score === 50 && fxr[k].lives === 3 && fxr[k].state === "playing"), `escudo, gelo, turbo e os dois juntos não mudam nada: o chute é de ${want.toFixed(1)} px/s, ela rola ${fxr["nenhum"].rolled.toFixed(0)} px, o cachorrinho a pega (+50) e o efeito não atrapalha nem é consumido pela bolinha (${Object.entries(fxr).slice(0, 5).map(([k, r]) => `${k}: ${r.v.toFixed(0)}`).join(", ")})`);
+    ok(fxr["ímã (osso)"].moved === 0 && !fxr["ímã (osso)"].taken && fxr["Ímã de ração (reforço)"].moved === 0 && !fxr["Ímã de ração (reforço)"].taken, "o ímã do osso e o reforço Ímã de ração só puxam rações: uma bolinha a 3,5 tiles não é puxada nem pega");
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
+
+  // =====================================================================
+  await section("0.15.8: bolinhas (jogo salvo: guarda e continua; saves adulterados e antigos)", async () => {
+    await bkStart({ keepSave: true, name: "Totó" }); const e0 = errs.length;
+    const keyOf = "cachorrinho.save.v1";
+    const snapOf = () => ev(page, (k) => { const sv = JSON.parse(localStorage.getItem(k)); return sv.saves[Object.keys(sv.saves)[0]].snap; }, keyOf);
+
+    // ---- salvar com 4 bolinhas em lugares diferentes (uma em posição fracionária), uma delas pega, e continuar: volta igual ----
+    const A = await ev(page, () => {
+      const K = __bk; K.setup(11, { keepAgents: true, keepLife: true, seed: 9 }); const sp = K.spots(4);
+      K.put(sp.map((p, i) => [p[0] + (i === 0 ? 0.6 : 0), p[1] + (i === 0 ? -0.6 : 0), 0, 0, i])); const taken = __game.balls[1]; K.dog(taken.x, taken.y); __game.tick(0.01); K.dog(...K.away(sp, 300)); K.run(5); __game.save();
+      return { balls: __game.balls.map((b) => [Math.round(b.x), Math.round(b.y), b.taken ? 1 : 0]), score: __game.score, collected: __game.collected, lives: __game.lives, level: __game.level };
+    });
+    const sv = await snapOf();
+    ok(Array.isArray(sv.bs) && sv.bs.length === 4 && JSON.stringify(sv.bs) === JSON.stringify(A.balls) && sv.bs.every((b) => b.length === 3 && b.every(Number.isInteger)) && A.balls.map((b) => b[2]).join() === "0,1,0,0" && A.score === 50, `o jogo salvo guarda as 4 bolinhas como [x, y, pega] em pixels inteiros (bs = ${JSON.stringify(sv.bs)}), uma delas pega`);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectBK();
+    ok(await page.isVisible("#btn-continue"), "recarregar a página deixa Continuar jogo");
+    await page.click("#btn-continue");
+    const B = await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; return { balls: __game.balls.map((b) => [b.x, b.y, b.taken ? 1 : 0]), still: __game.balls.every((b) => b.vx === 0 && b.vy === 0), score: __game.score, collected: __game.collected, level: __game.level, lives: __game.lives, state: __game.state }; });
+    ok(JSON.stringify(B.balls) === JSON.stringify(A.balls) && B.still && B.score === A.score && B.level === 11 && B.lives === A.lives && B.state === "playing", `continuar o jogo salvo volta com as 4 bolinhas nos mesmos lugares e a mesma bolinha pega, paradas, e a mesma pontuação (${B.score}) e vidas (${JSON.stringify(B.balls)})`);
+    ok(await hudIs(page, "#hud-balls", "1/4") && await hudIs(page, "#hud-points", `${A.score} / 2300`), "o placar volta com BOLINHAS 1/4 e PONTOS 50 / 2300");
+    const C = await ev(page, () => { const K = __bk, b = __game.balls[2]; K.dog(b.x, b.y); __game.tick(0.01); const again = __game.balls[1]; K.dog(again.x, again.y); __game.tick(0.01); return { score: __game.score, taken: __game.balls.filter((x) => x.taken).length, toast: document.getElementById("toast").textContent }; });
+    ok(C.score === 100 && C.taken === 2 && /\(2\/4\)/.test(C.toast), `depois de continuar, pegar outra bolinha soma +50 (${C.score}, aviso "${C.toast}") e a que já estava pega não vale de novo`);
+
+    // uma bolinha rolando na hora de salvar volta parada no lugar (arredondado), sem sair do chão; pausa → menu → Continuar também funciona
+    const D = await ev(page, () => {
+      const K = __bk; K.setup(11, { keepAgents: true, keepLife: true, seed: 9 }); const t = K.line([1, 0], 2, 8), [bx, by] = K.ctr(...t), others = K.spots(5, 250).filter((p) => Math.hypot(p[0] - bx, p[1] - by) > 250).slice(0, 3); K.put([[bx, by, 150, 0], ...others.map((p) => [p[0], p[1]])]); K.dog(bx - 64, by);
+      for (let i = 0; i < 20; i++) __game.tick(1 / 60);
+      const b = __game.balls[0], rolling = Math.hypot(b.vx, b.vy) > 20, at = [Math.round(b.x), Math.round(b.y)]; __game.save();
+      document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click();
+      return { rolling, at };
+    });
+    await page.click("#btn-continue");
+    const E = await ev(page, () => { const b = __game.balls[0]; return { x: b.x, y: b.y, v: Math.hypot(b.vx, b.vy), state: __game.state }; });
+    ok(D.rolling && E.x === D.at[0] && E.y === D.at[1] && E.v === 0 && E.state === "playing", `salvar com a bolinha rolando e continuar (pelo menu) a põe parada no mesmo lugar (${D.at} → ${E.x},${E.y})`);
+
+    // ---- saves adulterados são recusados; o mesmo save sem adulteração é aceito ----
+    const bad = await ev(page, () => {
+      __bk.setup(11, { keepAgents: true, keepLife: true, seed: 9 }); __game.save();
+      const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1")), snap = raw.saves[Object.keys(raw.saves)[0]].snap, K = __bk, L = K.L();
+      const ok = (f) => { const c = JSON.parse(JSON.stringify(snap)); f(c); return __game.parseSave(c); };
+      const wall = (() => { for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) if (L.map[r][c] === "#" && r > 0 && c > 0 && r < L.map.length - 1) return K.ctr(c, r); })();
+      const crate = (() => { for (let r = 0; r < L.map.length; r++) for (let c = 0; c < L.map[0].length; c++) if (L.map[r][c] === "X") return K.ctr(c, r); })();
+      const n = snap.bs.length, W = L.map[0].length * 32, H = L.map.length * 32, good = snap.bs[0];
+      return {
+        n, valido: ok(() => {}), todasPegas: ok((c) => { c.bs.forEach((b) => { b[2] = 1; }); }), nenhumaPega: ok((c) => { c.bs.forEach((b) => { b[2] = 0; }); }),
+        faltaUma: ok((c) => { c.bs.pop(); }), sobraUma: ok((c) => { c.bs.push(c.bs[0].slice()); }), vazio: ok((c) => { c.bs = []; }),
+        texto: ok((c) => { c.bs = "x"; }), objeto: ok((c) => { c.bs = { 0: [1, 1, 0] }; }), numero: ok((c) => { c.bs = 5; }), booleano: ok((c) => { c.bs = true; }),
+        itemNumero: ok((c) => { c.bs[0] = 5; }), itemTexto: ok((c) => { c.bs[0] = "abc"; }), itemNulo: ok((c) => { c.bs[0] = null; }), item2: ok((c) => { c.bs[0] = good.slice(0, 2); }), item4: ok((c) => { c.bs[0] = [...good, 0]; }),
+        naParede: ok((c) => { c.bs[0] = [wall[0], wall[1], 0]; }), naCaixa: crate ? ok((c) => { c.bs[0] = [crate[0], crate[1], 0]; }) : false,
+        pega2: ok((c) => { c.bs[0][2] = 2; }), pegaNeg: ok((c) => { c.bs[0][2] = -1; }), pegaTexto: ok((c) => { c.bs[0][2] = "1"; }), pegaBool: ok((c) => { c.bs[0][2] = true; }), pegaFrac: ok((c) => { c.bs[0][2] = 0.5; }), pegaNula: ok((c) => { c.bs[0][2] = null; }),
+        xNeg: ok((c) => { c.bs[0][0] = -5; }), xGrande: ok((c) => { c.bs[0][0] = W + 1; }), yGrande: ok((c) => { c.bs[0][1] = H + 40; }), xTexto: ok((c) => { c.bs[0][0] = String(good[0]); }), xNulo: ok((c) => { c.bs[0][0] = null; }), xBorda: ok((c) => { c.bs[0][0] = W; }),
+        semBs: ok((c) => { delete c.bs; }),
+        fase1: (() => { __bk.setup(1, { keepAgents: true, keepLife: true, seed: 9 }); __game.save(); const r = JSON.parse(localStorage.getItem("cachorrinho.save.v1")), s1 = r.saves[Object.keys(r.saves)[0]].snap, c = (f) => { const x = JSON.parse(JSON.stringify(s1)); f(x); return __game.parseSave(x); }; return { semBs: s1.bs === undefined, vazio: c((x) => { x.bs = []; }), uma: c((x) => { x.bs = [[48, 48, 0]]; }), original: c(() => {}) }; })(),
+      };
+    });
+    const mustFail = ["faltaUma", "sobraUma", "texto", "objeto", "numero", "booleano", "itemNumero", "itemTexto", "itemNulo", "item2", "item4", "naParede", "naCaixa", "pega2", "pegaNeg", "pegaTexto", "pegaBool", "pegaFrac", "pegaNula", "xNeg", "xGrande", "yGrande", "xTexto", "xNulo", "xBorda"];
+    ok(bad.valido && bad.todasPegas && bad.nenhumaPega && !bad.vazio && mustFail.every((k) => bad[k] === false), `o jogo salvo da Fase 11 (${bad.n} bolinhas) só é aceito sem adulteração: tamanho errado, texto, objeto, número, item malformado, bolinha dentro de parede ou caixa, "pega" fora de 0 e 1 e posição fora do mapa são recusados${mustFail.filter((k) => bad[k] !== false).length ? " — ACEITOS: " + mustFail.filter((k) => bad[k] !== false).join(", ") : ""}`);
+    ok(bad.semBs === true, "um jogo salvo sem o campo bs (de antes da 0.15.8) é aceito");
+    ok(bad.fase1.semBs && bad.fase1.original && bad.fase1.vazio && !bad.fase1.uma, "na Fase 1 (sem bolinhas) o jogo salvo não tem o campo bs; bs vazio é aceito e uma bolinha a mais é recusada");
+
+    // ---- jogo salvo antigo (da 0.15.7, sem o campo bs): é aceito, e ao continuar as bolinhas nascem de novo em chão livre, sem pegas ----
+    await ev(page, () => {
+      __bk.setup(11, { keepAgents: true, keepLife: true, seed: 9 }); __game.save();
+      const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1")), name = Object.keys(raw.saves)[0]; delete raw.saves[name].snap.bs; localStorage.setItem("cachorrinho.save.v1", JSON.stringify(raw));
+      sessionStorage.setItem("keepSave", "1");
+    });
+    ok(await ev(page, () => { const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1")), snap = raw.saves[Object.keys(raw.saves)[0]].snap; return snap.bs === undefined && __game.parseSave(snap); }), "o jogo salvo antigo, sem o campo bs, continua válido");
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await injectBK();
+    await page.click("#btn-continue");
+    const F = await ev(page, () => { const K = __bk; return { n: __game.balls.length, taken: __game.balls.filter((b) => b.taken).length, free: __game.balls.every((b) => !K.solid(Math.floor(b.x / 32), Math.floor(b.y / 32))), still: __game.balls.every((b) => b.vx === 0 && b.vy === 0), state: __game.state, level: __game.level, score: __game.score }; });
+    ok(F.n === 4 && F.taken === 0 && F.free && F.still && F.state === "playing" && F.level === 11 && F.score === 0 && await hudIs(page, "#hud-balls", "0/4"), `continuar um jogo salvo antigo: as 4 bolinhas nascem de novo, em chão livre, paradas e sem nenhuma pega (placar BOLINHAS 0/4)`);
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
+
+  // =====================================================================
+  await section("0.15.8: bolinhas (placar BOLINHAS em 3 telas e o desenho: cores, giro e visibilidade em todos os ambientes)", async () => {
+    await bkStart(); const e0 = errs.length;
+
+    // ---- (i) placar: BOLINHAS fica oculto na Fase 1 e visível nas outras, com largura fixa, e sem rolagem nova em 1000x700, 390x760 e 760x360 ----
+    const hudBad = [], hudInfo = [];
+    for (const vp of [{ width: 1000, height: 700 }, { width: 390, height: 760, touch: true }, { width: 760, height: 360, touch: true }]) {
+      const t = await newPage({ viewport: { width: vp.width, height: vp.height }, hasTouch: !!vp.touch, isMobile: !!vp.touch });
+      await fresh(t); await injectBK(t);
+      const measure = async () => { await t.waitForTimeout(300); return ev(t, async () => { // (o campo se ajusta ao tamanho do placar em alguns quadros)
+        await __bk.frame();
+        const it = document.getElementById("hud-balls-item"), hud = document.getElementById("hud").getBoundingClientRect(), r = it.getBoundingClientRect(), cv = document.getElementById("game").getBoundingClientRect(), pts = document.getElementById("hud-points").getBoundingClientRect();
+        return { vis: r.width > 0 && getComputedStyle(it).display !== "none", w: r.width, h: r.height, text: document.getElementById("hud-balls").textContent, hudW: hud.width, hudH: hud.height, ptsW: pts.width, cv: cv.width,
+          inside: r.left >= -0.5 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, scroll: document.documentElement.scrollHeight - innerHeight, hscroll: document.documentElement.scrollWidth - innerWidth, label: parseFloat(getComputedStyle(it).fontSize), title: it.title };
+      }); };
+      for (const id of [1, 2, 6, 11, 20]) {
+        await ev(t, (id) => __bk.setup(id), id);
+        const a = await measure(), tag = `${vp.width}x${vp.height} Fase ${id}`;
+        if (id === 1) { if (a.vis) hudBad.push(`${tag}: BOLINHAS aparece na Fase 1`); if (a.scroll > 2 || a.hscroll > 0) hudBad.push(`${tag}: rola (${a.scroll}, ${a.hscroll})`); hudInfo.push(`${vp.width}x${vp.height}: campo ${a.cv.toFixed(0)}px na Fase 1`); continue; }
+        const n = BALLS_WANT[id - 1];
+        if (!a.vis || a.text !== `0/${n}` || !a.inside || a.label < 10.5 || !/Bolinhas/.test(a.title)) hudBad.push(`${tag}: ${JSON.stringify({ vis: a.vis, text: a.text, inside: a.inside, label: a.label })}`);
+        if (a.scroll > 2 || a.hscroll > 0) hudBad.push(`${tag}: página rola (${a.scroll} px, ${a.hscroll} px)`);
+        // pegar todas: o placar não muda de largura nem de altura (nem o campo encolhe)
+        await ev(t, () => { const K = __bk; for (const b of __game.balls) { K.dog(b.x, b.y); __game.tick(0.01); } K.dog(...K.away(__game.balls.map((b) => [b.x, b.y]), 300)); });
+        const b2 = await measure();
+        if (b2.text !== `${n}/${n}` || Math.abs(b2.w - a.w) > 0.5 || Math.abs(b2.hudW - a.hudW) > 0.5 || Math.abs(b2.hudH - a.hudH) > 0.5 || Math.abs(b2.ptsW - a.ptsW) > 0.5 || Math.abs(b2.cv - a.cv) > 0.5 || b2.scroll > 2 || b2.hscroll > 0) hudBad.push(`${tag}: ao pegar as ${n} o placar mudou (${JSON.stringify({ w: [a.w, b2.w], hudW: [a.hudW, b2.hudW], hudH: [a.hudH, b2.hudH], pts: [a.ptsW, b2.ptsW], campo: [a.cv, b2.cv], texto: b2.text })})`);
+        if (id === 20) hudInfo.push(`${vp.width}x${vp.height}: placar ${a.hudW.toFixed(0)}x${a.hudH.toFixed(0)} px, BOLINHAS ${a.w.toFixed(0)}x${a.h.toFixed(0)} px, fonte ${a.label.toFixed(1)} px`);
+      }
+      await t.context().close();
+    }
+    ok(hudBad.length === 0, `placar nas 3 telas (1000x700, 390x760 e 760x360), Fases 1, 2, 6, 11 e 20: BOLINHAS fica oculto na Fase 1 e visível nas outras (n/N, dentro da tela, fonte legível), a largura não muda ao pegar as bolinhas, e a página não rola (${hudInfo.join("; ")})${hudBad.length ? " — " + hudBad.slice(0, 3).join("; ") : ""}`);
+
+    // ---- (j) desenho: a cor do `hue`, em todos os ambientes (as Fases 2 a 20 têm chãos de cores bem diferentes) ----
+    const looks = await ev(page, async () => {
+      const K = __bk, out = [];
+      for (let id = 2; id <= 20; id++) {
+        K.setup(id); const t = K.line([1, 0], 3, 3), [bx, by] = K.ctr(...t);
+        for (let h = 0; h < 4; h++) { K.put([[bx, by, 0, 0, h]]); K.dog(...K.near([bx, by], 130, 200)); const r = await K.look(0); out.push({ id, h, diff: r.diff, area: r.area, color: r.color, floor: r.floor }); }
+      }
+      return out;
+    });
+    const dist = (a, b) => a.reduce((n, v, i) => n + Math.abs(v - b[i]), 0);
+    const lbad = looks.filter((r) => !near(r.color, r.h, 14) || r.diff < r.area * 0.8);
+    ok(looks.length === 76 && lbad.length === 0, `em todas as 19 fases com bolinhas (chãos de grama, rua, casa, praia, fortaleza...) a bolinha aparece com a cor do hue: as 4 cores (${BALL_COLORS.join(" ")}) medidas no canvas (corpo do círculo) e cerca de ${Math.round(Math.min(...looks.map((r) => r.diff)))} a ${Math.round(Math.max(...looks.map((r) => r.diff)))} pixels mudam quando ela some (disco de ${looks[0].area.toFixed(0)})${lbad.length ? " — problema: " + JSON.stringify(lbad.slice(0, 3)) : ""}`);
+    const low = looks.map((r) => ({ id: r.id, h: r.h, d: dist(r.color, r.floor) })).sort((a, b) => a.d - b.d);
+    ok(low[0].d >= 90, `o corpo da bolinha contrasta com o chão em todas as combinações de fase e cor (distância de cor mínima ${low[0].d}: Fase ${low[0].id}, cor ${low[0].h}; as 3 piores: ${low.slice(0, 3).map((r) => `F${r.id}/${r.h}=${r.d}`).join(", ")})`);
+    // as bolinhas que o próprio jogo sorteia usam as 4 cores em sequência (hue = índice mod 4), e cada uma aparece na cor dela
+    const real = await ev(page, async () => {
+      const K = __bk, out = []; K.setup(20);
+      for (let i = 0; i < __game.balls.length; i++) { const b = __game.balls[i]; K.dog(...K.near([b.x, b.y], 130, 200)); const r = await K.look(i); out.push({ hue: b.hue, color: r.color, diff: r.diff, area: r.area }); }
+      return out;
+    });
+    ok(real.map((r) => r.hue).join() === "0,1,2,3,0" && real.every((r) => near(r.color, r.hue, 14) && r.diff >= r.area * 0.7), `as 5 bolinhas sorteadas pelo jogo na Fase 20 usam as 4 cores em sequência (${real.map((r) => r.hue).join(",")}) e cada uma aparece na cor certa (${real.map((r) => r.color).join(" | ")})`);
+
+    // ---- gira ao rolar: a faixa branca muda de ângulo entre dois quadros enquanto a bolinha rola; parada, não muda ----
+    const spin = await ev(page, async () => {
+      const K = __bk, out = {}; K.setup(20); const t = K.line([1, 0], 4, 15), [bx, by] = K.ctr(...t);
+      K.put([[bx, by, 0, 0, 2]]); K.dog(bx - 130, by); await K.frame(); // (o cachorrinho fica atrás: a bolinha rola para longe dele)
+      const s1 = K.stripe(0); await K.frame(); await K.frame(); await K.frame(); const s2 = K.stripe(0);
+      out.still = { n: s1.n, diff: Math.abs(Math.atan2(Math.sin(s2.angle - s1.angle), Math.cos(s2.angle - s1.angle))) };
+      const b = __game.balls[0]; b.vx = 330; b.vy = 0; // rolando para a direita, num corredor longo
+      await K.frame(); const t1 = __game.time, r1 = K.stripe(0), v1 = Math.hypot(b.vx, b.vy); await K.frame(); await K.frame(); await K.frame(); const t2 = __game.time, r2 = K.stripe(0), v2 = Math.hypot(b.vx, b.vy);
+      out.roll = { n: [r1.n, r2.n], diff: Math.abs(Math.atan2(Math.sin(r2.angle - r1.angle), Math.cos(r2.angle - r1.angle))), dt: t2 - t1, v1, v2, expect: Math.abs(Math.atan2(Math.sin(14 * (t2 - t1)), Math.cos(14 * (t2 - t1)))) };
+      return out;
+    });
+    ok(spin.still.n >= 3 && spin.still.diff < 0.15, `parada, a bolinha não gira: a faixa branca fica no mesmo ângulo entre dois quadros (${spin.still.diff.toFixed(3)} rad, ${spin.still.n} pixels)`);
+    ok(spin.roll.n.every((n) => n >= 3) && spin.roll.v1 > 100 && spin.roll.v2 > 100 && spin.roll.diff > 0.4 && Math.abs(spin.roll.diff - spin.roll.expect) < 1, `rolando a ${spin.roll.v1.toFixed(0)} px/s, a bolinha gira: a faixa branca muda ${spin.roll.diff.toFixed(2)} rad em ${(spin.roll.dt * 1000).toFixed(0)} ms de jogo (o jogo gira 14 rad/s: esperado ${spin.roll.expect.toFixed(2)}) ${JSON.stringify(spin.roll)}`);
+    ok(errs.length === e0, "nenhum erro de JS nessa parte");
+  });
 
   console.log("erros JS:", errs);
   if (errs.length) failed++;

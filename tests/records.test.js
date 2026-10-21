@@ -91,6 +91,14 @@ test("levelPoints: a pontuação PODE ficar negativa", () => {
   assert.strictEqual(R.levelPoints(1, 999999, 4, 3), -400);
   assert.ok(R.levelPoints(2, 130000, 5, 3) < 0);
 });
+test("levelPoints: 50 por bolinha (0.15.8), que soma com os outros pontos e não conta se for inválida", () => {
+  assert.strictEqual(R.BALL_POINTS, 50);
+  assert.strictEqual(R.levelPoints(5, 25000, 0, 0, { balls: 1 }), 640);
+  assert.strictEqual(R.levelPoints(5, 25000, 0, 0, { balls: 5 }), 840);
+  assert.strictEqual(R.levelPoints(5, 25000, 1, 1, { balls: 2, bones: 1, postmen: 1, lifePenalty: 200 }), 500 + 150 + 100 + 100 + 90 - 200 - 100, "bolinhas somam com ossos, carteiros, vidas e tentativas");
+  assert.strictEqual(R.levelPoints(0, 999999, 0, 0, { balls: 3 }), 150, "só as bolinhas");
+  for (const bad of [-1, 1.5, "2", null, undefined, NaN]) assert.strictEqual(R.levelPoints(5, 25000, 0, 0, { balls: bad }), 590, `balls = ${bad} não conta`);
+});
 test("levelPoints: entradas inválidas valem 0", () => {
   assert.strictEqual(R.levelPoints(5, 25000, -3, 0), 590);
   assert.strictEqual(R.levelPoints(5, 25000, 0, -2), 590);
