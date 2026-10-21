@@ -2558,13 +2558,15 @@
     try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
   }
   let shopMsg = "";
-  function renderShop() {
+  // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se ele estava na lista
+  function renderShop(refocus = -1) {
     const me = store.player(), w = me ? store.wallet(me) : null, list = $("shop-list");
-    $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} ${w.treats === 1 ? "petscoin" : "petscoin"} (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
+    if (refocus < 0) refocus = [...list.querySelectorAll("button")].indexOf(document.activeElement);
+    $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} petscoin (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
     $("shop-msg").textContent = shopMsg;
     list.replaceChildren();
     let firstFocus = true;
-    for (const k of SKINS) {
+    for (const [i, k] of SKINS.entries()) {
       const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? w.equipped === k.id : k.id === "";
       const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
       cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
@@ -2572,21 +2574,27 @@
       const b = el("button", owned ? "" : "primary-ish"); b.type = "button";
       if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
       else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
-      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(); }); }
+      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(i); }); }
       else {
         const missing = k.price - w.treats;
         b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
-        if (missing > 0) b.title = `Faltam ${missing} petscoin`;
+        if (missing > 0) b.title = missing === 1 ? "Falta 1 petscoin" : `Faltam ${missing} petscoin`;
         b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos)
           const r = store.buySkin(me, k.id, k.price);
-          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Você comprou a skin ${k.name} e já está usando! Sobraram ${r.wallet.treats} petscoin.`; sound.play("levelup"); }
+          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); const n = r.wallet.treats; shopMsg = `Você comprou a skin ${k.name} e já está usando! ${n === 0 ? "Não sobrou nenhum petscoin." : n === 1 ? "Sobrou 1 petscoin." : `Sobraram ${n} petscoin.`}`; sound.play("levelup"); }
           else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : "Não foi possível comprar esta skin.";
-          renderShop();
+          renderShop(i);
         });
         if (firstFocus && !b.disabled) { b.dataset.autofocus = ""; firstFocus = false; }
       }
-      card.append(cv, el("strong", null, k.name), el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
+      const nm = el("strong", null, k.name); nm.id = `shop-name-${i}`; b.id = `shop-btn-${i}`;
+      b.setAttribute("aria-labelledby", `${b.id} ${nm.id}`); // o nome do botão traz a skin ("Comprar (12 petscoin) Dálmata"), senão os botões ficariam todos iguais para o leitor de tela
+      card.append(cv, nm, el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
       list.append(card);
+    }
+    if (refocus >= 0) { // o foco não se perde ao desenhar de novo: vai para o botão ligado do mesmo cartão ou dos seguintes, senão para o primeiro ligado, senão para o Voltar
+      const bs = [...list.querySelectorAll("button")];
+      (bs.slice(refocus).find((x) => !x.disabled) || bs.find((x) => !x.disabled) || $("btn-shop-back")).focus();
     }
   }
   function openShop() { shopMsg = ""; renderShop(); showScreen("shop"); }
