@@ -109,7 +109,6 @@
   // # parede | X caixa | E saída | P início do cachorro | V início de um agente
   // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
   // Fase 1: labirinto de 25 × 18 tiles (gerado e conferido por script, com desenho de cidade: ruas de 3 tiles entre prédios, 20 quarteirões-células ligados por 22 ruas, 0 becos sem saída e 3 caminhos sem célula em comum do início à saída).
-  // Fase 1: labirinto de 25 × 18 tiles (gerado e conferido por script, com desenho de cidade: ruas de 3 tiles entre prédios, 20 quarteirões-células ligados por 22 ruas, 0 becos sem saída e 3 caminhos sem célula em comum do início à saída).
   const MAP_1 = [
     "#########################",
     "#.......................#",
@@ -955,7 +954,6 @@
       id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: agentes 10% mais lentos e cachorrinho 5% mais rápido
       maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
-      maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
       blocks: [
         { from: [5, 10], to: [5, 9], phase: 0 }, // porta 1
         { from: [5, 15], to: [5, 16], phase: 1 }, // porta 2
@@ -965,7 +963,6 @@
       id: 4, title: "Fase 4", map: MAP_4, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 15, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(4), lifePenalty: 200, minPoints: 800, bonePower: 30, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3] },
       note: "labirinto de cidade com ruas largas, poder dos ossos e portas que esmagam",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 7], [27, 3], [32, 3], [37, 3]], y: [[1, 3], [6, 3], [12, 5], [19, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 7], [27, 3], [32, 3], [37, 3]], y: [[1, 3], [6, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       blocks: [
         { from: [8, 10], to: [9, 10], phase: 0 }, // porta 1
@@ -977,7 +974,6 @@
       id: 5, title: "Fase 5", map: MAP_5, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 20, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3], wall: [1, 3] },
       note: "mais avenidas: paredes que se movem, poder do osso de 35 s e 1000 pontos",
-      maze: { x: [[1, 3], [6, 3], [12, 3], [18, 7], [28, 3], [34, 3], [39, 3]], y: [[1, 3], [6, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       maze: { x: [[1, 3], [7, 3], [12, 3], [18, 7], [28, 3], [34, 3], [39, 3]], y: [[1, 3], [7, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       blocks: [
         { from: [12, 5], to: [13, 5], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -992,7 +988,6 @@
       id: 6, title: "Fase 6", map: MAP_6, vets: [PHASE6_VET, PHASE6_VET, PHASE6_VET], rations: 24, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.96,
       alertTiles: 11, lifePenalty: 250, minPoints: 1250, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [2, 4], wall: [2, 4] },
       note: "labirinto maior, mais ossos e mais peças móveis",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [31, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [13, 5], [21, 3], [27, 3]], p: [0, 1], e: [8, 3] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 7], [31, 3], [36, 3], [41, 3], [47, 3]], y: [[1, 3], [7, 3], [13, 5], [21, 3], [27, 3]], p: [0, 1], e: [8, 3] },
       blocks: [
         { from: [36, 25], to: [37, 25], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1009,7 +1004,6 @@
       id: 7, title: "Fase 7", map: MAP_7, vets: [PHASE7_VET, PHASE7_VET, PHASE7_VET, PHASE7_VET], rations: 28, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.97,
       alertTiles: 12, lifePenalty: 250, minPoints: 1400, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [2, 4] },
       note: "labirinto maior, mais rações e mais portas de bloco",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [32, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 7], [31, 3], [36, 3], [41, 3], [47, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [25, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       blocks: [
         { from: [34, 7], to: [34, 8], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1027,7 +1021,6 @@
       id: 8, title: "Fase 8", map: MAP_8, vets: [PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET], rations: 32, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.98,
       alertTiles: 13, lifePenalty: 250, minPoints: 1650, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [3, 5] },
       note: "labirinto enorme, 4 ossos e muitas paredes que se movem",
-      maze: { x: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 7], [32, 3], [37, 3], [43, 3], [49, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 5], [24, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       maze: { x: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 7], [33, 3], [39, 3], [44, 3], [49, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [25, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       blocks: [
         { from: [42, 25], to: [42, 26], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1046,7 +1039,6 @@
       id: 9, title: "Fase 9", map: MAP_9, vets: [PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET], rations: 36, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.99,
       alertTiles: 14, lifePenalty: 300, minPoints: 1800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2.5, blockRange: { door: [4, 6], wall: [4, 6] },
       note: "blocos e paredes mais rápidos; o cachorrinho renasce onde morreu",
-      maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 3], [27, 7], [36, 3], [41, 3], [46, 3], [51, 3], [57, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [10, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 3], [27, 7], [36, 3], [41, 3], [47, 3], [52, 3], [57, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [30, 3], [35, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [10, 1], to: [10, 2], size: [1, 2], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1067,7 +1059,6 @@
       id: 10, title: "Fase 10", map: MAP_10, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "o maior labirinto até aqui, 6 agentes da carrocinha e blocos muito rápidos; renasce onde morreu",
-      maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [28, 7], [38, 3], [44, 3], [49, 3], [54, 3], [59, 3]], y: [[1, 3], [7, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [28, 7], [38, 3], [44, 3], [49, 3], [54, 3], [59, 3]], y: [[1, 3], [7, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [57, 7], to: [57, 8], size: [1, 2], wall: true, every: 6, speed: 160, phase: 0 }, // parede 1
@@ -2014,7 +2005,10 @@
   // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
   const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && postmen >= lv.mission.scare && collected >= lv.mission.rations);
   const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
+  const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
   const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  // A missão de sustos fica impossível quando o poder acabou e não sobrou nenhum osso comum (os outros tipos não assustam).
+  const missionImpossible = () => !!lv.mission && lv.mission.scare > 0 && postmen < lv.mission.scare && power <= 0 && !items.some((it) => !it.taken && it.bone && (it.kind || "scare") === "scare");
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
@@ -2192,7 +2186,7 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
+    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
@@ -2271,7 +2265,7 @@
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionTexts().join(" e ")}` : ""}`;
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionShort()}` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
@@ -2624,9 +2618,9 @@
     sound.play("gameover", { delay: why ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    const missionFail = why === "short" && lv.mission && runningScore() >= lv.minPoints && !missionDone(); // (0.15.6) os pontos bastam, mas não dá mais para cumprir a missão (acabou o poder do osso)
+    const missionFail = why === "short" && lv.mission && !missionDone() && (runningScore() >= lv.minPoints || !allCollected()); // (0.15.6) não dá mais para cumprir a missão (acabou o poder do osso sem os sustos); se pegou tudo e os pontos também faltam, vale a derrota dos pontos
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
-    $("lose-lead").textContent = missionFail ? `Você pegou tudo, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
+    $("lose-lead").textContent = missionFail ? `${allCollected() ? "Você pegou tudo" : "Acabou o poder do osso"}, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -3096,13 +3090,13 @@
   // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
     if (power > 0) return;
-    const m = 16, ox = player.x + player.w / 2, oy = player.y + player.h / 2;
+    const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0) + (fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? 26 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão e da faixa dos efeitos)
     for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
       const dx = v.cx - ox, dy = v.cy - oy;
       let t = Infinity; // da posição do cachorrinho até a borda da tela (menos a margem), na direção do agente
       if (dx > 0) t = Math.min(t, (camX + vw - m - ox) / dx); else if (dx < 0) t = Math.min(t, (camX + m - ox) / dx);
-      if (dy > 0) t = Math.min(t, (camY + vh - m - oy) / dy); else if (dy < 0) t = Math.min(t, (camY + m - oy) / dy);
+      if (dy > 0) t = Math.min(t, (camY + vh - m - oy) / dy); else if (dy < 0) t = Math.min(t, (camY + mt - oy) / dy);
       if (!(t > 0) || !Number.isFinite(t)) continue;
       const x = ox + dx * t, y = oy + dy * t, a = Math.atan2(dy, dx), r = 10 + (calm ? 0 : Math.abs(Math.sin(time * 8)) * 1.5);
       ctx.fillStyle = "#ff4d4d"; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * (r + 7), y + Math.sin(a) * (r + 7)); // pontinha para o lado do agente
