@@ -4136,7 +4136,8 @@ const PAGE_HELPERS = () => {
     const look = (id, mode) => ev(page, async ([id, mode]) => {
       __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
       const v = __game.vets[0], p = __game.player;
-      if (mode === "power") { const b = __game.items.find((i) => i.bone); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); }
+      if (mode === "power") { const b = __game.items.find((i) => i.bone && i.kind === "scare"); p.x = b.x - 4; p.y = b.y - 4; __game.tick(0.01); } // (osso comum: os de ouro, gelo, turbo e ímã das Fases 11 a 20 não dão o poder)
+      __game.items.forEach((i) => { i.x = -500; i.y = -500; }); // (nenhum item perto do agente: pegar um por acaso mudaria o desenho do agente)
       p.x = v.cx + 130; p.y = v.cy - 12; __game.tick(0.01);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const c = document.getElementById("game").getContext("2d"), k = __game.view.k * __game.view.zoom, cx = Math.round((v.cx - __game.view.camX) * k), cy = Math.round((v.cy - __game.view.camY) * k), R = Math.round(24 * k);
@@ -4502,6 +4503,7 @@ const PAGE_HELPERS = () => {
     __game.setRand(((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(o.seed || 7));
     __game.freezeVets = true; __game.catsThaw = false; __game.noCatch = o.noCatch !== false;
     const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = o.facing || "right"; p.moving = false;
+    for (const it of __game.items) if (Math.hypot(it.x + 8 - (p.x + 12), it.y + 8 - (p.y + 12)) < 48) { it.x = -500; it.y = -500; } // (0.15.7: nenhum item sorteado debaixo do cachorrinho: um osso de ouro ou de gelo pego por acaso mudaria o teste)
     for (const c of __game.cats) { c.cool = 0; c.idle = 0; c.think = 0; }
     if (o.chase) for (const c of __game.cats) Object.assign(c, { mode: "chase", modeT: 99, chaseAge: 0, pounceCd: o.pounce ? 0 : 99 });
     return { n: __game.cats.length };
@@ -4750,7 +4752,6 @@ const PAGE_HELPERS = () => {
     for (let n = 11; n <= 20; n++) {
       const m = model(n), dr = hrun(m, 9);
       await setup(n, [[dr.c + 2, dr.r], [dr.c + 4, dr.r], [dr.c + 6, dr.r], [dr.c + 8, dr.r]], { dog: [dr.c, dr.r] });
-      await ev(page, () => __game.items.forEach((i) => { i.x = -500; i.y = -500; })); // (nenhum item sorteado debaixo do cachorrinho: um osso de gelo pego cobriria os gatos de gelo e mudaria a medida)
       const looks = await ev(page, async () => {
         const cs = __game.cats, frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         cs.forEach((c) => { c.mode = "patrol"; c.dir = 1; c.leg = null; });
@@ -5243,6 +5244,8 @@ const PAGE_HELPERS = () => {
 
 
 
+
+
   // ===== 0.15.7 BEGIN =====
   // =====================================================================
   // ---- Kit dos testes da 0.15.7 (ossos de tipos novos e reforços novos). Nada usa coordenadas fixas: as posições vêm do mapa (kit dos gatos acima) e do estado do jogo. ----
@@ -5265,7 +5268,7 @@ const PAGE_HELPERS = () => {
         __game.autoStart = true; __game.setRand(lcg(o.seed || 7)); if (o.cats !== undefined) __game.catOverride = o.cats;
         __game.start(n, o.up ? { upgrades: o.up } : undefined); __game.catOverride = null;
         __game.freezeVets = !o.free; __game.catsThaw = false; __game.noCatch = o.noCatch !== false;
-        if (o.dog) { const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = "right"; p.moving = false; }
+        if (o.dog) { const p = __game.player; p.x = o.dog[0] * 32 + 4; p.y = o.dog[1] * 32 + 4; p.facing = "right"; p.moving = false; for (const it of __game.items) if (Math.hypot(it.x + 8 - (p.x + 12), it.y + 8 - (p.y + 12)) < 48) { it.x = -500; it.y = -500; } } // (nenhum item sorteado debaixo do cachorrinho)
         if (!o.keepLife) __game.items.forEach((i) => { i.life = false; }); // (um jogo salvo precisa das vidas escondidas da fase: quem salva usa keepLife)
         return __game.items.filter((i) => i.bone).length;
       },
@@ -5880,6 +5883,24 @@ const PAGE_HELPERS = () => {
     ok(s15a !== null && s15b === null && s14a !== null && s14b === null, `a 15 quadrados e meio: sem o reforço vê, com 1 nível não (${s15a} / ${s15b}); a 14 quadrados e meio: com 1 nível vê, com 2 não (${s14a} / ${s14b})`);
     // quem já está perseguindo continua perseguindo (o reforço só muda o primeiro aviso, não tira o agente da perseguição); o alcance de perto não muda
     ok(await probe(3, 4 * 32) !== null && await probe(3, 32) !== null, "mesmo com 3 níveis, de perto (4 quadrados e 1 quadrado) o agente continua vendo e ligando o !");
+
+    // ---- Patas de veludo: o alcance de visão do gato (alcance do ! + 4 quadrados) também cai 1 quadrado por nível ----
+    const catSight = await ev(page, () => { __fx.begin(11, { seed: 3 }); return __game.cats[0].cfg.sight / 32; });
+    const runCat = hrun(m11, catSight + 3, 3);
+    ok(catSight === alert11 + 4 && !!runCat, `(teste) o gato da Fase 11 enxerga a ${catSight} quadrados (alcance do ! mais 4) e há uma reta livre de ${catSight + 3} tiles para medir (${runCat && runCat.c + "," + runCat.r})`);
+    const catProbe = (k, dx) => ev(page, ([k, dx, run]) => {
+      __fx.begin(11, { seed: 3, up: k ? { stealth: k } : undefined, cats: [[run.c, run.r]], dog: [run.c, run.r], free: true });
+      const c = __game.cats[0], p = __game.player;
+      __game.vets.forEach((o) => { o.cool = 999; });
+      Object.assign(c, { cool: 0, idle: 99, think: 0, mode: "patrol", leg: null, route: [] });
+      p.x = c.cx + dx - 12; p.y = c.cy - 12; // o gato parado, o cachorrinho a dx px na mesma linha
+      let chased = false;
+      for (let i = 0; i < 6 && !chased; i++) { __game.tick(0.05); chased = c.mode === "chase"; }
+      return chased;
+    }, [k, dx, runCat]);
+    const catRes = [];
+    for (let k = 0; k <= 3; k++) { const edge = (catSight - k) * 32; catRes.push([k, await catProbe(k, edge - 6), await catProbe(k, edge + 6)]); }
+    ok(catRes.every(([, yes, no]) => yes === true && no === false), `Patas de veludo: o gato enxerga o cachorrinho a até ${catRes.map(([k]) => catSight - k).join(", ")} quadrados com ${catRes.map(([k]) => k).join(", ")} níveis (6 px antes da borda persegue, 6 px depois não: ${catRes.map(([k, a, b]) => `${k}: ${a ? "persegue" : "NÃO"}/${b ? "PERSEGUE" : "não"}`).join(" ")})`);
 
     // ---- Patas de veludo: o ouvido do gato cai 1 passo por nível ----
     const hearPair = (m, d) => { // gato e cachorrinho a exatamente d passos (pelo chão do gato, fora dos trilhos), sem linha de visão
