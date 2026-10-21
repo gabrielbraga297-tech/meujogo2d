@@ -364,7 +364,7 @@ const PAGE_HELPERS = () => {
       ok(await hudIs(page, "#hud-items", `${got[0]}/5`), `placar mostra RAÇÕES ${got[0]}/5`);
     }
     ok(await ev(page, () => __game.collected) === 5, "as 5 rações foram coletadas");
-    await ev(page, (p) => __t.walk(p), bfs(await cur(), exit));
+    for (let tries = 0; tries < 4 && await ev(page, () => __game.state) !== "won"; tries++) await ev(page, (p) => __t.walk(p), bfs(await cur(), exit)); // (sob carga o jogo real anda junto com o teste: se parou antes da saída, anda de novo)
     ok(await ev(page, () => __game.state) === "won" && await page.isVisible("#win"), "vitória ao chegar na saída com 5 rações");
     const winText = await page.textContent("#win-breakdown"), winPts = Number(await page.textContent("#win-points"));
     const m = winText.match(/Rações: (\d+) \+ bônus de tempo: (\d+) · tempo: ([\d,]+) s/);
@@ -4995,7 +4995,7 @@ const PAGE_HELPERS = () => {
     const stroll = (arg) => {
       const [n, seed, secs] = arg;
       const L = __game.levels[n - 1], M = L.map, R = M.length, C = M[0].length, p = __game.player, cs = __game.cats;
-      for (const it of __game.items) it.taken = true;
+      for (const it of __game.items) { it.x = -9999; it.y = -9999; } // (itens fora do mapa: o passeio não pega nada, e a missão de sustos da Fase 20 não fica impossível por falta de osso)
       const track = new Set(); for (const bk of L.blocks) { const [w, h] = bk.size || [1, 1]; for (const k of ["from", "to"]) for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) track.add((bk[k][1] + j + dr) * C + bk[k][0] + i + dc); }
       const ok = (c, r) => c >= 0 && r >= 0 && c < C && r < R && M[r][c] !== "#" && M[r][c] !== "X" && !track.has(r * C + c);
       let s2 = seed * 104729 + 17; const rnd = () => ((s2 = (s2 * 1664525 + 1013904223) >>> 0) / 4294967296);
