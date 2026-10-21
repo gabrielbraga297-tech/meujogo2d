@@ -129,7 +129,6 @@
   // # parede | X caixa | E saída | P início do cachorro | V início de um agente
   // (as rações são sorteadas em lugares livres a cada jogo novo e quando se perde uma vida: veja placeItems)
   // Fase 1: labirinto de 25 × 18 tiles (gerado e conferido por script, com desenho de cidade: ruas de 3 tiles entre prédios, 20 quarteirões-células ligados por 22 ruas, 0 becos sem saída e 3 caminhos sem célula em comum do início à saída).
-  // Fase 1: labirinto de 25 × 18 tiles (gerado e conferido por script, com desenho de cidade: ruas de 3 tiles entre prédios, 20 quarteirões-células ligados por 22 ruas, 0 becos sem saída e 3 caminhos sem célula em comum do início à saída).
   const MAP_1 = [
     "#########################",
     "#.......................#",
@@ -975,7 +974,6 @@
       id: 3, title: "Fase 3", map: MAP_3, balls: 1, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: agentes 10% mais lentos e cachorrinho 5% mais rápido
       maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
-      maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
       blocks: [
         { from: [5, 10], to: [5, 9], phase: 0 }, // porta 1
         { from: [5, 15], to: [5, 16], phase: 1 }, // porta 2
@@ -985,7 +983,6 @@
       id: 4, title: "Fase 4", map: MAP_4, balls: 2, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 15, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(4), lifePenalty: 200, minPoints: 800, bonePower: 30, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3] },
       note: "labirinto de cidade com ruas largas, poder dos ossos e portas que esmagam",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 7], [27, 3], [32, 3], [37, 3]], y: [[1, 3], [6, 3], [12, 5], [19, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 7], [27, 3], [32, 3], [37, 3]], y: [[1, 3], [6, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       blocks: [
         { from: [8, 10], to: [9, 10], phase: 0 }, // porta 1
@@ -997,7 +994,6 @@
       id: 5, title: "Fase 5", map: MAP_5, balls: 2, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 20, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3], wall: [1, 3] },
       note: "mais avenidas: paredes que se movem, poder do osso de 35 s e 1000 pontos",
-      maze: { x: [[1, 3], [6, 3], [12, 3], [18, 7], [28, 3], [34, 3], [39, 3]], y: [[1, 3], [6, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       maze: { x: [[1, 3], [7, 3], [12, 3], [18, 7], [28, 3], [34, 3], [39, 3]], y: [[1, 3], [7, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
       blocks: [
         { from: [12, 5], to: [13, 5], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1012,7 +1008,6 @@
       id: 6, title: "Fase 6", map: MAP_6, balls: 3, vets: [PHASE6_VET, PHASE6_VET, PHASE6_VET], rations: 24, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.96,
       alertTiles: 11, lifePenalty: 250, minPoints: 1250, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [2, 4], wall: [2, 4] },
       note: "labirinto maior, mais ossos e mais peças móveis",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [31, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [13, 5], [21, 3], [27, 3]], p: [0, 1], e: [8, 3] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 7], [31, 3], [36, 3], [41, 3], [47, 3]], y: [[1, 3], [7, 3], [13, 5], [21, 3], [27, 3]], p: [0, 1], e: [8, 3] },
       blocks: [
         { from: [36, 25], to: [37, 25], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1029,7 +1024,6 @@
       id: 7, title: "Fase 7", map: MAP_7, balls: 3, vets: [PHASE7_VET, PHASE7_VET, PHASE7_VET, PHASE7_VET], rations: 28, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.97,
       alertTiles: 12, lifePenalty: 250, minPoints: 1400, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [2, 4] },
       note: "labirinto maior, mais rações e mais portas de bloco",
-      maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [32, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 7], [31, 3], [36, 3], [41, 3], [47, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [25, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       blocks: [
         { from: [34, 7], to: [34, 8], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1047,7 +1041,6 @@
       id: 8, title: "Fase 8", map: MAP_8, balls: 3, vets: [PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET], rations: 32, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.98,
       alertTiles: 13, lifePenalty: 250, minPoints: 1650, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [3, 5] },
       note: "labirinto enorme, 4 ossos e muitas paredes que se movem",
-      maze: { x: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 7], [32, 3], [37, 3], [43, 3], [49, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 5], [24, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       maze: { x: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 7], [33, 3], [39, 3], [44, 3], [49, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [25, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
       blocks: [
         { from: [42, 25], to: [42, 26], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1066,7 +1059,6 @@
       id: 9, title: "Fase 9", map: MAP_9, balls: 3, vets: [PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET], rations: 36, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.99,
       alertTiles: 14, lifePenalty: 300, minPoints: 1800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2.5, blockRange: { door: [4, 6], wall: [4, 6] },
       note: "blocos e paredes mais rápidos; o cachorrinho renasce onde morreu",
-      maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 3], [27, 7], [36, 3], [41, 3], [46, 3], [51, 3], [57, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [10, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 3], [27, 7], [36, 3], [41, 3], [47, 3], [52, 3], [57, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [30, 3], [35, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [10, 1], to: [10, 2], size: [1, 2], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1087,7 +1079,6 @@
       id: 10, title: "Fase 10", map: MAP_10, balls: 3, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "o maior labirinto até aqui, 6 agentes da carrocinha e blocos muito rápidos; renasce onde morreu",
-      maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [28, 7], [38, 3], [44, 3], [49, 3], [54, 3], [59, 3]], y: [[1, 3], [7, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [28, 7], [38, 3], [44, 3], [49, 3], [54, 3], [59, 3]], y: [[1, 3], [7, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [57, 7], to: [57, 8], size: [1, 2], wall: true, every: 6, speed: 160, phase: 0 }, // parede 1
