@@ -1,8 +1,12 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.15.2 · 21/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.15.3 · 21/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.15.3 — 21/10/2026 (em preparação)
+- **O cachorrinho late ao completar cada fase**, e o latido **muda com o tamanho dele**: **filhote** (Fases 1 a 4, ou com poucos reforços) dois "ai-ai" agudos e curtinhos (1250 e 1350 Hz subindo, 0,26 s); **jovem** (Fases 5 a 7) dois "uau" médios (540 e 500 Hz caindo, 0,4 s); **adulto** (Fase 8 em diante) dois "uó" graves e fortes (250 e 230 Hz caindo, com uma quadrada uma oitava abaixo, 0,65 s). O tamanho é o mesmo do desenho (`dogGrowth`), então os reforços também fazem o latido ficar mais grave. Toca 0,9 s depois do começo da fanfarra e uma só vez por vitória; ao perder não late.
+- **Testes:** os 3 latidos (notas, subida e descida, timbres, duração crescente, ruído de sopro, filhote inteiro acima do adulto) e, no jogo, o latido certo em cada fase e com reforços (F1 filhote, F5 jovem, F8 adulto, F1 jovem e adulto com muitos reforços), um só por vitória e nenhum ao perder.
 
 ## 0.15.2 — 21/10/2026 (em preparação)
 - **Os reforços escolhidos agora aparecem e fazem diferença.** Relato: "os poderes escolhidos depois de passar de fase não estão sendo incluídos". Reproduzi o fluxo real (sorteio normal, mouse e teclado): o jogo guardava e aplicava cada escolha, mas **quase nada aparecia**: os efeitos eram pequenos demais (+5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos) e o *Coração maior* não mudava nada na tela.

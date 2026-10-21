@@ -1568,6 +1568,7 @@
     score = points;
     setState("won");
     sound.play("levelup");
+    sound.play(dogStage(dogGrowth()) === "filhote" ? "bark1" : dogStage(dogGrowth()) === "jovem" ? "bark2" : "bark3", { delay: 0.9 }); // (0.15.3) o cachorrinho late ao completar a fase: agudo de filhote, médio de jovem, grave de adulto, depois da fanfarra
     carriedLives = lives; nextUp = null; chosenReinforce = null;
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;

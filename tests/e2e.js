@@ -4264,6 +4264,38 @@ const PAGE_HELPERS = () => {
     await ev(page, () => document.getElementById("btn-resume").click());
   });
 
+  // =====================================================================
+  await section("0.15.3: o cachorrinho late ao completar a fase (latido de filhote, de jovem ou de adulto conforme o tamanho)", async () => {
+    await fresh(page);
+    await ev(page, () => { __game.sound.setMuted(false); __game.sound.unlock(); });
+    // cada vitória pede o latido do tamanho que ele tem naquele momento (sem reforços: Fases 1 a 4 filhote, 5 a 7 jovem, 8 a 10 adulto)
+    const res = await ev(page, () => {
+      const out = [];
+      for (const [id, ups] of [[1, {}], [4, {}], [5, {}], [7, {}], [8, {}], [10, {}], [1, { speed: 4, bone: 4, slow: 4 }], [1, { speed: 4, bone: 4, slow: 4, heart: 3, shield: 3 }]]) {
+        __game.start(id, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, ...ups } }); __game.freezeVets = true;
+        __game.sounds.splice(0); const n0 = 0;
+        for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+        const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+        out.push([id, __game.stage, __game.state, __game.sounds.slice(n0).map((x) => x.name).filter((n) => /bark|levelup/.test(n)).join("+")]);
+      }
+      return out;
+    });
+    const want = ["levelup+bark1", "levelup+bark1", "levelup+bark2", "levelup+bark2", "levelup+bark3", "levelup+bark3", "levelup+bark2", "levelup+bark3"];
+    ok(res.every((r, i) => r[2] === "won" && r[3] === want[i]), `ao completar a fase o jogo pede a fanfarra e o latido do tamanho: ${res.map((r) => `F${r[0]} ${r[1]} → ${r[3]}`).join("; ")}`);
+    // o latido não toca antes da vitória, nem ao perder, e toca uma vez só por vitória
+    const once = await ev(page, () => {
+      __game.start(2); __game.freezeVets = true; __game.sounds.splice(0); const n0 = 0;
+      for (let i = 0; i < 120; i++) __game.tick(0.05);
+      const during = __game.sounds.slice(n0).filter((x) => /bark/.test(x.name)).length;
+      for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+      const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+      return { during, total: __game.sounds.slice(n0).filter((x) => /bark/.test(x.name)).length };
+    });
+    ok(once.during === 0 && once.total === 1, `nenhum latido durante a fase e só um ao vencer (${once.during} antes, ${once.total} no total)`);
+    const lose = await ev(page, () => { __game.start(3, { lives: 1 }); __game.noCatch = false; __game.freezeVets = true; __game.sounds.splice(0); const n0 = 0; for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); return { state: __game.state, barks: __game.sounds.slice(n0).filter((x) => /bark/.test(x.name)).length }; });
+    ok(lose.state === "lost" && lose.barks === 0, "ao perder a última vida o cachorrinho não late (o som da derrota é o de sempre)");
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };

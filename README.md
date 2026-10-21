@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.2 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.3 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -173,6 +173,7 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 | perder uma vida (também esmagado por bloco, sem a captura) | três notas descendo |
 | pegar uma vida nova (depois do som do item) | seis notas alegres |
 | passar de fase | fanfarra (1,25 s) |
+| completar a fase (0.15.3, 0,9 s depois do começo da fanfarra) | o **cachorrinho late**, conforme o tamanho dele: **filhote** dois "ai-ai" agudos (1250 e 1350 Hz, 0,26 s), **jovem** dois "uau" médios (540 e 500 Hz, 0,4 s), **adulto** dois "uó" graves e fortes (250 e 230 Hz, 0,65 s) |
 | fim de jogo (sem vidas ou "os pontos não bastaram") | quatro notas descendo (1,2 s) |
 | escolher um reforço e ligar o som | toque curto de confirmação |
 

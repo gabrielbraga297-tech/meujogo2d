@@ -16,9 +16,9 @@
   else root.Sound = api;
 })(typeof window !== "undefined" ? window : globalThis, function (root) {
   const KEY = "cachorrinho.som.v1";   // preferência guardada: {"m":0|1 (mudo),"v":volume 0..1}
-  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick"]);
+  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3"]);
   // Duração máxima de cada som, em segundos (o som audível nunca passa disso).
-  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2 });
+  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8 });
   const DEFAULT_VOLUME = 0.35;        // ganho mestre padrão (baixo e agradável)
   const MIN_GAP_MS = 60;              // o mesmo som não repete antes disso
   const MAX_VOICES = 8;               // no máximo 8 sons ao mesmo tempo
@@ -238,6 +238,32 @@
       });
     },
 
+    // Latido do cachorrinho ao completar a fase (0.15.3); o som muda com o tamanho dele.
+    // Filhote: dois "ai-ai!" agudos e curtinhos (triangular subindo de 1250 para 1690 Hz, com vibrato e um sopro de ruído agudo).
+    bark1(s) {
+      [[0, 1250], [0.15, 1350]].forEach(([at, f]) => {
+        s.tone({ at, dur: 0.11, f, f2: f * 1.35, type: "triangle", lp: 3600, vib: [28, 45], gain: 0.5, a: 0.008, r: 0.035, sus: 0.3 });
+        s.tone({ at, dur: 0.11, f: f * 2, f2: f * 2.5, type: "sine", gain: 0.13, a: 0.008, r: 0.035, sus: 0.2 });
+        s.noise({ at, dur: 0.045, type: "bandpass", f: 3400, q: 1.1, gain: 0.18, a: 0.006, r: 0.02, sus: 0.1, off: 0.4 });
+      });
+    },
+    // Jovem: dois "uau!" médios (dente de serra de 540 caindo para 430 Hz, passa-baixa que fecha como a vogal, estalo de ruído no começo).
+    bark2(s) {
+      [[0, 540], [0.22, 500]].forEach(([at, f]) => {
+        s.tone({ at, dur: 0.17, f, f2: f * 0.78, type: "sawtooth", lp: 2200, lp2: 800, q: 2.5, gain: 0.42, a: 0.01, r: 0.06, sus: 0.35 });
+        s.tone({ at, dur: 0.17, f: f / 2, f2: f * 0.39, type: "triangle", gain: 0.22, a: 0.01, r: 0.06, sus: 0.3 });
+        s.noise({ at, dur: 0.07, type: "bandpass", f: 1500, q: 0.9, gain: 0.25, a: 0.006, r: 0.03, sus: 0.1, off: 0.7 });
+      });
+    },
+    // Adulto: "UÓ-UÓ!" grave e forte (dente de serra de 250 caindo para 135 Hz, quadrada uma oitava abaixo, ruído grave de peito).
+    bark3(s) {
+      [[0, 250, 1], [0.38, 230, 0.85]].forEach(([at, f, g]) => {
+        s.tone({ at, dur: 0.27, f, f2: f * 0.55, type: "sawtooth", lp: 1300, lp2: 450, q: 3, gain: 0.5 * g, a: 0.012, r: 0.1, sus: 0.3 });
+        s.tone({ at, dur: 0.27, f: f / 2, f2: f * 0.28, type: "square", lp: 500, gain: 0.2 * g, a: 0.012, r: 0.1, sus: 0.3 });
+        s.noise({ at, dur: 0.11, type: "lowpass", f: 1700, f2: 600, q: 0.8, gain: 0.35 * g, a: 0.008, r: 0.05, sus: 0.1, off: 0.9 });
+      });
+    },
+
     // Escolher um reforço no menu: "plim" senoidal curto.
     pick(s) {
       s.tone({ at: 0, dur: 0.18, f: hz("G6"), type: "sine", gain: 0.55, a: 0.01, r: 0.04, sus: 0.02 });
@@ -246,7 +272,7 @@
   };
 
   // Ajuste fino de volume de cada som (para todos soarem com força parecida).
-  const LEVEL = { ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2 };
+  const LEVEL = { ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2, bark1: 1.0, bark2: 1.0, bark3: 1.0 };
 
   // Agenda o som `name` em `destination` (um nó de um BaseAudioContext qualquer, real ou offline) a partir do instante `t0` (s).
   // Devolve a duração do som em segundos (0 se o nome não existe). Não depende de nenhum estado: pode ser chamada à vontade.
