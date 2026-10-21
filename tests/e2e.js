@@ -3339,10 +3339,11 @@ const PAGE_HELPERS = () => {
       __game.start(1); __game.freezeVets = true; __game.items.forEach((i) => { i.life = false; });
       const it = __game.items[0]; it.life = true;
       __game.player.x = 700; __game.player.y = 500; // longe do item, para a câmera mostrar o item
-      const k = __game.view.k * __game.view.zoom;
       const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const grab = () => { const c = document.getElementById("game").getContext("2d"), x = Math.round((it.x + 8 - __game.view.camX) * k), y = Math.round((it.y - 4 - __game.view.camY) * k); return Array.from(c.getImageData(x - 8, y - 14, 16, 14).data).join(","); };
-      await frame(); const withLife = grab(); it.life = false; await frame(); const without = grab();
+      const grab = () => { const k = __game.view.k * __game.view.zoom, c = document.getElementById("game").getContext("2d"), x = Math.round((it.x + 8 - __game.view.camX) * k), y = Math.round((it.y - 4 - __game.view.camY) * k); return Array.from(c.getImageData(x - 8, y - 14, 16, 14).data).join(","); };
+      // (o placar reajusta o tamanho da tela nos primeiros quadros da fase: espera o tamanho parar de mudar antes de comparar)
+      for (let q = 0, last = -1, calm = 0; q < 60 && calm < 4; q++) { await frame(); const sz = __game.view.k * __game.view.zoom + "|" + document.getElementById("game").width; calm = sz === last ? calm + 1 : 0; last = sz; }
+      const withLife = grab(); it.life = false; await frame(); const without = grab();
       return { same: withLife === without };
     });
     ok(heart.same, "um item com vida extra é desenhado igual a um item sem: nenhum coração à mostra");
