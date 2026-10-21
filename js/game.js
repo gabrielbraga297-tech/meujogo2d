@@ -96,7 +96,7 @@
   const SHIELD_TIME = 10, ICE_TIME = 6, TURBO_TIME = 8, TURBO_FACTOR = 1.4, MAGNET_TIME = 12, MAGNET_RADIUS = 4 * TILE; // s de cada efeito (o reforço Osso poderoso soma 4 s por nível), × velocidade do cachorrinho, px
   const BONE_LABEL = { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" };
   // Bolinhas (0.15.8, a partir da Fase 2): cachorros adoram correr atrás de bolinhas. Cada bolinha vale 50 pontos e FOGE rolando quando o cachorrinho chega a 3 tiles: ele tem de correr atrás dela (ela quica nas paredes e para sozinha).
-  const BALL_R = 7, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
+  const BALL_R = 8, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
   const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
   const BALL_COLORS = ["#ff5a5a", "#ffd23f", "#4fc3ff", "#7be07b"];
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
@@ -2119,6 +2119,14 @@
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
     for (const b of balls) {
       if (b.taken) continue;
+      { // um bloco que desliza por cima de uma bolinha a empurra para o lado livre mais perto (ela não fica presa por baixo dele)
+        const box = { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }, hit = solids.find((o) => overlap(box, o));
+        if (hit) {
+          const outs = [[hit.x - BALL_R - 0.5, b.y], [hit.x + hit.w + BALL_R + 0.5, b.y], [b.x, hit.y - BALL_R - 0.5], [b.x, hit.y + hit.h + BALL_R + 0.5]].sort((p, q) => Math.hypot(p[0] - b.x, p[1] - b.y) - Math.hypot(q[0] - b.x, q[1] - b.y));
+          const free = outs.find(([x, y]) => { const bx = { x: x - BALL_R, y: y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }; return x > BALL_R && y > BALL_R && x < WORLD_W - BALL_R && y < WORLD_H - BALL_R && !solids.some((o) => overlap(bx, o)); });
+          if (free) { b.x = free[0]; b.y = free[1]; b.vx = 0; b.vy = 0; }
+        }
+      }
       const dx = b.x - px, dy = b.y - py;
       if (Math.hypot(dx, dy) < BALL_SCARE && Math.hypot(b.vx, b.vy) < 40 && lineClear(px, py, b.x, b.y)) { // chute: foge pelo eixo em que o cachorrinho está mais perto
         const k = ballKick(levelId);

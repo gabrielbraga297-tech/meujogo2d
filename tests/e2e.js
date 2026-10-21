@@ -7289,6 +7289,20 @@ const PAGE_HELPERS = () => {
     ok(errs.length === e0, "nenhum erro de JS nessa parte");
   });
 
+  // =====================================================================
+  await section("0.15.8: o bloco que desliza por cima da bolinha a empurra para o lado livre mais perto", async () => {
+    await fresh(page);
+    const r = await ev(page, () => {
+      __game.autoStart = true; __game.allBlocks = true; __game.start(3); __game.freezeVets = true; __game.noCatch = true;
+      const bk = __game.blocks[0], cx = bk.x + 16, cy = bk.y + 16; // (blocos de 1 tile na Fase 3)
+      __game.balls = [{ x: cx, y: cy, vx: 0, vy: 0, taken: false, hue: 0 }];
+      __game.player.x = 36; __game.player.y = 36; __game.tick(0.016);
+      const b = __game.balls[0], over = __game.blocks.some((k) => b.x + 8 > k.x && b.x - 8 < k.x + 32 && b.y + 8 > k.y && b.y - 8 < k.y + 32);
+      return { over, taken: b.taken, moved: Math.round(Math.hypot(b.x - cx, b.y - cy)), still: b.vx === 0 && b.vy === 0 };
+    });
+    ok(!r.over && !r.taken && r.moved >= 8 && r.still, `uma bolinha embaixo de um bloco é empurrada para fora dele (andou ${r.moved} px e ficou parada)`);
+  });
+
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
