@@ -3897,10 +3897,11 @@ const PAGE_HELPERS = () => {
   await section("0.10.0: labirintos com desenho de cidade nas Fases 1 a 10 (quarteirões ligados por ruas; Fases 1 a 5 mais fáceis, 9 e 10 as mais difíceis)", async () => {
     await fresh(page);
     const LV = await ev(page, () => __game.levels.map((l) => ({ id: l.id, map: l.map, maze: l.maze, blocks: l.blocks, nv: l.vets.length })));
-    const SIZE = { 1: [25, 18], 2: [25, 18], 3: [25, 18], 4: [41, 29], 5: [43, 29], 6: [51, 31], 7: [51, 39], 8: [53, 39], 9: [61, 39], 10: [63, 41] };
-    const NV = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6 };
+    const SIZE = { 1: [25, 18], 2: [25, 18], 3: [25, 18], 4: [41, 29], 5: [43, 29], 6: [51, 31], 7: [51, 39], 8: [53, 39], 9: [61, 39], 10: [63, 41], 11: [65, 41], 12: [67, 41], 13: [71, 43], 14: [73, 43], 15: [75, 45], 16: [75, 49], 17: [77, 49], 18: [79, 51], 19: [81, 51], 20: [83, 53] };
+    const NV = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6, 11: 5, 12: 5, 13: 6, 14: 6, 15: 6, 16: 7, 17: 7, 18: 8, 19: 8, 20: 8 };
     const DOORS = { 1: 0, 2: 0, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 6, 10: 6 }, WALLS = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 3, 6: 4, 7: 4, 8: 5, 9: 6, 10: 6 };
-    const ROUTES = { 1: 3, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3, 9: 3, 10: 3 };
+    for (let n = 11; n <= 20; n++) { DOORS[n] = 6; WALLS[n] = 6; }
+    const ROUTES = { 1: 3, 2: 2, 3: 2 }; for (let n = 4; n <= 20; n++) ROUTES[n] = 3;
     const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     // caminhos entre duas células sem célula em comum (fluxo máximo com capacidade 1 por célula)
     const disjoint = (adj, s, t) => {
@@ -3950,7 +3951,7 @@ const PAGE_HELPERS = () => {
         routes: disjoint(adj, p[0] + "," + p[1], e[0] + "," + e[1]), P, E, V, exitD: Math.min(...E.map((t) => dist.get(t + "") ?? 1e9)), reach: V.every((t) => dist.has(t + "")), floors,
         border: [...M[0], ...M[R - 1], ...M.map((r) => r[0]), ...M.map((r) => r[C - 1])].every((k) => k === "#"), blocks: L.blocks };
     }
-    for (let n = 1; n <= 10; n++) {
+    for (let n = 1; n <= 20; n++) {
       const c = info[n];
       ok(c.C === SIZE[n][0] && c.R === SIZE[n][1] && c.border && c.P.length === 1 && c.E.length === 6 && c.V.length === NV[n] && c.reach, `Fase ${n}: labirinto de ${c.C} × ${c.R} tiles cercado por prédios, 1 início, saída 3 × 2 e ${c.V.length} agentes da carrocinha alcançáveis`);
       ok(c.cellsOpen && c.stray === 0 && c.P[0][0] === c.cx[c.p[0]][0] && c.E.every(([x, y]) => x >= c.cx[c.e[0]][0] && x < c.cx[c.e[0]][0] + c.cx[c.e[0]][1] && y >= c.cy[c.e[1]][0] && y < c.cy[c.e[1]][0] + c.cy[c.e[1]][1]) && c.p[0] === 0 && c.e[0] === c.nx - 1,
@@ -3959,19 +3960,20 @@ const PAGE_HELPERS = () => {
       ok(c.blocks.filter((b) => !b.wall).length === DOORS[n] && c.blocks.filter((b) => b.wall).length === WALLS[n] && c.viela >= DOORS[n], `Fase ${n}: ${DOORS[n]} portas de bloco e ${WALLS[n]} paredes que se movem`);
     }
     // pátio da praça (Fases 4 a 10): célula central 7 × 5 com os postos dos agentes e as 4 vans nos cantos
-    for (let n = 4; n <= 10; n++) {
+    for (let n = 4; n <= 20; n++) {
       const c = info[n], cx0 = c.C >> 1, cy0 = c.R >> 1, mi = c.nx >> 1, mj = c.ny >> 1;
       ok(c.cx[mi][1] === 7 && c.cy[mj][1] === 5 && c.V.every(([x, y]) => Math.abs(x - cx0) <= 2 && Math.abs(y - cy0) <= 1) && [[-3, -2], [3, -2], [-3, 2], [3, 2]].every(([dc, dr]) => c.ch(cx0 + dc, cy0 + dr) === "X"), `Fase ${n}: a praça da carrocinha (7 × 5) fica no centro, com os postos dos agentes e as 4 vans nos cantos`);
     }
     // quão confuso é: poucos becos sem saída nas Fases 1 a 5, muitos nas 9 e 10, e cada fase de 4 a 10 tem mais becos, quarteirões e caminho que a anterior
-    const deadN = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => info[n].dead), cellsN = [4, 5, 6, 7, 8, 9, 10].map((n) => info[n].cells), pathN = [4, 5, 6, 7, 8, 9, 10].map((n) => info[n].exitD);
+    const upTo = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+    const deadN = upTo(1, 20).map((n) => info[n].dead), cellsN = upTo(4, 20).map((n) => info[n].cells), pathN = upTo(4, 20).map((n) => info[n].exitD);
     ok(deadN.slice(0, 5).every((d) => d <= 3) && deadN[8] >= 15 && deadN[9] >= 15, `becos sem saída por fase: ${deadN.join(", ")} (no máximo 3 nas Fases 1 a 5 e 15 ou mais nas Fases 9 e 10)`);
-    ok([4, 5, 6, 7, 8, 9].every((i) => deadN[i] >= deadN[i - 1]) && deadN[9] > deadN[3] + 10, `a partir da Fase 4 cada fase tem pelo menos tantos becos sem saída quanto a anterior (${deadN.slice(3).join(" ≤ ")})`);
-    ok(cellsN.every((v, i) => i === 0 || v >= cellsN[i - 1]) && cellsN[0] >= 30 && cellsN[6] >= 70, `o labirinto das Fases 4 a 10 tem cada vez mais quarteirões (${cellsN.join(", ")})`);
-    ok(pathN.every((v, i) => i === 0 || v > pathN[i - 1]) && pathN[0] >= 40, `o caminho do início à saída cresce de uma fase para a seguinte (${pathN.join(" < ")} passos)`);
+    ok([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].every((i) => deadN[i] >= deadN[i - 1]) && deadN[9] > deadN[3] + 10 && deadN[19] >= 30, `a partir da Fase 4 cada fase (até a 20) tem pelo menos tantos becos sem saída quanto a anterior (${deadN.slice(3).join(" ≤ ")})`);
+    ok(cellsN.every((v, i) => i === 0 || v >= cellsN[i - 1]) && cellsN[0] >= 30 && cellsN[6] >= 70 && cellsN[16] >= 110, `o labirinto das Fases 4 a 20 tem cada vez mais quarteirões (${cellsN.join(", ")})`);
+    ok(pathN.every((v, i) => i === 0 || v > pathN[i - 1]) && pathN[0] >= 40 && pathN[16] >= 110, `o caminho do início à saída cresce de uma fase para a seguinte (${pathN.join(" < ")} passos)`);
     // peças móveis: trilhos em chão livre, longe uma da outra e do início, da saída e dos postos; o chão fica ligado em qualquer posição delas
     const problems = [];
-    for (let n = 3; n <= 10; n++) {
+    for (let n = 3; n <= 20; n++) {
       const c = info[n], tiles = (b, k) => { const [x, y] = b[k], [w, h] = b.size || [1, 1], o = []; for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) o.push([x + i, y + j]); return o; };
       const tracks = c.blocks.map((b) => [...tiles(b, "from"), ...tiles(b, "to")]);
       tracks.forEach((t, i) => { if (!t.every(([x, y]) => c.ch(x, y) === ".")) problems.push(`F${n} peça ${i}: trilho fora do chão`); });
@@ -3994,7 +3996,7 @@ const PAGE_HELPERS = () => {
       }
       if (bad) problems.push(`F${n}: em ${bad} combinações de posição das peças o chão não fica ligado ou a saída fica isolada`);
     }
-    ok(problems.length === 0, `peças móveis das Fases 3 a 10: trilhos em chão livre, afastados (3+ tiles entre si, 6 do início, 5 da saída, 3 dos postos), nichos fechados, sempre 1 tile livre ao lado das paredes e o chão fica ligado em todas as combinações${problems.length ? " — problema: " + problems.slice(0, 4).join("; ") : ""}`);
+    ok(problems.length === 0, `peças móveis das Fases 3 a 20: trilhos em chão livre, afastados (3+ tiles entre si, 6 do início, 5 da saída, 3 dos postos), nichos fechados, sempre 1 tile livre ao lado das paredes e o chão fica ligado em todas as combinações${problems.length ? " — problema: " + problems.slice(0, 4).join("; ") : ""}`);
     // jogos salvos: o jogo novo grava a revisão dos mapas; um jogo salvo de mapas antigos é descartado, com um aviso no menu (recordes e progresso ficam)
     await playLevel(page, 5, { keepSave: true }); await ev(page, () => { __game.freezeVets = true; __game.save(); });
     const rev = await ev(page, () => { const g = Records.createStore(localStorage).loadGame("Totó"); return { mz: g.snap.mz, l: g.snap.l }; });
