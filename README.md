@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.6 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.7 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -90,6 +90,7 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
 | Agentes da carrocinha (no centro do mapa) | 5 | 5 | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
+| Ossos de tipo novo (além de 3 comuns) | ouro, gelo | gelo, turbo | ouro, gelo, ímã | ouro, turbo, ímã | gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | 2 ouros, gelo, turbo, ímã | ouro, 2 gelos, turbo, ímã |
 | Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 4 | 5 | 5 | 6 | 6 | 7 |
 | Velocidade dos gatos (patrulha / perseguição px/s; ouvido em passos) | 130 / 200; 7 | 132 / 203; 7 | 134 / 205; 7 | 135 / 208; 7 | 137 / 211; 8 | 139 / 214; 8 | 141 / 216; 8 | 143 / 219; 8 | 144 / 222; 9 | 146 / 224; 9 |
 | Vidas escondidas (sorteio por jogo) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
@@ -147,6 +148,19 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 
+## Ossos de tipos novos (0.15.7, Fases 11 a 20)
+**A partir da Fase 11 há ossos de cores diferentes, cada um com um poder.** Todos valem **150 pontos** e dão **+10% de velocidade** até o fim da fase (como o osso comum), contam para a missão *pegar todos os ossos* e podem esconder uma vida extra; o que muda é o poder (o *Osso poderoso* soma **+4 s por nível** em todos os efeitos). Os tipos de osso de cada fase são fixos (`boneMix` em `js/game.js`), mas **quais ossos ficam em qual lugar é sorteado a cada jogo**; em toda fase há **pelo menos 3 ossos comuns**, para que a missão *assustar* seja sempre possível.
+
+| Osso | Cor | Poder |
+|---|---|---|
+| **Osso do poder** (comum) | branco | o de sempre: 35 s em que os agentes viram carteiros e os gatos fogem, e quem encosta neles ganha pontos |
+| **Osso de ouro** | dourado | **escudo dourado por 10 s**: nada pega o cachorrinho e os blocos não o esmagam (não assusta ninguém) |
+| **Osso de gelo** | azul-claro | **congela agentes e gatos por 6 s** (viram blocos de gelo e ficam inofensivos; derretem piscando e o cachorrinho ganha 1 s de proteção) |
+| **Osso turbo** | laranja | **+40% de velocidade por 8 s** (rastro de fogo atrás do cachorrinho) |
+| **Osso ímã** | roxo | **as rações a até 4 quadrados, à vista, vêm sozinhas por 12 s** (círculo roxo tracejado) |
+
+Os efeitos ativos aparecem numa **faixa no alto do jogo** (*Escudo 8 s · Gelo 3 s*) e podem se somar. O jogo salvo guarda o tipo de cada osso e os efeitos que ainda faltam. Composição por fase (`boneMix`): 11 = 3 comuns + ouro + gelo; 12 = 3 + gelo + turbo; 13 = 3 + ouro + gelo + ímã; 14 = 3 + ouro + turbo + ímã; 15 = 3 + gelo + turbo + ímã; 16 a 18 = 3 + ouro + gelo + turbo + ímã; 19 = 3 + 2 ouros + gelo + turbo + ímã; 20 = 3 + ouro + 2 gelos + turbo + ímã.
+
 ## Os gatos (0.15.5, Fases 11 a 20)
 Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 4, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
 
@@ -188,7 +202,7 @@ Cada fase é um **lugar que o cachorrinho conhece**, com chão, paredes e "caixa
 O aviso de começar cada fase diz o lugar (*Casa — Fase 3: 2 agentes da carrocinha*), a lista de fases mostra **Fase 3 · Casa** e a vitória começa por *Casa · Vidas restantes…*. Nas cidades (Fases 4 a 10) as 4 caixas dos cantos do pátio da praça central são **vans da carrocinha**. O teste `0.14.0` confere os 10 nomes, o aviso, a lista, a vitória, que a cor média do chão de cada lugar é diferente das outras e o mar da Praia.
 
 ## Crescimento do cachorrinho (0.15.0)
-O cachorrinho **começa filhote** e vai ficando adulto à medida que passa de fase e ganha reforços. O crescimento é `clamp((fase − 1 + 0,35 × reforços) ÷ 9, 0, 1)` (reforços = soma dos níveis de Patas ligeiras, Osso poderoso, Coração maior, Pelo grosso e Carrocinha lenta; a *Vida extra* não conta) e dá três tamanhos:
+O cachorrinho **começa filhote** e vai ficando adulto à medida que passa de fase e ganha reforços. O crescimento é `clamp((fase − 1 + 0,35 × reforços) ÷ 9, 0, 1)` (reforços = soma dos níveis de todos os reforços com nível: Patas ligeiras, Osso poderoso, Coração maior, Pelo grosso, Carrocinha lenta e, a partir da Fase 11, Patas de veludo, Faro e Ímã de ração; a *Vida extra* não conta) e dá três tamanhos:
 
 | Tamanho | Crescimento | Fases (sem reforços) | Desenho |
 |---|---|---|---|
@@ -199,7 +213,7 @@ O cachorrinho **começa filhote** e vai ficando adulto à medida que passa de fa
 O corpo muda de tamanho de forma contínua (`drawDog` em `js/game.js`), mas o tamanho de contato (24 × 24), a velocidade e as regras **não mudam**; os pés ficam no mesmo lugar. Os ganchos de teste `__game.growth` e `__game.stage` mostram o valor; a pausa diz *Cachorrinho: jovem.* O teste `0.15.0` confere as fases de crescimento, o efeito dos reforços, o desenho em pixels (de frente, de costas e de lado), as cores da coleira, o contato 24 × 24, a pausa e o jogo salvo.
 
 ## Reforços (0.8.0)
-Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 opções**, sorteadas a cada vitória entre os 6 que ainda valem (se sobram 3 ou menos, aparecem todos; sempre na mesma ordem da tabela abaixo), e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**: o botão *Próxima fase* da vitória abre a tela **Escolha um reforço**, e a fase seguinte só começa depois da escolha (com *Voltar* ou Esc se volta ao resultado). Os reforços empilham em níveis até um máximo:
+Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 opções**, sorteadas a cada vitória entre os que ainda valem (6; **9 a partir da Fase 11**, depois de vencer a Fase 10) (se sobram 3 ou menos, aparecem todos; sempre na mesma ordem da tabela abaixo), e ele **fica com ele nas fases seguintes** da mesma sequência (*Próxima fase*). Só se pode escolher **1 por fase**: o botão *Próxima fase* da vitória abre a tela **Escolha um reforço**, e a fase seguinte só começa depois da escolha (com *Voltar* ou Esc se volta ao resultado). Os reforços empilham em níveis até um máximo:
 
 | Reforço | Efeito por nível | Máximo |
 |---|---|---|
@@ -209,6 +223,9 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 
 | **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
 | **Pelo grosso** | +2 s de proteção depois de perder uma vida (2 s → até 8 s) | 3 níveis |
 | **Carrocinha lenta** | agentes 8% mais lentos (patrulha, perseguição e fuga dos carteiros; **a partir da 0.15.5 vale também para os gatos**) | 4 níveis (−32%) |
+| **Patas de veludo** *(0.15.7, a partir da Fase 11)* | agentes e gatos **notam você 1 quadrado mais tarde** (alcance do "!" e ouvido dos gatos menores) | 3 níveis (−3 quadrados) |
+| **Faro** *(0.15.7, a partir da Fase 11)* | uma **seta** em volta do cachorrinho aponta o **osso mais perto**; no nível 2 também a **saída aberta** (seta verde) | 2 níveis |
+| **Ímã de ração** *(0.15.7, a partir da Fase 11)* | as **rações à vista** a até 2,5 / 3,5 / 4,5 quadrados vêm sozinhas | 3 níveis |
 
 - Começar uma fase pelo menu ou usar *Jogar novamente* começa **sem reforços** (como começa com 3 vidas). *Tentar novamente* e *Continuar jogo* mantêm os reforços da partida (eles ficam no jogo salvo, campo `up`).
 - O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.
