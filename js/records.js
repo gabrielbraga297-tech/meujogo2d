@@ -32,13 +32,13 @@
 
   // Pontuação da fase = 100 por ração + bônus de tempo − 50 por vida perdida − 100 por cada nova tentativa
   // (reinício depois de perder todas as vidas). PODE FICAR NEGATIVA.
-  const RATION_POINTS = 100, BONE_POINTS = 150 /* 50 do osso + 100 de bônus */, POSTMAN_POINTS = 100, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
+  const RATION_POINTS = 100, BONE_POINTS = 150 /* 50 do osso + 100 de bônus */, POSTMAN_POINTS = 100, BALL_POINTS = 50 /* bolinha (0.15.8) */, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
   const count = (n) => (Number.isInteger(n) && n > 0 ? n : 0);
-  // `extra` (opcional): { bones: ossos pegos (150 pontos cada), postmen: carteiros atingidos (100 cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
+  // `extra` (opcional): { bones: ossos pegos (150 pontos cada), postmen: carteiros atingidos (100 cada), balls: bolinhas pegas (50 cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
   // lifePenalty: pontos perdidos por vida perdida (padrão 50; a Fase 4 e a Fase 5 descontam 200), missionBonus: pontos por cumprir a missão da fase (Fases 11 a 20; padrão 0) }
   function levelPoints(rations, timeMs, livesLost, retries, extra = {}) {
     const lifePenalty = Number.isInteger(extra.lifePenalty) && extra.lifePenalty >= 0 && extra.lifePenalty <= 10000 ? extra.lifePenalty : LIFE_PENALTY;
-    return count(rations) * RATION_POINTS + count(extra.bones) * BONE_POINTS + count(extra.postmen) * POSTMAN_POINTS + timeBonus(timeMs, extra.bonusStep) + count(extra.missionBonus) - count(livesLost) * lifePenalty - count(retries) * RETRY_PENALTY;
+    return count(rations) * RATION_POINTS + count(extra.bones) * BONE_POINTS + count(extra.postmen) * POSTMAN_POINTS + count(extra.balls) * BALL_POINTS + timeBonus(timeMs, extra.bonusStep) + count(extra.missionBonus) - count(livesLost) * lifePenalty - count(retries) * RETRY_PENALTY;
   }
 
   // Maior pontuação vence; em caso de empate, o menor tempo. (a e b: { p, t })
@@ -399,5 +399,5 @@
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,
-    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
+    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
 });

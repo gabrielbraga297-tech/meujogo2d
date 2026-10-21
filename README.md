@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.7 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.8 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -55,6 +55,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | Mapa | **labirinto do quintal**: 25 × 18, 20 quarteirões, **nenhum beco sem saída** | **outro labirinto** (25 × 18) com 2 becos sem saída | **labirinto da casa** (25 × 18) com 3 becos e portas de bloco | **labirinto de cidade** (41 × 29 tiles; a câmera segue o cachorrinho): 35 quarteirões, **sem becos** | **outro labirinto de cidade** (43 × 29), 2 becos, com avenidas de paredes que se movem |
 | Rações | 5 | **7** | **7** | **15** | **20** |
 | Ossos | — | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de **35 s**) |
+| Bolinhas (0.15.8, +50 cada) | — | 1 | 1 | 2 | 2 |
 | Vida extra escondida (sem aviso: só se descobre ao pegar o item) | 1 ração | **1 ou 2** itens (sorteado a cada jogo) | **1 ou 2** (no máximo 1 num osso) | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
 | Agentes da carrocinha | 1 | **2**, em quarteirões longe do início e da saída | **2**, em quarteirões longe do início e da saída | **3**, na **praça** do centro | **3**, na **praça** do centro |
 | Dificuldade dos agentes da carrocinha | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 | igual à Fase 4 |
@@ -69,6 +70,7 @@ Cidades cada vez maiores, a partir da Fase 6: mais rações, mais ossos, **mais 
 |---|---|---|---|---|---|
 | Mapa | 51 × 31 | 51 × 39 | 53 × 39 | 61 × 39 | 63 × 41 |
 | Rações / ossos | 24 / 3 | 28 / 3 | 32 / 4 | 36 / 4 | 40 / 5 |
+| Bolinhas (+50 cada) | 3 | 3 | 3 | 3 | 3 |
 | Agentes da carrocinha (no centro do mapa) | 3 | 4 | 5 | 5 | 6 |
 | Vidas escondidas (sorteio por jogo) | 3 ou 4 (no máximo 1 num osso) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
 | Alcance do "!" | 11 quadrados | 12 | 13 | 14 | 15 |
@@ -89,6 +91,7 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 |---|---|---|---|---|---|---|---|---|---|---|
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
+| Bolinhas (+50 cada) | 4 | 4 | 4 | 4 | 4 | 5 | 5 | 5 | 5 | 5 |
 | Agentes da carrocinha (no centro do mapa) | 5 | 5 | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
 | Ossos de tipo novo (além de 3 comuns) | ouro, gelo | gelo, turbo | ouro, gelo, ímã | ouro, turbo, ímã | gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | 2 ouros, gelo, turbo, ímã | ouro, 2 gelos, turbo, ímã |
 | Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 4 | 5 | 5 | 6 | 6 | 7 |
@@ -160,6 +163,9 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 | **Osso ímã** | roxo | **as rações a até 4 quadrados, à vista, vêm sozinhas por 12 s** (círculo roxo tracejado) |
 
 Os efeitos ativos aparecem numa **faixa no alto do jogo** (*Escudo 8 s · Gelo 3 s*) e podem se somar. O jogo salvo guarda o tipo de cada osso e os efeitos que ainda faltam. Composição por fase (`boneMix`): 11 = 3 comuns + ouro + gelo; 12 = 3 + gelo + turbo; 13 = 3 + ouro + gelo + ímã; 14 = 3 + ouro + turbo + ímã; 15 = 3 + gelo + turbo + ímã; 16 a 18 = 3 + ouro + gelo + turbo + ímã; 19 = 3 + 2 ouros + gelo + turbo + ímã; 20 = 3 + ouro + 2 gelos + turbo + ímã.
+
+## Bolinhas (0.15.8, a partir da Fase 2)
+**Cachorros adoram correr atrás de bolinhas.** Cada fase, a partir da Fase 2, tem **bolinhas coloridas** espalhadas pelo chão: **1 nas Fases 2 e 3, 2 nas Fases 4 e 5, 3 nas Fases 6 a 10, 4 nas Fases 11 a 15 e 5 nas Fases 16 a 20**. Cada bolinha vale **+50 pontos** (o placar mostra **BOLINHAS n/N**), mas ela **foge**: quando o cachorrinho chega a **3 tiles** dela (e a vê), ela é **chutada** para longe pelo eixo em que ele está, **rola, quica nas paredes e nos blocos e para sozinha** depois de uns 5 tiles (a velocidade do chute cresce com a fase: 196 px/s na Fase 2, 340 na Fase 20; o cachorrinho anda de 200 a 252). É só correr atrás dela e encostar: ela some com um *plim*. As bolinhas **não são obrigatórias** (a saída abre sem elas, e elas contam para os pontos mínimos), os agentes e os gatos não ligam para elas, e se o cachorrinho perde uma vida as bolinhas ficam onde estão. O lugar de cada bolinha é sorteado no começo de cada jogo (fora do caminho dos itens, dos trilhos dos blocos e do início); o jogo salvo guarda a posição e quais já foram pegas.
 
 ## Os gatos (0.15.5, Fases 11 a 20)
 Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 4, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
@@ -249,6 +255,7 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 | completar a fase (0.15.3, 0,9 s depois do começo da fanfarra) | o **cachorrinho late**, conforme o tamanho dele: **filhote** dois "ai-ai" agudos (1250 e 1350 Hz, 0,26 s), **jovem** dois "uau" médios (540 e 500 Hz, 0,4 s), **adulto** dois "uó" graves e fortes (250 e 230 Hz, 0,65 s) |
 | fim de jogo (sem vidas ou "os pontos não bastaram") | quatro notas descendo (1,2 s) |
 | escolher um reforço e ligar o som | toque curto de confirmação |
+| pegar uma bolinha (0.15.8) | o mesmo *plim* da escolha de reforço (sem som novo) |
 
 Os sons são **baixos por padrão** (volume 0,35) e foram medidos (pico, duração, cliques, equilíbrio de volume e diferença entre eles: 182 de 182 verificações); no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. **Menu, pausa, jogo carregado e reinício não tocam nada.** O botão **Som: ligado / desligado** (no menu e na pausa) e a tecla **M** ligam e desligam; a escolha fica em `localStorage` na chave `cachorrinho.som.v1` (separada do jogo salvo e das contas). O gancho de testes `window.__game.sounds` registra todo pedido de som (nome, instante e se tocou).
 
@@ -261,7 +268,7 @@ Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos p
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro (poder do osso) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro (poder do osso) + 50 por bolinha (0.15.8) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 

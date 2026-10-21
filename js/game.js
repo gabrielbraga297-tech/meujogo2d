@@ -95,6 +95,10 @@
   const BONE_KINDS = ["scare", "gold", "ice", "turbo", "magnet"];
   const SHIELD_TIME = 10, ICE_TIME = 6, TURBO_TIME = 8, TURBO_FACTOR = 1.4, MAGNET_TIME = 12, MAGNET_RADIUS = 4 * TILE; // s de cada efeito (o reforço Osso poderoso soma 4 s por nível), × velocidade do cachorrinho, px
   const BONE_LABEL = { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" };
+  // Bolinhas (0.15.8, a partir da Fase 2): cachorros adoram correr atrás de bolinhas. Cada bolinha vale 50 pontos e FOGE rolando quando o cachorrinho chega a 3 tiles: ele tem de correr atrás dela (ela quica nas paredes e para sozinha).
+  const BALL_R = 7, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
+  const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
+  const BALL_COLORS = ["#ff5a5a", "#ffd23f", "#4fc3ff", "#7be07b"];
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
@@ -950,9 +954,9 @@
     // lifePenalty = pontos perdidos por vida perdida (padrão 50); minPoints = pontos mínimos na fase para passar (padrão 0); bonePower = segundos do poder do osso (0 = sem poder);
     // crush = os blocos esmagam o cachorro (sem o poder do osso); note = frase curta na escolha de fase
     { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 0.8, alertTiles: alertTilesFor(1), maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
-    { id: 2, title: "Fase 2", map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
+    { id: 2, title: "Fase 2", balls: 1, map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
     {
-      id: 3, title: "Fase 3", map: MAP_3, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
+      id: 3, title: "Fase 3", map: MAP_3, balls: 1, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: agentes 10% mais lentos e cachorrinho 5% mais rápido
       maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
       maze: { x: [[1, 3], [7, 3], [11, 3], [15, 3], [21, 3]], y: [[1, 3], [5, 3], [9, 3], [14, 3]], p: [0, 1], e: [4, 2] },
@@ -962,7 +966,7 @@
       ],
     },
     {
-      id: 4, title: "Fase 4", map: MAP_4, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 15, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
+      id: 4, title: "Fase 4", map: MAP_4, balls: 2, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 15, bones: 2, extraLives: [3, 3], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(4), lifePenalty: 200, minPoints: 800, bonePower: 30, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3] },
       note: "labirinto de cidade com ruas largas, poder dos ossos e portas que esmagam",
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 7], [27, 3], [32, 3], [37, 3]], y: [[1, 3], [6, 3], [12, 5], [19, 3], [25, 3]], p: [0, 1], e: [6, 3] },
@@ -974,7 +978,7 @@
       ],
     },
     {
-      id: 5, title: "Fase 5", map: MAP_5, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 20, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
+      id: 5, title: "Fase 5", map: MAP_5, balls: 2, vets: [PHASE4_VET, PHASE4_VET, PHASE4_VET], rations: 20, bones: 2, extraLives: [4, 4], bonusStep: 20, dogSpeed: 0.945,
       alertTiles: alertTilesFor(5), lifePenalty: 200, minPoints: 1000, bonePower: 35, crush: true, blockEvery: BLOCK_EVERY, blockRange: { door: [1, 3], wall: [1, 3] },
       note: "mais avenidas: paredes que se movem, poder do osso de 35 s e 1000 pontos",
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 7], [28, 3], [34, 3], [39, 3]], y: [[1, 3], [6, 3], [12, 5], [20, 3], [25, 3]], p: [0, 1], e: [6, 3] },
@@ -989,7 +993,7 @@
       ],
     },
     {
-      id: 6, title: "Fase 6", map: MAP_6, vets: [PHASE6_VET, PHASE6_VET, PHASE6_VET], rations: 24, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.96,
+      id: 6, title: "Fase 6", map: MAP_6, balls: 3, vets: [PHASE6_VET, PHASE6_VET, PHASE6_VET], rations: 24, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.96,
       alertTiles: 11, lifePenalty: 250, minPoints: 1250, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [2, 4], wall: [2, 4] },
       note: "labirinto maior, mais ossos e mais peças móveis",
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [31, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [13, 5], [21, 3], [27, 3]], p: [0, 1], e: [8, 3] },
@@ -1006,7 +1010,7 @@
       ],
     },
     {
-      id: 7, title: "Fase 7", map: MAP_7, vets: [PHASE7_VET, PHASE7_VET, PHASE7_VET, PHASE7_VET], rations: 28, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.97,
+      id: 7, title: "Fase 7", map: MAP_7, balls: 3, vets: [PHASE7_VET, PHASE7_VET, PHASE7_VET, PHASE7_VET], rations: 28, bones: 3, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.97,
       alertTiles: 12, lifePenalty: 250, minPoints: 1400, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [2, 4] },
       note: "labirinto maior, mais rações e mais portas de bloco",
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 7], [32, 3], [37, 3], [42, 3], [47, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [8, 5] },
@@ -1024,7 +1028,7 @@
       ],
     },
     {
-      id: 8, title: "Fase 8", map: MAP_8, vets: [PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET], rations: 32, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.98,
+      id: 8, title: "Fase 8", map: MAP_8, balls: 3, vets: [PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET, PHASE8_VET], rations: 32, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.98,
       alertTiles: 13, lifePenalty: 250, minPoints: 1650, bonePower: 35, crush: true, blockEvery: 3, blockRange: { door: [3, 5], wall: [3, 5] },
       note: "labirinto enorme, 4 ossos e muitas paredes que se movem",
       maze: { x: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 7], [32, 3], [37, 3], [43, 3], [49, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 5], [24, 3], [30, 3], [35, 3]], p: [0, 1], e: [8, 5] },
@@ -1043,7 +1047,7 @@
       ],
     },
     {
-      id: 9, title: "Fase 9", map: MAP_9, vets: [PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET], rations: 36, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.99,
+      id: 9, title: "Fase 9", map: MAP_9, balls: 3, vets: [PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET, PHASE9_VET], rations: 36, bones: 4, extraLives: [3, 4], bonusStep: 20, dogSpeed: 0.99,
       alertTiles: 14, lifePenalty: 300, minPoints: 1800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2.5, blockRange: { door: [4, 6], wall: [4, 6] },
       note: "blocos e paredes mais rápidos; o cachorrinho renasce onde morreu",
       maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 3], [27, 7], [36, 3], [41, 3], [46, 3], [51, 3], [57, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 5], [24, 3], [29, 3], [35, 3]], p: [0, 1], e: [10, 5] },
@@ -1064,7 +1068,7 @@
       ],
     },
     {
-      id: 10, title: "Fase 10", map: MAP_10, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 10, title: "Fase 10", map: MAP_10, balls: 3, vets: [PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET, PHASE10_VET], rations: 40, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 15, lifePenalty: 300, minPoints: 2050, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 2, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "o maior labirinto até aqui, 6 agentes da carrocinha e blocos muito rápidos; renasce onde morreu",
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [28, 7], [38, 3], [44, 3], [49, 3], [54, 3], [59, 3]], y: [[1, 3], [7, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
@@ -1085,7 +1089,7 @@
       ],
     },
     {
-      id: 11, title: "Fase 11", map: MAP_11, vets: vetsOf(11, 5), rations: 44, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 11, title: "Fase 11", map: MAP_11, balls: 4, vets: vetsOf(11, 5), rations: 44, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 16, lifePenalty: 300, minPoints: 2300, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto ainda maior e mais agentes da carrocinha",
       cats: [[18, 32], [7, 27]], cat: { speed: 130, chaseSpeed: 200, hear: 7 },
@@ -1108,7 +1112,7 @@
       ],
     },
     {
-      id: 12, title: "Fase 12", map: MAP_12, vets: vetsOf(12, 5), rations: 46, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 12, title: "Fase 12", map: MAP_12, balls: 4, vets: vetsOf(12, 5), rations: 46, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 16, lifePenalty: 300, minPoints: 2450, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais rações e mais pontos",
       cats: [[33, 27], [46, 8], [58, 38]], cat: { speed: 132, chaseSpeed: 203, hear: 7 },
@@ -1131,7 +1135,7 @@
       ],
     },
     {
-      id: 13, title: "Fase 13", map: MAP_13, vets: vetsOf(13, 6), rations: 48, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 13, title: "Fase 13", map: MAP_13, balls: 4, vets: vetsOf(13, 6), rations: 48, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 17, lifePenalty: 325, minPoints: 2650, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto enorme: 13 × 7 quarteirões e 6 agentes",
       cats: [[23, 21], [2, 40], [58, 40]], cat: { speed: 134, chaseSpeed: 205, hear: 7 },
@@ -1154,7 +1158,7 @@
       ],
     },
     {
-      id: 14, title: "Fase 14", map: MAP_14, vets: vetsOf(14, 6), rations: 50, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 14, title: "Fase 14", map: MAP_14, balls: 4, vets: vetsOf(14, 6), rations: 50, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 17, lifePenalty: 325, minPoints: 2800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "blocos e paredes mais rápidos",
       cats: [[59, 14], [13, 28], [43, 8], [49, 28]], cat: { speed: 135, chaseSpeed: 208, hear: 7 },
@@ -1177,7 +1181,7 @@
       ],
     },
     {
-      id: 15, title: "Fase 15", map: MAP_15, vets: vetsOf(15, 6), rations: 52, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 15, title: "Fase 15", map: MAP_15, balls: 4, vets: vetsOf(15, 6), rations: 52, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 18, lifePenalty: 350, minPoints: 3000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais um bom pedaço de labirinto para explorar",
       cats: [[24, 15], [7, 42], [13, 22], [60, 29]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
@@ -1200,7 +1204,7 @@
       ],
     },
     {
-      id: 16, title: "Fase 16", map: MAP_16, vets: vetsOf(16, 7), rations: 54, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 16, title: "Fase 16", map: MAP_16, balls: 5, vets: vetsOf(16, 7), rations: 54, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 18, lifePenalty: 350, minPoints: 3200, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto de 13 × 9 quarteirões e 7 agentes",
       cats: [[19, 35], [72, 30], [30, 7], [66, 17], [24, 30]], cat: { speed: 139, chaseSpeed: 214, hear: 8 },
@@ -1223,7 +1227,7 @@
       ],
     },
     {
-      id: 17, title: "Fase 17", map: MAP_17, vets: vetsOf(17, 7), rations: 56, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 17, title: "Fase 17", map: MAP_17, balls: 5, vets: vetsOf(17, 7), rations: 56, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 19, lifePenalty: 375, minPoints: 3400, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "peças móveis ainda mais rápidas",
       cats: [[31, 30], [45, 7], [25, 24], [51, 30], [38, 46]], cat: { speed: 141, chaseSpeed: 216, hear: 8 },
@@ -1246,7 +1250,7 @@
       ],
     },
     {
-      id: 18, title: "Fase 18", map: MAP_18, vets: vetsOf(18, 8), rations: 58, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 18, title: "Fase 18", map: MAP_18, balls: 5, vets: vetsOf(18, 8), rations: 58, bones: 7, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 19, lifePenalty: 375, minPoints: 3600, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "8 agentes da carrocinha e muitos becos",
       cats: [[76, 31], [65, 25], [31, 8], [53, 2], [59, 2], [53, 37]], cat: { speed: 143, chaseSpeed: 219, hear: 8 },
@@ -1269,7 +1273,7 @@
       ],
     },
     {
-      id: 19, title: "Fase 19", map: MAP_19, vets: vetsOf(19, 8), rations: 60, bones: 8, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 19, title: "Fase 19", map: MAP_19, balls: 5, vets: vetsOf(19, 8), rations: 60, bones: 8, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 20, lifePenalty: 400, minPoints: 3800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "quase no fim: o labirinto mais enrolado até aqui",
       cats: [[66, 37], [32, 8], [32, 48], [20, 19], [72, 2], [26, 43]], cat: { speed: 144, chaseSpeed: 222, hear: 9 },
@@ -1292,7 +1296,7 @@
       ],
     },
     {
-      id: 20, title: "Fase 20", map: MAP_20, vets: vetsOf(20, 8), rations: 62, bones: 8, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
+      id: 20, title: "Fase 20", map: MAP_20, balls: 5, vets: vetsOf(20, 8), rations: 62, bones: 8, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 20, lifePenalty: 400, minPoints: 4000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "a Fase 20: o maior labirinto de todos",
       cats: [[33, 14], [80, 19], [61, 38], [61, 8], [49, 26], [14, 33], [21, 26]], cat: { speed: 146, chaseSpeed: 224, hear: 9 },
@@ -1357,6 +1361,8 @@
     }
     const boneMix = def.boneMix ? def.boneMix.slice() : Array(bones).fill("scare");
     if (boneMix.length !== bones || !boneMix.every((k) => BONE_KINDS.includes(k)) || (bones && !boneMix.includes("scare") && bonePower > 0) || (def.mission && def.mission.scare && boneMix.filter((k) => k === "scare").length < 2)) throw new Error(`Ossos da fase inválidos: ${def.title}`);
+    const balls = def.balls ?? 0;
+    if (!Number.isInteger(balls) || balls < 0 || balls > BALL_MAX) throw new Error(`Bolinhas inválidas: ${def.title}`);
     const lifeCap = def.lifeCap ?? MAX_LIVES;
     if (!Number.isInteger(lifeCap) || lifeCap < MAX_LIVES || lifeCap > LIFE_CAP_HARD) throw new Error(`Máximo de vidas inválido: ${def.title}`);
     // missão (0.15.6): além dos pontos mínimos, a saída só abre com a missão cumprida: `bones` (pegar todos os ossos), `scare` (assustar tantos carteiros/gatos com o poder do osso) e `rations` (pegar tantas rações)
@@ -1414,7 +1420,7 @@
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
-      lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
+      balls, lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
@@ -1473,6 +1479,7 @@
   const capFor = (L, u) => Math.min(LIFE_CAP_HARD, L.lifeCap + u.heart); // máximo de vidas de uma fase com os reforços `u` (0.15.6: sobe nas Fases 11 a 20; nunca passa de 10)
   const maxLivesNow = () => capFor(lv, up);
   let missionSaid = false;     // (fases com missão) já avisou que os pontos bastam mas falta a missão
+  let balls = [];              // bolinhas da fase (0.15.8): { x, y (centro), vx, vy, taken, hue }
   let fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; // segundos que faltam de cada efeito dos ossos de tipo novo (0.15.7)
   const fxTime = (base) => base + (REINFORCE_BONE / 2) * up.bone; // o reforço Osso poderoso também alonga os efeitos novos (+4 s por nível)
   const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
@@ -1535,7 +1542,7 @@
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; balls = []; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
@@ -1561,6 +1568,13 @@
       if (items[i].bone && onBones >= 1) continue;
       if (items[i].bone) onBones++;
       items[i].life = true; given++;
+    }
+    if (lv.balls) { // bolinhas (0.15.8): em chão livre, longe dos itens, dos trilhos e do início; o sorteio é à parte (não mexe nos sorteios do resto do jogo)
+      const used = items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE]), keepRand = rand;
+      rand = Math.random; // (sorteio à parte: os testes com semente fixa continuam vendo o mesmo sorteio de itens, vidas e agentes)
+      const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.balls, [...used, ...lv.trackTiles]);
+      rand = keepRand;
+      balls = tiles.map(([c, r], i) => { const [x, y] = centerOf(c, r); return { x, y, vx: 0, vy: 0, taken: false, hue: i % BALL_COLORS.length }; });
     }
     score = runningScore();
   }
@@ -2008,7 +2022,8 @@
   // ---------- Pontuação e vidas ----------
   // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
-  const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
+  const ballsGot = () => balls.reduce((n, b) => n + (b.taken ? 1 : 0), 0);
+  const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS + ballsGot() * Records.BALL_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
   // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
@@ -2095,6 +2110,37 @@
     if (key === "ice") { for (const e of everyone()) e.cool = Math.max(e.cool, 1.5); invuln = Math.max(invuln, POWER_END_GRACE); }
     if (time >= pickupToastUntil) toast({ shield: "O escudo acabou.", ice: "O gelo derreteu!", turbo: "O turbo acabou.", magnet: "O ímã acabou." }[key], 1.6);
   }
+  // Bolinhas (0.15.8): quando o cachorrinho chega a 3 tiles (e a vê) a bolinha é chutada para longe pelo eixo em que ele está, rola, quica nas paredes e para sozinha.
+  function moveBall(b, dx, dy) {
+    const nx = b.x + dx, ny = b.y + dy, box = { x: nx - BALL_R, y: ny - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R };
+    if (nx < BALL_R || ny < BALL_R || nx > WORLD_W - BALL_R || ny > WORLD_H - BALL_R || solids.some((o) => overlap(box, o))) { // bateu: quica perdendo um pouco de velocidade
+      if (dx) b.vx = -b.vx * 0.7; if (dy) b.vy = -b.vy * 0.7;
+      return;
+    }
+    b.x = nx; b.y = ny;
+  }
+  function updateBalls(dt) {
+    const px = player.x + player.w / 2, py = player.y + player.h / 2;
+    for (const b of balls) {
+      if (b.taken) continue;
+      const dx = b.x - px, dy = b.y - py;
+      if (Math.hypot(dx, dy) < BALL_SCARE && Math.hypot(b.vx, b.vy) < 40 && lineClear(px, py, b.x, b.y)) { // chute: foge pelo eixo em que o cachorrinho está mais perto
+        const k = ballKick(levelId);
+        if (Math.abs(dx) >= Math.abs(dy)) { b.vx = (dx >= 0 ? 1 : -1) * k; b.vy = 0; } else { b.vy = (dy >= 0 ? 1 : -1) * k; b.vx = 0; }
+      }
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp > 0) {
+        const ns = Math.max(0, sp - BALL_FRICTION * dt);
+        if (ns < 8) { b.vx = 0; b.vy = 0; } else { b.vx *= ns / sp; b.vy *= ns / sp; moveBall(b, b.vx * dt, 0); moveBall(b, 0, b.vy * dt); }
+      }
+      if (overlap(player, { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R })) { // pegou!
+        b.taken = true; b.vx = 0; b.vy = 0;
+        sound.play("pick"); puffs.push({ x: b.x, y: b.y, t: 0.4 });
+        if (time >= pickupToastUntil) toast(`Bolinha! +${Records.BALL_POINTS} pontos (${ballsGot()}/${balls.length})`, 1.4);
+        score = runningScore(); saveNow();
+      }
+    }
+  }
   // Há caminho livre (sem parede nem bloco) em linha reta entre dois pontos?
   function lineClear(ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy);
@@ -2176,6 +2222,7 @@
     if (crushed) { crushed = false; loseLife("crush"); return; }
     for (const k of ["shield", "ice", "turbo", "magnet"]) if (fx[k] > 0 && (fx[k] -= dt) <= 0) { fx[k] = 0; endFx(k); } // (os efeitos dos ossos novos acabam)
     for (const it of items) if (!it.taken && overlap(player, it)) takeItem(it);
+    if (balls.length) updateBalls(dt);
     const pull = Math.max(fx.magnet > 0 ? MAGNET_RADIUS : 0, up.lure ? lureRadius(up.lure) : 0); // ímã (osso) ou Ímã de ração (reforço): as rações perto, à vista, vêm sozinhas
     if (pull > 0) {
       const mx = player.x + player.w / 2, my = player.y + player.h / 2;
@@ -2290,6 +2337,7 @@
       bl: blocks.map((b) => r2(b.bt)), // ponto do ciclo de cada bloco que se move
       ba: blocks.map((b) => b.i),      // quais peças móveis da fase entraram neste jogo (a quantidade é sorteada)
       pw: power > 0 ? Math.max(0.01, r2(power)) : 0, vd: vets.map((v) => (v.slow ? 1 : 0)), pk: postmen, // poder do osso que falta, carteiros lentos (já atingidos) e quantos já foram atingidos
+      ...(balls.length ? { bs: balls.map((b) => [Math.round(b.x), Math.round(b.y), b.taken ? 1 : 0]) } : {}), // bolinhas (0.15.8): posição (px) e se já foi pega
       ...(fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? { fx: [r2(fx.shield), r2(fx.ice), r2(fx.turbo), r2(fx.magnet)] } : {}), // efeitos dos ossos novos que ainda faltam (0.15.7)
       ...(cats.length ? { cats: cats.map((c) => [r2(c.cx), r2(c.cy)]), cd: cats.map((c) => (c.slow ? 1 : 0)) } : {}), // gatos (0.16.0): posições e quais já foram assustados neste poder
     };
@@ -2348,6 +2396,15 @@
         const [c, r] = tileOf(v[0], v[1]);
         if (!L.walk[r][c]) return null;
       }
+      let bsv = sv.bs === undefined ? null : sv.bs; // bolinhas: uma por bolinha da fase, em chão livre
+      if (bsv !== null) {
+        if (!Array.isArray(bsv) || bsv.length !== L.balls) return null;
+        for (const b of bsv) {
+          if (!Array.isArray(b) || b.length !== 3 || !num(b[0], 0, L.worldW) || !num(b[1], 0, L.worldH) || (b[2] !== 0 && b[2] !== 1)) return null;
+          const [c, r] = tileOf(b[0], b[1]);
+          if (!L.walk[r] || !L.walk[r][c]) return null;
+        }
+      } else if (L.balls) bsv = null; // (jogos salvos antes da 0.15.8: as bolinhas nascem de novo)
       const fxv = sv.fx === undefined ? [0, 0, 0, 0] : sv.fx;
       if (!Array.isArray(fxv) || fxv.length !== 4 || !fxv.every((x) => num(x, 0, 60))) return null;
       if (!L.boneMixed && fxv.some((x) => x > 0)) return null; // só as fases com ossos de tipos novos têm esses efeitos
@@ -2363,7 +2420,7 @@
         }
       }
       if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, up: UP_KEYS.map((k) => upv[k]) };
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, bs: bsv, up: UP_KEYS.map((k) => upv[k]) };
     } catch { return null; }
   }
 
@@ -2395,6 +2452,7 @@
       if (sv.cats) { const [cc, cr] = tileOf(sv.cats[i][0], sv.cats[i][1]); [c.cx, c.cy] = centerOf(cc, cr); } // o gato volta ao centro do tile mais próximo
       Object.assign(c, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2.5, modeT: 0, chaseAge: 0, slow: sv.cd[i] === 1, hitCool: 0, seen: null });
     });
+    if (sv.bs) balls.forEach((b, i) => { b.x = sv.bs[i][0]; b.y = sv.bs[i][1]; b.taken = sv.bs[i][2] === 1; b.vx = 0; b.vy = 0; });
     power = sv.pw; postmen = sv.pk; fx = { shield: sv.fx[0], ice: sv.fx[1], turbo: sv.fx[2], magnet: sv.fx[3] }; score = runningScore();
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
@@ -2574,7 +2632,7 @@
   function win() {
     const timeMs = officialTimeMs();
     const bonus = Records.timeBonus(timeMs, lv.bonusStep);
-    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty, missionBonus: lv.missionBonus }); // rações + ossos + bônus − vidas perdidas − tentativas extras
+    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, balls: ballsGot(), bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty, missionBonus: lv.missionBonus }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
     setState("won");
     sound.play("levelup");
@@ -2583,7 +2641,7 @@
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + ${lv.catSpawns.length ? "carteiros e gatos" : "carteiros"}: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` + (lv.missionBonus ? ` + missão: ${lv.missionBonus}` : "") +
+    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + ${lv.catSpawns.length ? "carteiros e gatos" : "carteiros"}: ${postmen * Records.POSTMAN_POINTS}` : "") + (ballsGot() ? ` + bolinhas: ${ballsGot() * Records.BALL_POINTS}` : "") + ` + bônus de tempo: ${bonus}` + (lv.missionBonus ? ` + missão: ${lv.missionBonus}` : "") +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = winExtraText(next);
@@ -2915,6 +2973,17 @@
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
   }
 
+  function drawBall(b) { // bolinha: sombra, bola colorida com uma faixa branca e um brilho; gira enquanto rola
+    const roll = Math.hypot(b.vx, b.vy) > 8, spin = roll ? time * 14 * Math.sign(b.vx + b.vy || 1) : 0;
+    ellipse(b.x, b.y + BALL_R - 1, BALL_R, 3, "rgba(0,0,0,.28)");
+    ctx.save(); ctx.translate(b.x, b.y);
+    ctx.fillStyle = BALL_COLORS[b.hue % BALL_COLORS.length]; ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.rotate(spin); ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, BALL_R - 2, 0.3, 1.9); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(b.x - 2.2, b.y - 2.4, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
   function drawKibble(it) { // tigela de ração
     const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 5, 10, 4, "rgba(0,0,0,.25)");
@@ -3206,6 +3275,7 @@
       }
     }
     for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
+    for (const b of balls) if (!b.taken) drawBall(b);
     for (const v of vets) drawVet(v);
     for (const c of cats) drawCat(c);
     if (fx.ice > 0) for (const e of everyone()) drawIce(e); // congelados pelo osso de gelo
@@ -3266,7 +3336,7 @@
   }
   const hudEl = {
     upItem: $("hud-up-item"), up: $("hud-up"),
-    level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
+    level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), ballsItem: $("hud-balls-item"), balls: $("hud-balls"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
     pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), fxBar: $("fx-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
   };
@@ -3280,9 +3350,10 @@
       hudCache.wl = wkey;
       hudEl.lives.style.setProperty("--hearts", String(maxLivesNow())); // lugar para todos os corações possíveis: ganhar uma vida não aumenta o placar
       const wide = (e, text) => { e.style.minWidth = `${text.length}ch`; };
-      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + (vets.length + cats.length) * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
+      const top = lv.rations * Records.RATION_POINTS + lv.bones * Records.BONE_POINTS + lv.balls * Records.BALL_POINTS + (vets.length + cats.length) * Records.POSTMAN_POINTS + lv.bonusStep * 10; // (pontuação negativa é rara: se acontecer, o placar pode crescer uma vez)
       wide(hudEl.items, `${lv.rations}/${lv.rations}`);
       wide(hudEl.bones, `${lv.bones}/${lv.bones}`);
+      wide(hudEl.balls, `${lv.balls}/${lv.balls}`);
       wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
       wide(hudEl.power, `${bonePowerNow()} s`);
       wide(hudEl.time, "0:00,0");
@@ -3294,6 +3365,8 @@
     setHud("i", hudEl.items, `${collected}/${lv.rations}`);
     if (hudCache.bn !== lv.bones) { hudCache.bn = lv.bones; hudEl.bonesItem.classList.toggle("hidden", !lv.bones); }
     if (lv.bones) setHud("o", hudEl.bones, `${bonesGot}/${lv.bones}`);
+    if (hudCache.bb !== lv.balls) { hudCache.bb = lv.balls; hudEl.ballsItem.classList.toggle("hidden", !lv.balls); }
+    if (lv.balls) setHud("bl", hudEl.balls, `${ballsGot()}/${lv.balls}`);
     if (hudCache.bs !== lv.bonusStep) { hudCache.bs = lv.bonusStep; hudEl.bonusItem.title = `Bônus de tempo: ${lv.bonusStep * 10} pontos até 20 s, menos ${lv.bonusStep} a cada 10 s (0 depois de 110 s)`; }
     if (hudCache.mp !== lv.minPoints) { hudCache.mp = lv.minPoints; hudEl.pointsItem.title = lv.minPoints ? `Para passar da ${lv.title} são necessários pelo menos ${lv.minPoints} pontos nesta fase` : ""; }
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
@@ -3569,7 +3642,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
-    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
+    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
@@ -3577,7 +3650,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), balls: l.balls ?? 0, cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
