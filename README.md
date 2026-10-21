@@ -83,13 +83,15 @@ Cidades cada vez maiores, a partir da Fase 6: mais rações, mais ossos, **mais 
 Nas **Fases 9 e 10** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os agentes da carrocinha voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
 
 ### Fases 11 a 20 (0.15.4)
-Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 8 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
+Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 8 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Todas têm **gatos** (de 2 a 7, veja *Os gatos*). Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
 
 | | Fase 11 | Fase 12 | Fase 13 | Fase 14 | Fase 15 | Fase 16 | Fase 17 | Fase 18 | Fase 19 | Fase 20 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
 | Agentes da carrocinha (no centro do mapa) | 5 | 5 | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
+| Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 4 | 5 | 5 | 6 | 6 | 7 |
+| Velocidade dos gatos (patrulha / perseguição px/s; ouvido em passos) | 130 / 200; 7 | 132 / 203; 7 | 134 / 205; 7 | 135 / 208; 7 | 137 / 211; 8 | 139 / 214; 8 | 141 / 216; 8 | 143 / 219; 8 | 144 / 222; 9 | 146 / 224; 9 |
 | Vidas escondidas (sorteio por jogo) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
 | Alcance do "!" | 16 quadrados | 16 | 17 | 17 | 18 | 18 | 19 | 19 | 20 | 20 |
 | Portas de bloco / paredes (definidas) | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 | 6 / 6 |
@@ -145,6 +147,17 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 
+## Os gatos (0.15.5, Fases 11 a 20)
+Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 4, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
+
+- **É mais rápido:** 130 px/s patrulhando e 200 px/s perseguindo na Fase 11, até 146 e 224 na Fase 20 (o cachorrinho anda 252 px/s, mais 10% por osso). Ao ver o cachorrinho a menos de 4 tiles ele dá o **bote**: 1,3 × a velocidade por 0,7 s (e espera 3 s para o próximo).
+- **Ouve:** além de ver (o alcance de visão é o do "!" da fase mais 4 tiles), ele **ouve** o cachorrinho a até 7 passos (8 e 9 nas Fases 15 e 19), **mesmo atrás de paredes**. O agente só persegue o que vê.
+- **Antecipa:** não corre atrás de onde o cachorrinho *está*, e sim de onde ele *vai estar* (até 4 tiles à frente, na direção em que ele anda); o gato de número ímpar **fecha o caminho da saída**, e os gatos se espalham em vez de andar em fila.
+- **Pula as caixas "X":** as muretas de caixas de 1 tile de espessura que atravessam as paredes são **chão para o gato** (para o cachorrinho e para os agentes são paredes). O cachorrinho sempre chega à saída sem usar nenhuma delas; elas só dão **atalhos aos gatos**.
+- **Procura:** perdeu o cachorrinho de vista? Vai até onde o viu por último, continua na direção em que ele ia e **procura por perto por 6 s** antes de voltar a patrulhar (patrulha de preferência por onde o cachorrinho anda). Quase não descansa depois de perseguir.
+- **Com o poder do osso o gato foge** (rápido e esperto: 72% da velocidade de perseguição, olhando 16 passos à frente, sem ficar lento como o carteiro). Quem **encosta** num gato ganha **+100 pontos** (uma vez por poder); ele volta ao posto, tonto por 2 s, e foge mais devagar (60%) até o poder acabar. Quando o poder acaba os gatos voltam a patrulhar.
+- Encostar num gato custa **1 vida**, como o agente (com a mesma proteção depois). Quando um gato nota o cachorrinho ele dá um **miau** (um só a cada 4 s, mesmo com vários gatos), e um gato que persegue fora da tela aparece como um **"!" vermelho na borda** da tela, como os agentes.
+- O jogo salvo guarda a posição dos gatos e quais já foram assustados.
 ## Missões e mais vidas (0.15.6, Fases 11 a 20)
 **Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/5 · sustos 1/3 · rações 20/36*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina de 1 a 3 destas exigências:
 
@@ -211,6 +224,7 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 | pegar o osso | quatro notas subindo (dó mi sol dó) |
 | o agente vira carteiro (osso com o poder desligado) | transformação, logo depois do som do osso |
 | pegar um carteiro (ganhar dele) | duas notas rápidas (si mi) |
+| um gato nota o cachorrinho (0.15.5) | **miau** curto (0,4 s): dente de serra que sobe de 520 para 880 Hz e desce a 480 Hz; só um a cada 4 s |
 | ser pego pelo agente da carrocinha | captura, e logo depois o som de perder vida |
 | perder uma vida (também esmagado por bloco, sem a captura) | três notas descendo |
 | pegar uma vida nova (depois do som do item) | seis notas alegres |
