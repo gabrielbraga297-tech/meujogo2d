@@ -173,7 +173,7 @@
           }
         }
         const wallet = Object.create(null); // carteira de petiscos por jogador: { t: petiscos, own: skins compradas, eq: skin em uso ("" = a padrão) }
-        if (raw.wallet && typeof raw.wallet === "object") {
+        if (raw.wallet && typeof raw.wallet === "object" && !Array.isArray(raw.wallet)) { // (uma lista no lugar do mapa seria lida como jogadores "0", "1"...)
           for (const [k, w] of Object.entries(raw.wallet)) {
             if (!k || !w || typeof w !== "object") continue;
             const own = Array.isArray(w.own) ? [...new Set(w.own.filter(isSkinId))].slice(0, MAX_OWNED) : [];
