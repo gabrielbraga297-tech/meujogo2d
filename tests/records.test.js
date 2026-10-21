@@ -519,7 +519,7 @@ test("carteira: dados adulterados no armazenamento são limpos e apagar a conta 
   const st = R.createStore(memStorage({ "cachorrinho.v1": raw }));
   assert.deepStrictEqual(st.wallet("Totó"), { treats: 12, owned: ["cinza", "dalmata"], equipped: "" });
   assert.strictEqual(st.wallet("Ana").treats, 0);
-  assert.strictEqual(st.wallet("Bia").treats, 0, "petiscos fora do limite não valem");
+  assert.strictEqual(st.wallet("Bia").treats, R.MAX_TREATS, "petiscos acima do limite são cortados no máximo (99999)");
   st.deleteAccount("Totó");
   assert.deepStrictEqual(st.wallet("Totó"), { treats: 0, owned: [], equipped: "" });
 });
