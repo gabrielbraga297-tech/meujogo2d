@@ -193,7 +193,7 @@ const PAGE_HELPERS = () => {
     const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
     ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
     const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
-    ok(gl.length === 10 && gl.slice(5).map((l) => l.vets).join() === "3,4,5,5,6" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as dez fases, as cinco primeiras com os mapas e agentes da carrocinha esperados, e as Fases 6 a 10 com 3, 4, 5, 5 e 6 agentes da carrocinha");
+    ok(gl.length === 20 && gl.slice(5, 10).map((l) => l.vets).join() === "3,4,5,5,6" && gl.slice(10).map((l) => l.vets).join() === "5,5,6,6,6,7,7,8,8,8" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as vinte fases, as cinco primeiras com os mapas e agentes da carrocinha esperados, as Fases 6 a 10 com 3, 4, 5, 5 e 6 agentes e as Fases 11 a 20 com 5, 5, 6, 6, 6, 7, 7, 8, 8 e 8");
   });
 
   // =====================================================================
@@ -2391,7 +2391,7 @@ const PAGE_HELPERS = () => {
       // --- dados ruins no servidor são ignorados ---
       db.scores[1].hack = { n: "<img src=x onerror=alert(1)>", p: 99999, t: 1000, w: 1 };
       db.scores[1].big = { n: "Gigante", p: 10 ** 9, t: 1000, w: 1 };
-      db.scores[11] = { z: { n: "FaseFalsa", p: 1, t: 1000, w: 1 } };
+      db.scores[21] = { z: { n: "FaseFalsa", p: 1, t: 1000, w: 1 } };
       await C2.keyboard.press("Escape"); await openScores(C2); await shared(C2);
       const txt = await C2.textContent("#scores-public");
       ok(!/img|Gigante|FaseFalsa/.test(txt) && (await levelRows(C2, 1)).length === 3, "nomes com HTML, pontuações absurdas e fases inexistentes vindos do servidor não aparecem");
@@ -3216,10 +3216,13 @@ const PAGE_HELPERS = () => {
     });
     ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 120), `Fases 6 a 10, 3 minutos simulados: os agentes da carrocinha quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
     ok([6, 7, 8, 9, 10].every((l) => sep2[l].near / sep2[l].pairs < 0.15 && sep2[l].maxStreak <= 15 * 60), `e raramente andam juntos nem em fila (tempo a menos de 3 tiles: ${[6, 7, 8, 9, 10].map((l) => (100 * sep2[l].near / sep2[l].pairs).toFixed(1) + "%").join(", ")}; maior sequência ${[6, 7, 8, 9, 10].map((l) => (sep2[l].maxStreak / 60).toFixed(1) + " s").join(", ")})`);
-    // ---- depois da Fase 10 (a última) não há Próxima fase ----
+    // ---- depois da Fase 10 há a Fase 11; depois da Fase 20 (a última) não há Próxima fase ----
     await playLevel(page, 10, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
     await finishNow(page, 10);
-    ok(await ev(page, () => __game.state) === "won" && /Fase 10 concluída/.test(await page.textContent("#win-title")) && await page.isHidden("#btn-next") && await ev(page, () => document.activeElement.id) === "btn-again", "Fase 10 concluída: depois dela (a última) não há Próxima fase");
+    ok(await ev(page, () => __game.state) === "won" && /Fase 10 concluída/.test(await page.textContent("#win-title")) && await page.isVisible("#btn-next"), "Fase 10 concluída: agora há Próxima fase (a Fase 11)");
+    await playLevel(page, 20, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] });
+    await finishNow(page, 20);
+    ok(await ev(page, () => __game.state) === "won" && /Fase 20 concluída/.test(await page.textContent("#win-title")) && await page.isHidden("#btn-next") && await ev(page, () => document.activeElement.id) === "btn-again", "Fase 20 concluída: depois dela (a última) não há Próxima fase");
     // ---- as Fases 9 e 10: o cachorrinho renasce onde morreu (as outras voltam ao início) ----
     const rp = await ev(page, () => {
       const out = {};
@@ -3579,8 +3582,8 @@ const PAGE_HELPERS = () => {
     const f2 = await ev(page, () => ({ level: __game.level, state: __game.state, up: __game.upgrades }));
     ok(f2.level === 2 && f2.state === "playing" && f2.up.bone === 1, "Começar a Fase 2 leva o reforço para a Fase 2");
     // ---- a última fase não tem reforço nem Próxima fase ----
-    await playLevel(page, 10, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] }); await finishNow(page, 10);
-    ok(await page.isHidden("#reinforce") && await page.isHidden("#btn-next"), "depois da Fase 10 (a última) não há reforço para escolher");
+    await playLevel(page, 20, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] }); await finishNow(page, 20);
+    ok(await page.isHidden("#reinforce") && await page.isHidden("#btn-next"), "depois da Fase 20 (a última) não há reforço para escolher");
 
     // ---- efeitos de cada reforço (começando a Fase 2 com os níveis pedidos) ----
     const eff = await ev(page, () => {
@@ -3951,7 +3954,7 @@ const PAGE_HELPERS = () => {
     // ---- passar de fase ----
     await playLevel(page, 1); await ev(page, () => { __game.freezeVets = true; }); await clear(); await finishNow(page, 10);
     const wonSnd = await heard();
-    ok(wonSnd[wonSnd.length - 1] === "levelup" && wonSnd.filter((n) => n === "levelup").length === 1 && await ev(page, () => __game.state) === "won", `passar de fase toca o som de vitória uma vez, depois dos itens (${wonSnd.length} sons, o último: ${wonSnd[wonSnd.length - 1]})`);
+    ok(wonSnd[wonSnd.length - 1] === "bark1" && wonSnd[wonSnd.length - 2] === "levelup" && wonSnd.filter((n) => n === "levelup").length === 1 && wonSnd.filter((n) => /^bark/.test(n)).length === 1 && await ev(page, () => __game.state) === "won", `passar de fase toca o som de vitória uma vez, depois dos itens, e em seguida o latido do filhote (${wonSnd.length} sons, os últimos: ${wonSnd.slice(-2).join(", ")})`);
     // ---- escolha do reforço ----
     await clear(); await page.click("#btn-next"); await page.click('#reinforce-list button[data-id="bone"]');
     ok((await heard()).join() === "pick", `escolher um reforço toca um toque curto (${(await heard()).join()})`);
@@ -4128,7 +4131,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  await section("0.12.0: o agente da carrocinha (e o carteiro) aparecem com o mesmo desenho em TODAS as 10 fases", async () => {
+  await section("0.12.0: o agente da carrocinha (e o carteiro) aparecem com o mesmo desenho em TODAS as 20 fases", async () => {
     await fresh(page);
     const look = (id, mode) => ev(page, async ([id, mode]) => {
       __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
@@ -4142,16 +4145,16 @@ const PAGE_HELPERS = () => {
       return { orange, blue, green, white, power: __game.power, noVets: __game.vets.length };
     }, [id, mode]);
     const bad = [];
-    for (let id = 1; id <= 10; id++) {
+    for (let id = 1; id <= 20; id++) {
       const n = await look(id, "normal"), pw = id >= 2 ? await look(id, "power") : null;
       if (!(n.orange > 20 && n.green > 10 && n.blue < 5)) bad.push(`Fase ${id} agente: laranja ${n.orange}, verde ${n.green}, azul ${n.blue}`);
       if (pw && !(pw.power > 0 && pw.blue > 20 && pw.orange < 5)) bad.push(`Fase ${id} carteiro: azul ${pw.blue}, laranja ${pw.orange}, poder ${pw.power}`);
     }
-    ok(bad.length === 0, `o agente tem colete laranja e uniforme verde nas Fases 1 a 10, e o carteiro é azul sem colete laranja nas Fases 2 a 10${bad.length ? " — problema: " + bad.join("; ") : ""}`);
+    ok(bad.length === 0, `o agente tem colete laranja e uniforme verde nas Fases 1 a 20, e o carteiro é azul sem colete laranja nas Fases 2 a 20${bad.length ? " — problema: " + bad.join("; ") : ""}`);
     // as 4 "caixas" dos cantos do pátio da praça (Fases 4 a 10) são vans da carrocinha, não caixas de madeira; as Fases 1 a 3 podem ter 0 caixas (X) no mapa e, se tiverem, elas não são vans
     const vans = await ev(page, async () => {
       const out = {};
-      for (let id = 1; id <= 10; id++) {
+      for (let id = 1; id <= 20; id++) {
         __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
         const L = __game.levels[id - 1], cx = L.map[0].length >> 1, cy = L.map.length >> 1;
         const tiles = id >= 4 ? [[-3, -2], [3, -2], [-3, 2], [3, 2]].map(([dc, dr]) => [cx + dc, cy + dr]) : (() => { const o = []; L.map.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "X" && o.length < 2) o.push([c, r]); })); return o; })();
@@ -4168,34 +4171,34 @@ const PAGE_HELPERS = () => {
       }
       return out;
     });
-    ok([4, 5, 6, 7, 8, 9, 10].every((id) => vans[id].corners === 4 && vans[id].n === 4 && vans[id].vanLike === 4) && [1, 2, 3].every((id) => vans[id].n === Math.min(2, vans[id].crates) && vans[id].vanLike === 0), `nas Fases 4 a 10 os 4 cantos do pátio da praça são vans da carrocinha (claras) e nas Fases 1 a 3 as "caixas" (se houver; ${[1, 2, 3].map((id) => vans[id].crates).join(", ")} no mapa) são do ambiente (vasos, fardos, pufes), não vans (${[1, 2, 3, 4, 7, 10].map((id) => `F${id}: ${vans[id].vanLike} vans`).join(", ")})`);
+    ok([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].every((id) => vans[id].corners === 4 && vans[id].n === 4 && vans[id].vanLike === 4) && [1, 2, 3].every((id) => vans[id].n === Math.min(2, vans[id].crates) && vans[id].vanLike === 0), `nas Fases 4 a 20 os 4 cantos do pátio da praça são vans da carrocinha (claras) e nas Fases 1 a 3 as "caixas" (se houver; ${[1, 2, 3].map((id) => vans[id].crates).join(", ")} no mapa) são do ambiente (vasos, fardos, pufes), não vans (${[1, 2, 3, 4, 7, 10].map((id) => `F${id}: ${vans[id].vanLike} vans`).join(", ")})`);
     // nenhum texto do jogo fala em veterinário (menu, Como jogar, lista de fases, avisos de cada fase, telas de derrota e vitória)
-    const texts = await ev(page, () => { const out = [document.body.innerText]; for (let id = 1; id <= 10; id++) { __game.start(id); out.push(document.getElementById("toast").textContent); } return out.join("\n"); });
+    const texts = await ev(page, () => { const out = [document.body.innerText]; for (let id = 1; id <= 20; id++) { __game.start(id); out.push(document.getElementById("toast").textContent); } return out.join("\n"); });
     ok(!/veterin/i.test(texts) && !/veterin/i.test(await page.evaluate(() => document.documentElement.outerHTML.replace(/<script[\s\S]*?<\/script>/g, ""))), "nenhum texto nem rótulo do jogo fala em veterinário");
   });
 
   // =====================================================================
   await section("0.14.0: cada fase é um lugar que o cachorrinho conhece (campo, rua, casa, condomínio, parque...)", async () => {
     await fresh(page);
-    const PLACES = ["Quintal", "Campo", "Casa", "Rua do bairro", "Condomínio", "Praça", "Parque canino", "Feira", "Praia", "Central da carrocinha"];
+    const PLACES = ["Quintal", "Campo", "Casa", "Rua do bairro", "Condomínio", "Praça", "Parque canino", "Feira", "Praia", "Central da carrocinha", "Beco dos gatos", "Pet shop", "Fazenda", "Bosque", "Lago e docas", "Mercadão", "Estacionamento", "Telhados", "Estação de trem", "Fortaleza da carrocinha"];
     // ---- nomes: o hook, o aviso de começar, a lista de fases e a tela de vitória ----
     const info = await ev(page, () => {
       const out = [];
-      for (let id = 1; id <= 10; id++) { __game.start(id); __game.autoStart = true; out.push({ id, place: __game.theme.place, blurb: __game.theme.blurb, toast: document.getElementById("toast").textContent }); }
+      for (let id = 1; id <= 20; id++) { __game.start(id); __game.autoStart = true; out.push({ id, place: __game.theme.place, blurb: __game.theme.blurb, toast: document.getElementById("toast").textContent }); }
       return out;
     });
-    ok(info.map((i) => i.place).join("|") === PLACES.join("|") && new Set(info.map((i) => i.blurb)).size === 10, `as 10 fases são 10 lugares diferentes: ${info.map((i) => i.place).join(", ")}`);
+    ok(info.map((i) => i.place).join("|") === PLACES.join("|") && new Set(info.map((i) => i.blurb)).size === 20, `as 20 fases são 20 lugares diferentes: ${info.map((i) => i.place).join(", ")}`);
     ok(info.every((i) => i.toast.startsWith(i.place + " — Fase " + i.id)), `o aviso de começar cada fase diz o lugar (${info[2].toast})`);
-    await fresh(page, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] }); await page.click("#btn-start");
+    await fresh(page, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] }); await page.click("#btn-start");
     const list = await page.$$eval("#levels-list button strong", (bs) => bs.map((b) => b.textContent));
-    ok(list.length === 10 && list.every((t, i) => t === `Fase ${i + 1} · ${PLACES[i]}`), `a lista de fases mostra o lugar de cada uma (${list.slice(0, 3).join(", ")}...)`);
+    ok(list.length === 20 && list.every((t, i) => t === `Fase ${i + 1} · ${PLACES[i]}`), `a lista de fases mostra o lugar de cada uma (${list.slice(0, 3).join(", ")}...)`);
     await page.click("#levels-list button:nth-child(3)"); await ev(page, () => { __game.freezeVets = true; });
     await finishNow(page, 10);
     ok(/^Casa · Vidas restantes/.test(await page.textContent("#win-extra")), "a vitória diz em que lugar a fase aconteceu");
     // ---- o desenho: a cor média do chão de cada fase é diferente das outras (e o jogo desenha as paredes de cada ambiente) ----
     const looks = await ev(page, async () => {
       const out = [];
-      for (let id = 1; id <= 10; id++) {
+      for (let id = 1; id <= 20; id++) {
         __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.noCatch = true;
         const L = __game.levels[id - 1], M = L.map;
         // a maior área quadrada de chão livre (até 5 x 5 tiles; nos labirintos pequenos das Fases 1 a 3 sobram 3 x 3 ou menos)
@@ -4212,7 +4215,7 @@ const PAGE_HELPERS = () => {
       return out;
     });
     const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    let minD = 1e9, pair = ""; for (let i = 0; i < 10; i++) for (let j = i + 1; j < 10; j++) { const d = dist(looks[i], looks[j]); if (d < minD) { minD = d; pair = `${PLACES[i]} × ${PLACES[j]}`; } }
+    let minD = 1e9, pair = ""; for (let i = 0; i < 20; i++) for (let j = i + 1; j < 20; j++) { const d = dist(looks[i], looks[j]); if (d < minD) { minD = d; pair = `${PLACES[i]} × ${PLACES[j]}`; } }
     ok(minD >= 18, `o chão de cada lugar tem cor própria: as duas mais parecidas (${pair}) diferem ${minD.toFixed(0)} no RGB (${looks.map((c) => c.join(",")).join(" | ")})`);
     // grama nos três primeiros... e o mar no anel de fora da Praia
     ok(looks[0][1] > looks[0][0] && looks[0][1] > looks[0][2] && looks[1][1] > looks[1][2] && looks[8][0] > 190 && looks[2][0] > looks[2][2], "o Quintal e o Campo são verdes, a Casa é de madeira e a Praia é de areia clara");
