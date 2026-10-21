@@ -6090,8 +6090,8 @@ const PAGE_HELPERS = () => {
           return K.info();
         },
         info() { const L = __game.levels[__game.level - 1]; return { id: L.id, rations: L.rations, bones: L.bones, minPoints: L.minPoints, lifePenalty: L.lifePenalty, bonusStep: L.bonusStep, mission: L.mission, missionBonus: L.missionBonus, lifeCap: L.lifeCap, vets: L.vets.length, cats: L.cats.length }; },
-        items(kind) { return __game.items.filter((it) => !it.taken && (kind === "bone" ? it.bone : kind === "ration" ? !it.bone : true)); },
-        grab(kind, n = 999) { let g = 0; for (const it of K.items(kind)) { if (g >= n || __game.state !== "playing") break; tp(it); __game.tick(0.01); g++; } return g; },
+        items(kind) { return __game.items.filter((it) => !it.taken && (kind === "bone" ? it.bone : kind === "ration" ? !it.bone : true)).sort((a, b) => (b.kind === "scare") - (a.kind === "scare")); }, // (0.15.7: os ossos comuns primeiro: só eles dão o poder de assustar; os de ouro, gelo, turbo e ímã vêm depois)
+        grab(kind, n = 999) { let g = 0; for (const it of K.items(kind)) { if (g >= n || __game.state !== "playing") break; tp(it); __game.tick(0.01); if (it.bone && it.kind !== "scare") __game.fx = {}; g++; } return g; }, // (0.15.7: os efeitos dos ossos de ouro, gelo, turbo e ímã não importam para a missão: sem eles os avisos de fim de efeito não escondem os avisos da saída)
         // assusta `n` (ainda não assustados neste poder), alternando agente e gato: leva cada um até o cachorrinho; depois o guarda longe de novo
         scare(n, who = "mix", park = true) {
           const V = __game.vets, C = __game.cats;
@@ -6343,7 +6343,7 @@ const PAGE_HELPERS = () => {
     for (const [id, h] of [[5, 0], [10, 0], [10, 3], [11, 0], [13, 3], [15, 0], [20, 0], [20, 3]]) {
       const r = await ev(page, ([id, h]) => {
         const up = { speed: 0, bone: 0, heart: h, shield: 0, slow: 0 }, out = {};
-        const first = (bone) => __game.items.findIndex((it) => !it.taken && !!it.bone === bone);
+        const first = (bone) => __game.items.findIndex((it) => !it.taken && !!it.bone === bone && (!bone || it.kind === "scare"));
         // abaixo do máximo: +1 vida (numa ração)
         __mk.setup(id, { start: { upgrades: up, lives: 99 } }); const cap = __game.maxLives; __game.setLives(cap - 1);
         __game.items[first(false)].life = true; __mk.grab("ration", 1); out.below = { lives: __game.lives, toast: document.getElementById("toast").textContent, cap };
