@@ -46,7 +46,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | Rações | 5 | **7** | **7** | **15** | **20** |
 | Ossos | — | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de 30 s) | **2** (poder de **35 s**) |
 | Vida extra escondida (sem aviso: só se descobre ao pegar o item) | 1 ração | **1 ou 2** itens (sorteado a cada jogo) | **1 ou 2** (no máximo 1 num osso) | **3** (no máximo 1 num osso) | **4** (no máximo 1 num osso) |
-| Agentes da carrocinha | 1 | **2**, no **centro** do mapa | **2**, no **centro** do mapa | **3**, no **centro** do mapa | **3**, no **centro** do mapa |
+| Agentes da carrocinha | 1 | **2**, em quarteirões longe do início e da saída | **2**, em quarteirões longe do início e da saída | **3**, na **praça** do centro | **3**, na **praça** do centro |
 | Dificuldade dos agentes da carrocinha | base | **10% mais espertos** | **mais 10% de velocidade** sobre a Fase 2 | **mais 10% de velocidade** sobre a Fase 3 | igual à Fase 4 |
 | Blocos que se movem | — | — | de **1 a 2** portas (sorteado a cada jogo) | de **1 a 3** portas, e agora **esmagam** | de **1 a 3** portas que esmagam **+ de 1 a 3 paredes** que se movem a cada 10 s |
 | Pontos | 100 por ração; −50 por vida | idem, **+150 por osso** e **+100 por carteiro** | idem | idem, **−200 por vida** e **800 pontos** para passar | −200 por vida e **1000 pontos** para passar |
