@@ -3995,6 +3995,15 @@ const PAGE_HELPERS = () => {
       if (bad) problems.push(`F${n}: em ${bad} combinações de posição das peças o chão não fica ligado ou a saída fica isolada`);
     }
     ok(problems.length === 0, `peças móveis das Fases 3 a 10: trilhos em chão livre, afastados (3+ tiles entre si, 6 do início, 5 da saída, 3 dos postos), nichos fechados, sempre 1 tile livre ao lado das paredes e o chão fica ligado em todas as combinações${problems.length ? " — problema: " + problems.slice(0, 4).join("; ") : ""}`);
+    // jogos salvos: o jogo novo grava a revisão dos mapas; um jogo salvo de mapas antigos é descartado, com um aviso no menu (recordes e progresso ficam)
+    await playLevel(page, 5, { keepSave: true }); await ev(page, () => { __game.freezeVets = true; __game.save(); });
+    const rev = await ev(page, () => { const g = Records.createStore(localStorage).loadGame("Totó"); return { mz: g.snap.mz, l: g.snap.l }; });
+    ok(rev.mz === 2 && rev.l === 5, "o jogo salvo grava a revisão dos mapas (2 = labirintos de cidade)");
+    await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); }); // (no menu a página não grava o jogo ao recarregar)
+    await ev(page, () => { const st = Records.createStore(localStorage), g = st.loadGame("Totó"); delete g.snap.mz; st.saveGame("Totó", g.snap); st.completeLevel("Totó", 1); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await page.isHidden("#btn-continue") && /outros mapas/.test(await page.textContent("#menu-save")) && await page.isVisible("#menu-save"), "um jogo salvo de mapas antigos (sem a revisão) é descartado e o menu explica o porquê");
+    ok(await ev(page, () => !Records.createStore(localStorage).hasGame("Totó") && Records.createStore(localStorage).progress("Totó").completed.includes(1)), "o progresso e os recordes continuam; só o jogo salvo antigo foi apagado");
     // desenho: asfalto nas ruas, telhado nos prédios (a partir da Fase 4); as Fases 1 a 3 mantêm o visual de antes
     const px = async (id) => ev(page, (id) => {
       __game.start(id); __game.freezeVets = true; __game.noCatch = true;

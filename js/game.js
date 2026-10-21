@@ -14,6 +14,7 @@
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
   // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
+  const MAP_REV = 2;        // revisão dos mapas das Fases 1 a 10: jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (0.15.1: labirintos com desenho de cidade)
   const REINFORCE_SPEED = 0.05, REINFORCE_BONE = 5, REINFORCE_SHIELD = 1, REINFORCE_SLOW = 0.05; // por nível: +5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos
   const REINFORCEMENTS = [
     { id: "speed", name: "Patas ligeiras", text: "+5% de velocidade do cachorrinho", max: 4 },
@@ -1278,6 +1279,7 @@
   // `o.player`: quem segue na mesma partida (Próxima fase, Jogar novamente, Tentar novamente) continua sendo quem jogou, mesmo que outra aba tenha trocado o jogador atual
   function begin(id = levelId, o = {}) {
     const me = typeof o.player === "string" ? o.player : store.player();
+    droppedSave = false;
     if (me) store.clearGame(me); // um jogo novo substitui o salvo (só aqui: cancelar a escolha da fase não apaga nada)
     reset(id, o);
     beginPlay();
@@ -1294,7 +1296,7 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 4, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
+      v: 4, mz: MAP_REV, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
       items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 : 0]), // coluna, linha, pego, vida extra, osso
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
@@ -1309,7 +1311,7 @@
   function parseSnapshot(sv) {
     try {
       const num = (n, lo, hi) => Number.isFinite(n) && n >= lo && n <= hi;
-      if (!sv || (sv.v !== 3 && sv.v !== 4) || !Number.isInteger(sv.l)) return null;
+      if (!sv || (sv.v !== 3 && sv.v !== 4) || !Number.isInteger(sv.l) || sv.mz !== MAP_REV) return null;
       const L = BUILT[sv.l];
       if (!L) return null;
       if (sv.v === 3 && (L.bones || L.blockDefs.length)) return null; // o formato antigo não tem ossos nem blocos
@@ -1362,13 +1364,14 @@
     } catch { return null; }
   }
 
+  let droppedSave = false; // um jogo salvo de uma versão com outros mapas foi descartado: o menu avisa até começar uma partida
   function savedGame() { // jogo salvo válido do jogador atual, ou null (e limpa um save inválido)
     const me = store.player();
     if (!me) return null;
     const g = store.loadGame(me);
     if (!g) return null;
     const sv = parseSnapshot(g.snap);
-    if (!sv) { store.clearGame(me); return null; }
+    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = true; store.clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
     return { savedAt: g.savedAt, snap: sv };
   }
 
@@ -1641,8 +1644,9 @@
     $("btn-continue").classList.toggle("hidden", !g);
     $("btn-start").classList.toggle("primary", !g);
     $("btn-replay").classList.toggle("hidden", !(me && done >= 1)); // só depois de concluir alguma fase
-    $("menu-save").classList.toggle("hidden", !g);
+    $("menu-save").classList.toggle("hidden", !g && !droppedSave);
     if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
+    else if (droppedSave) $("menu-save").textContent = "O jogo salvo era de uma versão com outros mapas e não pode continuar. Seus recordes e o progresso foram mantidos.";
   }
 
   // ---------- Pontuações: as suas (só você vê) e o ranking do jogo (todos veem; só a melhor de cada jogador) ----------
