@@ -195,7 +195,7 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 
 | **Vida extra** | +1 vida agora (some se as vidas já estão no máximo) | — |
 | **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
 | **Pelo grosso** | +2 s de proteção depois de perder uma vida (2 s → até 8 s) | 3 níveis |
-| **Carrocinha lenta** | agentes 8% mais lentos (patrulha, perseguição e fuga dos carteiros) | 4 níveis (−32%) |
+| **Carrocinha lenta** | agentes 8% mais lentos (patrulha, perseguição e fuga dos carteiros; **a partir da 0.15.5 vale também para os gatos**) | 4 níveis (−32%) |
 
 - Começar uma fase pelo menu ou usar *Jogar novamente* começa **sem reforços** (como começa com 3 vidas). *Tentar novamente* e *Continuar jogo* mantêm os reforços da partida (eles ficam no jogo salvo, campo `up`).
 - O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.

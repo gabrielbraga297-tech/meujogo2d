@@ -5040,6 +5040,23 @@ const PAGE_HELPERS = () => {
     }
   });
 
+  // =====================================================================
+  await section("0.15.5: o reforço Carrocinha lenta também vale para os gatos", async () => {
+    await fresh(page);
+    // o mesmo gato, no mesmo lugar, perseguindo o mesmo cachorrinho parado por 2 s: sem o reforço e com 4 níveis (32% mais lento)
+    const walk = (slow) => ev(page, (slow) => {
+      __game.autoStart = true; __game.start(11, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow } });
+      __game.freezeVets = true; __game.catsThaw = true; __game.noCatch = true; __game.setRand(((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11));
+      const c = __game.cats[0], p = __game.player; p.x = c.cx + 300 - 12; p.y = c.cy - 12; p.moving = false;
+      Object.assign(c, { mode: "chase", modeT: 99, chaseAge: 0, cool: 0, idle: 0, pounceCd: 99 });
+      let len = 0, px = c.cx, py = c.cy;
+      for (let i = 0; i < 120; i++) { __game.tick(1 / 60); len += Math.hypot(c.cx - px, c.cy - py); px = c.cx; py = c.cy; }
+      return { len, mode: c.mode, slowNow: __game.upgrades.slow };
+    }, slow);
+    const a = await walk(0), b = await walk(4);
+    ok(a.mode === "chase" && b.mode === "chase" && a.len > 150 && b.slowNow === 4 && Math.abs(b.len / a.len - 0.68) < 0.04, `com 4 níveis de Carrocinha lenta o gato anda 32% mais devagar (${b.len.toFixed(0)} px contra ${a.len.toFixed(0)} px em 2 s: ${(b.len / a.len).toFixed(2)})`);
+  });
+
   await section("cadastro e entrada (usuário e senha)", async () => {
     const stored = () => ev(page, () => localStorage.getItem("cachorrinho.v1") || "");
     const goRegister = async () => { await page.click("#btn-name"); await page.click("#btn-open-register"); };

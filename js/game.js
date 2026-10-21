@@ -1898,7 +1898,7 @@
 
     // Anda `budget` pixels neste quadro (como o agente: ao chegar ao centro de um tile decide o próximo passo e continua com o que sobrou)
     const speed = c.mode === "chase" ? cfg.chaseSpeed * (c.pounce > 0 ? CAT_POUNCE : 1) : c.mode === "flee" ? cfg.chaseSpeed * CAT_FLEE_FACTOR * (c.slow ? CAT_SLOW : 1) : c.mode === "search" ? cfg.speed * CAT_SEARCH_FACTOR : cfg.speed;
-    let budget = speed * dt, idled = false;
+    let budget = speed * vetSlowNow() * dt, idled = false; // (o reforço "Carrocinha lenta" vale também para os gatos)
     for (let n = 0; n < 4 && budget > 1e-9; n++) {
       if (!c.leg) { // está exatamente no centro de um tile: decide o próximo passo
         const from = tileOf(c.cx, c.cy);
@@ -2488,7 +2488,7 @@
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + carteiros: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
+    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + ${lv.catSpawns.length ? "carteiros e gatos" : "carteiros"}: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = winExtraText(next);
