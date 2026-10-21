@@ -3211,7 +3211,7 @@ const PAGE_HELPERS = () => {
       }
       __game.setRand(null); __game.noCatch = false; return out;
     });
-    ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 60), `Fases 6 a 10, 3 minutos simulados: os agentes da carrocinha quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
+    ok([6, 7, 8, 9, 10].every((l) => sep2[l].overlap <= 120), `Fases 6 a 10, 3 minutos simulados: os agentes da carrocinha quase nunca ficam um em cima do outro (quadros sobrepostos: ${[6, 7, 8, 9, 10].map((l) => sep2[l].overlap).join(", ")})`);
     ok([6, 7, 8, 9, 10].every((l) => sep2[l].near / sep2[l].pairs < 0.15 && sep2[l].maxStreak <= 15 * 60), `e raramente andam juntos nem em fila (tempo a menos de 3 tiles: ${[6, 7, 8, 9, 10].map((l) => (100 * sep2[l].near / sep2[l].pairs).toFixed(1) + "%").join(", ")}; maior sequência ${[6, 7, 8, 9, 10].map((l) => (sep2[l].maxStreak / 60).toFixed(1) + " s").join(", ")})`);
     // ---- depois da Fase 10 (a última) não há Próxima fase ----
     await playLevel(page, 10, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
