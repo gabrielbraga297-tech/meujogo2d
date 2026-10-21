@@ -328,7 +328,444 @@
     },
   };
 
-  const BY_ID = { 1: quintal, 2: campo, 3: casa, 4: rua, 5: condominio, 6: praca, 7: parque, 8: feira, 9: praia, 10: central };
-  // Fases sem ambiente próprio (as que virão depois) usam o da Rua do bairro.
+  // ---------------------------------------------------------------------------------------------------------------------------------
+  // Fases 11 a 20: mesmas regras de desenho dos temas acima (retângulos e círculos simples, cores fixas, tudo dentro do tile de 32 px, nada pisca)
+  const pick = (list, v) => list[Math.min(list.length - 1, Math.floor(v * list.length))];
+  const shadowBox = (g) => dot(g, "rgba(0,0,0,.25)", 5, 9, 24, 21);   // sombra de uma "caixa" quadrada
+  const shadowDisc = (g, rad) => circle(g, "rgba(0,0,0,.25)", 16, 19, rad);
+
+  // 11. Beco dos gatos: paralelepípedo escuro e molhado, muros de tijolo velho com pichação e caixas de papelão e latões
+  const CAT_TAGS = ["rgba(80,200,190,.55)", "rgba(214,96,160,.55)"];
+  const beco = {
+    id: 11, place: "Beco dos gatos", blurb: "o beco dos gatos: paralelepípedo molhado, muros de tijolo e latões",
+    mover: { wall: ["#4f7088", "#7aa2bd", "#1f3442"], door: ["#6c9a3a", "#a4cf6a", "#2c4614"] },
+    rail: ["#8a7b52", "#1d1a14"],
+    floor(g) {
+      const { x, y } = g;
+      checker(g, "#544450", "#574753");
+      g.ctx.fillStyle = "#231f27";                                                                                 // juntas largas entre as pedras
+      g.rect(x, y, T, 2); g.rect(x, y + 16, T, 2);
+      g.rect(x, y + 2, 2, 14); g.rect(x + 11, y + 2, 2, 14); g.rect(x + 22, y + 2, 2, 14);
+      g.rect(x + 5, y + 18, 2, 14); g.rect(x + 16, y + 18, 2, 14); g.rect(x + 27, y + 18, 2, 14);
+      if (g.h(2) < 0.5) dot(g, "rgba(0,0,0,.15)", 2 + 11 * Math.floor(g.h(3) * 2), 2, 9, 14);                      // uma pedra mais escura
+      dot(g, "rgba(190,210,235,.16)", 3 + Math.floor(g.h(4) * 14), g.h(5) < 0.5 ? 4 : 20, 6, 1);                   // brilho do molhado
+      if (g.h(6) > 0.86) { const px = 9 + Math.floor(g.h(7) * 6), py = 12 + Math.floor(g.h(8) * 6); circle(g, "rgba(70,110,150,.42)", px, py, 7); circle(g, "rgba(70,110,150,.42)", px + 8, py + 2, 5); circle(g, "rgba(205,228,246,.35)", px - 2, py - 2, 2); } // poça
+    },
+    wall(g) {
+      const { x, y, c, r } = g;
+      block(g, "#7b4a40", "#a76b57", "#3f2527", "#4a2c2d");
+      g.ctx.fillStyle = "#4b2e2b";                                                                                 // argamassa
+      g.rect(x, y + 8, T, 1); g.rect(x, y + 16, T, 1); g.rect(x, y + 24, T, 1); if (g.solid(c, r - 1)) g.rect(x, y, T, 1);
+      g.rect(x + 15, y + 1, 1, 7); g.rect(x + 7, y + 9, 1, 7); g.rect(x + 23, y + 9, 1, 7); g.rect(x + 15, y + 17, 1, 7); g.rect(x + 7, y + 25, 1, 7); g.rect(x + 23, y + 25, 1, 7);
+      const row = Math.floor(g.h(2) * 4), half = g.h(3) < 0.5 ? 0 : 1;                                             // tijolo velho: uns mais escuros, outros mais claros
+      dot(g, "rgba(0,0,0,.17)", row % 2 ? (half ? 8 : 1) : (half ? 16 : 1), 1 + 8 * row, 14, 7);
+      dot(g, "rgba(255,190,160,.12)", row % 2 ? (half ? 1 : 24) : (half ? 1 : 16), 1 + 8 * ((row + 2) % 4), 6, 7);
+      if (g.h(7) < 0.06) { // pichação discreta: carinha de gato
+        const tag = pick(CAT_TAGS, g.h(8));
+        dot(g, tag, 10, 9, 3, 4); dot(g, tag, 19, 9, 3, 4); circle(g, tag, 16, 17, 6.5); dot(g, "rgba(20,30,30,.85)", 12.5, 15, 2, 2.5); dot(g, "rgba(20,30,30,.85)", 17.5, 15, 2, 2.5);
+      }
+    },
+    crate(g) {
+      if (g.h(4) < 0.55) { // caixa de papelão
+        shadowBox(g);
+        dot(g, "#b88d55", 4, 7, 24, 21); dot(g, "#d7b57c", 4, 7, 24, 3); dot(g, "#8c6a3c", 4, 26, 24, 2);
+        dot(g, "#e3d3a8", 12, 10, 8, 16); dot(g, "#8c6a3c", 15, 10, 2, 16);                                         // fita e emenda das abas
+        dot(g, "#f5f0e2", 6, 19, 6, 5); dot(g, "#c0392b", 7, 20, 4, 1);                                              // etiqueta
+      } else { // latão de lixo visto de cima
+        const col = g.h(5) < 0.5 ? ["#5d6873", "#7d8995", "#4a535c"] : ["#46614f", "#678a73", "#364a3d"];
+        shadowDisc(g, 11);
+        circle(g, col[2], 16, 16, 11); circle(g, col[0], 16, 16, 9.5); circle(g, col[1], 16, 16, 7.2); circle(g, col[0], 16, 16, 5);
+        dot(g, col[2], 12, 8, 8, 2);                                                                                 // alça da tampa
+      }
+    },
+  };
+
+  // 12. Pet shop: piso de ladrilho claro com faixas, prateleiras coloridas e caixas de ração e bolinhas
+  const PRODUCTS = ["#e8564a", "#3b82d6", "#f2b632", "#58b85a", "#a45ad6", "#f08ac0", "#ff8a3d", "#2fb5b0"];
+  const petshop = {
+    id: 12, place: "Pet shop", blurb: "o pet shop: prateleiras coloridas e caixas de ração",
+    mover: { wall: ["#8a56b8", "#b68ad8", "#43225f"], door: ["#e0589a", "#f58cbf", "#5e1a3b"] },
+    rail: ["#5e5440", "#16130c"],
+    floor(g) {
+      const { x, y, r } = g;
+      checker(g, "#cae4e9", "#c5e0e6");
+      g.ctx.fillStyle = "#a7cad2"; g.rect(x + 15, y, 1, T); g.rect(x, y + 15, T, 1);                               // juntas dos ladrilhos
+      if (r % 3 === 0) { dot(g, "#f3d0dc", 0, 8, T, 8); dot(g, "#e3a6bd", 0, 8, T, 1); dot(g, "#e3a6bd", 0, 15, T, 1); } // faixa rosa
+      if (g.h(2) > 0.93) { const px = 8 + Math.floor(g.h(3) * 10), py = 8 + Math.floor(g.h(4) * 10); circle(g, "#a7cad2", px + 4, py + 5, 3.2); circle(g, "#a7cad2", px + 1, py, 1.5); circle(g, "#a7cad2", px + 4, py - 1.5, 1.5); circle(g, "#a7cad2", px + 7, py, 1.5); } // patinha pintada no chão
+    },
+    wall(g) { // prateleiras cheias de produtos
+      const { x, y } = g;
+      block(g, "#2f6773", "#5a96a3", "#1c3f48", "#1c3f48");
+      g.ctx.fillStyle = "#f1e9d8"; g.rect(x + 2, y + 13, 28, 2); g.rect(x + 2, y + 26, 28, 2);                      // tábuas das prateleiras
+      for (let k = 0; k < 6; k++) {
+        const col = k % 3, ph = 6 + Math.floor(g.h(10 + k) * 3);
+        g.ctx.fillStyle = pick(PRODUCTS, g.h(20 + k)); g.rect(x + 3 + col * 9, y + (k < 3 ? 13 : 26) - ph, 8, ph);
+      }
+    },
+    crate(g) {
+      if (g.h(4) < 0.55) { // caixa de ração, com a patinha
+        const col = pick(["#d9483b", "#3b82d6", "#e88a2e"], g.h(5));
+        shadowBox(g);
+        dot(g, col, 4, 7, 24, 21); dot(g, "#fbf3e4", 4, 13, 24, 8);
+        circle(g, "#7a5230", 16, 17.5, 2.2); circle(g, "#7a5230", 13.2, 15, 1); circle(g, "#7a5230", 16, 14.2, 1); circle(g, "#7a5230", 18.8, 15, 1);
+      } else { // pote de bolinhas
+        shadowDisc(g, 11.5);
+        circle(g, "#e8edf2", 16, 16, 11.5); circle(g, "#b9c3cf", 16, 16, 9.5);
+        for (const [dx, dy, i] of [[11, 12.5, 0], [19, 11.5, 1], [15, 18, 2], [22, 17.5, 3], [10.5, 19, 4]]) circle(g, pick(PRODUCTS, g.h(30 + i)), dx, dy, 3.2);
+      }
+    },
+  };
+
+  // 13. Fazenda: terra batida com palha, celeiro vermelho, fardos e sacos
+  const fazenda = {
+    id: 13, place: "Fazenda", blurb: "a fazenda: terra batida, celeiro vermelho, fardos e sacos",
+    mover: { wall: ["#e9e2cf", "#fffaf0", "#8a7d5f"], door: ["#2f6f95", "#5aa4cc", "#163a50"] },
+    rail: ["#4a3322", "#120c07"],
+    floor(g) {
+      checker(g, "#8e6538", "#8a6234");
+      dot(g, "#7a5430", 3 + Math.floor(g.h(2) * 22), 4 + Math.floor(g.h(3) * 22), 4, 2);                          // torrões
+      dot(g, "#82592f", 3 + Math.floor(g.h(4) * 22), 4 + Math.floor(g.h(5) * 22), 3, 2);
+      if (g.h(1) < 0.45) { const px = 3 + Math.floor(g.h(6) * 18), py = 3 + Math.floor(g.h(7) * 22); dot(g, "#d6bd72", px, py, 6, 1); dot(g, "#d6bd72", px + 2, py + 2, 5, 1); dot(g, "#bfa357", px + 1, py + 4, 6, 1); } // palha
+    },
+    wall(g) { // celeiro de tábuas vermelhas com friso branco
+      const { x, y, c, r } = g;
+      block(g, "#9d2f27", "#e9dcc0", "#561814", "#e0d2b4");
+      dot(g, "rgba(0,0,0,.12)", 8 * Math.floor(g.h(2) * 4), 4, 8, 24);
+      g.ctx.fillStyle = "#7c241f"; for (let i = 8; i < T; i += 8) g.rect(x + i - 1, y + 4, 1.5, T - 8);            // tábuas
+      if (g.h(5) < 0.12 && g.solid(c - 1, r) && g.solid(c + 1, r) && g.solid(c, r - 1) && g.solid(c, r + 1)) {      // porta do celeiro com X
+        g.ctx.fillStyle = "#efe3c8";
+        g.rect(x + 5, y + 5, 22, 2); g.rect(x + 5, y + 25, 22, 2); g.rect(x + 5, y + 5, 2, 22); g.rect(x + 25, y + 5, 2, 22);
+        g.ctx.strokeStyle = "#efe3c8"; g.ctx.lineWidth = 2.5; g.ctx.beginPath(); g.ctx.moveTo(x + 7, y + 7); g.ctx.lineTo(x + 25, y + 25); g.ctx.moveTo(x + 25, y + 7); g.ctx.lineTo(x + 7, y + 25); g.ctx.stroke();
+      }
+    },
+    crate(g) {
+      if (g.h(4) < 0.55) { // fardo de palha quadrado
+        shadowBox(g);
+        dot(g, "#d6b45a", 4, 7, 24, 21); dot(g, "#ead486", 4, 7, 24, 2);
+        g.ctx.fillStyle = "#b8923c"; g.rect(g.x + 6, g.y + 12, 14 + Math.floor(g.h(5) * 6), 1); g.rect(g.x + 10, g.y + 16, 16, 1); g.rect(g.x + 6, g.y + 20, 12 + Math.floor(g.h(6) * 8), 1); g.rect(g.x + 12, g.y + 24, 14, 1);
+        dot(g, "#6b4f2a", 10, 7, 2, 21); dot(g, "#6b4f2a", 21, 7, 2, 21);                                            // barbantes
+      } else { // saco de grãos amarrado
+        shadowDisc(g, 11);
+        circle(g, "#cdb487", 16, 18, 11); circle(g, "#dcc79c", 15, 17, 8.5);
+        dot(g, "#a88f64", 8, 14, 16, 1.5); dot(g, "#a88f64", 10, 20, 12, 1.5);
+        circle(g, "#8a6a3a", 16, 8.5, 2.4); dot(g, "#8a6a3a", 14, 10, 4, 2);                                         // amarração
+      }
+    },
+  };
+
+  // 14. Bosque: chão de folhas e terra, copas de árvores e moitas densas, troncos baixos
+  const LEAVES = ["#9a5a2a", "#b0752f", "#6d7a38", "#3f3320"];
+  const bosque = {
+    id: 14, place: "Bosque", blurb: "o bosque: folhas secas, árvores densas e troncos caídos",
+    mover: { wall: ["#c8a06a", "#ecd0a0", "#6a4a26"], door: ["#8c93a0", "#c0c6d2", "#41454e"] },
+    rail: ["#9a8450", "#0e0b06"],
+    floor(g) {
+      checker(g, "#50442a", "#53472d");
+      for (let i = 0; i < 5; i++) dot(g, pick(LEAVES, g.h(10 + i)), 2 + Math.floor(g.h(20 + i) * 25), 2 + Math.floor(g.h(30 + i) * 26), 3, 2); // folhas caídas
+      if (g.h(2) < 0.3) dot(g, "#3a2c18", 4 + Math.floor(g.h(3) * 16), 6 + Math.floor(g.h(4) * 18), 9, 1);        // graveto
+      if (g.h(9) > 0.975) { dot(g, "#e8e0cc", 14, 17, 3, 5); circle(g, "#c0392b", 15.5, 16, 4); dot(g, "#f4ead6", 14, 14.5, 1.5, 1.5); } // cogumelo
+    },
+    wall(g) { // copa de árvore ou moita
+      block(g, "#1b4527", "#2f6b3b", "#0d2a17", "#12331e");
+      for (let i = 0; i < 3; i++) circle(g, i % 2 ? "#265f33" : "#2d6c3b", 9 + g.h(1 + i) * 14, 9 + g.h(4 + i) * 14, 6 + g.h(7 + i) * 2.5);
+      for (let i = 0; i < 2; i++) circle(g, "#3f8a4c", 10 + g.h(10 + i) * 12, 10 + g.h(12 + i) * 12, 2.6);          // folhas claras
+      if (g.h(15) < 0.06) { dot(g, "#d9483b", 12, 12, 3, 3); dot(g, "#d9483b", 20, 19, 3, 3); }                     // frutinhas
+    },
+    crate(g) {
+      const k = g.h(4);
+      if (k < 0.34) { // toco visto de cima
+        shadowDisc(g, 11);
+        circle(g, "#5b3c22", 16, 16, 11); circle(g, "#d6ab70", 16, 16, 9); circle(g, "#c39555", 16, 16, 6.3); circle(g, "#d6ab70", 16, 16, 4); circle(g, "#a5763f", 16, 16, 1.6);
+      } else { // tronco deitado (na horizontal ou na vertical)
+        const v = k > 0.67, P = (col, a, b, w, h) => (v ? dot(g, col, b, a, h, w) : dot(g, col, a, b, w, h)), C = (col, a, b, rad) => (v ? circle(g, col, b, a, rad) : circle(g, col, a, b, rad));
+        P("rgba(0,0,0,.25)", 5, 12, 24, 15); P("#6a4526", 8, 10, 21, 14); P("#85603a", 8, 10, 21, 3);
+        P("#4b2f19", 14, 13, 1, 8); P("#4b2f19", 20, 12, 1, 6); P("#4b2f19", 25, 15, 1, 7);                          // casca
+        C("#5b3c22", 8, 17, 7.5); C("#d6ab70", 8, 17, 6); C("#c39555", 8, 17, 3.6); C("#a5763f", 8, 17, 1.2);       // ponta cortada
+      }
+    },
+  };
+
+  // 15. Lago e docas: tábuas de madeira velha, água com ondinhas e margem, barris e boias
+  const lago = {
+    id: 15, place: "Lago e docas", blurb: "o lago e as docas: tábuas, água e barris",
+    mover: { wall: ["#dfe3e8", "#ffffff", "#5b6772"], door: ["#d9782b", "#f2a468", "#5a2c0c"] },
+    rail: ["#3b3228", "#0f0c09"],
+    floor(g) {
+      const { x, y, c, r } = g;
+      checker(g, "#a89a82", "#a4967e");
+      g.ctx.fillStyle = "#5a4e40"; g.rect(x, y + 7, T, 1); g.rect(x, y + 15, T, 1); g.rect(x, y + 23, T, 1); g.rect(x, y + 31, T, 1); // vão entre as tábuas
+      for (let j = 0; j < 4; j++) g.rect(x + 3 + Math.floor(g.h(1 + j) * 24), y + 8 * j, 1, 7);                       // emendas
+      g.ctx.fillStyle = "#3a3128"; g.rect(x + 3, y + 3, 2, 2); g.rect(x + 27, y + 19, 2, 2);                                // pregos
+      if (g.h(6) > 0.9) dot(g, "rgba(255,255,255,.1)", 4, 8 * Math.floor(g.h(7) * 4) + 1, 24, 3);
+      if (g.free) { // viga de borda onde a doca encontra a água
+        const up = g.solid(c, r - 1), dn = g.solid(c, r + 1), lf = g.solid(c - 1, r), rt = g.solid(c + 1, r);
+        if (up) { dot(g, "#5a452f", 0, 0, T, 6); dot(g, "#2f2418", 0, 0, T, 1); dot(g, "#7d5f3d", 0, 5, T, 1); }
+        if (dn) { dot(g, "#5a452f", 0, T - 6, T, 6); dot(g, "#2f2418", 0, T - 1, T, 1); dot(g, "#7d5f3d", 0, T - 6, T, 1); }
+        if (lf) { dot(g, "#5a452f", 0, 0, 6, T); dot(g, "#2f2418", 0, 0, 1, T); dot(g, "#7d5f3d", 5, 0, 1, T); }
+        if (rt) { dot(g, "#5a452f", T - 6, 0, 6, T); dot(g, "#2f2418", T - 1, 0, 1, T); dot(g, "#7d5f3d", T - 6, 0, 1, T); }
+        if ((up || dn) && g.h(8) < 0.14) { dot(g, "#2b2118", 12, up ? 1 : T - 8, 7, 7); dot(g, "#5b4630", 13, up ? 2 : T - 7, 5, 2); } // moirão
+      }
+    },
+    wall(g) { // água do lago
+      const { x, y, c, r } = g;
+      g.ctx.fillStyle = (c + r) % 2 ? "#1f627d" : "#226780"; g.rect(x, y, T, T);
+      const o = Math.floor(g.h(1) * 8);
+      g.ctx.fillStyle = "#4b9bb5"; g.rect(x + 3 + o, y + 6, 8, 1.5); g.rect(x + 17 + o % 5, y + 14, 9, 1.5); g.rect(x + 5 + o % 4, y + 24, 7, 1.5); // ondinhas
+      g.ctx.fillStyle = "#a9d6e6"; g.rect(x + 20 - o, y + 9, 3, 1); g.rect(x + 8 + o % 3, y + 19, 3, 1);
+      const inner = g.solid(c - 1, r) && g.solid(c + 1, r) && g.solid(c, r - 1) && g.solid(c, r + 1);
+      if (!g.solid(c, r - 1)) { dot(g, "#3f93ad", 0, 0, T, 5); dot(g, "#cfeaf3", 0, 0, T, 2); }                      // margem: água rasa e espuma
+      if (!g.solid(c, r + 1)) { dot(g, "#3f93ad", 0, T - 5, T, 5); dot(g, "#cfeaf3", 0, T - 2, T, 2); }
+      if (!g.solid(c - 1, r)) { dot(g, "#3f93ad", 0, 0, 5, T); dot(g, "#cfeaf3", 0, 0, 2, T); }
+      if (!g.solid(c + 1, r)) { dot(g, "#3f93ad", T - 5, 0, 5, T); dot(g, "#cfeaf3", T - 2, 0, 2, T); }
+      if (inner && g.h(6) < 0.09) { const px = 10 + Math.floor(g.h(7) * 12), py = 10 + Math.floor(g.h(8) * 12); circle(g, "#3f8f4a", px, py, 4.4); circle(g, "#58ad5f", px - 1, py - 1, 2.2); if (g.h(9) < 0.4) circle(g, "#f0b4c8", px + 1.5, py + 1, 1.3); } // vitória-régia
+    },
+    crate(g) {
+      if (g.h(4) < 0.55) { // barril de madeira com aros de ferro
+        shadowDisc(g, 11);
+        circle(g, "#7a8590", 16, 16, 11); circle(g, "#7a5232", 16, 16, 9.3);
+        dot(g, "#58391f", 11.5, 8, 1, 16); dot(g, "#58391f", 15.5, 7.5, 1, 17); dot(g, "#58391f", 19.5, 8, 1, 16);
+        circle(g, "#3d2814", 16, 16, 1.8);
+      } else { // boia salva-vidas
+        shadowDisc(g, 12);
+        circle(g, "#f4f4f2", 16, 16, 12);
+        g.ctx.fillStyle = "#d9483b";
+        for (let i = 0; i < 8; i += 2) { g.ctx.beginPath(); g.ctx.moveTo(g.x + 16, g.y + 16); g.ctx.arc(g.x + 16, g.y + 16, 12, i * Math.PI / 4, (i + 1) * Math.PI / 4); g.ctx.closePath(); g.ctx.fill(); }
+        circle(g, "#cfd3d6", 16, 16, 6.4); circle(g, "#756859", 16, 16, 5);
+      }
+    },
+  };
+
+  // 16. Mercadão: ladrilho quente em xadrez, barracas de toldo (cores diferentes das da Feira) e caixotes de legumes
+  const MARKET_AWNINGS = [["#7b4fb0", "#f6efe6"], ["#1c9aa6", "#f6efe6"], ["#d6307f", "#f6efe6"], ["#b5792a", "#f6efe6"]];
+  const mercadao = {
+    id: 16, place: "Mercadão", blurb: "o mercadão: ladrilho quente, barracas de toldo e caixotes de legumes",
+    mover: { wall: ["#3d4552", "#6c7889", "#161a21"], door: ["#5b3a22", "#8b5e38", "#2a1709"] },
+    rail: ["#5a3e2a", "#170e08"],
+    floor(g) {
+      const { x, y } = g;
+      g.ctx.fillStyle = "#c9885a"; g.rect(x, y, T, T);
+      g.ctx.fillStyle = "#f3e3c5"; g.rect(x, y, 16, 16); g.rect(x + 16, y + 16, 16, 16);                             // xadrez
+      g.ctx.fillStyle = "rgba(110,66,40,.28)"; g.rect(x + 15, y, 2, T); g.rect(x, y + 15, T, 2);                     // rejunte
+      if (g.h(1) > 0.9) { const px = 4 + Math.floor(g.h(2) * 20), py = 4 + Math.floor(g.h(3) * 20); dot(g, "#7fa44f", px, py, 6, 3); dot(g, "#5c8a3a", px + 1, py + 1, 3, 1); } // folha de repolho no chão
+      else if (g.h(1) < 0.05) circle(g, "#e98a2c", 6 + Math.floor(g.h(4) * 20), 6 + Math.floor(g.h(5) * 20), 2.4);
+    },
+    wall(g) { // toldo de faixas largas, com moldura de madeira e festão na beirada
+      const { x, y, c, r } = g;
+      const aw = pick(MARKET_AWNINGS, hash(c >> 1, r >> 1, 17));
+      g.ctx.fillStyle = aw[1]; g.rect(x, y, T, T);
+      g.ctx.fillStyle = aw[0]; g.rect(x, y + 3, T, 10); g.rect(x, y + 19, T, 10);
+      g.ctx.fillStyle = "#3a2418";
+      if (!g.solid(c, r - 1)) g.rect(x, y, T, 3);
+      if (!g.solid(c, r + 1)) g.rect(x, y + T - 3, T, 3);
+      if (!g.solid(c - 1, r)) g.rect(x, y, 3, T);
+      if (!g.solid(c + 1, r)) g.rect(x + T - 3, y, 3, T);
+      if (!g.solid(c, r + 1)) for (let i = 0; i < 4; i++) { g.ctx.fillStyle = i % 2 ? aw[1] : aw[0]; g.ctx.beginPath(); g.ctx.arc(g.x + 4 + i * 8, g.y + T - 4, 4, 0, Math.PI); g.ctx.fill(); }
+    },
+    crate(g) { // caixote de plástico com legumes
+      const body = pick(["#3b8f4a", "#3a78b8", "#e6ebef"], g.h(4)), k = g.h(5);
+      shadowBox(g);
+      dot(g, body, 4, 7, 24, 21); dot(g, "rgba(0,0,0,.18)", 4, 24, 24, 4);
+      g.ctx.fillStyle = "rgba(0,0,0,.28)"; for (let i = 0; i < 4; i++) g.rect(g.x + 6 + i * 6, g.y + 25, 4, 1.5);
+      if (k < 0.34) { for (let i = 0; i < 6; i++) { dot(g, "#f08a24", 7 + i * 3.2, 11, 2.4, 11); dot(g, "#4c9a3a", 7 + i * 3.2, 9, 2.4, 3); } } // cenouras
+      else if (k < 0.67) { circle(g, "#a9d27a", 11, 15, 5.4); circle(g, "#a9d27a", 21, 15, 5.4); circle(g, "#d9efb8", 11, 15, 3); circle(g, "#d9efb8", 21, 15, 3); } // repolhos
+      else { for (const [dx, dy] of [[9, 12], [15, 11], [21, 12], [11, 17.5], [18, 17], [23.5, 17.5]]) { circle(g, "#6a3a8c", dx, dy, 3.3); circle(g, "#9a6ac0", dx - 1, dy - 1, 1.1); } } // berinjelas
+    },
+  };
+
+  // 17. Estacionamento: asfalto com faixas de vaga, carros vistos de cima e cones
+  const CARS = ["#c8372d", "#2f6fb5", "#e6e8ec", "#32363e", "#d9a02e", "#3f9a5f", "#97a1ae", "#d9702a"];
+  const estacionamento = {
+    id: 17, place: "Estacionamento", blurb: "o estacionamento: asfalto, vagas, carros e cones",
+    mover: { wall: ["#1d8f8f", "#52cbc4", "#0b3a3a"], door: ["#9a4fd0", "#c796ee", "#3f1a63"] },
+    rail: ["#23242a", "#0c0c0f"],
+    floor(g) {
+      const { x, y, c, r } = g;
+      checker(g, "#6b6d73", "#6e7076");
+      dot(g, "#3b3d42", 3 + Math.floor(g.h(2) * 22), 4 + Math.floor(g.h(3) * 22), 3, 1.5); dot(g, "#5d6067", 3 + Math.floor(g.h(4) * 22), 4 + Math.floor(g.h(5) * 22), 2, 1.5);
+      if (g.h(1) > 0.93) dot(g, "rgba(0,0,0,.22)", 6 + Math.floor(g.h(6) * 8), 8 + Math.floor(g.h(7) * 8), 11, 7);   // mancha de óleo
+      if (g.free) { // faixas brancas das vagas, saindo das fileiras de carros
+        g.ctx.fillStyle = "#dcdcd8";
+        if (c % 2 === 0) { if (g.solid(c, r - 1)) g.rect(x, y, 3, 14); if (g.solid(c, r + 1)) g.rect(x, y + T - 14, 3, 14); }
+        if (r % 2 === 0) { if (g.solid(c - 1, r)) g.rect(x, y, 14, 3); if (g.solid(c + 1, r)) g.rect(x + T - 14, y, 14, 3); }
+      }
+    },
+    wall(g) { // um carro visto de cima por tile (de frente para cima ou para o lado)
+      const { x, y } = g;
+      const v = hash(g.c >> 1, g.r >> 1, 5) < 0.5, col = pick(CARS, g.h(2));
+      const R = (a, b, w, h) => (v ? g.rect(x + a, y + b, w, h) : g.rect(x + b, y + a, h, w));
+      g.ctx.fillStyle = "#1f2126"; g.rect(x, y, T, T);
+      g.ctx.fillStyle = "#0e0f12"; R(2, 6, 3, 7); R(27, 6, 3, 7); R(2, 20, 3, 7); R(27, 20, 3, 7);                  // rodas
+      g.ctx.fillStyle = col; R(4, 2, 24, 28);
+      g.ctx.fillStyle = "rgba(255,255,255,.2)"; R(7, 10, 18, 13);                                                    // teto
+      g.ctx.fillStyle = "#27313f"; R(8, 8, 16, 4); R(8, 22, 16, 3);                                                  // vidros
+      g.ctx.fillStyle = "#f5efc8"; R(5, 2, 5, 2); R(22, 2, 5, 2);                                                      // faróis
+      g.ctx.fillStyle = "#d12c2c"; R(5, 28, 5, 2); R(22, 28, 5, 2);                                                   // lanternas
+    },
+    crate(g) {
+      if (g.h(4) < 0.65) { // cone de trânsito com base quadrada
+        dot(g, "rgba(0,0,0,.25)", 6, 9, 22, 21);
+        dot(g, "#2b2d33", 5, 5, 22, 22);
+        circle(g, "#ff6a1a", 16, 16, 9.5); circle(g, "#ffffff", 16, 16, 6.2); circle(g, "#ff6a1a", 16, 16, 3.6); circle(g, "#c94a0a", 16, 16, 1.2);
+      } else { // barreira de obra listrada
+        dot(g, "rgba(0,0,0,.25)", 4, 13, 26, 15);
+        dot(g, "#2b2d33", 5, 22, 3, 5); dot(g, "#2b2d33", 24, 22, 3, 5);
+        dot(g, "#f4f4f2", 3, 9, 26, 13);
+        g.ctx.fillStyle = "#ff6a1a"; for (let i = 0; i < 26; i += 8) g.rect(g.x + 3 + i, g.y + 9, 4, 13);
+        dot(g, "rgba(0,0,0,.2)", 3, 20, 26, 2);
+      }
+    },
+  };
+
+  // 18. Telhados: telhas de barro com calhas; a borda do telhado dá no ar azul-noite (parapeitos e chaminés)
+  const telhados = {
+    id: 18, place: "Telhados", blurb: "os telhados da cidade à noite: calhas, chaminés e antenas",
+    mover: { wall: ["#b8c4d2", "#e2eaf3", "#4a5666"], door: ["#47a0cf", "#a4d6f0", "#1b4a66"] },
+    rail: ["#3a2a24", "#0f0a08"],
+    floor(g) {
+      const { x, y, c, r } = g;
+      g.ctx.fillStyle = "#9c4a3a"; g.rect(x, y, T, T);
+      g.ctx.fillStyle = "#ad5642"; g.rect(x + 8, y, 8, 14); g.rect(x + 24, y, 8, 14); g.rect(x, y + 16, 8, 14); g.rect(x + 16, y + 16, 8, 14);  // capa e canal das telhas
+      g.ctx.fillStyle = "#6c3226"; g.rect(x, y + 14, T, 2); g.rect(x, y + 30, T, 2);                                 // sombra de cada fileira
+      if (g.h(3) > 0.9) dot(g, "#6e8a55", 2 + Math.floor(g.h(4) * 18), 3 + Math.floor(g.h(5) * 20), 8, 4);            // musgo
+      if (g.free) { // calha de metal junto da borda
+        if (g.solid(c, r - 1)) { dot(g, "#46556b", 0, 0, T, 3); dot(g, "#9aabc2", 0, 3, T, 3); dot(g, "#c9d6e8", 0, 3, T, 1); }
+        if (g.solid(c, r + 1)) { dot(g, "#46556b", 0, T - 3, T, 3); dot(g, "#9aabc2", 0, T - 6, T, 3); dot(g, "#c9d6e8", 0, T - 6, T, 1); }
+        if (g.solid(c - 1, r)) { dot(g, "#46556b", 0, 0, 3, T); dot(g, "#9aabc2", 3, 0, 3, T); dot(g, "#c9d6e8", 3, 0, 1, T); }
+        if (g.solid(c + 1, r)) { dot(g, "#46556b", T - 3, 0, 3, T); dot(g, "#9aabc2", T - 6, 0, 3, T); dot(g, "#c9d6e8", T - 6, 0, 1, T); }
+      }
+    },
+    wall(g) { // ar da noite com outros telhados ao longe, parapeito de pedra na borda e chaminés
+      const { x, y, c, r } = g;
+      const up = g.solid(c, r - 1), dn = g.solid(c, r + 1), lf = g.solid(c - 1, r), rt = g.solid(c + 1, r);
+      g.ctx.fillStyle = "#0f1830"; g.rect(x, y, T, T);
+      const px = 2 + Math.floor(g.h(3) * 10), py = 4 + Math.floor(g.h(4) * 12);
+      dot(g, "#17234a", px, py, 14 + Math.floor(g.h(5) * 3), 9);                                                       // telhado vizinho, lá embaixo
+      if (g.h(6) < 0.45) { dot(g, "#f4d589", px + 2, py + 2, 2, 2); if (g.h(7) < 0.5) dot(g, "#f4d589", px + 7, py + 4, 2, 2); }   // janelas acesas
+      if (g.h(8) < 0.35) dot(g, "#8fb0e0", 20 + Math.floor(g.h(9) * 8), 3 + Math.floor(g.h(10) * 6), 1, 1);              // estrela
+      if (up && dn && lf && rt && g.h(11) < 0.13) { // chaminé
+        dot(g, "#27345a", 2, 2, 28, 28); dot(g, "rgba(0,0,0,.35)", 10, 11, 14, 14);
+        dot(g, "#9a4a3a", 8, 8, 14, 14); dot(g, "#c06a55", 8, 8, 14, 3); dot(g, "#2a1a18", 11, 12, 8, 7); dot(g, "#6e6a68", 8, 21, 14, 1);
+      }
+      if (!up) { dot(g, "#cfc7b6", 0, 0, T, 5); dot(g, "#8b8373", 0, 5, T, 2); }                                      // parapeito
+      if (!dn) { dot(g, "#cfc7b6", 0, T - 5, T, 5); dot(g, "#8b8373", 0, T - 7, T, 2); }
+      if (!lf) { dot(g, "#cfc7b6", 0, 0, 5, T); dot(g, "#8b8373", 5, 0, 2, T); }
+      if (!rt) { dot(g, "#cfc7b6", T - 5, 0, 5, T); dot(g, "#8b8373", T - 7, 0, 2, T); }
+    },
+    crate(g) {
+      if (g.h(4) < 0.5) { // antena parabólica baixa
+        shadowDisc(g, 11);
+        circle(g, "#aab2bd", 16, 16, 11); circle(g, "#d9dde3", 16, 16, 9.6); circle(g, "#e8ecf0", 14.5, 14.5, 5.5); circle(g, "#aab2bd", 16, 16, 2.4);
+        dot(g, "#6b7380", 16, 6.5, 1.6, 9); circle(g, "#3a414c", 17, 6.5, 2.2);
+      } else { // exaustor do telhado
+        shadowDisc(g, 11);
+        circle(g, "#5a6472", 16, 16, 11); circle(g, "#7b8696", 16, 16, 9.4); circle(g, "#9aa5b3", 16, 16, 6.8);
+        dot(g, "#4d5662", 8, 15, 16, 2); dot(g, "#4d5662", 15, 8, 2, 16); circle(g, "#4d5662", 16, 16, 2);
+      }
+    },
+  };
+
+  // 19. Estação de trem: plataforma de pedra com faixa de segurança, vagões azuis e cinza com janelas, malas
+  const TRAINS = [["#46688f", "#6a92bd", "#263c58", "#c7463a"], ["#7a8591", "#a3afbc", "#4a5461", "#2e5f9a"]];
+  const estacao = {
+    id: 19, place: "Estação de trem", blurb: "a estação de trem: plataforma, vagões e malas",
+    mover: { wall: ["#b83a2e", "#e2685a", "#5a1812"], door: ["#3a7a55", "#6bbb8a", "#17382a"] },
+    rail: ["#4a4234", "#14110b"],
+    floor(g) {
+      const { x, y, c, r } = g;
+      checker(g, "#b3aa9b", "#b8afa0");
+      g.ctx.fillStyle = "#8e8677"; g.rect(x, y + 15, T, 1); g.rect(x, y + 31, T, 1); g.rect(x + 7, y, 1, 15); g.rect(x + 23, y + 16, 1, 15);
+      if (g.h(3) > 0.93) dot(g, "rgba(60,50,40,.14)", 4 + Math.floor(g.h(4) * 14), 5 + Math.floor(g.h(5) * 14), 9, 5);
+      if (g.free) { // faixa fina de segurança junto da borda (ocre fechado, de propósito diferente do amarelo do aviso do trilho)
+        if (g.solid(c, r - 1)) { dot(g, "#a68b52", 0, 2, T, 3); dot(g, "#6e5a33", 0, 5, T, 1); }
+        if (g.solid(c, r + 1)) { dot(g, "#a68b52", 0, T - 5, T, 3); dot(g, "#6e5a33", 0, T - 6, T, 1); }
+        if (g.solid(c - 1, r)) { dot(g, "#a68b52", 2, 0, 3, T); dot(g, "#6e5a33", 5, 0, 1, T); }
+        if (g.solid(c + 1, r)) { dot(g, "#a68b52", T - 5, 0, 3, T); dot(g, "#6e5a33", T - 6, 0, 1, T); }
+      }
+    },
+    wall(g) { // vagão de trem
+      const { x, y, c, r } = g;
+      const t = pick(TRAINS, hash(c >> 2, r >> 1, 11)), inner = g.solid(c - 1, r) && g.solid(c + 1, r) && g.solid(c, r - 1) && g.solid(c, r + 1);
+      block(g, t[0], t[1], t[2], t[2]);
+      if (inner) { // teto do vagão
+        dot(g, t[1], 3, 3, 26, 26); dot(g, t[2], 15, 3, 2, 26);
+        dot(g, t[2], 6, 7 + 10 * (c % 2), 6, 6); dot(g, t[2], 20, 9 + 10 * (r % 2), 6, 6);
+      } else {
+        dot(g, t[3], 0, 19, T, 3);                                                                                  // faixa de pintura do vagão
+        if (c % 4 === 1) { dot(g, t[2], 6, 5, 20, 21); dot(g, "#b9d6e8", 10, 8, 12, 9); dot(g, "#e4f1f8", 10, 8, 12, 2); dot(g, t[3], 15, 17, 2, 8); } // porta
+        else { dot(g, "#1d2a3c", 4, 6, 11, 10); dot(g, "#b9d6e8", 5, 7, 9, 8); dot(g, "#e4f1f8", 5, 7, 9, 2); dot(g, "#1d2a3c", 17, 6, 11, 10); dot(g, "#b9d6e8", 18, 7, 9, 8); dot(g, "#e4f1f8", 18, 7, 9, 2); } // janelas
+        if (c % 4 === 0) dot(g, "#161c27", 0, 0, 2, T);                                                              // emenda entre vagões
+        if (!g.solid(c, r + 1)) { dot(g, "#2b323d", 0, T - 8, T, 4); circle(g, "#0e1014", 9, T - 4, 3.5); circle(g, "#0e1014", 23, T - 4, 3.5); } // rodas
+      }
+    },
+    crate(g) {
+      const body = pick(["#8a5a33", "#b23a35", "#2f5f9a", "#3a7a55", "#2c2f36"], g.h(5));
+      shadowBox(g);
+      if (g.h(4) < 0.6) { // mala
+        dot(g, body, 6, 7, 20, 21); dot(g, "rgba(255,255,255,.14)", 6, 7, 20, 3); dot(g, "rgba(0,0,0,.28)", 15.5, 10, 1, 18);
+        dot(g, "#1b1b1f", 12, 4, 8, 3); dot(g, "#e0d0a0", 9, 11, 3, 2); dot(g, "#e0d0a0", 20, 11, 3, 2);
+        dot(g, "rgba(0,0,0,.3)", 6, 25, 3, 3); dot(g, "rgba(0,0,0,.3)", 23, 25, 3, 3);
+        if (g.h(6) < 0.6) dot(g, pick(["#f2b632", "#58b85a", "#f08ac0"], g.h(7)), 18, 18, 5, 4);
+      } else { // duas mochilas lado a lado
+        const b2 = pick(["#d9483b", "#3b82d6", "#58b85a", "#f2a03a"], g.h(8));
+        dot(g, body, 4, 9, 11, 19); dot(g, "#1b1b1f", 7, 6, 5, 3); dot(g, "rgba(0,0,0,.25)", 4, 18, 11, 2);
+        dot(g, b2, 17, 8, 11, 20); dot(g, "#1b1b1f", 20, 5, 5, 3); dot(g, "rgba(0,0,0,.25)", 17, 18, 11, 2);
+      }
+    },
+  };
+
+  // 20. Fortaleza da carrocinha: aço escuro, rebites, luzes vermelhas, muralhas e torres; jaulas pesadas e barris de metal
+  const fortaleza = {
+    id: 20, place: "Fortaleza da carrocinha", blurb: "a fortaleza da carrocinha: muralhas de aço, luzes vermelhas e jaulas pesadas",
+    mover: { wall: ["#aab4c4", "#dbe2ee", "#3b4352"], door: ["#c0392f", "#ee6e5f", "#4a0f0b"] },
+    rail: ["#7a4a34", "#0e0705"],
+    floor(g) {
+      const { x, y, c, r } = g;
+      checker(g, "#1b1b20", "#1e1e24");
+      g.ctx.fillStyle = "#2d2d35"; g.rect(x, y + 15, T, 1); g.rect(x + 15, y, 1, T);                                 // emendas das placas
+      g.ctx.fillStyle = "#3d3f49"; g.rect(x + 3, y + 3, 2, 2); g.rect(x + 27, y + 3, 2, 2); g.rect(x + 3, y + 27, 2, 2); g.rect(x + 27, y + 27, 2, 2); // rebites
+      if (g.h(3) > 0.94) { dot(g, "rgba(196,48,42,.22)", 11, 11, 10, 10); dot(g, "#c4302a", 14, 14, 4, 4); }       // luz vermelha no chão
+      if (g.free) { // faixa de alerta vermelha e preta junto das paredes
+        const stripe = (sx, sy, sw, sh) => { g.ctx.fillStyle = "#a02a26"; g.rect(sx, sy, sw, sh); g.ctx.fillStyle = "#0f0f12"; for (let i = 0; i < 32; i += 8) g.rect(sx + (sw > sh ? i : 0), sy + (sw > sh ? 0 : i), sw > sh ? 4 : sw, sw > sh ? sh : 4); };
+        if (g.solid(c, r - 1) && g.h(1) < 0.5) stripe(x, y, T, 3);
+        if (g.solid(c, r + 1) && g.h(2) < 0.5) stripe(x, y + T - 3, T, 3);
+      }
+    },
+    wall(g) { // muralha de aço com ameias, rebites e luzes
+      const { x, y, c, r } = g;
+      block(g, "#3b3f49", "#656b79", "#15161b", "#1e1f25");
+      g.ctx.fillStyle = "#292c34"; g.rect(x, y + 11, T, 1); g.rect(x, y + 22, T, 1);                                  // emendas das chapas
+      g.ctx.fillStyle = "#7a8090"; g.rect(x + 5, y + 6, 2, 2); g.rect(x + 25, y + 6, 2, 2); g.rect(x + 5, y + 26, 2, 2); g.rect(x + 25, y + 26, 2, 2); // rebites
+      if (!g.solid(c, r - 1)) { g.ctx.fillStyle = "#0b0b0e"; g.rect(x, y, T, 7); g.ctx.fillStyle = "#6b707e"; for (let i = 0; i < T; i += 16) g.rect(x + i, y, 8, 7); g.ctx.fillStyle = "#9096a5"; for (let i = 0; i < T; i += 16) g.rect(x + i, y, 8, 2); } // ameias
+      if (!g.solid(c, r + 1) || !g.solid(c - 1, r) || !g.solid(c + 1, r)) { // pontas de aço para fora do muro, junto das bordas de baixo e dos lados (sempre dentro do próprio tile)
+        g.ctx.fillStyle = "#8d94a4"; g.ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          if (!g.solid(c, r + 1)) { g.ctx.moveTo(x + i * 8 + 0.5, y + T - 11); g.ctx.lineTo(x + i * 8 + 4, y + T - 1); g.ctx.lineTo(x + i * 8 + 7.5, y + T - 11); g.ctx.closePath(); }
+          if (!g.solid(c - 1, r)) { g.ctx.moveTo(x + 11, y + i * 8 + 0.5); g.ctx.lineTo(x + 1, y + i * 8 + 4); g.ctx.lineTo(x + 11, y + i * 8 + 7.5); g.ctx.closePath(); }
+          if (!g.solid(c + 1, r)) { g.ctx.moveTo(x + T - 11, y + i * 8 + 0.5); g.ctx.lineTo(x + T - 1, y + i * 8 + 4); g.ctx.lineTo(x + T - 11, y + i * 8 + 7.5); g.ctx.closePath(); }
+        }
+        g.ctx.fill();
+      }
+      if (g.h(5) < 0.1 && g.solid(c - 1, r) && g.solid(c + 1, r) && g.solid(c, r - 1) && g.solid(c, r + 1)) { // torre com luz vermelha
+        dot(g, "#14151a", 8, 8, 16, 16); dot(g, "#7d1c19", 10, 10, 12, 12); dot(g, "#ff4b3e", 13, 13, 6, 6);
+      }
+      else if (g.h(6) < 0.12) { dot(g, "#0b0b0e", 14, 12, 4, 10); dot(g, "#b3261e", 15, 13, 2, 8); }                    // seteira iluminada
+    },
+    crate(g) {
+      if (g.h(4) < 0.55) { // jaula pesada de grades grossas
+        shadowBox(g);
+        dot(g, "#0e0f12", 3, 6, 26, 23); dot(g, "#1d1f24", 6, 9, 20, 17);
+        g.ctx.fillStyle = "#6b707d"; for (const bx of [8, 13, 18, 23]) g.rect(g.x + bx, g.y + 9, 2, 17);
+        dot(g, "#4a4e5a", 6, 14, 20, 2); dot(g, "#4a4e5a", 6, 21, 20, 2);
+        dot(g, "#c43a2f", 14, 25, 4, 4); dot(g, "#3d3f49", 4, 7, 2, 2); dot(g, "#3d3f49", 26, 7, 2, 2);
+      } else { // barril de metal com faixa vermelha
+        shadowDisc(g, 11);
+        circle(g, "#2b2e35", 16, 16, 11); circle(g, "#4a4f5b", 16, 16, 9.5); circle(g, "#3a3e48", 16, 16, 8);
+        circle(g, "#a02a22", 16, 16, 6.2); circle(g, "#3a3e48", 16, 16, 4.6); circle(g, "#1c1e23", 16, 16, 1.6);
+      }
+    },
+  };
+
+  const BY_ID = { 1: quintal, 2: campo, 3: casa, 4: rua, 5: condominio, 6: praca, 7: parque, 8: feira, 9: praia, 10: central, 11: beco, 12: petshop, 13: fazenda, 14: bosque, 15: lago, 16: mercadao, 17: estacionamento, 18: telhados, 19: estacao, 20: fortaleza };
+  // Fases sem ambiente próprio (de 21 em diante, se um dia existirem) usam o da Rua do bairro.
   return { of: (id) => BY_ID[id] || rua, ids: Object.keys(BY_ID).map(Number), hash, TILE: T };
 });
