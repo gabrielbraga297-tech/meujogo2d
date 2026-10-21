@@ -4165,7 +4165,7 @@ const PAGE_HELPERS = () => {
           const k = __game.view.k * __game.view.zoom, ctx = document.getElementById("game").getContext("2d");
           const d = ctx.getImageData(Math.round((c * 32 - __game.view.camX) * k), Math.round((r * 32 - __game.view.camY) * k), Math.round(32 * k), Math.round(32 * k)).data;
           let light = 0, brown = 0; for (let i = 0; i < d.length; i += 4) { const [rr, g, b] = [d[i], d[i + 1], d[i + 2]]; if (rr > 200 && g > 205 && b > 215) light++; if (rr > 120 && rr < 150 && g > 80 && g < 100 && b > 35 && b < 55) brown++; }
-          rec.n++; if (light > 150 && brown < 20) rec.vanLike++; if (brown > 150 && light < 20) rec.crateLike++;
+          rec.n++; if (light > 150 && brown < 60) rec.vanLike++; // (a terra batida da Fazenda tem a mesma cor marrom das caixas e aparece em volta da van: até 29 pixels) if (brown > 150 && light < 20) rec.crateLike++;
         }
         out[id] = rec;
       }
