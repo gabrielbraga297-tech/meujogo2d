@@ -2512,7 +2512,7 @@
     if (u.slow) o.push(`agentes ${Math.round(REINFORCE_SLOW * 100 * u.slow)}% mais lentos`);
     if (u.stealth) o.push(`inimigos notam você ${u.stealth} ${u.stealth === 1 ? "quadrado" : "quadrados"} mais tarde`);
     if (u.scent) o.push(u.scent >= 2 ? "setas para o osso e para a saída" : "seta para o osso mais perto");
-    if (u.lure) o.push(`rações a até ${lureRadius(u.lure) / TILE} quadrados vêm sozinhas`);
+    if (u.lure) o.push(`rações a até ${String(lureRadius(u.lure) / TILE).replace(".", ",")} quadrados vêm sozinhas`); // (2,5 / 3,5 / 4,5 com vírgula, como em português)
     return o.join(" · ");
   }
   // Monta os botões da tela de reforços; devolve true se há algum para escolher.
