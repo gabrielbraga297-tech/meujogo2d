@@ -3490,10 +3490,10 @@ const PAGE_HELPERS = () => {
       __game.start(2, { upgrades: U() }); out.baseSpeed = __game.dogSpeed;
       __game.start(2, { upgrades: U({ speed: 2 }) }); out.speed2 = __game.dogSpeed;
       __game.start(2, { upgrades: U({ speed: 4 }) }); out.speed4 = __game.dogSpeed;
-      // poder do osso: 30 s + 5 s por nível
+      // poder do osso: 30 s + 8 s por nível
       __game.start(2, { upgrades: U({ bone: 2 }) }); __game.freezeVets = true; const b = __game.items.find((i) => i.bone); __game.player.x = b.x - 4; __game.player.y = b.y - 4; __game.tick(0.01); out.power2 = __game.power; out.toast = document.getElementById("toast").textContent;
       __game.start(2, { upgrades: U() }); __game.freezeVets = true; const b0 = __game.items.find((i) => i.bone); __game.player.x = b0.x - 4; __game.player.y = b0.y - 4; __game.tick(0.01); out.power0 = __game.power;
-      // proteção: 2 s + 1 s por nível
+      // proteção: 2 s + 2 s por nível
       for (const n of [0, 3]) {
         __game.start(2, { upgrades: U({ shield: n }) }); __game.noCatch = false; __game.items.forEach((i) => { i.life = false; i.x = -500; i.y = -500; });
         for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05);
@@ -3505,9 +3505,9 @@ const PAGE_HELPERS = () => {
       __game.start(2, { upgrades: U(), lives: 9 }); out.lives5 = __game.lives; out.max5 = __game.maxLives;
       __game.setRand(null); return out;
     });
-    ok(Math.abs(eff.speed2 - eff.baseSpeed * 1.10) < 1e-6 && Math.abs(eff.speed4 - eff.baseSpeed * 1.20) < 1e-6, `Patas ligeiras: +5% por nível na velocidade do cachorrinho (${eff.baseSpeed} → ${eff.speed2.toFixed(1)} → ${eff.speed4.toFixed(1)} px/s)`);
-    ok(eff.power0 > 29.9 && eff.power0 <= 30 && eff.power2 > 39.9 && eff.power2 <= 40 && /por 40 s/.test(eff.toast), `Osso poderoso: +5 s de poder por nível (30 s → ${eff.power2.toFixed(1)} s; aviso "${eff.toast.slice(0, 34)}…")`);
-    ok(eff.inv0 > 1.9 && eff.inv0 <= 2 && eff.inv3 > 4.9 && eff.inv3 <= 5, `Pelo grosso: +1 s de proteção por nível depois de perder uma vida (2 s → ${eff.inv3.toFixed(1)} s)`);
+    ok(Math.abs(eff.speed2 - eff.baseSpeed * 1.16) < 1e-6 && Math.abs(eff.speed4 - eff.baseSpeed * 1.32) < 1e-6, `Patas ligeiras: +8% por nível na velocidade do cachorrinho (${eff.baseSpeed} → ${eff.speed2.toFixed(1)} → ${eff.speed4.toFixed(1)} px/s)`);
+    ok(eff.power0 > 29.9 && eff.power0 <= 30 && eff.power2 > 45.9 && eff.power2 <= 46 && /por 46 s/.test(eff.toast), `Osso poderoso: +8 s de poder por nível (30 s → ${eff.power2.toFixed(1)} s; aviso "${eff.toast.slice(0, 34)}…")`);
+    ok(eff.inv0 > 1.9 && eff.inv0 <= 2 && eff.inv3 > 7.9 && eff.inv3 <= 8, `Pelo grosso: +2 s de proteção por nível depois de perder uma vida (2 s → ${eff.inv3.toFixed(1)} s)`);
     ok(eff.max5 === 5 && eff.lives5 === 5 && eff.max7 === 7 && eff.lives7 === 7, `Coração maior: o teto de vidas sobe de 5 para 7 com 2 níveis (vidas ${eff.lives5}/${eff.max5} e ${eff.lives7}/${eff.max7})`);
     // agentes mais lentos: mesma partida sorteada, 3 s de patrulha
     const slowRatio = await ev(page, () => {
@@ -3521,7 +3521,7 @@ const PAGE_HELPERS = () => {
       const base = meas(0), s2 = meas(2), s4 = meas(4); __game.setRand(null); __game.noCatch = false;
       return { base, r2: s2 / base, r4: s4 / base };
     });
-    ok(Math.abs(slowRatio.r2 - 0.90) < 0.03 && Math.abs(slowRatio.r4 - 0.80) < 0.03, `Carrocinha lenta: os agentes andam ${(100 - 100 * slowRatio.r2).toFixed(0)}% e ${(100 - 100 * slowRatio.r4).toFixed(0)}% mais devagar com 2 e 4 níveis (patrulha ${slowRatio.base.toFixed(1)} px/s sem reforço)`);
+    ok(Math.abs(slowRatio.r2 - 0.84) < 0.03 && Math.abs(slowRatio.r4 - 0.68) < 0.03, `Carrocinha lenta: os agentes andam ${(100 - 100 * slowRatio.r2).toFixed(0)}% e ${(100 - 100 * slowRatio.r4).toFixed(0)}% mais devagar com 2 e 4 níveis (patrulha ${slowRatio.base.toFixed(1)} px/s sem reforço)`);
 
     // ---- escolher cada um na vitória: vida extra e coração maior valem na hora ----
     const lifeFlow = async (id) => {
@@ -3578,12 +3578,12 @@ const PAGE_HELPERS = () => {
       const raw = JSON.parse(localStorage.getItem("cachorrinho.save.v1")); const snap = raw.saves[Object.keys(raw.saves)[0]].snap;
       const clone = (f) => { const c = JSON.parse(JSON.stringify(snap)); f(c); return c; };
       return { up: snap.up, okBase: __game.parseSave(snap), badLen: __game.parseSave(clone((c) => { c.up = [1, 2, 1, 1]; })), badNeg: __game.parseSave(clone((c) => { c.up[0] = -1; })), badMax: __game.parseSave(clone((c) => { c.up[1] = 5; })), badFrac: __game.parseSave(clone((c) => { c.up[2] = 0.5; })), badType: __game.parseSave(clone((c) => { c.up = "x"; })),
-        lives7: __game.parseSave(clone((c) => { c.lives = 7; })), lives6NoHeart: __game.parseSave(clone((c) => { c.up[2] = 0; })), inv5: __game.parseSave(clone((c) => { c.invuln = 3; })), inv4: __game.parseSave(clone((c) => { c.invuln = 1.5; })), noUp: __game.parseSave(clone((c) => { delete c.up; c.lives = 5; })), noUpTooMany: __game.parseSave(clone((c) => { delete c.up; c.lives = 6; })), pwOk: __game.parseSave(clone((c) => { c.pw = 39; c.vd = c.vd.map(() => 0); })), pwBad: __game.parseSave(clone((c) => { c.pw = 41; })) };
+        lives7: __game.parseSave(clone((c) => { c.lives = 7; })), lives6NoHeart: __game.parseSave(clone((c) => { c.up[2] = 0; })), inv5: __game.parseSave(clone((c) => { c.invuln = 3; })), inv4: __game.parseSave(clone((c) => { c.invuln = 1.5; })), noUp: __game.parseSave(clone((c) => { delete c.up; c.lives = 5; })), noUpTooMany: __game.parseSave(clone((c) => { delete c.up; c.lives = 6; })), pwOk: __game.parseSave(clone((c) => { c.pw = 45; c.vd = c.vd.map(() => 0); })), pwBad: __game.parseSave(clone((c) => { c.pw = 47; })) };
     });
     ok(sv.up.join() === "1,2,1,1,1" && sv.okBase, `o jogo salvo guarda os reforços (${sv.up.join(",")}) e continua válido`);
     ok(!sv.badLen && !sv.badNeg && !sv.badMax && !sv.badFrac && !sv.badType, "reforços adulterados (tamanho, negativo, acima do máximo, fracionário, texto) tornam o jogo salvo inválido");
     ok(sv.lives7 === false && sv.lives6NoHeart === false && sv.inv5 === true && sv.inv4 === true, "o limite de vidas e de proteção do jogo salvo acompanha os reforços (6 vidas só com Coração maior; 3 s só com Pelo grosso)");
-    ok(sv.noUp === true && sv.noUpTooMany === false && sv.pwOk === true && sv.pwBad === false, "jogo salvo antigo (sem reforços) continua válido com até 5 vidas; o poder do osso salvo respeita os +5 s por nível");
+    ok(sv.noUp === true && sv.noUpTooMany === false && sv.pwOk === true && sv.pwBad === false, "jogo salvo antigo (sem reforços) continua válido com até 5 vidas; o poder do osso salvo respeita os +8 s por nível");
     await ev(page, () => sessionStorage.setItem("keepSave", "1"));
     await page.reload(); await page.evaluate(PAGE_HELPERS);
     await page.click("#btn-continue");
@@ -4199,7 +4199,7 @@ const PAGE_HELPERS = () => {
     await ev(page, () => document.getElementById("btn-resume").click());
     await playLevel(page, 5, undefined, { upgrades: { speed: 2, slow: 1 } }); await ev(page, () => { __game.freezeVets = true; });
     await ev(page, () => document.getElementById("btn-pause").click());
-    ok(/^Cachorrinho: jovem\. Reforços: Patas ligeiras 2\/4 · Carrocinha lenta 1\/4\.$/.test((await page.textContent("#pause-up")).trim()), "na pausa da Fase 5 com 2 reforços ele é jovem e a pausa lista os reforços");
+    ok(/^Cachorrinho: jovem\. Reforços: Patas ligeiras 2\/4 · Carrocinha lenta 1\/4\. Efeitos: \+16% de velocidade · agentes 8% mais lentos\.$/.test((await page.textContent("#pause-up")).trim()), "na pausa da Fase 5 com 2 reforços ele é jovem e a pausa lista os reforços");
     await ev(page, () => document.getElementById("btn-resume").click());
     // ---- o jogo salvo e retomado mantém o tamanho (depende só da fase e dos reforços) ----
     await playLevel(page, 6, { keepSave: true }, { upgrades: { speed: 1, bone: 1 } }); await ev(page, () => { __game.freezeVets = true; });
@@ -4211,6 +4211,57 @@ const PAGE_HELPERS = () => {
     // ---- o Como jogar explica o crescimento ----
     await fresh(page); await page.click("#btn-howto");
     ok(/Crescer:[\s\S]*filhote[\s\S]*jovem[\s\S]*adulto/.test(await page.textContent("#howto")), "o Como jogar explica que o cachorrinho começa filhote e cresce");
+  });
+
+  // =====================================================================
+  await section("0.15.2: os reforços escolhidos aparecem e fazem diferença (fluxo real, corações, aviso, efeitos)", async () => {
+    await fresh(page);
+    // ---- fluxo real, com o sorteio de verdade (sem fixar as opções): em 8 vitórias seguidas cada escolha entra na partida e aparece ----
+    await playLevel(page, 1);
+    const rounds = [];
+    for (let round = 0; round < 8; round++) {
+      await ev(page, () => { __game.offerFixed = null; __game.freezeVets = true; });
+      const before = await ev(page, () => ({ level: __game.level, lives: __game.lives, up: { ...__game.upgrades } }));
+      await finishNow(page, 10);
+      await page.click("#btn-next");
+      const ids = await page.$$eval("#reinforce-list button:not([disabled])", (bs) => bs.map((b) => b.dataset.id));
+      const pick = ids[(round * 2) % ids.length];
+      await page.click(`#reinforce-list button[data-id="${pick}"]`);
+      const msg = await page.textContent("#reinforce-msg");
+      await page.click("#btn-reinforce-go");
+      const after = await ev(page, () => ({ level: __game.level, lives: __game.lives, up: { ...__game.upgrades }, hud: document.getElementById("hud-up").textContent, hudShown: !document.getElementById("hud-up-item").classList.contains("hidden"), toast: document.getElementById("toast").textContent, hearts: document.querySelectorAll("#hud-lives .heart:not(.hidden)").length }));
+      rounds.push({ pick, before, after, msg });
+    }
+    const sum = (u) => Object.values(u).reduce((a, b) => a + b, 0);
+    const bad = [];
+    for (const r of rounds) {
+      const { pick, before, after, msg } = r;
+      if (after.level !== before.level + 1) bad.push(`${pick}: a fase não avançou`);
+      if (pick === "life") { if (after.lives < Math.min(before.lives + 1, 5)) bad.push(`vida extra não entrou (${before.lives} → ${after.lives})`); if (!/Você leva \d+ vidas?\./.test(msg)) bad.push("vida extra sem aviso"); }
+      else {
+        if (after.up[pick] !== before.up[pick] + 1) bad.push(`${pick}: ${before.up[pick]} → ${after.up[pick]}`);
+        if (!/Com ele você terá: /.test(msg)) bad.push(`${pick}: a tela não diz o que ele acrescenta`);
+      }
+      if (sum(after.up) > 0 && !(after.hudShown && after.hud === String(sum(after.up)))) bad.push(`${pick}: o placar mostra REFORÇOS ${after.hud}, deveria ser ${sum(after.up)}`);
+      if (sum(after.up) > 0 && !/Reforços valendo: /.test(after.toast)) bad.push(`${pick}: o aviso do começo da fase não lista os reforços`);
+    }
+    ok(rounds.length === 8 && bad.length === 0, `em 8 vitórias seguidas com o sorteio real (${rounds.map((r) => r.pick).join(", ")}) cada reforço escolhido entra na partida, a tela diz o que ele acrescenta e o placar e o aviso do começo da fase mostram${bad.length ? " — problema: " + bad.slice(0, 3).join("; ") : ""}`);
+    // ---- cada reforço aparece no aviso com os números ----
+    const toasts = await ev(page, () => {
+      const t = (u) => { __game.start(3, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, ...u } }); return document.getElementById("toast").textContent; };
+      return { none: t({}), speed: t({ speed: 2 }), bone: t({ bone: 1 }), heart: t({ heart: 1 }), shield: t({ shield: 2 }), slow: t({ slow: 3 }), all: t({ speed: 1, bone: 1, heart: 1, shield: 1, slow: 1 }) };
+    });
+    ok(!/Reforços valendo/.test(toasts.none) && /Reforços valendo: \+16% de velocidade/.test(toasts.speed) && /\+8 s de poder do osso/.test(toasts.bone) && /6 vidas no máximo/.test(toasts.heart) && /6 s de proteção/.test(toasts.shield) && /agentes 24% mais lentos/.test(toasts.slow) && /\+8% de velocidade · \+8 s de poder do osso · 6 vidas no máximo · 4 s de proteção ao perder uma vida · agentes 8% mais lentos/.test(toasts.all), "o aviso do começo da fase diz os números de cada reforço (e não aparece sem reforços)");
+    // ---- o Coração maior ganha um coração vazio a mais no placar ----
+    const hearts = await ev(page, () => {
+      const h = (u, lives) => { __game.start(2, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow: 0, ...u }, lives }); return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r({ shown: document.querySelectorAll("#hud-lives .heart:not(.hidden)").length, lost: document.querySelectorAll("#hud-lives .heart.lost:not(.hidden)").length })))); };
+      return Promise.all([]).then(async () => ({ base: await h({}, 3), two: await h({ heart: 2 }, 3), three: await h({ heart: 3 }, 6) }));
+    });
+    ok(hearts.base.shown === 3 && hearts.base.lost === 0 && hearts.two.shown === 5 && hearts.two.lost === 2 && hearts.three.shown === 6 && hearts.three.lost === 0, `o placar mostra um coração vazio a mais por nível de Coração maior (sem: ${hearts.base.shown}; 2 níveis: ${hearts.two.shown} com ${hearts.two.lost} vazios; 3 níveis com 6 vidas: ${hearts.three.shown})`);
+    // ---- a pausa diz os efeitos ----
+    await ev(page, () => { __game.start(4, { upgrades: { speed: 3, bone: 1, heart: 0, shield: 1, slow: 0 } }); __game.freezeVets = true; document.getElementById("btn-pause").click(); });
+    ok(/Efeitos: \+24% de velocidade · \+8 s de poder do osso · 4 s de proteção ao perder uma vida\./.test(await page.textContent("#pause-up")), "a pausa diz o efeito de cada reforço (+24% de velocidade · +8 s de poder do osso · 4 s de proteção)");
+    await ev(page, () => document.getElementById("btn-resume").click());
   });
 
   await section("cadastro e entrada (usuário e senha)", async () => {

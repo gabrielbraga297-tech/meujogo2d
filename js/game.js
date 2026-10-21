@@ -15,14 +15,14 @@
   // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
   const MAP_REV = 2;        // revisão dos mapas das Fases 1 a 10: jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (0.15.1: labirintos com desenho de cidade)
-  const REINFORCE_SPEED = 0.05, REINFORCE_BONE = 5, REINFORCE_SHIELD = 1, REINFORCE_SLOW = 0.05; // por nível: +5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos
+  const REINFORCE_SPEED = 0.08, REINFORCE_BONE = 8, REINFORCE_SHIELD = 2, REINFORCE_SLOW = 0.08; // por nível: +8% de velocidade, +8 s de poder, +2 s de proteção, agentes 8% mais lentos (0.15.2: antes 5%, 5 s, 1 s e 5%, pequenos demais para notar)
   const REINFORCEMENTS = [
-    { id: "speed", name: "Patas ligeiras", text: "+5% de velocidade do cachorrinho", max: 4 },
-    { id: "bone", name: "Osso poderoso", text: "+5 s no poder do osso", max: 4 },
+    { id: "speed", name: "Patas ligeiras", text: "+8% de velocidade do cachorrinho", max: 4 },
+    { id: "bone", name: "Osso poderoso", text: "+8 s no poder do osso", max: 4 },
     { id: "life", name: "Vida extra", text: "+1 vida agora" },
     { id: "heart", name: "Coração maior", text: "+1 vida no máximo (e +1 vida agora)", max: 3 },
-    { id: "shield", name: "Pelo grosso", text: "+1 s de proteção depois de perder uma vida", max: 3 },
-    { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 5% mais lentos", max: 4 },
+    { id: "shield", name: "Pelo grosso", text: "+2 s de proteção depois de perder uma vida", max: 3 },
+    { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 8% mais lentos", max: 4 },
   ];
   const REINFORCE_OFFER = 3; // quantas opções de reforço aparecem por fase
   const UP_KEYS = ["speed", "bone", "heart", "shield", "slow"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
@@ -1286,8 +1286,9 @@
     const n = vets.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
       : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
-    if (started) toast(msg, 2.8);
-    else { toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
+    const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
+    if (started) toast(msg2, eff ? 4.5 : 2.8);
+    else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
   }
 
   // ---------- Jogo salvo ----------
@@ -1480,7 +1481,7 @@
     saveNow(); // pausar também salva
     setState("paused");
     $("pause-msg").textContent = "";
-    $("pause-up").textContent = `Cachorrinho: ${dogStage(dogGrowth())}.${upSummary(up) ? ` Reforços: ${upSummary(up)}.` : ""}`;
+    $("pause-up").textContent = `Cachorrinho: ${dogStage(dogGrowth())}.${upSummary(up) ? ` Reforços: ${upSummary(up)}. Efeitos: ${upEffects(up)}.` : ""}`;
     showScreen("pause");
   }
   function resumeGame() { if (state !== "paused") return; setState("playing"); showScreen(null); last = performance.now(); }
@@ -1494,6 +1495,15 @@
   function reinforceAvailable(r, u, curLives) { return r.id === "life" ? curLives < MAX_LIVES + u.heart : u[r.id] < UP_MAX[r.id]; }
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
     return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
+  }
+  function upEffects(u) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
+    const o = [];
+    if (u.speed) o.push(`+${Math.round(REINFORCE_SPEED * 100 * u.speed)}% de velocidade`);
+    if (u.bone) o.push(`+${REINFORCE_BONE * u.bone} s de poder do osso`);
+    if (u.heart) o.push(`${MAX_LIVES + u.heart} vidas no máximo`);
+    if (u.shield) o.push(`${INVULN + REINFORCE_SHIELD * u.shield} s de proteção ao perder uma vida`);
+    if (u.slow) o.push(`agentes ${Math.round(REINFORCE_SLOW * 100 * u.slow)}% mais lentos`);
+    return o.join(" · ");
   }
   // Monta os botões da tela de reforços; devolve true se há algum para escolher.
   let reinforceOffered = false, offerIds = [];
@@ -1541,7 +1551,8 @@
       const chosen = b.dataset.id === id;
       b.disabled = !chosen; b.classList.toggle("chosen", chosen); b.setAttribute("aria-pressed", chosen ? "true" : "false");
     }
-    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} — ${r.text}. Ele vale a partir da ${next.title}.`;
+    const eff = upEffects(nextUp);
+    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} — ${r.text}. Ele vale a partir da ${next.title}.${eff ? ` Com ele você terá: ${eff}.` : ""}${id === "life" ? ` Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}.` : ""}`;
     const chosenSub = $("reinforce-list").querySelector(`button[data-id="${id}"] .sub`);
     if (chosenSub) chosenSub.textContent = `${r.text} · ${id === "life" ? `você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}` : `agora ${nextUp[id]}/${r.max}`}`;
     $("win-extra").textContent = winExtraText(next);
@@ -2180,9 +2191,9 @@
       hudEl.retryItem.classList.toggle("hidden", retries === 0);
       hudEl.retry.textContent = `${retries}/${MAX_RETRIES}`;
     }
-    if (hudCache.l !== lives) {
-      hudCache.l = lives;
-      const slots = Math.max(START_LIVES, lives); // mostra 3 corações no começo; ganhar vidas mostra mais, até 5
+    if (hudCache.l !== `${lives}|${up.heart}`) {
+      hudCache.l = `${lives}|${up.heart}`;
+      const slots = Math.max(START_LIVES + up.heart, lives); // mostra 3 corações no começo (+1 vazio para cada Coração maior); ganhar vidas mostra mais, até 5 (8 com o reforço)
       hudEl.hearts.forEach((h, i) => { h.classList.toggle("hidden", i >= slots); h.classList.toggle("lost", i < slots && i >= lives); });
       hudEl.lives.setAttribute("aria-label", `${lives} ${lives === 1 ? "vida" : "vidas"}`);
     }

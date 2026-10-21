@@ -1,8 +1,14 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.15.1 · 21/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.15.2 · 21/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.15.2 — 21/10/2026 (em preparação)
+- **Os reforços escolhidos agora aparecem e fazem diferença.** Relato: "os poderes escolhidos depois de passar de fase não estão sendo incluídos". Reproduzi o fluxo real (sorteio normal, mouse e teclado): o jogo guardava e aplicava cada escolha, mas **quase nada aparecia**: os efeitos eram pequenos demais (+5% de velocidade, +5 s de poder, +1 s de proteção, agentes 5% mais lentos) e o *Coração maior* não mudava nada na tela.
+- **Efeitos maiores por nível:** *Patas ligeiras* **+8%** de velocidade, *Osso poderoso* **+8 s**, *Pelo grosso* **+2 s** de proteção (até 8 s) e *Carrocinha lenta* **8%** mais lentos.
+- **Dá para ver:** a tela de escolha diz o que o reforço acrescenta (*Com ele você terá: +16% de velocidade · 5 vidas no máximo…*; na *Vida extra*: *Você leva 4 vidas*); o **aviso do começo da fase** lista os reforços valendo com os números; a **pausa** mostra *Efeitos: …*; e o **placar ganha um coração vazio a mais por nível de *Coração maior***.
+- **Testes:** 8 vitórias seguidas com o sorteio de verdade (cada escolha entra, a tela e o aviso dizem o quê, o placar confere), o aviso com os números de cada reforço, os corações vazios, a pausa, e os testes dos efeitos e do jogo salvo com os valores novos.
 
 ## 0.15.1 — 21/10/2026 (em preparação)
 - **Labirintos com design de cidade (Fases 1 a 10):** a 0.10.0 tinha trocado os labirintos por cidades abertas; agora eles **voltam**, desenhados como cidade: uma grade de quarteirões (cruzamentos e praças de 3 a 5 tiles) ligados por **ruas de 3 tiles de largura** entre prédios de 2 a 3 tiles, com a **praça da carrocinha** no centro (Fases 4 a 10), início na borda esquerda, saída na direita e **vielas de 1 tile com portas de bloco**. Os mapas são gerados por script (`tools/citymaze/`) e têm **3 caminhos que não passam pela mesma célula** do início à saída (2 nas Fases 2 e 3; o início e a saída têm 3 ruas cada).

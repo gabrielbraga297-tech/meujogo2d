@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 10**.
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.1 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.2 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -148,16 +148,17 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 
 
 | Reforço | Efeito por nível | Máximo |
 |---|---|---|
-| **Patas ligeiras** | +5% de velocidade do cachorrinho | 4 níveis (+20%) |
-| **Osso poderoso** | +5 s no poder do osso | 4 níveis (+20 s) |
+| **Patas ligeiras** | +8% de velocidade do cachorrinho | 4 níveis (+32%) |
+| **Osso poderoso** | +8 s no poder do osso | 4 níveis (+32 s) |
 | **Vida extra** | +1 vida agora (some se as vidas já estão no máximo) | — |
 | **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
-| **Pelo grosso** | +1 s de proteção depois de perder uma vida (2 s → até 5 s) | 3 níveis |
-| **Carrocinha lenta** | agentes 5% mais lentos (patrulha, perseguição e fuga dos carteiros) | 4 níveis (−20%) |
+| **Pelo grosso** | +2 s de proteção depois de perder uma vida (2 s → até 8 s) | 3 níveis |
+| **Carrocinha lenta** | agentes 8% mais lentos (patrulha, perseguição e fuga dos carteiros) | 4 níveis (−32%) |
 
 - Começar uma fase pelo menu ou usar *Jogar novamente* começa **sem reforços** (como começa com 3 vidas). *Tentar novamente* e *Continuar jogo* mantêm os reforços da partida (eles ficam no jogo salvo, campo `up`).
 - O placar mostra **REFORÇOS n** (a lista aparece ao passar o mouse) e a tela de pausa lista os reforços.
 - Os valores estão em `REINFORCEMENTS`/`UP_MAX` de `js/game.js`; o teste `0.8.0: reforços` confere cada efeito.
+- **Dá para ver o que o reforço acrescenta (0.15.2):** os efeitos eram pequenos demais para notar (+5%, +5 s, +1 s, 5%) e o *Coração maior* não mudava nada na tela; agora valem **+8% de velocidade, +8 s de poder, +2 s de proteção e agentes 8% mais lentos por nível**, a tela de escolha diz *"Com ele você terá: +16% de velocidade · …"*, o **aviso do começo de cada fase** lista os reforços valendo com os números (*Reforços valendo: +16% de velocidade · 6 vidas no máximo*), a **pausa** mostra *Efeitos: …* e o placar ganha **um coração vazio a mais** por nível de *Coração maior*. O teste `0.15.2` joga 8 vitórias seguidas com o sorteio de verdade e confere cada escolha.
 
 ## Sons (0.11.0)
 Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores e ruído filtrado): não há arquivo de áudio, biblioteca nem rede (`js/sound.js`). O navegador só libera o som depois do **primeiro gesto** do jogador (toque, clique ou tecla); antes disso o jogo roda mudo, sem erro.
