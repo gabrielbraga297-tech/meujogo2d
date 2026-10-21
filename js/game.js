@@ -10,6 +10,7 @@
   const BONE_SPEED_BONUS = 0.1; // cada osso pego deixa o cachorro 10% mais rápido até o fim da fase (soma: 2 ossos = +20%)
   const START_LIVES = 3;    // vidas ao começar uma fase do zero
   const MAX_LIVES = 5;      // as vidas acumulam de 1 a 5 (e passam de uma fase para a seguinte)
+  const LIFE_CAP_HARD = 10; // 0.15.6: a partir da Fase 11 o máximo de vidas sobe de fase em fase (`lifeCap` da fase) e nunca passa de 10, nem com o reforço Coração maior
   const MAX_RETRIES = Records.MAX_RETRIES; // sem vidas: até 3 novas tentativas da mesma fase (cada uma custa pontos)
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
   // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
@@ -1079,6 +1080,7 @@
       alertTiles: 16, lifePenalty: 300, minPoints: 2300, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto ainda maior e mais agentes da carrocinha",
       cats: [[18, 32], [7, 27]], cat: { speed: 130, chaseSpeed: 200, hear: 7 },
+      lifeCap: 6, mission: { bones: true }, missionBonus: 200,
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [29, 7], [38, 3], [44, 3], [49, 3], [55, 3], [61, 3]], y: [[1, 3], [6, 3], [12, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [15, 6], to: [15, 7], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1100,6 +1102,7 @@
       alertTiles: 16, lifePenalty: 300, minPoints: 2450, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais rações e mais pontos",
       cats: [[33, 27], [46, 8], [58, 38]], cat: { speed: 132, chaseSpeed: 203, hear: 7 },
+      lifeCap: 6, mission: { scare: 3 }, missionBonus: 250,
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 7], [39, 3], [45, 3], [51, 3], [57, 3], [63, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
         { from: [63, 5], to: [64, 5], size: [2, 1], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1121,6 +1124,7 @@
       alertTiles: 17, lifePenalty: 325, minPoints: 2650, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto enorme: 13 × 7 quarteirões e 6 agentes",
       cats: [[23, 21], [2, 40], [58, 40]], cat: { speed: 134, chaseSpeed: 205, hear: 7 },
+      lifeCap: 7, mission: { rations: 36 }, missionBonus: 300,
       maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 3], [27, 3], [32, 7], [41, 3], [46, 3], [51, 3], [57, 3], [62, 3], [67, 3]], y: [[1, 3], [7, 3], [13, 3], [19, 5], [27, 3], [33, 3], [39, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [49, 27], to: [49, 28], size: [1, 2], wall: true, every: 10, phase: 0 }, // parede 1
@@ -1142,6 +1146,7 @@
       alertTiles: 17, lifePenalty: 325, minPoints: 2800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "blocos e paredes mais rápidos",
       cats: [[59, 14], [13, 28], [43, 8], [49, 28]], cat: { speed: 135, chaseSpeed: 208, hear: 7 },
+      lifeCap: 7, mission: { bones: true, scare: 2 }, missionBonus: 350,
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 3], [27, 3], [33, 7], [42, 3], [48, 3], [53, 3], [58, 3], [64, 3], [69, 3]], y: [[1, 3], [7, 3], [13, 3], [19, 5], [27, 3], [33, 3], [39, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [62, 1], to: [62, 2], size: [1, 2], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1163,6 +1168,7 @@
       alertTiles: 18, lifePenalty: 350, minPoints: 3000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais um bom pedaço de labirinto para explorar",
       cats: [[24, 15], [7, 42], [13, 22], [60, 29]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
+      lifeCap: 8, mission: { scare: 4 }, missionBonus: 400,
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [28, 3], [34, 7], [43, 3], [49, 3], [54, 3], [59, 3], [65, 3], [71, 3]], y: [[1, 3], [7, 3], [13, 4], [20, 5], [28, 3], [34, 4], [41, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
         { from: [43, 32], to: [44, 32], size: [2, 1], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1184,6 +1190,7 @@
       alertTiles: 18, lifePenalty: 350, minPoints: 3200, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "labirinto de 13 × 9 quarteirões e 7 agentes",
       cats: [[19, 35], [72, 30], [30, 7], [66, 17], [24, 30]], cat: { speed: 139, chaseSpeed: 214, hear: 8 },
+      lifeCap: 8, mission: { rations: 44 }, missionBonus: 450,
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [23, 3], [29, 3], [34, 7], [44, 3], [49, 3], [54, 3], [60, 3], [65, 3], [71, 3]], y: [[1, 3], [6, 3], [11, 3], [16, 3], [22, 5], [29, 3], [34, 3], [39, 3], [45, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [18, 14], to: [19, 14], size: [2, 1], wall: true, every: 8, speed: 140, phase: 0 }, // parede 1
@@ -1205,6 +1212,7 @@
       alertTiles: 19, lifePenalty: 375, minPoints: 3400, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "peças móveis ainda mais rápidas",
       cats: [[31, 30], [45, 7], [25, 24], [51, 30], [38, 46]], cat: { speed: 141, chaseSpeed: 216, hear: 8 },
+      lifeCap: 9, mission: { bones: true, scare: 3 }, missionBonus: 500,
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [24, 3], [30, 3], [35, 7], [44, 3], [50, 3], [55, 3], [61, 3], [67, 3], [73, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 5], [29, 3], [34, 3], [40, 3], [45, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [11, 45], to: [11, 46], size: [1, 2], wall: true, every: 5.5, speed: 180, phase: 0 }, // parede 1
@@ -1226,6 +1234,7 @@
       alertTiles: 19, lifePenalty: 375, minPoints: 3600, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "8 agentes da carrocinha e muitos becos",
       cats: [[76, 31], [65, 25], [31, 8], [53, 2], [59, 2], [53, 37]], cat: { speed: 143, chaseSpeed: 219, hear: 8 },
+      lifeCap: 9, mission: { scare: 5, rations: 35 }, missionBonus: 550,
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 3], [36, 7], [46, 3], [52, 3], [58, 3], [64, 3], [69, 3], [75, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 3], [23, 5], [30, 3], [36, 3], [41, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [16, 47], to: [16, 48], size: [1, 2], wall: true, every: 5.5, speed: 180, phase: 0 }, // parede 1
@@ -1247,6 +1256,7 @@
       alertTiles: 20, lifePenalty: 400, minPoints: 3800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "quase no fim: o labirinto mais enrolado até aqui",
       cats: [[66, 37], [32, 8], [32, 48], [20, 19], [72, 2], [26, 43]], cat: { speed: 144, chaseSpeed: 222, hear: 9 },
+      lifeCap: 10, mission: { bones: true, scare: 4 }, missionBonus: 600,
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [25, 3], [31, 3], [37, 7], [47, 3], [53, 3], [59, 3], [65, 3], [71, 3], [77, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 5], [31, 3], [36, 3], [42, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [59, 16], to: [60, 16], size: [2, 1], wall: true, every: 5, speed: 200, phase: 0 }, // parede 1
@@ -1268,6 +1278,7 @@
       alertTiles: 20, lifePenalty: 400, minPoints: 4000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "a Fase 20: o maior labirinto de todos",
       cats: [[33, 14], [80, 19], [61, 38], [61, 8], [49, 26], [14, 33], [21, 26]], cat: { speed: 146, chaseSpeed: 224, hear: 9 },
+      lifeCap: 10, mission: { bones: true, scare: 5, rations: 48 }, missionBonus: 650,
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 4], [26, 3], [32, 3], [38, 7], [48, 3], [54, 3], [60, 3], [66, 4], [73, 3], [79, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [24, 5], [32, 3], [37, 3], [43, 3], [49, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
         { from: [64, 49], to: [64, 50], size: [1, 2], wall: true, every: 5, speed: 200, phase: 0 }, // parede 1
@@ -1325,6 +1336,14 @@
     if (!Number.isInteger(lifePenalty) || lifePenalty < 0 || lifePenalty > 1000 || !Number.isInteger(minPoints) || minPoints < 0 || minPoints > 100000 || !(bonePower >= 0 && bonePower <= 120)) {
       throw new Error(`Regras de pontos ou poder inválidas: ${def.title}`);
     }
+    const lifeCap = def.lifeCap ?? MAX_LIVES;
+    if (!Number.isInteger(lifeCap) || lifeCap < MAX_LIVES || lifeCap > LIFE_CAP_HARD) throw new Error(`Máximo de vidas inválido: ${def.title}`);
+    // missão (0.15.6): além dos pontos mínimos, a saída só abre com a missão cumprida: `bones` (pegar todos os ossos), `scare` (assustar tantos carteiros/gatos com o poder do osso) e `rations` (pegar tantas rações)
+    const ms = def.mission || null, missionBonus = def.missionBonus ?? 0;
+    if (ms && (!minPoints || (ms.bones !== undefined && ms.bones !== true) || (ms.scare !== undefined && !(Number.isInteger(ms.scare) && ms.scare >= 1 && ms.scare <= 99 && bonePower > 0 && bones > 0 && def.vets.length + (def.cats || []).length >= 1))
+        || (ms.rations !== undefined && !(Number.isInteger(ms.rations) && ms.rations >= 1 && ms.rations <= def.rations)) || (ms.bones && !bones) || (!ms.bones && ms.scare === undefined && ms.rations === undefined))) throw new Error(`Missão inválida: ${def.title}`);
+    if (!Number.isInteger(missionBonus) || missionBonus < 0 || missionBonus > 5000 || (missionBonus && !ms)) throw new Error(`Bônus da missão inválido: ${def.title}`);
+    const mission = ms ? { bones: !!ms.bones, scare: ms.scare || 0, rations: ms.rations || 0 } : null;
     const alertTiles = def.alertTiles;
     if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 24) throw new Error(`Alcance do "!" inválido: ${def.title}`);
     // gatos: `cats` = tiles de chão onde cada um começa; `cat` = velocidades (px/s) e alcance do ouvido (passos) que mudam o padrão CAT_BASE
@@ -1374,6 +1393,7 @@
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
+      lifeCap, mission, missionBonus,
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
@@ -1429,7 +1449,9 @@
   let up = noUp();         // reforços desta partida (valem até o fim da sequência de fases)
   let nextUp = null;       // na tela de vitória: reforços que a próxima fase receberá (já com o escolhido); null = ainda não escolheu
   let chosenReinforce = null; // id do reforço escolhido nesta vitória
-  const maxLivesNow = () => MAX_LIVES + up.heart;
+  const capFor = (L, u) => Math.min(LIFE_CAP_HARD, L.lifeCap + u.heart); // máximo de vidas de uma fase com os reforços `u` (0.15.6: sobe nas Fases 11 a 20; nunca passa de 10)
+  const maxLivesNow = () => capFor(lv, up);
+  let missionSaid = false;     // (fases com missão) já avisou que os pontos bastam mas falta a missão
   const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
   const bonePowerNow = () => (lv.bonePower ? lv.bonePower + REINFORCE_BONE * up.bone : 0);
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
@@ -1490,7 +1512,7 @@
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
     refreshBlockTiles();
-    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
+    collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
@@ -1965,7 +1987,11 @@
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
-  const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected());
+  // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
+  const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && postmen >= lv.mission.scare && collected >= lv.mission.rations);
+  const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
+  const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
     pickupToastUntil = time + 2.8;
@@ -2100,10 +2126,14 @@
       }
     }
 
-    if (lv.minPoints) { // meta de pontos: avisa quando a saída abre (e de novo se a pontuação cair abaixo e voltar)
-      const open = runningScore() >= lv.minPoints;
-      if (open && !goalReached && time >= pickupToastUntil) { toast(`Meta de ${lv.minPoints} pontos atingida! A saída está aberta.`, 2.6); goalReached = true; } // espera outro aviso (vida, poder) terminar
-      else if (!open) goalReached = false;
+    if (lv.minPoints) { // meta de pontos (e missão): avisa quando a saída abre (e de novo se a pontuação cair abaixo e voltar)
+      const pointsOk = runningScore() >= lv.minPoints, open = pointsOk && missionDone();
+      if (open && !goalReached && time >= pickupToastUntil) { toast(lv.mission ? `Meta de ${lv.minPoints} pontos e missão cumpridas! A saída está aberta.` : `Meta de ${lv.minPoints} pontos atingida! A saída está aberta.`, 2.6); goalReached = true; } // espera outro aviso (vida, poder) terminar
+      else if (!open) {
+        goalReached = false;
+        if (lv.mission && pointsOk && !missionSaid && time >= pickupToastUntil) { toast(`Pontos suficientes! Falta a missão: ${missionLeft().join(" · ")}.`, 3); missionSaid = true; }
+      }
+      if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
     if (lv.minPoints && power <= 0 && allCollected() && !exitOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo: não há mais como passar, a tentativa acaba
@@ -2120,7 +2150,7 @@
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
-      else if (hintTimer <= 0) toast(lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
+      else if (hintTimer <= 0) toast(lv.minPoints && runningScore() >= lv.minPoints ? `Falta a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
     }
   }
 
@@ -2185,7 +2215,7 @@
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionTexts().join(" e ")}` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
@@ -2223,7 +2253,7 @@
         upv = cleanUp(Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])));
         if (!upv) return null;
       }
-      if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > MAX_LIVES + upv.heart || !num(sv.invuln, 0, INVULN + REINFORCE_SHIELD * upv.shield)) return null;
+      if (!num(sv.time, 0, 86400) || !Number.isInteger(sv.lives) || sv.lives < 1 || sv.lives > capFor(L, upv) || !num(sv.invuln, 0, INVULN + REINFORCE_SHIELD * upv.shield)) return null;
       if (!Number.isInteger(sv.lost) || sv.lost < 0 || sv.lost > 999) return null;
       if (!Number.isInteger(sv.rs) || sv.rs < 0 || sv.rs > MAX_RETRIES) return null;
       if (!Array.isArray(sv.items) || sv.items.length !== L.rations + L.bones) return null;
@@ -2377,7 +2407,7 @@
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, `${l.title} · ${Themes.of(l.id).place}`), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${(l.cats || []).length ? ` e ${l.cats.length} ${l.cats.length === 1 ? "gato" : "gatos"}` : ""}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
+        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${(l.cats || []).length ? ` e ${l.cats.length} ${l.cats.length === 1 ? "gato" : "gatos"}` : ""}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""}${BUILT[l.id].mission ? ` · missão: ${missionTexts(BUILT[l.id]).join(" e ")}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
         : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
       if (open) {
         if (l.id === focusId) b.dataset.autofocus = "";
@@ -2407,15 +2437,16 @@
   // ---------- Reforços: a tela de vitória deixa escolher 1 deles para a próxima fase ----------
   const winExtraText = (next) => `${theme.place} · Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
     (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
-  function reinforceAvailable(r, u, curLives) { return r.id === "life" ? curLives < MAX_LIVES + u.heart : u[r.id] < UP_MAX[r.id]; }
+  // `L` = a fase em que o reforço vai valer (o máximo de vidas sobe nas Fases 11 a 20); o Coração maior perde a graça quando o máximo da fase já é 10.
+  function reinforceAvailable(r, u, curLives, L = lv) { return r.id === "life" ? curLives < capFor(L, u) : r.id === "heart" ? u.heart < UP_MAX.heart && capFor(L, u) < LIFE_CAP_HARD : u[r.id] < UP_MAX[r.id]; }
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
     return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
   }
-  function upEffects(u) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
+  function upEffects(u, L = lv) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
     const o = [];
     if (u.speed) o.push(`+${Math.round(REINFORCE_SPEED * 100 * u.speed)}% de velocidade`);
     if (u.bone) o.push(`+${REINFORCE_BONE * u.bone} s de poder do osso`);
-    if (u.heart) o.push(`${MAX_LIVES + u.heart} vidas no máximo`);
+    if (u.heart) o.push(`${capFor(L, u)} vidas no máximo`);
     if (u.shield) o.push(`${INVULN + REINFORCE_SHIELD * u.shield} s de proteção ao perder uma vida`);
     if (u.slow) o.push(`agentes ${Math.round(REINFORCE_SLOW * 100 * u.slow)}% mais lentos`);
     return o.join(" · ");
@@ -2424,8 +2455,8 @@
   let reinforceOffered = false, offerIds = [];
   let offerFixed = null; // só para testes: ids que entram primeiro na oferta (se ainda valem); o resto é sorteado
   // As opções desta vitória: no máximo REINFORCE_OFFER, sorteadas entre as que ainda valem (se há 3 ou menos, são todas), sempre na ordem de REINFORCEMENTS.
-  function pickOffer() {
-    const avail = REINFORCEMENTS.filter((r) => reinforceAvailable(r, up, lives));
+  function pickOffer(next) {
+    const avail = REINFORCEMENTS.filter((r) => reinforceAvailable(r, up, lives, BUILT[next.id]));
     if (avail.length <= REINFORCE_OFFER) return avail;
     const first = (offerFixed || []).map((id) => avail.find((r) => r.id === id)).filter(Boolean);
     const rest = shuffle(avail.filter((r) => !first.includes(r)));
@@ -2438,11 +2469,11 @@
     if (!next) return false;
     const list = $("reinforce-list");
     list.replaceChildren();
-    const offer = pickOffer();
+    const offer = pickOffer(next);
     for (const r of offer) {
       const b = el("button", "reinforce-opt");
       b.type = "button"; b.dataset.id = r.id;
-      const state = r.id === "life" ? `você tem ${lives} de ${MAX_LIVES + up.heart}` : `agora ${up[r.id]}/${r.max}`;
+      const state = r.id === "life" ? `você tem ${lives} de ${capFor(BUILT[next.id], up)}` : `agora ${up[r.id]}/${r.max}`;
       b.append(el("strong", null, r.name), el("span", "sub", `${r.text} · ${state}`));
       if (!offerIds.length) b.dataset.autofocus = ""; // o primeiro já vem escolhido: Enter/Espaço escolhem, Tab e as setas passam para os outros
       offerIds.push(r.id);
@@ -2456,17 +2487,17 @@
   function chooseReinforcement(id) {
     if (state !== "won" || nextUp) return; // um reforço por fase
     const r = REINFORCEMENTS.find((x) => x.id === id), next = LEVELS.find((l) => l.id === levelId + 1);
-    if (!r || !next || !reinforceAvailable(r, up, lives)) return;
+    if (!r || !next || !reinforceAvailable(r, up, lives, BUILT[next.id])) return;
     sound.play("pick");
     nextUp = { ...up };
     chosenReinforce = id;
-    if (id === "life") carriedLives = Math.min(maxLivesNow(), lives + 1);
-    else { nextUp[id]++; if (id === "heart") carriedLives = Math.min(MAX_LIVES + nextUp.heart, lives + 1); }
+    if (id === "life") carriedLives = Math.min(capFor(BUILT[next.id], up), lives + 1);
+    else { nextUp[id]++; if (id === "heart") carriedLives = Math.min(capFor(BUILT[next.id], nextUp), lives + 1); }
     for (const b of $("reinforce-list").querySelectorAll("button")) {
       const chosen = b.dataset.id === id;
       b.disabled = !chosen; b.classList.toggle("chosen", chosen); b.setAttribute("aria-pressed", chosen ? "true" : "false");
     }
-    const eff = upEffects(nextUp);
+    const eff = upEffects(nextUp, BUILT[next.id]);
     $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} — ${r.text}. Ele vale a partir da ${next.title}.${eff ? ` Com ele você terá: ${eff}.` : ""}${id === "life" ? ` Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}.` : ""}`;
     const chosenSub = $("reinforce-list").querySelector(`button[data-id="${id}"] .sub`);
     if (chosenSub) chosenSub.textContent = `${r.text} · ${id === "life" ? `você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}` : `agora ${nextUp[id]}/${r.max}`}`;
@@ -2479,7 +2510,7 @@
   function win() {
     const timeMs = officialTimeMs();
     const bonus = Records.timeBonus(timeMs, lv.bonusStep);
-    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty }); // rações + ossos + bônus − vidas perdidas − tentativas extras
+    const points = Records.levelPoints(collected, timeMs, livesLost, retries, { bones: bonesGot, postmen, bonusStep: lv.bonusStep, lifePenalty: lv.lifePenalty, missionBonus: lv.missionBonus }); // rações + ossos + bônus − vidas perdidas − tentativas extras
     score = points;
     setState("won");
     sound.play("levelup");
@@ -2488,7 +2519,7 @@
     const next = LEVELS.find((l) => l.id === levelId + 1);
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + carteiros: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` +
+    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + carteiros: ${postmen * Records.POSTMAN_POINTS}` : "") + ` + bônus de tempo: ${bonus}` + (lv.missionBonus ? ` + missão: ${lv.missionBonus}` : "") +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = winExtraText(next);
@@ -2529,8 +2560,9 @@
     sound.play("gameover", { delay: why ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
-    $("lose-lead").textContent = why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
+    const missionFail = why === "short" && lv.mission && runningScore() >= lv.minPoints && !missionDone(); // (0.15.6) os pontos bastam, mas não dá mais para cumprir a missão (acabou o poder do osso)
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
+    $("lose-lead").textContent = missionFail ? `Você pegou tudo, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -3116,14 +3148,14 @@
   }
 
   // ---------- Placar (HTML) ----------
-  { // o placar tem corações para o máximo possível (5 + 3 do reforço "Coração maior"): o HTML traz 5, o resto é copiado
+  { // o placar tem corações para o máximo possível (10 a partir da Fase 11): o HTML traz 5, o resto é copiado
     const box = $("hud-lives"), h0 = box.querySelector(".heart");
-    for (let n = box.querySelectorAll(".heart").length; n < MAX_LIVES + UP_MAX.heart; n++) box.appendChild(h0.cloneNode(true));
+    for (let n = box.querySelectorAll(".heart").length; n < LIFE_CAP_HARD; n++) box.appendChild(h0.cloneNode(true));
   }
   const hudEl = {
     upItem: $("hud-up-item"), up: $("hud-up"),
     level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
-    pointsItem: $("hud-points-item"), powerItem: $("hud-power-item"), power: $("hud-power"),
+    pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
   };
   const hudCache = {};
@@ -3153,6 +3185,11 @@
     if (hudCache.bs !== lv.bonusStep) { hudCache.bs = lv.bonusStep; hudEl.bonusItem.title = `Bônus de tempo: ${lv.bonusStep * 10} pontos até 20 s, menos ${lv.bonusStep} a cada 10 s (0 depois de 110 s)`; }
     if (hudCache.mp !== lv.minPoints) { hudCache.mp = lv.minPoints; hudEl.pointsItem.title = lv.minPoints ? `Para passar da ${lv.title} são necessários pelo menos ${lv.minPoints} pontos nesta fase` : ""; }
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
+    if (hudCache.ms !== lv.id + "|" + !!lv.mission) { hudCache.ms = lv.id + "|" + !!lv.mission; hudEl.missionBar.classList.toggle("hidden", !lv.mission); hudEl.missionBar.setAttribute("aria-label", lv.mission ? `Missão da ${lv.title}: ${missionTexts().join(" e ")}. A saída só abre com os pontos mínimos e a missão cumprida${lv.missionBonus ? `; cumprir a missão vale +${lv.missionBonus} pontos` : ""}.` : "Missão da fase"); }
+    if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, sustos, rações); cumprida, manda ir para a saída
+      const left = missionLeft(), t = left.length ? `Missão: ${left.join(" · ")}` : "Missão cumprida!";
+      if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length); }
+    }
     if (hudCache.bp !== lv.bonePower) { hudCache.bp = lv.bonePower; hudEl.powerItem.classList.toggle("hidden", !lv.bonePower); }
     if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? `Poder do osso: ${Math.ceil(power)} segundos` : "Poder do osso: desligado"; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }
     setHud("t", hudEl.time, fmt(time * 1000));
@@ -3164,7 +3201,7 @@
     }
     if (hudCache.l !== `${lives}|${up.heart}`) {
       hudCache.l = `${lives}|${up.heart}`;
-      const slots = Math.max(START_LIVES + up.heart, lives); // mostra 3 corações no começo (+1 vazio para cada Coração maior); ganhar vidas mostra mais, até 5 (8 com o reforço)
+      const slots = Math.min(LIFE_CAP_HARD, Math.max(START_LIVES + up.heart, lives)); // mostra 3 corações no começo (+1 vazio para cada Coração maior); ganhar vidas mostra mais, até o máximo da fase (5; 6 a 10 nas Fases 11 a 20; 10 no máximo)
       hudEl.hearts.forEach((h, i) => { h.classList.toggle("hidden", i >= slots); h.classList.toggle("lost", i < slots && i >= lives); });
       hudEl.lives.setAttribute("aria-label", `${lives} ${lives === 1 ? "vida" : "vidas"}`);
     }
@@ -3424,7 +3461,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })) })); },
+    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
