@@ -5439,7 +5439,8 @@ const PAGE_HELPERS = () => {
       const L = LV[n - 1], b = barInfo[n - 1], want = `Missão: ${[L.mission.bones ? `ossos 0/${L.bones}` : "", L.mission.scare ? `sustos 0/${L.mission.scare}` : "", L.mission.rations ? `rações 0/${L.mission.rations}` : ""].filter(Boolean).join(" · ")}`;
       if (b.bar !== want || b.hidden || b.done) barBad.push(`F${n}: "${b.bar}" ≠ "${want}"`);
       if (!b.aria.includes(missionText(L)) || !b.aria.includes(`+${L.missionBonus} pontos`) || b.role !== "group") barBad.push(`F${n}: rótulo "${b.aria}"`);
-      if (!b.toast.includes(` · missão: ${missionText(L)}`)) barBad.push(`F${n}: aviso do começo "${b.toast}"`);
+      const shortM = [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + ");
+      if (!b.toast.includes(` · missão: ${shortM}`) || b.toast.includes("assustar")) barBad.push(`F${n}: aviso do começo "${b.toast}" (esperado " · missão: ${shortM}")`);
     }
     ok(barBad.length === 0, `a faixa de cada fase de 11 a 20 mostra a missão inteira no começo (Fase 11: "${barInfo[10].bar}"; Fase 14: "${barInfo[13].bar}"; Fase 20: "${barInfo[19].bar}"), tem rótulo para leitor de tela e o aviso do começo da fase diz "· missão: ..." (Fase 18: "${barInfo[17].toast.slice(-110)}")${barBad.length ? " — problema: " + barBad.join("; ") : ""}`);
     const barBack = await ev(page, async () => { __mk.setup(11); const a = await __mk.snap(); __mk.setup(3); const b = await __mk.snap(); return [a.hidden, b.hidden]; });
@@ -5504,9 +5505,10 @@ const PAGE_HELPERS = () => {
       ok(r.state === "lost" && r.title === "Os pontos não bastaram!" && r.lead === "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." && r.score < minShort && r.text.includes(`(mínimo ${minShort})`) && r.lost === lose,
         `Fase ${id}: com ${r.lost} vidas perdidas e tudo pego (${r.score} pontos, mínimo ${minShort}) a derrota continua "${r.title}" (${id === 20 ? "Fase com missão: sem pontos suficientes vale a derrota dos pontos" : "fase sem missão"})`);
     }
-    // enquanto sobra ração ou osso o jogo continua mesmo sem como cumprir a missão (só termina quando tudo foi pego)
-    const soft = await ev(page, () => { const K = __mk; K.setup(12); K.grab("bone"); K.wait(40); return { state: __game.state, power: __game.power, rations: K.items("ration").length }; });
-    console.log(`INFO observação de design: Fase 12 com todos os ossos pegos, o poder acabado, 0 sustos e ${soft.rations} rações no chão continua "${soft.state}" (a missão já é impossível, mas o jogo só dá a derrota quando tudo foi pego)`);
+    // a missão de sustos fica impossível quando o poder acaba e não sobra osso comum: a tentativa acaba na hora, mesmo com ração no chão (0.15.6)
+    const soft = await ev(page, () => { const K = __mk; K.setup(12); K.grab("bone"); const during = { state: __game.state, power: __game.power }; K.wait(40); const T = (x) => document.getElementById(x).textContent; return { during, state: __game.state, rations: K.items("ration").length, title: T("lose-title"), lead: T("lose-lead") }; });
+    ok(soft.during.state === "playing" && soft.during.power > 0 && soft.state === "lost" && soft.rations > 0 && soft.title === "A missão não foi cumprida!" && /^Acabou o poder do osso, mas faltou a missão: assustar 3 carteiros ou gatos/.test(soft.lead),
+      `Fase 12: com todos os ossos pegos, o poder acabado e 0 sustos, a missão já é impossível e a tentativa acaba na hora ("${soft.title}"), mesmo com ${soft.rations} rações no chão; enquanto o poder vale continua jogando`);
 
     // =====================================================================
     // (g) vidas: o máximo de cada fase (Coração maior soma até 10), vida extra no máximo, corações no placar, reforços e jogo salvo
