@@ -23,7 +23,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 
 | Fase | Condição para avançar | Agentes da carrocinha | Rações | Ossos | Velocidade dos agentes da carrocinha (sem ! / com !) | Velocidade do cachorrinho |
 |---|---|---|---|---|---|---|
-| 1 | pegar as 5 rações e chegar à saída | 1 | 5 | 0 | 55 / 110 px/s | 252 px/s |
+| 1 | pegar as 5 rações e chegar à saída | 1 | 5 | 0 | 55 / 110 px/s | 201,6 px/s |
 | 2 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 60,5 / 121 px/s | 252 px/s |
 | 3 | pegar as 7 rações e os 2 ossos e chegar à saída | 2 | 7 | 2 | 66,55 / 133,1 px/s | 226,8 px/s |
 | 4 | chegar a 800 pontos na fase (a saída abre) e sair | 3 | 15 | 2 | 73,21 / 146,41 px/s | 238,14 px/s |
@@ -88,7 +88,7 @@ Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a 
 
 **Fase 5, as paredes que se movem:** além das portas de bloco, há **3 avenidas com uma parede de 3 tiles que desliza a cada 10 segundos** (cada parede começa o ciclo num ponto diferente: aos 10 s, 7 s e 4 s): a parede vai de uma calçada à outra da avenida e a abertura que sobra **muda de lugar**, formando um caminho novo. O trilho pisca em amarelo nos **2 s** antes de cada mudança. As paredes que se movem **esmagam** como os blocos (sem o poder do osso, quem estiver no lugar para onde a parede vai perde uma vida), e os agentes da carrocinha são empurrados.
 
-**Velocidade do cachorrinho:** veja a tabela acima (252 px/s na base, 226,8 na Fase 3, 238,14 nas Fases 4 e 5, e +10% por osso).
+**Velocidade do cachorrinho:** veja a tabela acima (252 px/s na base, 201,6 na Fase 1, 226,8 na Fase 3, 238,14 nas Fases 4 e 5, e +10% por osso).
 
 **Velocidade dos agentes da carrocinha:**
 
