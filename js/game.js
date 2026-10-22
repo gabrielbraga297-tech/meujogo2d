@@ -2868,8 +2868,14 @@
     return `Versão ${v.number}${stage}${m ? ` · ${m[3]}/${m[2]}/${m[1]}` : ""}${v.build && v.build !== "dev" ? ` · build ${v.build}` : ""}`;
   }
 
+  function foundedText() { // (0.17.0) "Fundado em 06/10/2026": dia em que o jogo foi criado (js/version.js: founded)
+    const v = window.GAME_VERSION, m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((v && v.founded) || "");
+    return m ? `Fundado em ${m[3]}/${m[2]}/${m[1]}` : "";
+  }
+
   function renderMenu() {
     $("menu-version").textContent = versionText();
+    $("menu-founded").textContent = foundedText();
     const me = store.player();
     $("menu-player").textContent = me ? me + (store.hasAccount(me) ? " (conta com senha)" : "") : "ainda não escolhido";
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));

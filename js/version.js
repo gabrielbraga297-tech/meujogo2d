@@ -5,4 +5,5 @@
 // apague a linha (ou deixe "") quando a versão estiver 100% entregue. O CHANGELOG marca o mesmo na entrada do topo.
 // `build` vale "dev" no código; ao publicar no GitHub Pages o workflow troca "dev" pelo código curto do commit,
 // para saber exatamente qual versão está no ar.
-window.GAME_VERSION = { number: "0.16.1", date: "2026-10-22", build: "dev" };
+// `founded`: dia em que o jogo foi criado (primeiro commit do repositório); o menu mostra "Fundado em 06/10/2026".
+window.GAME_VERSION = { number: "0.17.0", date: "2026-10-22", stage: "em preparação", founded: "2026-10-06", build: "dev" };

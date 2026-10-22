@@ -4,6 +4,16 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
+## 0.17.0 — 22/10/2026 (em preparação)
+**Atualização 2 · Escolha do bichinho e progresso independente por animal.**
+Pedido do dono: cada bichinho terá o **seu próprio jogo de 20 fases**, com pontos, recordes, ranking, progresso, "fases anteriores" e jogo salvo **independentes**; qualquer bichinho pode ser escolhido a qualquer momento; a lojinha e a carteira de petscoin são **únicas**.
+- **Botão "Bichinho" no menu** (ao lado do jogador) e nova tela **Escolha seu bichinho**: um cartão por bichinho, com a situação *dele* (fases concluídas e pontuação total). Hoje só o **Cachorrinho** 🐶 está pronto; o **Gatinho** 🐱 e o **Passarinho** 🐦 aparecem como *Em breve* e chegam nas próximas atualizações.
+- **Tudo é separado por bichinho:** *Fases concluídas*, *Pontuação total*, *Continuar jogo*, *Iniciar jogo*, *Jogar fases anteriores*, *Pontuações* e ranking mostram só o bichinho escolhido. Dentro do mesmo bichinho a fase N só abre depois da N−1; entre bichinhos não há exigência nenhuma. A escolha é guardada **por jogador**.
+- **Compartilhado por todos os bichinhos:** contas e jogadores, **petscoin** (1 petisco por fase concluída em qualquer bichinho) e **lojinha**.
+- **As 20 fases do Cachorrinho continuam exatamente como estavam** na 0.16.1, e tudo o que já estava guardado (progresso, recordes, ranking, jogo salvo, skins) vira "Cachorrinho" sem perder nada.
+- **Data de fundação no menu:** *Fundado em 06/10/2026* (dia do primeiro commit do jogo), logo abaixo da versão (`founded` em `js/version.js`).
+- **Dados** (`js/records.js`): `store.game(bichinho)` (pontuações, progresso e jogo salvo daquele bichinho), `store.animal` / `store.setAnimal`; o Cachorrinho mantém o formato antigo; apagar a conta apaga os dados de todos os bichinhos. Testes unitários de independência, migração, adulteração e limite de jogos salvos por bichinho; testes de navegador (`node tests/e2e.js "0.17.0"`) com um gancho de teste que liga um segundo bichinho com uma cópia das fases.
+
 ## 0.16.1 — 22/10/2026
 **Atualização 1 · Correção das missões (sem exigir assustar gatos).**
 Pedido do dono: as missões das Fases 11 a 20 que exigiam **assustar gatos ou carteiros** estavam confusas.

@@ -3,8 +3,14 @@ const assert = require("assert");
 const R = require("../js/records.js");
 
 let failed = 0;
+const pending = []; // testes assíncronos: o resultado só conta depois que terminam
 function test(name, fn) {
-  try { fn(); console.log("OK   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n     " + e.message); }
+  const fail = (e) => { failed++; console.log("FAIL " + name + "\n     " + (e && e.message)); };
+  try {
+    const r = fn();
+    if (r && typeof r.then === "function") pending.push(r.then(() => console.log("OK   " + name), fail));
+    else console.log("OK   " + name);
+  } catch (e) { fail(e); }
 }
 // pontuação de uma fase concluída: 5 rações + bônus de tempo, a menos que o teste defina `points`
 const add = (store, level, timeMs, points) => store.addRun({ level, timeMs, points: points ?? R.levelPoints(5, timeMs, 0, 0) });
@@ -838,7 +844,7 @@ test("animais: apagar a conta apaga o jogo de TODOS os animais (recordes, progre
   assert.strictEqual(st.animal("Totó"), "dog"); assert.strictEqual(st.wallet("Totó").treats, 0);
 });
 test("animais: apagar o jogador também apaga, NO ARMAZENAMENTO, a escolha de bichinho e os dados dos outros animais (uma cópia nova da loja não os vê)", () => {
-  // (síncrono de propósito: este arquivo não espera testes assíncronos, o que vem depois de um `await` nunca roda; deleteAccount apaga os dados do nome com ou sem senha)
+  // (versão síncrona, sem conta com senha: deleteAccount apaga os dados do nome com ou sem senha)
   const mem = memStorage(), st = R.createStore(mem);
   st.setPlayer("Totó"); runOf(st, "cat", 1, 900); st.game("cat").completeLevel("Totó", 1); st.game("cat").saveGame("Totó", { l: 2 }); st.setAnimal("Totó", "cat");
   st.setPlayer("Ana"); st.setAnimal("Ana", "bird");
@@ -862,5 +868,7 @@ test("animais: o limite de jogos salvos vale por animal (o cachorrinho continua 
   assert.ok(!st.hasGame("Jog0") && st.hasGame("Jog15"), "saem os mais antigos");
 });
 
-console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
-process.exit(failed ? 1 : 0);
+Promise.all(pending).then(() => {
+  console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
+  process.exit(failed ? 1 : 0);
+});

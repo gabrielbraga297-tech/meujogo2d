@@ -226,9 +226,20 @@ const PAGE_HELPERS = () => {
     ok(ver.visible && ver.text === `Versão ${ver.v.number}${stageTxt} · ${dd}/${mm}/${yy}`, `o menu mostra a versão do jogo (${ver.text})`);
     ok(/^\d+\.\d+\.\d+$/.test(ver.v.number) && ver.v.build === "dev", "a versão vem de js/version.js (no código o build é 'dev' e não aparece)");
     ok(ver.left < 40 && ver.bottom < 40 && ver.left < ver.creditLeft && ver.fs >= 13, `versão no canto inferior esquerdo, legível (${ver.fs}px), sem tapar o crédito`);
+    // (0.17.0) data de fundação do jogo no menu, logo abaixo da versão (06/10/2026 = primeiro commit)
+    const fnd = await page.evaluate(() => {
+      const f = document.getElementById("menu-founded"), v = document.getElementById("menu-version"), fr = f.getBoundingClientRect(), vr = v.getBoundingClientRect(), c = document.querySelector("#menu .credit").getBoundingClientRect();
+      return { text: f.textContent, founded: window.GAME_VERSION.founded, visible: fr.width > 0 && fr.height > 0, below: fr.top >= vr.bottom - 1, sameLeft: Math.abs(fr.left - vr.left) < 2, creditLeft: c.left, right: fr.right, bottom: innerHeight - fr.bottom, fs: parseFloat(getComputedStyle(f).fontSize), docH: document.documentElement.scrollHeight, winH: innerHeight };
+    });
+    ok(fnd.founded === "2026-10-06" && fnd.text === "Fundado em 06/10/2026", `o menu mostra a data em que o jogo foi fundado (${fnd.text})`);
+    ok(fnd.visible && fnd.below && fnd.sameLeft && fnd.fs >= 13 && fnd.bottom < 40 && fnd.right < fnd.creditLeft + 1, `a data de fundação fica sob a versão, legível (${fnd.fs}px), sem tapar o crédito`);
     await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", date: "2030-01-02", build: "abc1234" }; });
     await page.click("#btn-howto"); await page.click("#btn-howto-back");
     ok(await page.textContent("#menu-version") === "Versão 9.8.7 · 02/01/2030 · build abc1234", "publicado no GitHub Pages, a versão mostra também o código do commit (build)");
+    ok(await page.textContent("#menu-founded") === "" && !(await page.isVisible("#menu-founded")), "sem a data de fundação em js/version.js o menu não mostra a linha");
+    await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", date: "2030-01-02", founded: "2030-02-30x", build: "abc1234" }; });
+    await page.click("#btn-howto"); await page.click("#btn-howto-back");
+    ok(await page.textContent("#menu-founded") === "", "uma data de fundação fora do formato AAAA-MM-DD é ignorada");
     await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", stage: "em preparação", date: "2030-01-02", build: "abc1234" }; });
     await page.click("#btn-howto"); await page.click("#btn-howto-back");
     ok(await page.textContent("#menu-version") === "Versão 9.8.7 (em preparação) · 02/01/2030 · build abc1234", "enquanto a versão recebe itens, o menu diz que ela está em preparação");

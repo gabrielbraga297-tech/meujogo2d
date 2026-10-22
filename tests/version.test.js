@@ -22,6 +22,14 @@ test("js/version.js define número, data e build", () => {
   assert.ok(V.stage === undefined || (typeof V.stage === "string" && V.stage.length <= 30), "stage é opcional e curto");
 });
 
+test("js/version.js tem a data de fundação (primeiro commit, 06/10/2026), que não é depois da versão", () => {
+  assert.match(V.founded, /^\d{4}-\d{2}-\d{2}$/, "founded no formato AAAA-MM-DD");
+  assert.ok(!Number.isNaN(Date.parse(V.founded)), "data de fundação válida");
+  assert.strictEqual(new Date(V.founded).toISOString().slice(0, 10), V.founded, "o dia existe no calendário");
+  assert.strictEqual(V.founded, "2026-10-06", "o jogo foi fundado em 06/10/2026");
+  assert.ok(V.founded <= V.date, "o jogo não pode ser fundado depois da versão atual");
+});
+
 test("o CHANGELOG marca 'em preparação' na entrada do topo se, e só se, js/version.js tem stage", () => {
   const head = read("CHANGELOG.md").match(/^## .*$/m)[0];
   assert.strictEqual(/\(em preparação\)/.test(head), !!V.stage, `cabeçalho do topo: "${head}" / stage: ${JSON.stringify(V.stage)}`);
@@ -52,6 +60,7 @@ test("index.html carrega version.js antes do game.js e tem o lugar da versão no
   const html = read("index.html");
   assert.ok(html.indexOf("js/version.js") !== -1 && html.indexOf("js/version.js") < html.indexOf("js/game.js"));
   assert.ok(/id="menu-version"/.test(html));
+  assert.ok(/id="menu-founded"/.test(html), "o menu tem o lugar da data de fundação");
 });
 
 test("o workflow do GitHub Pages carimba o commit na versão e confere", () => {
