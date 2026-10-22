@@ -115,12 +115,14 @@ const PAGE_HELPERS = () => {
     const page = await ctx.newPage();
     watch(page);
     // o jogo salva ao sair da página; entre cenários o save é descartado, exceto quando o teste pede para manter
-    await page.addInitScript(() => { try { if (!sessionStorage.getItem("keepSave")) localStorage.removeItem("cachorrinho.save.v1"); } catch { /* sem storage */ } });
+    // (0.17.0: `keepsave=1` na URL vale quando a marca do sessionStorage não existe (null): o sessionStorage gravado logo antes de recarregar às vezes se perde quando a máquina está ocupada, e o jogo salvo dos testes sumia.
+    // Uma marca vazia ("") gravada pelo teste continua mandando apagar o jogo salvo)
+    await page.addInitScript(() => { try { const k = sessionStorage.getItem("keepSave"); if (!k && (k !== null || !/[?&]keepsave=1\b/.test(location.search))) localStorage.removeItem("cachorrinho.save.v1"); } catch { /* sem storage */ } });
     return page;
   }
   // Abre o jogo limpo, com (ou sem) nome salvo e recordes de outros jogadores já existentes.
   async function fresh(page, { name = "Totó", keepSave = false, runs = [], query = "", done = [] } = {}) {
-    await page.goto(URL + query);
+    await page.goto(URL + query + (keepSave ? (query ? "&" : "?") + "keepsave=1" : ""));
     await page.evaluate(([name, keep, runs, done]) => {
       sessionStorage.setItem("keepSave", keep ? "1" : "");
       localStorage.clear();
@@ -8052,6 +8054,460 @@ const PAGE_HELPERS = () => {
     // ---- os textos do jogo: Como jogar e Pontuações citam bolinhas, missão e o renascer das Fases 9 a 20 ----
     const how = await ev(page, () => document.getElementById("howto").textContent + " " + document.getElementById("scores").textContent);
     ok(/da Fase 9 em diante ele renasce onde caiu/.test(how) && /50 por bolinha/.test(how) && /bônus da missão/.test(how) && !/nas Fases 9 e 10 ele renasce/.test(how), "Como jogar e Pontuações: renascer da Fase 9 em diante, bolinha (+50) e bônus da missão na fórmula");
+  });
+
+  // =====================================================================
+  // 0.17.0: escolha do bichinho e progresso por animal. Cada bichinho tem o SEU jogo de 20 fases (pontos, recordes, ranking, progresso e jogo salvo independentes);
+  // a carteira de petscoin, a lojinha, as contas e os jogadores são únicos. Hoje só o Cachorrinho existe: o gancho de teste __game.enableTestAnimal("cat") marca o Gatinho
+  // como pronto (com uma cópia da lista de fases do Cachorrinho) para provar no navegador que um bichinho nunca mexe nos dados do outro.
+  // começa a fase `level` do bichinho `animal` e a termina (como finishNow)
+  const finishNowAs = async (pg, animal, level, seconds) => { await ev(pg, ([a, l]) => { __game.setAnimal(a); __game.start(l); }, [animal, level]); await finishNow(pg, seconds); };
+  const AN = {
+    label: (pg) => pg.textContent("#btn-animal").then((t) => t.replace(/\s+/g, " ").trim()),
+    progress: (pg) => pg.textContent("#menu-progress"),
+    // o que está guardado no armazenamento do navegador (outra cópia da loja), de um bichinho: progresso, recorde da Fase 1, total, ranking da Fase 1 e jogo salvo
+    data: (pg, animal = "dog", name = "Totó") => pg.evaluate(([animal, name]) => {
+      const st = Records.createStore(localStorage), g = st.game(animal), ids = Array.from({ length: 20 }, (_, i) => i + 1);
+      return { progress: g.progress(name), best1: g.personalBest(name, 1), total: g.totalScore(name, ids), ranking1: g.ranking(1, 99), hasGame: g.hasGame(name), save: g.loadGame(name) && JSON.stringify(g.loadGame(name).snap) };
+    }, [animal, name]),
+    rawSaves: (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem("cachorrinho.save.v1") || '{"saves":{}}').saves),
+    // dá o jogo do Totó: cada coisa entra no bichinho pedido (a página é recarregada no fim)
+    seed: async (pg, fn, arg) => { await pg.evaluate(fn, arg); await pg.reload(); await pg.evaluate(PAGE_HELPERS); },
+    levelsList: (pg) => pg.$$eval("#levels-list button", (bs) => bs.map((b) => ({ title: b.querySelector("strong").textContent, sub: b.querySelector(".sub").textContent, locked: b.disabled }))),
+  };
+
+  await section("0.17.0: escolha do bichinho e progresso por animal (o botão do menu e a tela Escolha seu bichinho)", async () => {
+    await fresh(page, { done: [1, 2, 3] });
+    await ev(page, () => { const st = Records.createStore(localStorage); st.addRun({ level: 1, timeMs: 30000, points: 700, name: "Totó" }); st.addRun({ level: 2, timeMs: 30000, points: 650, name: "Totó" }); st.addRun({ level: 3, timeMs: 30000, points: 500, name: "Totó" }); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+
+    // ---- o botão no alto do menu ----
+    ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar", `o menu tem o botão "${await AN.label(page)}"`);
+    ok(await page.getAttribute("#btn-animal", "aria-label") === "Bichinho: Cachorrinho. Trocar de bichinho", "o botão tem rótulo acessível (aria-label) com o nome do bichinho");
+    const pos = await ev(page, () => { const q = (s) => document.querySelector(s).getBoundingClientRect(); return { a: q("#btn-animal"), t: q("#menu-title"), who: q(".who"), start: q("#btn-start"), prog: q("#menu-progress"), best: q("#menu-best") }; });
+    ok(pos.a.height >= 44 && pos.a.top >= pos.t.bottom - 1 && pos.a.top < pos.start.top && pos.a.top < pos.prog.top && pos.a.top < pos.best.top && Math.abs(pos.a.top - pos.who.top) < 60, `o botão fica no alto do menu (embaixo do título, junto do jogador, antes das informações e dos botões), com ${pos.a.height.toFixed(0)} px de altura`);
+    ok(await ev(page, () => document.activeElement.id) === "btn-start" && await page.isHidden("#animals"), "o menu continua abrindo com Iniciar jogo em foco e a tela dos bichinhos fechada");
+    ok(await page.textContent("#menu-progress") === "Fases concluídas: 3/20 · Pontuação total: 1850 · Petscoin: 0", `o menu do Cachorrinho mostra "${await page.textContent("#menu-progress")}"`);
+    ok(await ev(page, () => document.querySelector("#menu .menu-list").textContent.includes("Bichinho") === false), "(o botão não entra na lista de botões do menu principal: os outros testes do menu continuam valendo)");
+
+    // ---- a tela ----
+    await page.click("#btn-animal");
+    ok(await page.isVisible("#animals") && await page.isHidden("#menu") && await ev(page, () => document.body.dataset.screen) === "animals" && await ev(page, () => __game.state) === "menu", "o botão abre a tela dos bichinhos (o jogo continua no estado de menu)");
+    ok(await page.textContent("#animals-title") === "Escolha seu bichinho" && await page.getAttribute("#animals", "aria-labelledby") === "animals-title" && await page.getByRole("heading", { name: "Escolha seu bichinho" }).isVisible(), "a tela se chama Escolha seu bichinho (rotulada para leitor de tela)");
+    const cards = await page.$$eval("#animals-list button", (bs) => bs.map((b) => ({ id: b.id, emoji: b.querySelector(".animal-emoji").textContent, emojiHidden: b.querySelector(".animal-emoji").getAttribute("aria-hidden"), name: b.querySelector("strong").textContent, blurb: b.querySelector(".animal-blurb").textContent, status: b.querySelector(".animal-status").textContent, disabled: b.disabled, ariaDisabled: b.getAttribute("aria-disabled"), label: b.getAttribute("aria-label"), current: b.getAttribute("aria-current"), cls: b.className, h: b.getBoundingClientRect().height })));
+    ok(cards.map((c) => c.id).join() === "animal-dog,animal-cat,animal-bird" && cards.map((c) => c.emoji + c.name).join("|") === "🐶Cachorrinho|🐱Gatinho|🐦Passarinho" && cards.every((c) => c.blurb.length > 10 && c.emojiHidden === "true"), `um cartão por bichinho, na ordem Cachorrinho, Gatinho e Passarinho, com emoji, nome e uma frase (${cards.map((c) => c.blurb).join(" | ")})`);
+    ok(cards[0].status === "Fases concluídas: 3/20 · Pontuação total: 1850" && !cards[0].disabled && cards[0].current === "true" && /current/.test(cards[0].cls) && /Escolhido/.test(await page.textContent("#animal-dog")), `o Cachorrinho mostra a situação dele ("${cards[0].status}") e aparece como o escolhido`);
+    ok(cards[1].disabled && cards[2].disabled && cards[1].ariaDisabled === "true" && cards[2].ariaDisabled === "true" && cards[1].status === "Em breve" && cards[2].status === "Em breve" && !cards[1].current && !cards[2].current, "o Gatinho e o Passarinho estão desligados (disabled e aria-disabled) com o aviso Em breve");
+    ok(/Gatinho: em breve/.test(cards[1].label) && /Passarinho: em breve/.test(cards[2].label) && await page.getByRole("button", { name: /Gatinho: em breve/ }).count() === 1 && await page.getByRole("button", { name: /Passarinho: em breve/ }).count() === 1, "os cartões desligados têm rótulo acessível que diz que estão em breve");
+    ok(cards.every((c) => c.h >= 44), `os cartões têm pelo menos 44 px de altura (${cards.map((c) => c.h.toFixed(0)).join(", ")})`);
+    ok(await ev(page, () => document.activeElement.id) === "animal-dog", "o foco abre no bichinho escolhido");
+    await page.click("#animal-cat", { force: true }); await page.click("#animal-bird", { force: true, timeout: 1500 }).catch(() => {});
+    ok(await page.isVisible("#animals") && await ev(page, () => __game.animal) === "dog" && await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "dog", "tocar num bichinho desligado não faz nada (a tela continua aberta e a escolha não muda)");
+    ok(await page.isVisible("#btn-animals-back"), "a tela tem o botão Voltar");
+
+    // ---- teclado: setas pulam os cartões desligados; Enter escolhe; Esc e Voltar fecham ----
+    await page.focus("#animal-dog"); // (tocar num cartão desligado tira o foco dos botões)
+    await page.keyboard.press("ArrowDown");
+    ok(await ev(page, () => document.activeElement.id) === "btn-animals-back", "seta para baixo pula os cartões desligados e vai para o Voltar");
+    await page.keyboard.press("ArrowUp");
+    ok(await ev(page, () => document.activeElement.id) === "animal-dog", "seta para cima volta ao Cachorrinho");
+    await page.keyboard.press("Escape");
+    ok(await page.isVisible("#menu") && await page.isHidden("#animals") && await ev(page, () => document.body.dataset.screen) === "menu", "Esc volta ao menu");
+    await page.click("#btn-animal"); await page.click("#btn-animals-back");
+    ok(await page.isVisible("#menu") && await page.isHidden("#animals"), "Voltar volta ao menu");
+    await page.click("#btn-animal"); await page.keyboard.press("Enter");
+    ok(await page.isVisible("#menu") && await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar", "Enter no bichinho escolhido volta ao menu");
+    await page.focus("#btn-animal"); await page.keyboard.press("Enter");
+    ok(await page.isVisible("#animals") && await ev(page, () => document.activeElement.id) === "animal-dog", "Enter no botão do menu abre a tela");
+    await page.keyboard.press("Escape");
+
+    // ---- controle (gamepad): B volta, A escolhe ----
+    const g = await newPage();
+    await g.addInitScript(() => {
+      const pad = { id: "Controle de teste", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
+      navigator.getGamepads = () => [pad, null, null, null];
+      window.__padHit = (i) => { pad.buttons[i] = { pressed: true, touched: true, value: 1 }; __game.padPoll(); pad.buttons[i] = { pressed: false, touched: false, value: 0 }; __game.padPoll(); };
+    });
+    await fresh(g);
+    await g.click("#btn-animal"); await g.waitForTimeout(150); // (o direcional segurado ao abrir uma tela só vale depois de voltar ao neutro)
+    await ev(g, () => __padHit(1));
+    ok(await g.isVisible("#menu") && await g.isHidden("#animals"), "controle: B volta ao menu");
+    await g.click("#btn-animal"); await g.waitForTimeout(150);
+    await ev(g, () => __padHit(13)); // direcional para baixo: do Cachorrinho para o Voltar
+    ok(await ev(g, () => document.activeElement.id) === "btn-animals-back", "controle: o direcional anda pelos botões da tela");
+    await ev(g, () => __padHit(12));
+    await ev(g, () => __padHit(0));
+    ok(await g.isVisible("#menu") && await AN.label(g) === "Bichinho: 🐶 Cachorrinho · Trocar", "controle: A escolhe o bichinho em foco");
+    await g.context().close();
+
+    // ---- cinco tamanhos de tela: sem rolagem lateral, o menu com jogo salvo cabe e o botão e os cartões não saem da tela ----
+    const vps = [{ width: 320, height: 568 }, { width: 360, height: 640 }, { width: 390, height: 780 }, { width: 740, height: 390 }, { width: 1000, height: 700 }];
+    const fits = [];
+    for (const vp of vps) {
+      const small = vp.width < 800;
+      const t = await newPage({ viewport: vp, hasTouch: small, isMobile: small });
+      await fresh(t, { done: [1], keepSave: true });
+      await ev(t, () => { Records.createStore(localStorage).addRun({ level: 1, timeMs: 30000, points: 700, name: "Totó" }); });
+      await ev(t, () => { __game.start(1); __game.freezeVets = true; __game.tick(5); __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); }); // (o menu com jogo salvo e recorde: o caso mais alto)
+      const m = await ev(t, () => {
+        const sc = document.getElementById("menu"), q = (s) => document.querySelector(s).getBoundingClientRect(), btns = [...sc.querySelectorAll("button")].filter((b) => b.offsetParent), a = q("#btn-animal"), s = q("#btn-sound");
+        const inter = (x, y) => Math.max(0, Math.min(x.right, y.right) - Math.max(x.left, y.left)) * Math.max(0, Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top));
+        return { hs: document.documentElement.scrollWidth - innerWidth, over: sc.scrollHeight - sc.clientHeight, last: Math.max(...btns.map((b) => b.getBoundingClientRect().bottom)), credit: q("#menu .credit").bottom, vh: innerHeight, vw: innerWidth, aH: a.height, aL: a.left, aR: a.right, onSound: inter(a, s), continueShown: !document.getElementById("btn-continue").classList.contains("hidden"), minBtn: Math.min(...btns.map((b) => b.getBoundingClientRect().height)), animalFont: parseFloat(getComputedStyle(document.getElementById("btn-animal")).fontSize) };
+      });
+      await t.click("#btn-animal");
+      const n = await ev(t, () => {
+        const sc = document.getElementById("animals"), cs = [...document.querySelectorAll("#animals-list button")].map((b) => b.getBoundingClientRect()), back = document.getElementById("btn-animals-back").getBoundingClientRect(), f = document.activeElement.getBoundingClientRect();
+        return { hs: document.documentElement.scrollWidth - innerWidth, shs: sc.scrollWidth - sc.clientWidth, left: Math.min(...cs.map((r) => r.left)), right: Math.max(...cs.map((r) => r.right)), backTop: back.top, backBottom: back.bottom, backH: back.height, focusId: document.activeElement.id, focusTop: f.top, vh: innerHeight, vw: innerWidth, minH: Math.min(...cs.map((r) => r.height)), minFont: Math.min(...[...sc.querySelectorAll(".animal-blurb, .animal-status")].map((e) => parseFloat(getComputedStyle(e).fontSize))) };
+      });
+      fits.push({ vp, m, n });
+      await t.context().close();
+    }
+    const label = (f) => `${f.vp.width}x${f.vp.height}`;
+    const badMenu = fits.filter((f) => !(f.m.continueShown && f.m.hs <= 0 && f.m.over <= 1 && f.m.last <= f.m.vh && f.m.credit <= f.m.vh + 1 && f.m.aH >= 44 && f.m.aL >= 0 && f.m.aR <= f.m.vw && f.m.onSound === 0 && f.m.animalFont >= 15));
+    ok(badMenu.length === 0, `o menu com jogo salvo e recorde cabe sem rolar (nem para os lados), com o botão do bichinho de pelo menos 44 px e todos os botões e o crédito à vista em ${fits.map(label).join(", ")} (rolagem: ${fits.map((f) => f.m.over).join(", ")} px)${badMenu.length ? " — problema: " + JSON.stringify(badMenu.map((f) => [label(f), f.m])) : ""}`);
+    const badBtn = fits.filter((f) => f.m.minBtn < 40);
+    ok(badBtn.length === 0, `todos os botões do menu têm pelo menos 40 px, em todos os tamanhos (${fits.map((f) => f.m.minBtn.toFixed(0)).join(", ")})`);
+    const badScreen = fits.filter((f) => !(f.n.hs <= 0 && f.n.shs <= 0 && f.n.left >= 0 && f.n.right <= f.n.vw && f.n.backBottom <= f.n.vh + 0.5 && f.n.backTop >= 0 && f.n.backH >= 40 && f.n.minH >= 44 && f.n.focusId === "animal-dog" && f.n.focusTop >= 0 && f.n.minFont >= 14));
+    ok(badScreen.length === 0, `a tela dos bichinhos não rola para os lados, os cartões ficam dentro da tela (com 44 px ou mais), o Voltar fica à vista e o foco abre no escolhido em ${fits.map(label).join(", ")}${badScreen.length ? " — problema: " + JSON.stringify(badScreen.map((f) => [label(f), f.n])) : ""}`);
+  });
+
+  // =====================================================================
+  await section("0.17.0: escolha do bichinho e progresso por animal (o registro, a escolha por jogador, recarregar, trocar de jogador e sair da conta)", async () => {
+    await fresh(page, { name: "" });
+    // ---- o registro dos bichinhos ----
+    const games = await ev(page, () => __game.games);
+    ok(JSON.stringify(games.map((g) => [g.id, g.name, g.emoji, g.ready, g.levels])) === JSON.stringify([["dog", "Cachorrinho", "🐶", true, 20], ["cat", "Gatinho", "🐱", false, 0], ["bird", "Passarinho", "🐦", false, 0]]) && games.every((g) => g.blurb.length > 10), "o registro tem Cachorrinho (pronto, 20 fases), Gatinho e Passarinho (ainda não), nesta ordem");
+    ok(await ev(page, () => __game.animal) === "dog" && await ev(page, () => [__game.setAnimal("cat"), __game.setAnimal("bird"), __game.setAnimal("xyz"), __game.setAnimal("constructor"), __game.setAnimal("")]).then((r) => r.every((x) => x === false)) && await ev(page, () => __game.animal) === "dog", "sem jogador o bichinho é o Cachorrinho e um bichinho que não está pronto (ou não existe) não pode ser escolhido");
+    ok(await ev(page, () => [__game.enableTestAnimal("dog"), __game.enableTestAnimal("zzz"), __game.enableTestAnimal("constructor")]).then((r) => r.every((x) => x === false)), "(teste) o gancho só liga o Gatinho e o Passarinho");
+    ok(await ev(page, () => __game.enableTestAnimal("cat")) === true && await ev(page, () => __game.games.map((g) => g.ready + ":" + g.levels).join()) === "true:20,true:20,false:0", "(teste) enableTestAnimal marca o Gatinho como pronto, com uma cópia das 20 fases do Cachorrinho");
+    ok(await ev(page, () => __game.levels.length) === 20 && await ev(page, () => __game.games[0].levels) === 20, "as 20 fases do Cachorrinho continuam as mesmas");
+
+    // ---- sem jogador: a escolha fica só na memória ----
+    await page.click("#btn-animal");
+    ok(await page.isEnabled("#animal-cat") && /Fases|fases/.test(await page.textContent("#animal-dog .animal-status")) && !/Fases concluídas/.test(await page.textContent("#animal-cat .animal-status")), `sem jogador o cartão pede um nome em vez de mostrar pontos ("${await page.textContent("#animal-cat .animal-status")}")`);
+    await page.click("#animal-cat");
+    ok(await page.isVisible("#menu") && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat" && await page.getAttribute("#btn-animal", "aria-label") === "Bichinho: Gatinho. Trocar de bichinho", "escolher o Gatinho (sem jogador) volta ao menu e troca o rótulo do botão");
+    ok(await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes("animal")), "sem jogador a escolha não é guardada em lugar nenhum (só na memória)");
+    await page.click("#btn-animal");
+    ok(await ev(page, () => document.activeElement.id) === "animal-cat" && await page.getAttribute("#animal-cat", "aria-current") === "true" && await page.getAttribute("#animal-dog", "aria-current") === null, "ao reabrir a tela o Gatinho é o escolhido e recebe o foco");
+    await page.keyboard.press("Escape");
+    // ao escolher um nome o jogo relê o bichinho DELE (um jogador novo começa com o Cachorrinho)
+    await page.click("#btn-name"); await page.fill("#name-input", "Ana"); await page.click("#name button[type=submit]");
+    ok(await page.textContent("#menu-player") === "Ana" && await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await ev(page, () => __game.animal) === "dog", "ao escolher um nome o jogo relê o bichinho do jogador (Ana começa com o Cachorrinho)");
+
+    // ---- por jogador: escolha, recarregar, outro jogador ----
+    await fresh(page);
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes("animal")), "um jogador que nunca escolheu não tem campo de bichinho guardado (o formato antigo não ganha nada)");
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "cat" && await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1")).animal.toto) === "cat", "o Totó escolhe o Gatinho: o menu muda e a escolha fica guardada no nome dele");
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await ev(page, () => __game.animal) === "dog" && await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "cat", "depois de recarregar, um bichinho que ainda não está pronto vale como o Cachorrinho (e a escolha guardada não é apagada)");
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await ev(page, () => __game.animal) === "cat" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar", "quando o Gatinho está pronto, a escolha guardada do Totó volta a valer (e o menu se atualiza)");
+    // outro jogador (pelo atalho de nomes): o Gatinho não vale para ele
+    await page.click("#btn-name"); await page.fill("#name-input", "Ana"); await page.click("#name button[type=submit]");
+    ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await ev(page, () => __game.animal) === "dog", "trocar para outro jogador (Ana) mostra o bichinho dela: o Cachorrinho");
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Totó')");
+    ok(await page.textContent("#menu-player") === "Totó" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat", "voltar para o Totó traz o Gatinho de volta");
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Ana')");
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Totó')");
+    await page.click("#btn-animal"); await page.click("#animal-dog");
+    const stored = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1")).animal);
+    ok(JSON.stringify(stored) === JSON.stringify({ ana: "cat" }) && await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "dog" && await ev(page, () => Records.createStore(localStorage).animal("Ana")) === "cat", `a Ana escolhe o Gatinho e o Totó volta ao Cachorrinho: cada um com a sua escolha (guardado: ${JSON.stringify(stored)}; escolher o Cachorrinho não deixa campo)`);
+    // a escolha vale ao recarregar para cada um
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar", "recarregando como Totó: Cachorrinho");
+
+    // ---- conta com senha: sair da conta volta ao Cachorrinho; entrar traz a escolha da conta ----
+    const reg = await ev(page, () => Records.createStore(localStorage).register("Bidu", "abcd1234"));
+    ok(reg.ok === true, "(teste) a conta Bidu foi criada");
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await page.textContent("#menu-player") === "Bidu (conta com senha)", "a página abre com a conta Bidu");
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar", "a conta Bidu escolhe o Gatinho");
+    await page.click("#btn-logout");
+    ok(await page.textContent("#menu-player") === "ainda não escolhido" && await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await ev(page, () => __game.animal) === "dog", "sair da conta volta ao Cachorrinho (sem jogador)");
+    await page.click("#btn-name"); await page.click("#btn-open-login");
+    await page.fill("#login-user", "Bidu"); await page.fill("#login-pass", "abcd1234"); await page.click("#btn-login-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"), null, { timeout: 15000 });
+    ok(await page.textContent("#menu-player") === "Bidu (conta com senha)" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat", "entrar de novo na conta traz o Gatinho que ela tinha escolhido");
+    // apagar a conta leva a escolha junto
+    await ev(page, () => { const st = Records.createStore(localStorage); st.deleteAccount("Bidu"); });
+    ok(await ev(page, () => { const raw = JSON.parse(localStorage.getItem("cachorrinho.v1")); return !raw.animal || !raw.animal.bidu; }), "apagar a conta apaga também o bichinho escolhido dela");
+  });
+
+  // =====================================================================
+  await section("0.17.0: escolha do bichinho e progresso por animal (o menu, Continuar jogo, a lista de fases e as pontuações mostram só o bichinho escolhido)", async () => {
+    // Totó: Cachorrinho com as Fases 1 a 6 concluídas e jogo salvo na Fase 2 (as Fases 1 e 2 não têm blocos: um jogo salvo com todas as peças móveis ligadas, como nos testes, só vale nas fases sem elas); Gatinho com a Fase 1 concluída e jogo salvo na Fase 1. Ana: um recorde em cada.
+    await fresh(page, { keepSave: true });
+    await ev(page, () => {
+      __game.enableTestAnimal("cat");
+      const st = Records.createStore(localStorage), dog = st.game("dog"), cat = st.game("cat");
+      for (let l = 1; l <= 6; l++) { dog.completeLevel("Totó", l); dog.addRun({ level: l, timeMs: 30000, points: 700 + l * 10, name: "Totó" }); }
+      cat.completeLevel("Totó", 1); cat.addRun({ level: 1, timeMs: 40000, points: 321, name: "Totó" });
+      dog.addRun({ level: 1, timeMs: 50000, points: 111, name: "Ana" }); cat.addRun({ level: 1, timeMs: 50000, points: 999, name: "Ana" });
+      st.setPlayer("Totó");
+      __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); // jogo salvo do Cachorrinho (Fase 2)
+      __game.setAnimal("cat"); __game.start(1); __game.freezeVets = true; __game.tick(1); __game.save(); // jogo salvo do Gatinho (Fase 1)
+      __game.setAnimal("dog");
+    });
+    const saves = await AN.rawSaves(page);
+    ok(Object.keys(saves).sort().join() === "toto,toto@cat" && saves.toto.snap.l === 2 && saves["toto@cat"].snap.l === 1, `os dois jogos salvos ficam separados (chaves ${Object.keys(saves).join(", ")}: o do Cachorrinho na Fase 2, o do Gatinho na Fase 1)`);
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+
+    // ---- Cachorrinho ----
+    ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await AN.progress(page) === "Fases concluídas: 6/20 · Pontuação total: 4410 · Petscoin: 0", `Cachorrinho: o menu diz "${await AN.progress(page)}"`);
+    const dogMenu = { best: await page.textContent("#menu-best"), save: await page.textContent("#menu-save") };
+    ok(/Fase 6 760/.test(dogMenu.best) && !/321|999/.test(dogMenu.best) && await page.isVisible("#btn-continue") && /Jogo salvo: Fase 2 /.test(dogMenu.save) && await page.isVisible("#btn-replay"), `Cachorrinho: "${dogMenu.best}", "${dogMenu.save}", Continuar jogo e Jogar fases anteriores`);
+    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 2/.test(await page.textContent("#confirm-text")), "Cachorrinho: Iniciar jogo avisa do jogo salvo dele (Fase 2)");
+    await page.click("#btn-confirm-new");
+    const dogList = await AN.levelsList(page);
+    ok(dogList.length === 20 && dogList.filter((l) => !l.locked).length === 7 && dogList[6].locked === false && dogList[7].locked && /bloqueada: termine a Fase 7/.test(dogList[7].sub) && /sua melhor: 710 pts/.test(dogList[0].sub), `Cachorrinho: a lista de fases abre até a Fase 7 (as Fases 1 a 6 estão concluídas) e mostra o recorde dele (${dogList[0].sub.slice(-24)})`);
+    await page.keyboard.press("Escape");
+    await page.click("#btn-replay"); await page.click("#btn-confirm-new");
+    ok((await AN.levelsList(page)).length === 6 && await page.textContent("#levels-title") === "Jogar fases anteriores", "Cachorrinho: Jogar fases anteriores lista as 6 fases concluídas");
+    await page.keyboard.press("Escape");
+    await page.click("#btn-scores");
+    const dogSc = { title: await page.textContent("#scores-title"), priv: await page.textContent("#scores-private"), pub: await page.textContent("#scores-public"), src: await page.textContent("#scores-source") };
+    ok(dogSc.title === "Pontuações do Cachorrinho" && /4410 pontos/.test(dogSc.priv) && /Sua melhor na Fase 1\s*710 pts/.test(dogSc.priv) && !/321/.test(dogSc.priv) && /Totó — 4410 pontos/.test(dogSc.pub) && /Ana — 111 pontos/.test(dogSc.pub) && !/999|321/.test(dogSc.pub), `Cachorrinho: Pontuações ("${dogSc.title}") mostra o total 4410 e o ranking só do Cachorrinho (Totó 4410, Ana 111; nada de 321 nem 999)`);
+    const rank1 = await page.$$eval("#scores-public section:nth-of-type(2) li", (ls) => ls.map((l) => l.textContent));
+    ok(rank1.length === 2 && /^Totó — 710 pts/.test(rank1[0]) && /^Ana — 111 pts/.test(rank1[1]), `Cachorrinho: o ranking da Fase 1 tem Totó 710 e Ana 111 (${rank1.join(" | ")})`);
+    await page.keyboard.press("Escape");
+    // Continuar jogo = o jogo salvo DESTE bichinho
+    await page.click("#btn-continue");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 2 && await ev(page, () => __game.gameAnimal) === "dog", "Cachorrinho: Continuar jogo volta para a Fase 2 dele");
+    await ev(page, () => document.getElementById("btn-pause").click()); await page.click("#btn-pause-menu");
+
+    // ---- trocar para o Gatinho (pela tela): tudo muda ----
+    await page.click("#btn-animal");
+    ok(await page.textContent("#animal-cat .animal-status") === "Fases concluídas: 1/20 · Pontuação total: 321" && await page.textContent("#animal-dog .animal-status") === "Fases concluídas: 6/20 · Pontuação total: 4410" && !await page.isDisabled("#animal-cat"), "a tela mostra a situação de CADA bichinho pronto (Cachorrinho 6/20 e 4410; Gatinho 1/20 e 321)");
+    await page.click("#animal-cat");
+    ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await AN.progress(page) === "Fases concluídas: 1/20 · Pontuação total: 321 · Petscoin: 0", `Gatinho: o menu diz "${await AN.progress(page)}" (Petscoin é a carteira única)`);
+    const catMenu = { best: await page.textContent("#menu-best"), save: await page.textContent("#menu-save") };
+    ok(/Suas melhores: Fase 1 321/.test(catMenu.best) && !/710|760/.test(catMenu.best) && /Jogo salvo: Fase 1 /.test(catMenu.save) && await page.isVisible("#btn-continue") && await page.isVisible("#btn-replay"), `Gatinho: "${catMenu.best}", "${catMenu.save}"`);
+    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 1 /.test(await page.textContent("#confirm-text")), "Gatinho: Iniciar jogo avisa do jogo salvo do Gatinho (Fase 1), não do Cachorrinho");
+    await page.click("#btn-confirm-new");
+    const catList = await AN.levelsList(page);
+    ok(catList.length === 20 && catList.filter((l) => !l.locked).length === 2 && catList[2].locked && /bloqueada: termine a Fase 2/.test(catList[2].sub) && /sua melhor: 321 pts/.test(catList[0].sub) && /ainda não jogada/.test(catList[1].sub), `Gatinho: a lista abre só até a Fase 2 (a Fase 1 do Gatinho está concluída), com o recorde 321 do Gatinho e não os do Cachorrinho`);
+    await page.keyboard.press("Escape");
+    await page.click("#btn-replay"); await page.click("#btn-confirm-new");
+    ok((await AN.levelsList(page)).length === 1, "Gatinho: Jogar fases anteriores lista só a Fase 1 (a única concluída por ele)");
+    await page.keyboard.press("Escape");
+    await page.click("#btn-scores");
+    const catSc = { title: await page.textContent("#scores-title"), priv: await page.textContent("#scores-private"), pub: await page.textContent("#scores-public"), src: await page.textContent("#scores-source") };
+    ok(catSc.title === "Pontuações do Gatinho" && /321 pontos/.test(catSc.priv) && /Sua melhor na Fase 1\s*321 pts/.test(catSc.priv) && /Sua melhor na Fase 2\s*ainda não jogada/.test(catSc.priv) && !/4410|710/.test(catSc.priv), `Gatinho: Pontuações ("${catSc.title}") mostra o total 321 e só os recordes do Gatinho`);
+    const crank = await page.$$eval("#scores-public section:nth-of-type(2) li", (ls) => ls.map((l) => l.textContent));
+    ok(/Ana — 999 pontos/.test(catSc.pub) && /Totó — 321 pontos/.test(catSc.pub) && !/4410|111 pontos/.test(catSc.pub) && crank.length === 2 && /^Ana — 999 pts/.test(crank[0]) && /^Totó — 321 pts/.test(crank[1]) && /Ranking deste aparelho/.test(catSc.src), `Gatinho: o ranking é só o do Gatinho (Ana 999, Totó 321: ${crank.join(" | ")})`);
+    await page.keyboard.press("Escape");
+    await page.click("#btn-continue");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1 && await ev(page, () => __game.gameAnimal) === "cat", "Gatinho: Continuar jogo volta para a Fase 1 do Gatinho");
+    await ev(page, () => document.getElementById("btn-pause").click()); await page.click("#btn-pause-menu");
+
+    // ---- recarregar: cada bichinho continua com o que tinha; a escolha é do jogador ----
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && /^Fases concluídas: 1\/20 · Pontuação total: 321/.test(await AN.progress(page)) && /Jogo salvo: Fase 1 /.test(await page.textContent("#menu-save")), "recarregando a página o menu continua no Gatinho, com os dados dele");
+  });
+
+  // =====================================================================
+  await section("0.17.0: escolha do bichinho e progresso por animal (independência: fases, recordes, ranking, jogo salvo e petscoin, jogando de verdade)", async () => {
+    // Totó: Cachorrinho com as Fases 1 a 9 concluídas (está na Fase 10), recorde 400 na Fase 1 e jogo salvo (na Fase 2: sem blocos, como o teste liga todos); carteira com 10 petscoin gastos na skin Cinza-prata (em uso)
+    await fresh(page, { keepSave: true, done: [1, 2, 3, 4, 5, 6, 7, 8, 9] });
+    await ev(page, () => {
+      __game.enableTestAnimal("cat");
+      const st = Records.createStore(localStorage);
+      st.game("dog").addRun({ level: 1, timeMs: 60000, points: 400, name: "Totó" });
+      st.game("dog").addRun({ level: 1, timeMs: 50000, points: 111, name: "Ana" });
+      st.addTreats("Totó", 10); st.buySkin("Totó", "cinza", 10); st.equipSkin("Totó", "cinza");
+      __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); // jogo salvo do Cachorrinho
+    });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    const dog0 = await AN.data(page, "dog"), cat0 = await AN.data(page, "cat"), wallet0 = await walletOf(page);
+    ok(dog0.progress.unlocked === 10 && dog0.progress.completed.length === 9 && dog0.best1.p === 400 && dog0.hasGame && cat0.progress.unlocked === 1 && cat0.progress.completed.length === 0 && cat0.best1 === null && cat0.total === 0 && !cat0.hasGame && cat0.ranking1.length === 0 && wallet0.treats === 0 && wallet0.equipped === "cinza", "(partida) o Cachorrinho está na Fase 10 com recorde 400 e jogo salvo; o Gatinho não tem nada; a carteira é uma só");
+
+    // ---- Gatinho: a Fase 2 só abre depois de concluir a Fase 1 DO GATINHO, mesmo com o Cachorrinho na Fase 10 ----
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    ok(!(await page.isVisible("#btn-replay")) && await page.isHidden("#btn-continue") && await AN.progress(page) === "Fases concluídas: 0/20 · Pontuação total: 0 · Petscoin: 0", "Gatinho novo: nada concluído, sem Continuar jogo e sem Jogar fases anteriores (o jogo salvo do Cachorrinho não aparece)");
+    await page.click("#btn-start");
+    ok(await page.isHidden("#confirm") && await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.level) === 1 && await ev(page, () => __game.gameAnimal) === "cat", "Iniciar jogo no Gatinho não pergunta do jogo salvo do Cachorrinho e começa na Fase 1 (com só a Fase 1 liberada, vai direto a ela)");
+    ok(await ev(page, () => document.body.dataset.screen) === "" && (await AN.data(page, "dog")).hasGame, "o jogo salvo do Cachorrinho continua guardado");
+    await finishNow(page, 45); // (devagar: o bônus de tempo cai, para depois dar para melhorar o recorde)
+    const w1 = await ev(page, () => ({ title: document.getElementById("win-title").textContent, treat: document.getElementById("win-treat").textContent, total: document.getElementById("win-total").textContent, personal: document.getElementById("win-personal").textContent }));
+    const cat1 = await AN.data(page, "cat"), dog1 = await AN.data(page, "dog");
+    ok(/Fase 1 concluída/.test(w1.title) && /^Pontuação total: \d+/.test(w1.total) && cat1.progress.completed.join() === "1" && cat1.progress.unlocked === 2 && cat1.best1 && cat1.best1.p > 0 && /Primeira pontuação/.test(w1.personal), `o Gatinho conclui a Fase 1: progresso 1, próxima liberada 2, recorde ${cat1.best1 && cat1.best1.p} (${w1.total})`);
+    ok(JSON.stringify(dog1) === JSON.stringify(dog0), "e NADA mudou no Cachorrinho (progresso, recorde, total, ranking e jogo salvo iguais ao de antes)");
+    ok(w1.total.startsWith(`Pontuação total: ${cat1.total}`) && cat1.total === cat1.best1.p, "a pontuação total mostrada na vitória é a do Gatinho (não soma os pontos do Cachorrinho)");
+    const wallet1 = await walletOf(page);
+    ok(wallet1.treats === 1 && w1.treat === TREAT(1) && wallet1.equipped === "cinza" && wallet1.owned.join() === "cinza", "a carteira de petscoin é única: o petisco da fase do Gatinho foi para a mesma carteira (1) e a skin continua em uso");
+    ok((await page.textContent("#btn-next")).includes("Fase 2"), "(a vitória oferece a Fase 2 do Gatinho)");
+    await page.click("#btn-win-menu");
+    await page.click("#btn-start");
+    const catList2 = await AN.levelsList(page);
+    ok(catList2.filter((l) => !l.locked).length === 2 && !catList2[1].locked && catList2[2].locked && /bloqueada: termine a Fase 2/.test(catList2[2].sub), "agora a lista do Gatinho abre a Fase 2 (e só ela: a Fase 3 continua bloqueada)");
+    await page.keyboard.press("Escape");
+    // o Cachorrinho continua na Fase 10, com tudo aberto até lá
+    await page.click("#btn-animal"); await page.click("#animal-dog");
+    await page.click("#btn-start"); await page.click("#btn-confirm-new");
+    const dogList2 = await AN.levelsList(page);
+    ok(dogList2.filter((l) => !l.locked).length === 10 && dogList2[9].locked === false && dogList2[10].locked, "o Cachorrinho continua com as Fases 1 a 10 abertas (Fase 11 bloqueada)");
+    await page.keyboard.press("Escape");
+
+    // ---- Cachorrinho joga a Fase 10: só o Cachorrinho muda ----
+    const catBefore = await AN.data(page, "cat");
+    await page.click("#btn-start"); await page.click("#btn-confirm-new"); // (o jogo salvo dele ainda existe: confirma e escolhe a fase)
+    await page.click("#levels-list button:nth-child(10)");
+    ok(await ev(page, () => __game.level) === 10 && await ev(page, () => __game.gameAnimal) === "dog", "o Cachorrinho começa a Fase 10 pela lista");
+    ok(!(await AN.data(page, "dog")).hasGame && (await AN.data(page, "cat")).hasGame === false, "começar um jogo novo apaga só o jogo salvo do bichinho que começou (o Gatinho não tinha)");
+    await finishNow(page, 12);
+    const dog2 = await AN.data(page, "dog"), cat2 = await AN.data(page, "cat");
+    ok(dog2.progress.completed.join() === "1,2,3,4,5,6,7,8,9,10" && dog2.progress.unlocked === 11 && dog2.best1.p === 400 && dog2.total > dog0.total, `o Cachorrinho conclui a Fase 10 (próxima: ${dog2.progress.unlocked}) e o total dele sobe (${dog0.total} → ${dog2.total})`);
+    ok(JSON.stringify(cat2) === JSON.stringify(catBefore), "e NADA mudou no Gatinho (progresso, recorde, total, ranking e jogo salvo iguais)");
+    ok((await walletOf(page)).treats === 2, "a carteira (única) agora tem 2 petscoin: 1 de cada bichinho");
+    await page.click("#btn-win-menu");
+
+    // ---- recorde: só melhora o do bichinho que jogou; a pontuação pior não muda nada ----
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    const catRec = (await AN.data(page, "cat")).best1.p;
+    await finishNowAs(page, "cat", 1, 5); // mais rápido: recorde novo do Gatinho
+    const cat3 = await AN.data(page, "cat"), dog3 = await AN.data(page, "dog");
+    ok(cat3.best1.p > catRec && /Nova melhor pontuação|novo recorde/.test(await page.textContent("#win-personal")), `o Gatinho joga a Fase 1 mais rápido e bate o recorde dele (${catRec} → ${cat3.best1.p})`);
+    ok(JSON.stringify(dog3) === JSON.stringify(dog2) && dog3.best1.p === 400 && dog3.ranking1.map((r) => r.n + r.p).join() === "Totó400,Ana111", "e o recorde, o ranking e o total do Cachorrinho continuam iguais (Totó 400, Ana 111 na Fase 1)");
+    ok(cat3.ranking1.length === 1 && cat3.ranking1[0].n === "Totó" && cat3.ranking1[0].p === cat3.best1.p, "o ranking do Gatinho tem só o Totó (a Ana só jogou o Cachorrinho)");
+    await page.click("#btn-win-menu");
+    await page.click("#btn-animal"); await page.click("#animal-dog");
+    await finishNowAs(page, "dog", 1, 5);
+    const dog4 = await AN.data(page, "dog"), cat4 = await AN.data(page, "cat");
+    ok(dog4.best1.p > 400 && cat4.best1.p === cat3.best1.p && JSON.stringify(cat4.progress) === JSON.stringify(cat3.progress) && cat4.total === cat3.total, `o Cachorrinho bate o recorde da Fase 1 dele (400 → ${dog4.best1.p}) e o Gatinho continua igual (${cat4.best1.p})`);
+    await page.click("#btn-win-menu");
+
+    // ---- jogo salvo: um por bichinho; começar de novo, perder e vencer só apagam o do próprio bichinho ----
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(3); __game.save(); }); // Gatinho na Fase 2
+    await ev(page, () => document.getElementById("btn-pause").click()); await page.click("#btn-pause-menu");
+    await page.click("#btn-animal"); await page.click("#animal-dog");
+    await ev(page, () => { __game.start(1); __game.freezeVets = true; __game.tick(4); __game.save(); }); // Cachorrinho na Fase 1
+    await ev(page, () => document.getElementById("btn-pause").click()); await page.click("#btn-pause-menu");
+    let sv = await AN.rawSaves(page);
+    ok(Object.keys(sv).sort().join() === "toto,toto@cat" && sv.toto.snap.l === 1 && sv["toto@cat"].snap.l === 2, "dois jogos salvos ao mesmo tempo: o do Cachorrinho na Fase 1 e o do Gatinho na Fase 2");
+    const catSave = JSON.stringify(sv["toto@cat"]);
+    ok(/Jogo salvo: Fase 1 /.test(await page.textContent("#menu-save")), "o menu do Cachorrinho oferece o jogo da Fase 1");
+    // Continuar (Cachorrinho) e vencer a fase: apaga só o do Cachorrinho
+    await page.click("#btn-continue");
+    await finishNow(page, 6);
+    ok(await ev(page, () => __game.level) === 1 && await ev(page, () => __game.state) === "won", "(o Cachorrinho continua a Fase 1 do jogo salvo e a vence)");
+    sv = await AN.rawSaves(page);
+    ok(Object.keys(sv).join() === "toto@cat" && JSON.stringify(sv["toto@cat"]) === catSave, "vencer a fase no Cachorrinho apaga só o jogo salvo do Cachorrinho (o do Gatinho continua igual)");
+    await page.click("#btn-win-menu");
+    // salvar de novo no Cachorrinho não mexe no do Gatinho
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); });
+    sv = await AN.rawSaves(page);
+    ok(sv.toto.snap.l === 2 && JSON.stringify(sv["toto@cat"]) === catSave, "salvar o Cachorrinho de novo não mexe no jogo salvo do Gatinho");
+    await ev(page, () => document.getElementById("btn-pause").click()); await page.click("#btn-pause-menu");
+    // Gatinho: perder todas as vidas apaga só o do Gatinho
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await page.click("#btn-continue");
+    await ev(page, () => { __game.freezeVets = true; for (let k = 0; k < 3; k++) { for (const v of __game.vets) v.cool = 99; for (let i = 0; i < 45; i++) __game.tick(0.05); const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); } });
+    ok(await ev(page, () => __game.state) === "lost", "o Gatinho perde as 3 vidas");
+    sv = await AN.rawSaves(page);
+    ok(Object.keys(sv).join() === "toto" && sv.toto.snap.l === 2, "perder as vidas no Gatinho apaga só o jogo salvo do Gatinho (o do Cachorrinho continua)");
+    await page.click("#btn-lose-menu");
+    // a derrota não mexeu no progresso nem nos recordes de ninguém
+    const dog5 = await AN.data(page, "dog"), cat5 = await AN.data(page, "cat");
+    ok(JSON.stringify(cat5.progress) === JSON.stringify(cat4.progress) && cat5.best1.p === cat4.best1.p && dog5.best1.p === dog4.best1.p, "perder vidas não muda recordes nem progresso");
+
+    // ---- a carteira, a lojinha e a skin são de todos os bichinhos ----
+    const shopBal = async (animal) => { await page.click("#btn-animal"); await page.click(`#animal-${animal}`); await page.click("#btn-shop"); const b = await page.textContent("#shop-balance"); const eq = await ev(page, () => __game.skin); await page.keyboard.press("Escape"); return `${b} / ${eq}`; };
+    const sd = await shopBal("dog"), sc = await shopBal("cat"), wl = await walletOf(page);
+    ok(sd === sc && wl.treats === 5 && new RegExp(`você tem ${wl.treats} petscoin`).test(sd) && /\/ cinza$/.test(sd), `a lojinha mostra a mesma carteira e a mesma skin nos dois bichinhos ("${sd}")`);
+  });
+
+  // =====================================================================
+  await section("0.17.0: escolha do bichinho e progresso por animal (dados da 0.16.1 viram Cachorrinho; ranking compartilhado só do Cachorrinho; textos e README)", async () => {
+    // ---- dados antigos (sem nenhum campo de bichinho) ----
+    await fresh(page, { keepSave: true });
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); }); // o jogo salvo do Cachorrinho tem o formato de sempre (chave sem sufixo)
+    await ev(page, () => {
+      localStorage.setItem("cachorrinho.v1", JSON.stringify({ v: 2, player: "Totó", players: ["Totó", "Ana"],
+        bests: { toto: { n: "Totó", L: { 1: { p: 700, t: 30000, w: 1 }, 2: { p: 650, t: 35000, w: 2 } } }, ana: { n: "Ana", L: { 1: { p: 600, t: 40000, w: 3 } } } },
+        progress: { toto: { unlocked: 3, completed: [1, 2] } }, accounts: {}, wallet: { toto: { t: 5, own: ["cinza"], eq: "cinza" } } }));
+    });
+    ok(await ev(page, () => { const s = JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves; return Object.keys(s).join() === "toto" && s.toto.snap.l === 2; }), "(dados antigos) o jogo salvo está no formato antigo: chave sem sufixo");
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await AN.progress(page) === "Fases concluídas: 2/20 · Pontuação total: 1350 · Petscoin: 5" && await page.isVisible("#btn-continue") && /Jogo salvo: Fase 2 /.test(await page.textContent("#menu-save")) && await ev(page, () => __game.skin) === "cinza", `dados da 0.16.1 (sem campos de bichinho) carregam como Cachorrinho: "${await AN.progress(page)}", jogo salvo da Fase 2 e skin Cinza-prata`);
+    await page.click("#btn-scores");
+    ok(/Ana — 600 pts/.test(await page.textContent("#scores-public")) && /1350 pontos/.test(await page.textContent("#scores-private")), "o ranking e as pontuações antigas estão no Cachorrinho");
+    await page.keyboard.press("Escape");
+    ok(await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "dog", "o bichinho de um jogador antigo é o Cachorrinho");
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    ok(await AN.progress(page) === "Fases concluídas: 0/20 · Pontuação total: 0 · Petscoin: 5" && await page.isHidden("#btn-continue") && await page.isHidden("#btn-replay") && await page.isHidden("#menu-save") && await page.textContent("#menu-best") === "", "o Gatinho começa do zero (a carteira é a mesma: 5 petscoin)");
+    await page.click("#btn-animal"); await page.click("#animal-dog");
+    // jogar o Cachorrinho como sempre não acrescenta campos novos ao que fica guardado
+    await ev(page, () => { __game.start(3); });
+    await finishNow(page, 10);
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); });
+    const raw = await ev(page, () => localStorage.getItem("cachorrinho.v1"));
+    ok(!/"animal"|"G"/.test(raw) && JSON.parse(raw).progress.toto.completed.join() === "1,2,3" && JSON.parse(raw).bests.toto.L[3].p > 0, "depois de jogar o Cachorrinho o armazenamento continua no formato antigo (sem campos de bichinho; progresso 1, 2, 3)");
+    ok(await ev(page, () => { const s = JSON.parse(localStorage.getItem("cachorrinho.save.v1")).saves; return Object.keys(s).join() === "toto" && s.toto.snap.l === 2; }), "e o jogo salvo do Cachorrinho continua com a chave de sempre (sem sufixo de bichinho)");
+
+    // ---- ranking compartilhado entre aparelhos (em stand by): só recebe e mostra o Cachorrinho ----
+    const http = require("http");
+    const db = {}, writes = []; let hits = 0;
+    const srv = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*"); res.setHeader("Access-Control-Allow-Headers", "Content-Type"); res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
+      if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
+      hits++;
+      const parts = decodeURIComponent(req.url.split("?")[0]).replace(/^\/rank\//, "").replace(/\.json$/, "").split("/").filter(Boolean);
+      let body = ""; req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        let node = db;
+        if (req.method === "PUT") { for (let i = 0; i < parts.length - 1; i++) node = node[parts[i]] || (node[parts[i]] = {}); node[parts[parts.length - 1]] = JSON.parse(body); writes.push(parts.join("/")); res.writeHead(200, { "Content-Type": "application/json" }).end(body); return; }
+        for (const k of parts) node = node && typeof node === "object" ? node[k] : undefined;
+        res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(node === undefined ? null : node));
+      });
+    });
+    await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+    try {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const pg = await ctx.newPage(); watch(pg);
+      await pg.addInitScript((u) => { window.GAME_CONFIG = { sharedRanking: true, rankingUrl: u }; }, `http://127.0.0.1:${srv.address().port}/rank`);
+      await fresh(pg, { name: "Zeca" });
+      await ev(pg, () => { __game.enableTestAnimal("cat"); });
+      await pg.click("#btn-animal"); await pg.click("#animal-cat");
+      await finishNowAs(pg, "cat", 1, 60); // lento: pontuação menor
+      const catPts = Number(await pg.textContent("#win-points"));
+      await pg.waitForTimeout(600);
+      ok(hits === 0 && writes.length === 0, `o recorde do Gatinho não é enviado ao ranking compartilhado (nenhum pedido ao servidor: ${hits})`);
+      await pg.click("#btn-win-scores");
+      await pg.waitForTimeout(600);
+      ok(hits === 0 && /Ranking deste aparelho/.test(await pg.textContent("#scores-source")) && /Zeca — \d+ pts/.test(await pg.textContent("#scores-public")), "as Pontuações do Gatinho mostram só este aparelho e não consultam o servidor");
+      await pg.keyboard.press("Escape"); await pg.click("#btn-win-menu");
+      await pg.click("#btn-animal"); await pg.click("#animal-dog");
+      await finishNowAs(pg, "dog", 1, 6); // rápido
+      const dogPts = Number(await pg.textContent("#win-points"));
+      const t0 = Date.now(); while (!(db.scores && db.scores[1] && db.scores[1].zeca) && Date.now() - t0 < 5000) await new Promise((r) => setTimeout(r, 25));
+      ok(dogPts > catPts && writes.join() === "scores/1/zeca" && db.scores[1].zeca.p === dogPts, `o recorde do Cachorrinho vai para o servidor (${dogPts} pontos, não os ${catPts} do Gatinho)`);
+      const hitsDog = hits;
+      await pg.click("#btn-win-scores");
+      await pg.waitForFunction(() => /vários aparelhos/.test(document.getElementById("scores-source").textContent), null, { timeout: 5000 });
+      ok(hits > hitsDog && /Zeca — \d+ pts/.test(await pg.textContent("#scores-public")) && /Pontuações do Cachorrinho/.test(await pg.textContent("#scores-title")), "as Pontuações do Cachorrinho consultam o ranking compartilhado");
+      await pg.keyboard.press("Escape"); await pg.click("#btn-win-menu").catch(() => {});
+      await pg.click("#btn-animal"); await pg.click("#animal-cat");
+      const hitsCat = hits;
+      await pg.click("#btn-scores"); await pg.waitForTimeout(600);
+      ok(hits === hitsCat && /Ranking deste aparelho/.test(await pg.textContent("#scores-source")) && !/vários aparelhos/.test(await pg.textContent("#scores-source")) && new RegExp(`Zeca — ${catPts} pts`).test(await pg.textContent("#scores-public")), "abrir as Pontuações do Gatinho depois não consulta o servidor nem mostra o ranking compartilhado do Cachorrinho (aparece o recorde do Gatinho)");
+      await ctx.close();
+    } finally { srv.close(); }
+
+    // ---- textos: Como jogar e README ----
+    await fresh(page);
+    await page.click("#btn-howto");
+    const how = await page.textContent("#howto");
+    ok(/Bichinhos:/.test(how) && /Cada bichinho tem as suas próprias 20 fases/.test(how) && /pontos, recordes, ranking, progresso e jogo salvo/.test(how) && /qualquer bichinho a qualquer momento/.test(how) && /a fase seguinte só abre quando você conclui a anterior/.test(how) && /lojinha de skins/.test(how) && /petscoin/.test(how) && /Cachorrinho/.test(how), "Como jogar explica os bichinhos: cada um tem as suas fases, pontos e recordes; qualquer um a qualquer momento; a fase seguinte só abre ao concluir a anterior; a loja e os petscoin são de todos");
+    await page.keyboard.press("Escape");
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    ok(/## Bichinhos \(0\.17\.0\)/.test(readme) && /store\.game\(/.test(readme) && /\*\*Qualquer bichinho pode ser escolhido a qualquer momento/.test(readme) && /Bichinho: 🐶 Cachorrinho · Trocar/.test(readme) && /enableTestAnimal/.test(readme), "o README tem a seção Bichinhos (0.17.0) com as regras, o modelo de dados, a tela e o gancho de teste");
   });
 
   console.log("erros JS:", errs);

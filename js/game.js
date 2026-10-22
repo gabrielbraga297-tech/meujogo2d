@@ -1450,6 +1450,44 @@
   sound.bindUnlock();
   const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} });
 
+  // ---------- (0.17.0) Os bichinhos: cada um tem o SEU jogo de 20 fases ----------
+  // Pontos, recordes, ranking, progresso e jogo salvo são INDEPENDENTES por bichinho (store.game(id): js/records.js) e jogar um nunca mexe nos dados de outro.
+  // Qualquer bichinho pronto pode ser escolhido a qualquer momento, sem exigir nada dos outros; DENTRO de um bichinho a fase N só abre quando a N−1 foi concluída.
+  // A carteira de petscoin, a lojinha, as contas e os jogadores são ÚNICOS (de todos os bichinhos). `levels` = a lista de fases do bichinho (o menu e a lista de fases usam ela);
+  // `ready` = dá para jogar. Hoje só o Cachorrinho existe (as fases e o motor do jogo são os dele: LEVELS/BUILT); o Gatinho e o Passarinho entram em atualizações futuras.
+  const DEFAULT_ANIMAL = "dog";
+  const GAMES = [
+    { id: "dog", name: "Cachorrinho", emoji: "🐶", blurb: "Rações, ossos, carrocinha e gatos: 20 fases de aventura.", ready: true, levels: LEVELS },
+    { id: "cat", name: "Gatinho", emoji: "🐱", blurb: "Ágil e curioso: vai ter as suas próprias 20 fases.", ready: false, levels: [] },
+    { id: "bird", name: "Passarinho", emoji: "🐦", blurb: "Voando alto: vai ter as suas próprias 20 fases.", ready: false, levels: [] },
+  ];
+  const gameOf = (id) => GAMES.find((g) => g.id === id) || null;
+  const levelsOf = (id) => (gameOf(id) || gameOf(DEFAULT_ANIMAL)).levels;
+  const levelIdsOf = (id) => (id === DEFAULT_ANIMAL ? LEVEL_IDS : levelsOf(id).map((l) => l.id));
+  // O bichinho escolhido do jogador atual (guardado por jogador em store.animal; sem jogador vale o Cachorrinho, e a escolha fica só na memória). `animalFor` = de quem é `animal`.
+  // syncAnimal() relê a escolha quando o jogador mudou (nome, entrar, sair da conta, outra aba); `force` (o menu) relê sempre que há jogador.
+  let animal = DEFAULT_ANIMAL, animalFor = null;
+  function syncAnimal(force = false) {
+    const me = store.player();
+    if (me !== animalFor || (force && me)) {
+      animalFor = me;
+      const a = me ? store.animal(me) : DEFAULT_ANIMAL;
+      animal = gameOf(a) && gameOf(a).ready ? a : DEFAULT_ANIMAL; // (uma escolha guardada de um bichinho que não está pronto vale como o Cachorrinho)
+    }
+    return animal;
+  }
+  // O jogo (pontos, recordes, progresso, jogo salvo) de um bichinho: por padrão o escolhido agora. Para o Cachorrinho é idêntico aos métodos soltos da loja (store.addRun, store.progress...).
+  const gs = (a) => store.game(a || syncAnimal());
+  // Escolhe o bichinho do jogador atual (sem jogador: só na memória). Devolve false se ele não existe ou ainda não está pronto.
+  function pickAnimal(id) {
+    const g = gameOf(id);
+    if (!g || !g.ready) return false;
+    const me = store.player();
+    if (me) store.setAnimal(me, id);
+    animalFor = me; animal = id;
+    return true;
+  }
+
   const keys = {};
   const touch = { left: false, right: false, up: false, down: false };
   let touchInput = false; // a última direção veio do controle de toque (e não do teclado nem do controle)
@@ -1480,6 +1518,7 @@
   const dynBlocked = new Set(); // tiles ocupados agora pelos blocos que se movem (chave: linha * COLS + coluna): os agentes os contornam
   let gameIsAccount = false; // a partida começou com uma conta: se ela for apagada em outra aba, nada mais é gravado em nome dela
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
+  let gameAnimal = DEFAULT_ANIMAL; // (0.17.0) o bichinho da partida em andamento: pontos, progresso e jogo salvo vão para o jogo DELE, mesmo que a escolha mude no menu
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let up = noUp();         // reforços desta partida (valem até o fim da sequência de fases)
   let nextUp = null;       // na tela de vitória: reforços que a próxima fase receberá (já com o escolhido); null = ainda não escolheu
@@ -1546,6 +1585,7 @@
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
     levelId = id; lv = BUILT[id]; theme = Themes.of(id); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
+    gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal();
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn; refreshSkin();
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
@@ -2281,7 +2321,7 @@
   }
 
   // ---------- Estados e telas ----------
-  const SCREENS = ["menu", "levels", "shop", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
+  const SCREENS = ["menu", "animals", "levels", "shop", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
 
   function setState(s) {
     state = s;
@@ -2305,7 +2345,7 @@
       const visible = (n) => n.offsetParent !== null;
       // telas longas (Como jogar, Pontuações): o foco fica na própria tela, para as setas, Espaço e PageDown rolarem o texto
       const f = el.hasAttribute("data-scroll") ? el : [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
-      if (f) { f.focus({ preventScroll: true }); if (f !== el && id === "levels" && f.scrollIntoView) f.scrollIntoView({ block: "nearest" }); } // a lista de fases mostra o botão focado, mesmo abaixo da dobra
+      if (f) { f.focus({ preventScroll: true }); if (f !== el && (id === "levels" || id === "animals") && f.scrollIntoView) f.scrollIntoView({ block: "nearest" }); } // a lista de fases mostra o botão focado, mesmo abaixo da dobra
     }
   }
 
@@ -2335,9 +2375,10 @@
   // `o.player`: quem segue na mesma partida (Próxima fase, Jogar novamente, Tentar novamente) continua sendo quem jogou, mesmo que outra aba tenha trocado o jogador atual
   function begin(id = levelId, o = {}) {
     const me = typeof o.player === "string" ? o.player : store.player();
+    const a = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.17.0) o bichinho da partida: quem segue na mesma partida (Próxima fase...) continua com o mesmo
     droppedSave = false;
-    if (me) store.clearGame(me); // um jogo novo substitui o salvo (só aqui: cancelar a escolha da fase não apaga nada)
-    reset(id, o);
+    if (me) gs(a).clearGame(me); // um jogo novo substitui o salvo DESTE bichinho (só aqui: cancelar a escolha da fase não apaga nada)
+    reset(id, { ...o, animal: a });
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
@@ -2452,13 +2493,13 @@
   }
 
   let droppedSave = false; // um jogo salvo de uma versão com outros mapas foi descartado: o menu avisa até começar uma partida
-  function savedGame() { // jogo salvo válido do jogador atual, ou null (e limpa um save inválido)
+  function savedGame() { // jogo salvo válido do jogador atual NO BICHINHO ESCOLHIDO, ou null (e limpa um save inválido)
     const me = store.player();
     if (!me) return null;
-    const g = store.loadGame(me);
+    const g = gs().loadGame(me);
     if (!g) return null;
     const sv = parseSnapshot(g.snap);
-    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = true; store.clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
+    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = true; gs().clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
     return { savedAt: g.savedAt, snap: sv };
   }
 
@@ -2512,7 +2553,7 @@
   function saveNow() {
     const me = gamePlayer;
     if (!me || (state !== "playing" && state !== "paused") || accountGone()) return false;
-    const ok = store.saveGame(me, snapshot());
+    const ok = gs(gameAnimal).saveGame(me, snapshot());
     flashSaved();
     return ok;
   }
@@ -2536,24 +2577,25 @@
   // "play" = Iniciar jogo (escolhe entre as fases liberadas); "replay" = Jogar fases anteriores (só as já concluídas, para melhorar o recorde de cada uma)
   let levelsMode = "play";
   function chooseLevel() {
-    const unlocked = store.progress(store.player()).unlocked;
-    if (levelsMode === "play" && LEVELS.filter((l) => l.id <= unlocked).length <= 1) { begin(LEVELS[0].id); return; }
+    const unlocked = gs().progress(store.player()).unlocked, list = levelsOf(syncAnimal());
+    if (!list.length) { goMenu(); return; }
+    if (levelsMode === "play" && list.filter((l) => l.id <= unlocked).length <= 1) { begin(list[0].id); return; }
     renderLevels();
     showScreen("levels");
   }
 
   function renderLevels() {
-    const me = store.player(), prog = store.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay";
+    const me = store.player(), A = syncAnimal(), G = gs(A), LV = levelsOf(A), prog = G.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay"; // (0.17.0) as fases, o progresso e os recordes são os do bichinho escolhido
     $("levels-title").textContent = replay ? "Jogar fases anteriores" : "Escolher a fase";
     $("levels-help").textContent = replay
       ? "Escolha uma fase que você já concluiu para tentar melhorar o seu recorde. Só a maior pontuação de cada fase vale (a pontuação total é a soma do melhor de cada fase) e você começa a fase com 3 vidas."
       : "Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.";
     list.replaceChildren();
-    const shown = replay ? LEVELS.filter((l) => prog.completed.includes(l.id)) : LEVELS;
+    const shown = replay ? LV.filter((l) => prog.completed.includes(l.id)) : LV;
     if (replay && !shown.length) list.append(el("p", "muted", "Você ainda não concluiu nenhuma fase."));
-    const focusId = replay ? shown.length && shown[0].id : Math.min(unlocked, LEVELS.length); // o foco abre na fase que o jogador provavelmente quer: a última liberada (em "Jogar fases anteriores", a primeira da lista)
+    const focusId = replay ? shown.length && shown[0].id : Math.min(unlocked, LV.length); // o foco abre na fase que o jogador provavelmente quer: a última liberada (em "Jogar fases anteriores", a primeira da lista)
     for (const l of shown) {
-      const open = l.id <= unlocked, best = store.personalBest(me, l.id);
+      const open = l.id <= unlocked, best = G.personalBest(me, l.id);
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
       b.append(el("strong", null, `${l.title} · ${Themes.of(l.id).place}`), el("span", "sub", open
@@ -2562,14 +2604,44 @@
       if (open) {
         if (l.id === focusId) b.dataset.autofocus = "";
         b.addEventListener("click", () => { // a lista pode estar velha (outra aba trocou o jogador): confere antes de começar
-          if (store.progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1)}.`, 2.4); return; }
-          begin(l.id);
+          if (gs(A).progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1)}.`, 2.4); return; }
+          begin(l.id, { animal: A });
         });
       }
       list.append(b);
     }
   }
 
+
+  // ---------- (0.17.0) Escolha do bichinho: um cartão por bichinho, com a situação DELE para o jogador atual ----------
+  // O bichinho pronto mostra "Fases concluídas: x/20 · Pontuação total: N" (do jogo dele: store.game(id)); o que ainda não existe fica desligado, com "Em breve".
+  function renderAnimals() {
+    const me = store.player(), cur = syncAnimal(true), list = $("animals-list");
+    list.replaceChildren();
+    for (const g of GAMES) {
+      const isCur = g.id === cur;
+      const b = el("button", `animal-card${isCur ? " current" : ""}${g.ready ? "" : " soon"}`);
+      b.type = "button"; b.id = `animal-${g.id}`; b.dataset.animal = g.id;
+      const head = el("span", "animal-head"), emoji = el("span", "animal-emoji", g.emoji);
+      emoji.setAttribute("aria-hidden", "true");
+      head.append(emoji, el("strong", null, g.name));
+      if (isCur) head.append(el("span", "animal-now", "Escolhido"));
+      let status;
+      if (!g.ready) status = "Em breve";
+      else if (me) { const G = gs(g.id), ids = levelIdsOf(g.id); status = `Fases concluídas: ${G.progress(me).completed.filter((l) => ids.includes(l)).length}/${g.levels.length} · Pontuação total: ${G.totalScore(me, ids)}`; }
+      else status = `${g.levels.length} fases · escolha um nome de usuário para guardar o seu progresso`;
+      b.append(head, el("span", "animal-blurb", g.blurb), el("span", `animal-status${g.ready ? "" : " soon-tag"}`, status));
+      b.setAttribute("aria-label", `${g.name}. ${g.blurb} ${status}.${isCur ? " Bichinho escolhido." : ""}`);
+      if (isCur) b.setAttribute("aria-current", "true");
+      if (!g.ready) { b.disabled = true; b.setAttribute("aria-disabled", "true"); b.setAttribute("aria-label", `${g.name}: em breve. ${g.blurb}`); }
+      else {
+        if (isCur) b.dataset.autofocus = ""; // o foco abre no bichinho escolhido agora
+        b.addEventListener("click", () => { if (pickAnimal(g.id)) goMenu(); }); // escolher volta ao menu, que mostra tudo do bichinho novo
+      }
+      list.append(b);
+    }
+  }
+  function openAnimals() { renderAnimals(); showScreen("animals"); }
 
   // ---------- Lojinha de skins (0.15.9): petiscos (1 por fase completada = 1 petscoin) por skins do cachorrinho ----------
   function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin
@@ -2730,12 +2802,13 @@
     reinforceOffered = renderReinforce(next); // com reforços para escolher, a Próxima fase abre a tela de escolha
     $("btn-again").classList.toggle("primary", !next);
     let res = null;
-    const gone = accountGone();
+    const gone = accountGone(), G = gs(gameAnimal); // (0.17.0) tudo vai para o jogo do bichinho desta partida
     try {
-      if (!gone) res = store.addRun({ level: levelId, timeMs, points, name: gamePlayer });
+      if (!gone) res = G.addRun({ level: levelId, timeMs, points, name: gamePlayer });
       const me = gone ? "" : gamePlayer;
-      if (me) { store.completeLevel(me, levelId); store.clearGame(me); } // fase concluída: o jogo em andamento termina
-      if (res && res.newPersonal) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
+      if (me) { G.completeLevel(me, levelId); G.clearGame(me); } // fase concluída: o jogo em andamento termina
+      // o ranking compartilhado entre aparelhos (em stand by) só recebe os recordes do Cachorrinho por enquanto: os outros bichinhos ainda não têm lugar nele (ver js/board.js)
+      if (res && res.newPersonal && gameAnimal === DEFAULT_ANIMAL) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
     } catch { /* seguem sem registrar */ }
     if (res) {
       const best = res.personalBest.p;
@@ -2746,7 +2819,7 @@
       // o ranking é por aparelho (o compartilhado está em stand by): o recorde é o deste aparelho
       $("win-general").textContent = res.newGeneral ? "Novo recorde deste aparelho!"
         : `Recorde deste aparelho: ${res.generalBest.p} pontos (${res.generalBest.n})`;
-      $("win-total").textContent = `Pontuação total: ${store.totalScore(gamePlayer, LEVEL_IDS)}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
+      $("win-total").textContent = `Pontuação total: ${G.totalScore(gamePlayer, levelIdsOf(gameAnimal))}${res.gained > 0 ? ` (+${res.gained})` : ""}`;
     } else {
       $("win-personal").textContent = gone ? "Esta conta foi apagada em outra aba: a pontuação não foi guardada." : "Escolha um nome de usuário para guardar as suas pontuações.";
       $("win-general").textContent = "";
@@ -2765,7 +2838,7 @@
     if (state === "lost") return; // (só uma vez: nada de repetir o som nem a tela se a checagem de pontos rodar de novo)
     setState("lost");
     sound.play("gameover", { delay: why && why !== "cat" ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
-    if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
+    if (gamePlayer) gs(gameAnimal).clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
     $("lose-lead").textContent = why === "short" ? `Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída. Faltaram ${Math.max(0, lv.minPoints - score)} pontos${livesLost ? ` (cada vida perdida custou ${lv.lifePenalty}: você perdeu ${livesLost})` : ""}.` : "Acabaram as suas vidas.";
@@ -2801,12 +2874,15 @@
     $("menu-player").textContent = me ? me + (store.hasAccount(me) ? " (conta com senha)" : "") : "ainda não escolhido";
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
     $("menu-note").classList.toggle("hidden", store.persistent);
-    const bests = me ? LEVELS.map((l) => [l, store.personalBest(me, l.id)]).filter(([, b]) => b) : [];
+    const A = syncAnimal(true), AG = gameOf(A), G = gs(A), LV = AG.levels, ids = levelIdsOf(A); // (0.17.0) o menu mostra só os dados do bichinho escolhido
+    $("animal-emoji").textContent = AG.emoji; $("animal-name").textContent = AG.name;
+    $("btn-animal").setAttribute("aria-label", `Bichinho: ${AG.name}. Trocar de bichinho`);
+    const bests = me ? LV.map((l) => [l, G.personalBest(me, l.id)]).filter(([, b]) => b) : [];
     const BEST_SHOWN = 4; // (0.16.0) com 20 fases a linha passava de 300 letras e empurrava o rodapé do menu para fora da tela: mostra as últimas fases e diz quantas ficaram de fora
     const shownBests = bests.slice(-BEST_SHOWN);
     $("menu-best").textContent = bests.length ? `Suas melhores: ${bests.length > shownBests.length ? `… (mais ${bests.length - shownBests.length}) · ` : ""}${shownBests.map(([l, b]) => `${l.title} ${b.p}`).join(" · ")}` : "";
-    const done = me ? store.progress(me).completed.filter((l) => LEVEL_IDS.includes(l)).length : 0;
-    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVEL_IDS)} · Petscoin: ${store.wallet(me).treats}` : "";
+    const done = me ? G.progress(me).completed.filter((l) => ids.includes(l)).length : 0;
+    $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LV.length} · Pontuação total: ${G.totalScore(me, ids)} · Petscoin: ${store.wallet(me).treats}` : ""; // (a carteira de petscoin é única: a mesma em todos os bichinhos)
     refreshSkin();
     const g = savedGame();
     $("btn-continue").classList.toggle("hidden", !g);
@@ -2821,12 +2897,13 @@
   let scoresToken = 0;
   const isMe = (n) => { const me = store.player(); return !!me && Records.nameKey(n) === Records.nameKey(me); };
 
-  function renderPublicRanking(data, loading = false) {
+  // (0.17.0) o ranking é o do bichinho escolhido. O ranking compartilhado entre aparelhos (js/board.js, em stand by) só tem os recordes do Cachorrinho por enquanto: dos outros bichinhos mostra só este aparelho.
+  function renderPublicRanking(data, loading = false, A = syncAnimal()) {
     const box = $("scores-public");
     box.replaceChildren();
     $("scores-source").textContent = data.shared
       ? `Ranking compartilhado: jogadores de vários aparelhos (${data.label}).`
-      : board.hasServer
+      : board.hasServer && A === DEFAULT_ANIMAL
         ? (loading ? "Buscando o ranking compartilhado… (por enquanto, só os jogadores deste aparelho)" : "Não foi possível falar com o servidor de ranking agora: mostrando só os jogadores deste aparelho.")
         : "Ranking deste aparelho: aparecem todos os jogadores que jogaram aqui, só com a melhor pontuação de cada um.";
 
@@ -2839,7 +2916,7 @@
     } else tot.append(el("p", null, "Ninguém terminou uma fase ainda."));
     box.append(tot);
 
-    for (const l of LEVELS) {
+    for (const l of levelsOf(A)) {
       const sec = el("section", "score-level");
       sec.append(el("h3", null, `Ranking da ${l.title}`));
       const rows = data.levels[l.id] || [];
@@ -2853,15 +2930,16 @@
   }
 
   function renderScores() {
-    const me = store.player(), priv = $("scores-private");
+    const me = store.player(), priv = $("scores-private"), A = syncAnimal(), AG = gameOf(A), G = gs(A), LV = AG.levels;
+    $("scores-title").textContent = `Pontuações do ${AG.name}`; // (0.17.0) cada bichinho tem as suas pontuações
     priv.replaceChildren();
     if (me) {
       priv.append(el("h2", null, "Suas pontuações"));
-      priv.append(el("p", "big-total", `${store.totalScore(me, LEVEL_IDS)} pontos`));
+      priv.append(el("p", "big-total", `${G.totalScore(me, levelIdsOf(A))} pontos`));
       priv.append(el("p", "muted", `${me}: soma da melhor pontuação de cada fase. Só você vê esta parte.`));
       const dl = el("dl");
-      for (const l of LEVELS) {
-        const pb = store.personalBest(me, l.id);
+      for (const l of LV) {
+        const pb = G.personalBest(me, l.id);
         dl.append(el("dt", null, `Sua melhor na ${l.title}`), el("dd", null, pb ? `${pb.p} pts · ${fmt(pb.t)}` : "ainda não jogada"));
       }
       priv.append(dl);
@@ -2872,8 +2950,8 @@
     $("scores-note").classList.toggle("hidden", store.persistent);
 
     const token = ++scoresToken;
-    renderPublicRanking(board.localAll(), true); // mostra já o que há neste aparelho
-    if (board.hasServer) board.fetchAll().then((data) => { if (token === scoresToken && document.body.dataset.screen === "scores") renderPublicRanking(data); }).catch(() => {});
+    renderPublicRanking(board.localAll(A, levelIdsOf(A)), true, A); // mostra já o que há neste aparelho
+    if (board.hasServer && A === DEFAULT_ANIMAL) board.fetchAll().then((data) => { if (token === scoresToken && document.body.dataset.screen === "scores") renderPublicRanking(data, false, A); }).catch(() => {});
   }
 
   let nameThenStart = false;
@@ -3720,6 +3798,8 @@
   on("btn-levels-back", goMenu);
   on("btn-save", manualSave);
   on("btn-save-hud", manualSave);
+  on("btn-animal", openAnimals);
+  on("btn-animals-back", goMenu);
   on("btn-howto", () => showScreen("howto"));
   on("btn-shop", openShop);
   on("btn-shop-back", goMenu);
@@ -3744,25 +3824,25 @@
   on("btn-next", () => { // as vidas e os reforços passam para a próxima fase
   const next = LEVELS.find((l) => l.id === levelId + 1);
   if (!next || state !== "won") return;
-  if (!reinforceOffered) { begin(next.id, { lives: carriedLives, upgrades: up, player: gamePlayer }); return; }
+  if (!reinforceOffered) { begin(next.id, { lives: carriedLives, upgrades: up, player: gamePlayer, animal: gameAnimal }); return; }
   $("btn-reinforce-go").textContent = `Começar a ${next.title}`;
   $("btn-reinforce-go").disabled = !nextUp;
   showScreen("reinforce");
   if (nextUp) $("btn-reinforce-go").focus({ preventScroll: true }); // já escolheu (voltou para ver o resultado): o foco vai para Começar
 });
-on("btn-reinforce-go", () => { if (nextUp && state === "won" && LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp, player: gamePlayer }); });
+on("btn-reinforce-go", () => { if (nextUp && state === "won" && LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp, player: gamePlayer, animal: gameAnimal }); });
 on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
-  on("btn-again", () => begin(levelId, { player: gamePlayer }));
+  on("btn-again", () => begin(levelId, { player: gamePlayer, animal: gameAnimal }));
   on("btn-win-scores", () => openScores("win"));
   on("btn-win-menu", goMenu);
-  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1, upgrades: up, player: gamePlayer }); });
+  on("btn-retry", () => { if (retries < MAX_RETRIES) begin(levelId, { retries: retries + 1, upgrades: up, player: gamePlayer, animal: gameAnimal }); });
   on("btn-lose-menu", goMenu);
 
   // outra aba mudou os dados guardados (pontuações, contas, jogo salvo): a tela aberta se atualiza
   window.addEventListener("storage", (e) => {
     if (e.key !== null && !String(e.key).startsWith("cachorrinho.")) return;
     const screen = document.body.dataset.screen;
-    if (screen === "menu") renderMenu(); else if (screen === "shop") renderShop(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
+    if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals(); else if (screen === "shop") renderShop(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
   });
 
   // gancho de depuração/testes
@@ -3778,6 +3858,20 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
     get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), balls: l.balls ?? 0, cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 })); },
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
+    // (0.17.0) bichinhos: `animal` = o escolhido do jogador atual, `games` = o registro (id, nome, emoji, frase, pronto, quantas fases), `setAnimal(id)` = o mesmo que escolher na tela (false se não existe ou não está pronto).
+    get animal() { return syncAnimal(); }, get gameAnimal() { return gameAnimal; }, setAnimal(id) { const ok = pickAnimal(id); if (ok && document.body.dataset.screen === "menu") renderMenu(); return ok; },
+    get games() { return GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb, ready: g.ready, levels: g.levels.length })); },
+    // SÓ PARA TESTES: marca um bichinho que ainda não existe ("cat" ou "bird") como pronto, com uma CÓPIA da lista de fases do Cachorrinho (e o mesmo motor de jogo), para testar no navegador que cada bichinho
+    // tem os seus pontos, recordes, progresso e jogo salvo, sem esperar os jogos novos. Vale só até recarregar a página; o jogo de verdade nunca chama isto.
+    enableTestAnimal(id) {
+      const g = gameOf(id);
+      if (!g || g.id === DEFAULT_ANIMAL) return false;
+      g.ready = true; g.levels = LEVELS.slice();
+      syncAnimal(true); // (a escolha guardada do jogador, se era este bichinho, passa a valer)
+      const screen = document.body.dataset.screen;
+      if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
+      return true;
+    },
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 

@@ -4,6 +4,9 @@
 //   1. REST no estilo Firebase Realtime Database (config.rankingUrl): GET .../scores.json e PUT .../scores/<fase>/<jogador>.json
 //   2. Banco compartilhado do Claude (só dentro de uma página publicada no Claude, para quem tem permissão de escrita)
 // EM STAND BY: só funciona com `sharedRanking: true` em js/config.js. Sem isso (o padrão), o ranking mostra só os jogadores deste aparelho.
+// (0.17.0) BICHINHOS: o ranking compartilhado (servidor) só recebe e mostra os recordes do CACHORRINHO por enquanto: `submit` e `fetchAll` valem só para ele, e o jogo nem os chama para os outros
+// bichinhos. Já `localAll(animal)` monta o ranking DESTE APARELHO de qualquer bichinho (cada um tem o seu: store.game(animal)). Quando houver servidor para os outros, o caminho das pontuações
+// (scores/<fase>/<jogador>) ganha o bichinho (ex.: scores/<bichinho>/<fase>/<jogador>) e o Cachorrinho continua lendo o formato de hoje.
 // Sem dependências do jogo: funciona no navegador (window.Board) e no Node (testes).
 (function (root, factory) {
   const api = factory(root);
@@ -13,6 +16,7 @@
   const Records = typeof module === "object" && module.exports ? require("./records.js") : root.Records;
   const { isBetter, byBest, nameKey, sanitizeName, cleanBest } = Records;
 
+  const DEFAULT_ANIMAL = "dog"; // o Cachorrinho: o único bichinho do ranking compartilhado
   const TOP = 10;            // linhas mostradas em cada ranking
   const MAX_ROWS = 5000;     // o que passar disso, de um servidor, é ignorado
   const TIMEOUT_MS = 6000;   // espera máxima por uma resposta do servidor
@@ -170,14 +174,15 @@
     if (enabled && typeof cfg.rankingUrl === "string" && /^https?:\/\//i.test(cfg.rankingUrl.trim()) && fetchFn) backends.push(restBackend(cfg.rankingUrl, fetchFn, levelSet));
     if (enabled && claude && typeof claude.use === "function") backends.push(claudeBackend(claude, levelSet));
 
-    const localRows = () => levels.flatMap((l) => store.ranking(l, Infinity));
+    // as linhas deste aparelho (por padrão as do Cachorrinho: os métodos soltos da loja); `animal` = id de outro bichinho (store.game(animal)), `ids` = as fases dele
+    const localRows = (animal = DEFAULT_ANIMAL, ids = levels) => { const g = animal === DEFAULT_ANIMAL || typeof store.game !== "function" ? store : store.game(animal); return ids.flatMap((l) => g.ranking(l, Infinity)); };
 
     return {
       get enabled() { return enabled; },
       get hasServer() { return backends.length > 0; },
 
-      // O que há neste aparelho (na hora).
-      localAll() { return { shared: false, label: "este aparelho", ...summarize(localRows(), levels) }; },
+      // O que há neste aparelho (na hora). `animal`/`ids`: o ranking deste aparelho de outro bichinho (nunca vai para o servidor).
+      localAll(animal = DEFAULT_ANIMAL, ids = levels) { return { shared: false, label: "este aparelho", ...summarize(localRows(animal, ids), ids) }; },
 
       // Envia a melhor pontuação de um jogador (chamado só quando ela é um novo recorde pessoal). Nunca lança erro.
       async submit({ name, level, points, timeMs }) {

@@ -310,7 +310,7 @@ O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 1
 - **Não há histórico de partidas:** só a melhor pontuação de cada jogador em cada fase fica guardada.
 
 ## Pontuações e rankings
-- **Suas pontuações** (só você vê): sua pontuação total e a melhor de cada fase.
+- **Suas pontuações** (só você vê): sua pontuação total e a melhor de cada fase, **do bichinho escolhido** (0.17.0: cada bichinho tem as suas; veja **Bichinhos (0.17.0)**).
 - **Ranking do jogo** (todos os jogadores do aparelho veem): ranking geral (pontuação total) e ranking de cada fase, com **apenas a melhor pontuação de cada jogador**.
 - **Por enquanto o ranking é por aparelho** (é o que está ativo): aparecem os jogadores que jogaram **neste navegador/aparelho**, e a tela avisa. Não há banco de dados nem servidor, e nenhum dado sai do aparelho.
 - Um **ranking compartilhado entre aparelhos** já está programado, mas **em stand by (desligado)**: veja a próxima seção.
@@ -363,12 +363,29 @@ Se o jogo for publicado como página (artifact) no Claude **e** `sharedRanking` 
 - Os dados vindos do servidor são conferidos antes de aparecer (nomes, pontuações, tempos e fases) e mostrados só como texto.
 
 ## Menu
+- **Bichinho: 🐶 Cachorrinho · Trocar** (no alto, ao lado do jogador; 0.17.0): abre a tela **Escolha seu bichinho**. Tudo o que está abaixo (fases concluídas, pontuação total, jogo salvo, fases, pontuações) é do bichinho escolhido: veja **Bichinhos (0.17.0)**
 - **Iniciar jogo** (e **Continuar jogo**, quando há um jogo salvo)
 - **Jogar fases anteriores** (depois de concluir alguma fase): repete as fases já vencidas para melhorar o recorde de cada uma
 - **Lojinha de skins** (0.15.9): troque os petscoin (1 por fase completada) por skins do cachorrinho; a loja mostra o saldo no alto e o botão Voltar fica sempre à vista
 - **Como jogar**
-- **Pontuações:** suas pontuações (só você) e o ranking do jogo (todos)
+- **Pontuações:** suas pontuações (só você) e o ranking do jogo (todos), do bichinho escolhido (*Pontuações do Cachorrinho*)
 - **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes. Ali também dá para **Criar conta** (com senha) e **Entrar**.
+
+## Bichinhos (0.17.0)
+O jogo passa a ter **vários bichinhos**, cada um com o **seu próprio jogo de 20 fases**. Hoje só o **Cachorrinho** 🐶 está pronto; o **Gatinho** 🐱 e o **Passarinho** 🐦 aparecem na tela de escolha como *Em breve* e chegam em atualizações futuras.
+
+**Regras (decisão do dono do projeto):**
+1. **Tudo é independente por bichinho:** pontuação, recordes, ranking, progresso (fases concluídas) e jogo salvo. Jogar um bichinho nunca mexe nos dados de outro.
+2. **Qualquer bichinho pode ser escolhido a qualquer momento**, sem exigir nada dos outros (não é preciso terminar o Cachorrinho para jogar o Gatinho). **Dentro do mesmo bichinho** a fase N só abre quando a N−1 foi concluída.
+3. **São únicos e compartilhados** por todos os bichinhos: a carteira de **petscoin** (1 petisco por fase concluída, em qualquer bichinho), a **lojinha de skins**, as **contas** (nome e senha) e os **jogadores**.
+4. As **20 fases do Cachorrinho** continuam exatamente como estavam (mapas, números, regras e textos).
+5. Tudo o que já existia (progresso, recordes, ranking, jogos salvos, skins compradas) continua valendo como **Cachorrinho**, sem perder nada.
+
+**Na tela:** no alto do menu, o botão **Bichinho: 🐶 Cachorrinho · Trocar** (44 px de altura, com rótulo para leitor de tela) abre a tela **Escolha seu bichinho**: um cartão por bichinho, com emoji, nome, uma frase e a situação *dele* para o jogador atual (*Fases concluídas: x/20 · Pontuação total: N*); o que ainda não existe fica desligado, com *Em breve*. Escolher volta ao menu e atualiza tudo: o rótulo do botão, *Fases concluídas* e *Pontuação total*, **Continuar jogo** (o jogo salvo daquele bichinho), a lista de fases (*Iniciar jogo* e *Jogar fases anteriores*) e as **Pontuações** (recorde pessoal, ranking e total do bichinho escolhido; o título cita o bichinho: *Pontuações do Cachorrinho*). A escolha é guardada **por jogador** (sem jogador vale só na memória; o padrão é o Cachorrinho); trocar de jogador, entrar ou sair da conta relê a escolha de quem ficou. A tela funciona com teclado (setas, Enter, Esc), controle e toque, e cabe em 320×568, 360×640, 390×780, 740×390 e 1000×700 sem rolagem lateral; para o botão novo caber no menu (que já era apertado, sobretudo com jogo salvo), em telas baixas o menu ficou um pouco mais compacto e, no celular pequeno em pé, *Continuar jogo* e *Iniciar jogo* dividem uma linha. O ranking compartilhado entre aparelhos (em stand by) só recebe os recordes do Cachorrinho por enquanto: das Pontuações de outro bichinho aparece só este aparelho.
+
+**Modelo de dados** (`js/records.js`, com testes em `tests/records.test.js`): os ids são letras minúsculas (`dog`, `cat`, `bird`). `store.game(animal)` devolve o jogo daquele bichinho, com `addRun`, `personalBest`, `generalBest`, `ranking`, `totalScore`, `totalRanking`, `progress`, `completeLevel`, `saveGame`, `loadGame`, `hasGame` e `clearGame`; os métodos soltos da loja (`store.addRun`, `store.progress`, `store.saveGame`...) são os do Cachorrinho. `store.animal(nome)` e `store.setAnimal(nome, bichinho)` guardam a escolha por jogador. Como fica guardado (chave `cachorrinho.v1`): o **Cachorrinho fica no formato de sempre** (`bests[jogador].L`, `progress[jogador].unlocked/completed` e o jogo salvo com a chave `jogador` em `cachorrinho.save.v1`); os outros bichinhos usam campos novos: `bests[jogador].G[bichinho]` (fase → melhor), `progress[jogador].G[bichinho]` (`unlocked` e `completed`) e jogos salvos com a chave `jogador@bichinho`; `animal[jogador]` guarda a escolha (só existe quando não é o Cachorrinho). Dados da 0.16.1, sem nenhum desses campos, carregam como Cachorrinho; apagar a conta apaga os dados de todos os bichinhos. Em `js/game.js` há o registro `GAMES` (id, nome, emoji, frase, pronto, fases) e o helper `gs()` (= `store.game(bichinho escolhido)`): toda pontuação, progresso e jogo salvo passa por ele, e a partida em andamento usa o bichinho com que começou. `js/board.js` ganhou `localAll(bichinho)` (o ranking deste aparelho de cada bichinho); o servidor continua só do Cachorrinho.
+
+**Como testar sem esperar os outros bichinhos:** `window.__game.enableTestAnimal("cat")` marca o Gatinho como pronto com uma **cópia** da lista de fases do Cachorrinho (e o mesmo motor de jogo): é só um gancho de teste, o jogo de verdade nunca o chama. Com ele, `node tests/e2e.js "0.17.0"` prova no navegador que concluir fases, bater recordes e salvar como Gatinho não muda nada do Cachorrinho (e o contrário), que o Gatinho só abre a Fase 2 depois de concluir a Fase 1 *dele* mesmo com o Cachorrinho na Fase 10, que a carteira de petscoin é uma só e que dados antigos viram Cachorrinho. `__game.animal`, `__game.setAnimal(id)` e `__game.games` também existem para os testes.
 
 ## Conta com senha (opcional)
 Além do nome simples, dá para criar uma **conta**: nome de usuário + senha.
@@ -410,7 +427,7 @@ O jogo ocupa o máximo da tela mantendo a proporção 25:18 e fica nítido em te
 
 ## Estrutura
 ```
-index.html            canvas, placar (HTML) e todas as telas (menu, fases, como jogar, pontuações, nome, pausa, vitória, derrota)
+index.html            canvas, placar (HTML) e todas as telas (menu, bichinhos, fases, como jogar, pontuações, nome, pausa, vitória, derrota)
 css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
@@ -418,7 +435,7 @@ js/themes.js          ambientes das 20 fases (chão, paredes e caixas de cada lu
 docs/LOJINHA.md      plano e regras da lojinha de skins (petiscos e petscoin)
 tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py (configuração das Fases 1 a 20), apply_citymaze.py (Fases 1 a 10), apply_levels11_20.py (Fases 11 a 20) e maps/map1.json … map20.json (os mapas que estão no jogo; o teste confere paredes iguais)
 js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
-js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
+js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo, de cada bichinho (store.game(bichinho); testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
 js/board.js           ranking compartilhado entre aparelhos (REST / banco do Claude), em stand by, com validação (testável sozinho)
 js/game.js            fases e mapas, cachorro, rações, agentes da carrocinha (IA), vidas, tentativas, telas, salvamento, toque e desenho

@@ -147,8 +147,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-off
 .sound-corner { position: absolute; top: calc(var(--pad) / 2 + env(safe-area-inset-top, 0px)); right: calc(var(--pad) / 2); display: grid; place-items: center; width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: 12px; background: var(--panel-2); } /* só no menu: um ícone no canto, para não aumentar a lista de botões */
 .sound-corner svg[hidden] { display: none; }
 /* telas longas (Como jogar, Pontuações, lista de fases): o Voltar fica sempre à vista, colado no fim da tela, sem precisar rolar até o final */
-#howto, #scores, #levels { scroll-padding-bottom: 76px; } /* o botão focado (Tab, setas, a fase aberta na lista) nunca fica atrás do Voltar fixo */
-#howto .menu-list, #scores .menu-list, #levels .menu-list:last-child { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
+#howto, #scores, #levels, #animals { scroll-padding-bottom: 76px; } /* o botão focado (Tab, setas, a fase aberta na lista) nunca fica atrás do Voltar fixo */
+#howto .menu-list, #scores .menu-list, #levels .menu-list:last-child, #animals .menu-list { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
 .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .chips button { min-height: 44px; padding: 6px 16px; font-size: 17px; border-radius: 999px; }
@@ -186,6 +186,24 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .score-private dt { color: var(--muted); }
 .score-private dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
 #scores-public { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- (0.17.0) Bichinhos: o botão no alto do menu e a tela "Escolha seu bichinho" ---------- */
+.menu-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; } /* "Jogador" e o botão do bichinho dividem a linha quando cabem; senão ficam um embaixo do outro */
+.menu-top .who { margin: 0; }
+.animal-btn { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 .4em; min-height: 44px; padding: 6px 14px; font-size: 17px; line-height: 1.2; background: var(--panel-2); border: 1px solid rgba(255, 255, 255, .22); }
+.animal-btn .animal-lbl { color: var(--muted); font-weight: 600; }
+.animal-btn .animal-change { color: var(--gold); text-decoration: underline; }
+.animal-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+.animal-card { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 12px; border: 2px solid rgba(255, 255, 255, .14); border-radius: 14px; background: rgba(255, 255, 255, .06); text-align: center; }
+.animal-card.current { border-color: var(--green); box-shadow: 0 0 0 2px rgba(61, 220, 132, .35); }
+.animal-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px; font-size: 22px; }
+.animal-emoji { font-size: 1.5em; line-height: 1; }
+.animal-blurb { font-size: 15px; font-weight: 500; line-height: 1.3; color: #d6dcea; }
+.animal-status { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--gold); }
+.animal-status.soon-tag { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.animal-now { padding: 1px 10px; border-radius: 999px; background: var(--green); color: #08210f; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.animal-card.soon, .animal-card:disabled { opacity: .55; cursor: not-allowed; filter: grayscale(.6); }
+.animal-card.soon:hover { filter: grayscale(.6); }
 
 /* ---------- Escolher a fase ---------- */
 /* lojinha de skins (0.15.9) */
@@ -285,6 +303,7 @@ body.touch[data-state="playing"] #touch { display: flex; }
   .menu-foot { margin-top: 4px; }
   .credit, .version { font-size: 12px !important; line-height: 1.2 !important; }
   .saved-info { padding: 4px 10px; font-size: 13px !important; }
+  #menu h1 { font-size: 22px; } /* (0.17.0) o botão "Bichinho" dividiu a linha do jogador; o menu com jogo salvo continua cabendo */
   .long-hint { display: none; } /* a dica "Troque por skins na Lojinha" da vitória (0.15.9) */
 }
 
@@ -317,8 +336,25 @@ body.touch[data-state="playing"] #touch { display: flex; }
   #menu .menu-list { flex-direction: row; flex-wrap: wrap; }
   #menu .menu-list button { flex: 1 1 100%; }
   #menu .menu-list #btn-howto, #menu .menu-list #btn-scores { flex: 1 1 calc(50% - 3px); padding-inline: 6px; }
+  /* 0.17.0: o botão "Bichinho" ocupa uma linha a mais no alto; para o menu com jogo salvo continuar cabendo, Continuar jogo e Iniciar jogo dividem uma linha (sozinho, o Iniciar jogo ocupa a linha toda) e o aviso do jogo salvo fica mais enxuto */
+  #menu .menu-list #btn-continue, #menu .menu-list #btn-start { flex: 1 1 calc(50% - 3px); padding-inline: 6px; }
+  #menu .animal-btn { padding: 4px 8px; font-size: 15px; }
+  #menu .saved-info { padding: 4px 10px; font-size: 13px !important; }
+  #menu.screen { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 }
 
+/* (0.17.0) O botão "Bichinho" ocupou uma linha a mais no alto do menu: nas telas baixas o menu (com jogo salvo, o caso mais alto) fica um pouco mais enxuto para tudo continuar à vista sem rolar. Não muda nada em telas altas. */
+@media (max-height: 820px) and (min-height: 521px) and (min-width: 381px) {
+  #menu .panel { gap: 8px; }
+  #menu h1 { font-size: clamp(24px, 4.4vh, 32px); }
+  #menu .menu-list { gap: 6px; margin-top: 2px; }
+  #menu .menu-list button { min-height: 44px; padding: 8px 16px; font-size: 18px; }
+  #menu .menu-foot { margin-top: 8px; }
+}
+@media (max-height: 760px) and (min-height: 521px) and (min-width: 381px) {
+  #menu .menu-list button { min-height: 40px; padding: 6px 16px; font-size: 17px; }
+  #menu .saved-info { padding: 6px 12px; }
+}
 @media (max-width: 420px) {
   :root, body.touch { --hud-h: 84px; } /* o placar pode quebrar em duas linhas */
   button { padding: 10px 20px; font-size: 17px; }
