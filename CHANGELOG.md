@@ -5,6 +5,7 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
 ## 0.16.1 — 22/10/2026
+**Atualização 1 · Correção das missões (sem exigir assustar gatos).**
 Pedido do dono: as missões das Fases 11 a 20 que exigiam **assustar gatos ou carteiros** estavam confusas.
 - **Assustar não é mais exigência para passar de fase.** As missões agora pedem só **ossos** e/ou **rações**: Fase 11 todos os ossos; 12 pegar 34 das 46 rações; 13 pegar 36 das 48; 14 todos os ossos; 15 pegar 40 das 52; 16 pegar 44 das 54; 17 todos os ossos e 40 das 56 rações; 18 pegar 46 das 58; 19 todos os ossos e 48 das 60 rações; 20 todos os ossos e 52 das 62 rações. Os pontos mínimos, os bônus da missão (+200 a +650) e todo o resto das fases continuam iguais.
 - **O cachorrinho continua podendo assustar:** com o poder do osso comum os gatos (e os carteiros) **fogem** e quem encosta num que foge ganha **+100 pontos**, uma vez por poder. É um extra que ajuda a chegar aos pontos mínimos; o *Como jogar* e o README dizem que **não é preciso assustar ninguém** para abrir a saída.
