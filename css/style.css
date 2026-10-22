@@ -132,6 +132,7 @@ kbd { padding: 1px 7px; border-radius: 5px; background: var(--panel-2); border: 
 }
 .credit span { font-size: max(.85em, 10.5px); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 /* (0.17.0) "Fundado em 06/10/2026" na linha pequena do crédito (não ocupa altura nova: o menu com jogo salvo no celular pequeno já era justo) */
+@media (min-width: 360px) { .credit .credit-head { font-size: inherit; } } /* (auditoria) o .85em era aplicado duas vezes: a linha ficava com 10,5 px */
 .credit .credit-head { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 12px; }
 .credit .credit-role { margin-left: auto; }
 .credit .founded:empty { display: none; }
@@ -204,9 +205,9 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .animal-emoji { font-size: 1.5em; line-height: 1; }
 .animal-blurb { font-size: 15px; font-weight: 500; line-height: 1.3; color: #d6dcea; }
 .animal-status { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--gold); }
-.animal-status.soon-tag { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.animal-status.soon-tag { color: #d6dcea; text-transform: uppercase; letter-spacing: .08em; } /* (auditoria) "Em breve" com contraste de verdade */
 .animal-now { padding: 1px 10px; border-radius: 999px; background: var(--green); color: #08210f; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
-.animal-card.soon, .animal-card:disabled { opacity: .55; cursor: not-allowed; filter: grayscale(.6); }
+.animal-card.soon, .animal-card:disabled { opacity: .75; cursor: not-allowed; filter: grayscale(.6); }
 .animal-card.soon:hover { filter: grayscale(.6); }
 
 /* ---------- Escolher a fase ---------- */
@@ -310,6 +311,10 @@ body.touch[data-state="playing"] #touch { display: flex; }
   #menu h1 { font-size: 22px; } /* (0.17.0) o botão "Bichinho" dividiu a linha do jogador; o menu com jogo salvo continua cabendo */
   .long-hint { display: none; } /* a dica "Troque por skins na Lojinha" da vitória (0.15.9) */
 }
+/* (0.17.0, auditoria) celular deitado: o botão "Bichinho" perde o rótulo "Bichinho:" (o leitor de tela continua lendo o aria-label) e, a partir de 600 px de largura, os botões do menu ficam em 3 colunas: o menu com jogo salvo e conta voltou a caber */
+@media (max-height: 520px) { #menu .animal-lbl { display: none; } }
+@media (max-height: 520px) and (min-width: 540px) { #menu .menu-list button { flex: 1 1 30%; } }
+@media (max-height: 520px) and (max-width: 620px) { #menu .menu-top { padding-inline: 52px; } } /* (zoom de 200%) o botão do som, no canto, não cobre o botão do bichinho */
 
 /* (0.16.1) telas de altura média (notebook, 700 px): a vitória da Fase 20 tem 2 linhas a mais (petisco e parabéns) e passava da tela */
 @media (max-height: 760px) and (min-height: 521px) {
@@ -342,7 +347,10 @@ body.touch[data-state="playing"] #touch { display: flex; }
   #menu .menu-list #btn-howto, #menu .menu-list #btn-scores { flex: 1 1 calc(50% - 3px); padding-inline: 6px; }
   /* 0.17.0: o botão "Bichinho" ocupa uma linha a mais no alto; para o menu com jogo salvo continuar cabendo, Continuar jogo e Iniciar jogo dividem uma linha (sozinho, o Iniciar jogo ocupa a linha toda) e o aviso do jogo salvo fica mais enxuto */
   #menu .menu-list #btn-continue, #menu .menu-list #btn-start { flex: 1 1 calc(50% - 3px); padding-inline: 6px; }
+  #menu .menu-list #btn-continue.hidden + #btn-start { flex: 1 1 100%; } /* sem jogo salvo, o Iniciar jogo ocupa a linha toda */
   #menu .animal-btn { padding: 4px 8px; font-size: 15px; }
+  #menu .panel { gap: 4px; } /* (auditoria) conta com senha e 4 fases ainda passavam 10 px */
+  #menu .menu-foot { gap: 2px 16px; margin-top: 2px; }
   #menu .saved-info { padding: 4px 10px; font-size: 13px !important; }
   #menu.screen { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
 }

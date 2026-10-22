@@ -2587,9 +2587,9 @@
   function renderLevels() {
     const me = store.player(), A = syncAnimal(), G = gs(A), LV = levelsOf(A), prog = G.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay"; // (0.17.0) as fases, o progresso e os recordes são os do bichinho escolhido
     $("levels-title").textContent = replay ? "Jogar fases anteriores" : "Escolher a fase";
-    $("levels-help").textContent = replay
+    $("levels-help").textContent = `Fases do ${gameOf(A).name}. ` + (replay
       ? "Escolha uma fase que você já concluiu para tentar melhorar o seu recorde. Só a maior pontuação de cada fase vale (a pontuação total é a soma do melhor de cada fase) e você começa a fase com 3 vidas."
-      : "Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.";
+      : "Termine uma fase para liberar a próxima. As vidas que sobrarem passam para a fase seguinte, mas aqui você começa a fase escolhida com 3 vidas.");
     list.replaceChildren();
     const shown = replay ? LV.filter((l) => prog.completed.includes(l.id)) : LV;
     if (replay && !shown.length) list.append(el("p", "muted", "Você ainda não concluiu nenhuma fase."));
@@ -3745,8 +3745,12 @@
       e.preventDefault(); // segurar a tecla não repete o clique nem corre pelos botões (a escolha do reforço vale uma vez e não se desfaz)
     } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen && !document.querySelector(".screen:not(.hidden)")?.hasAttribute("data-scroll")) {
       e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
-    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#reinforce-list, #animals-list")) {
-      e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // as grades de reforços (duas colunas) e de bichinhos (cartões lado a lado)
+    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#animals-list")) {
+      e.preventDefault(); // os cartões dos bichinhos ficam lado a lado: ← → andam entre os que estão prontos e dão a volta (o Voltar fica fora da lista)
+      const cards = [...document.querySelectorAll("#animals-list button:not(:disabled)")], i = cards.indexOf(e.target);
+      if (cards.length > 1 && i >= 0) cards[(i + (k === "ArrowRight" ? 1 : -1) + cards.length) % cards.length].focus();
+    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#reinforce-list")) {
+      e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // a grade de reforços tem duas colunas
     }
   });
   window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });

@@ -8214,9 +8214,10 @@ const PAGE_HELPERS = () => {
     // as setas ← → andam entre os cartões dos bichinhos que estão prontos (os desligados são pulados)
     await page.focus("#animal-dog"); await page.keyboard.press("ArrowRight");
     const toCat = await ev(page, () => document.activeElement.id);
-    await page.keyboard.press("ArrowRight"); const pastCat = await ev(page, () => document.activeElement.id);
-    await page.focus("#animal-cat"); await page.keyboard.press("ArrowLeft"); const backToDog = await ev(page, () => document.activeElement.id);
-    ok(toCat === "animal-cat" && pastCat === "btn-animals-back" && backToDog === "animal-dog", `seta → vai do Cachorrinho ao Gatinho e pula o Passarinho desligado; seta ← volta ao Cachorrinho (${toCat} / ${pastCat} / ${backToDog})`);
+    await page.keyboard.press("ArrowRight"); const wrapRight = await ev(page, () => document.activeElement.id);
+    await page.keyboard.press("ArrowLeft"); const wrapLeft = await ev(page, () => document.activeElement.id);
+    await page.keyboard.press("ArrowLeft"); const backToDog = await ev(page, () => document.activeElement.id);
+    ok(toCat === "animal-cat" && wrapRight === "animal-dog" && wrapLeft === "animal-cat" && backToDog === "animal-dog", `seta → vai do Cachorrinho ao Gatinho, pula o Passarinho desligado e dá a volta; seta ← faz o caminho inverso (${toCat} / ${wrapRight} / ${wrapLeft} / ${backToDog})`);
     await page.click("#animal-cat");
     ok(await page.isVisible("#menu") && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat" && await page.getAttribute("#btn-animal", "aria-label") === "Bichinho: Gatinho. Trocar de bichinho", "escolher o Gatinho (sem jogador) volta ao menu e troca o rótulo do botão");
     ok(await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes("animal")), "sem jogador a escolha não é guardada em lugar nenhum (só na memória)");
