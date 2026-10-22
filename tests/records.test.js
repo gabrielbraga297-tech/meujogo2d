@@ -731,5 +731,120 @@ test("carteira: ganhar petiscos não mexe nas pontuações, e trocar de jogador 
   st.setPlayer("totó"); assert.strictEqual(st.wallet(st.player()).treats, 5, "o nome em outra caixa é o mesmo jogador");
 });
 
+// ---------- (0.17.0) um jogo por animalzinho: pontos, recordes, progresso e jogo salvo independentes ----------
+const runOf = (st, animal, level, points, timeMs = 30000) => st.game(animal).addRun({ level, timeMs, points });
+test("animais: recorde, ranking e pontuação total de um animal não aparecem no outro (e o cachorrinho é o formato de sempre)", () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  add(st, 1, 20000, 600);                       // cachorrinho (método solto = game("dog"))
+  runOf(st, "cat", 1, 900); runOf(st, "cat", 2, 400);
+  assert.strictEqual(st.personalBest("Totó", 1).p, 600, "o cachorrinho não mudou");
+  assert.strictEqual(st.game("dog").personalBest("Totó", 1).p, 600, "game(\"dog\") é o mesmo cachorrinho");
+  assert.strictEqual(st.game("cat").personalBest("Totó", 1).p, 900);
+  assert.strictEqual(st.personalBest("Totó", 2), null, "a fase 2 só foi jogada pelo gato");
+  assert.strictEqual(st.totalScore("Totó"), 600);
+  assert.strictEqual(st.game("cat").totalScore("Totó"), 1300);
+  assert.strictEqual(st.game("bird").totalScore("Totó"), 0);
+  assert.strictEqual(st.ranking(1)[0].p, 600);
+  assert.strictEqual(st.game("cat").ranking(1)[0].p, 900);
+  assert.strictEqual(st.game("cat").generalBest(1).n, "Totó");
+  assert.strictEqual(st.game("bird").ranking(1).length, 0);
+  assert.deepStrictEqual(st.totalRanking().map((r) => r.total), [600]);
+  assert.deepStrictEqual(st.game("cat").totalRanking().map((r) => r.total), [1300]);
+});
+test("animais: melhor pontuação por animal (a pior não substitui) e a mesma fase de animais diferentes não soma", () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  const a = runOf(st, "cat", 3, 500); assert.ok(a.first && a.newPersonal && a.gained === 500);
+  const b = runOf(st, "cat", 3, 300); assert.ok(!b.newPersonal && b.gained === 0 && st.game("cat").personalBest("Totó", 3).p === 500);
+  add(st, 3, 25000, 800);
+  assert.strictEqual(st.game("cat").totalScore("Totó"), 500, "a fase 3 do cachorrinho não soma na do gato");
+  assert.strictEqual(st.totalScore("Totó"), 800);
+});
+test("animais: progresso independente (qualquer animal pode ser jogado; a fase N só abre ao concluir a N−1 do MESMO animal)", () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  for (let l = 1; l <= 9; l++) st.completeLevel("Totó", l);
+  assert.strictEqual(st.progress("Totó").unlocked, 10, "o cachorrinho chegou à Fase 10");
+  assert.deepStrictEqual(st.game("cat").progress("Totó"), { unlocked: 1, completed: [] }, "o gato começa na Fase 1, não importa o cachorrinho");
+  const c = st.game("cat").completeLevel("Totó", 1);
+  assert.deepStrictEqual(c, { unlocked: 2, completed: [1] });
+  st.game("cat").completeLevel("Totó", 2); st.game("cat").completeLevel("Totó", 3);
+  assert.strictEqual(st.game("cat").progress("Totó").unlocked, 4);
+  assert.strictEqual(st.progress("Totó").unlocked, 10, "concluir fases do gato não mexe no cachorrinho");
+  assert.deepStrictEqual(st.game("bird").progress("Totó"), { unlocked: 1, completed: [] });
+  st.completeLevel("Totó", 10); assert.strictEqual(st.game("cat").progress("Totó").unlocked, 4, "e o contrário também");
+});
+test("animais: jogo salvo é um por jogador E por animal (salvar, continuar e apagar não se misturam)", () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  assert.ok(st.saveGame("Totó", { l: 5, who: "dog" }));
+  assert.ok(st.game("cat").saveGame("Totó", { l: 2, who: "cat" }));
+  assert.strictEqual(st.loadGame("Totó").snap.who, "dog");
+  assert.strictEqual(st.game("cat").loadGame("Totó").snap.who, "cat");
+  assert.ok(st.hasGame("Totó") && st.game("cat").hasGame("Totó") && !st.game("bird").hasGame("Totó"));
+  st.game("cat").clearGame("Totó");
+  assert.ok(st.hasGame("Totó") && !st.game("cat").hasGame("Totó"), "apagar o jogo do gato não apaga o do cachorrinho");
+  st.clearGame("Totó"); assert.ok(!st.hasGame("Totó"));
+  st.setPlayer("Ana"); assert.ok(!st.game("cat").hasGame("Ana"), "outro jogador não vê o jogo salvo do Totó");
+});
+test("animais: tudo isso é guardado e relido; formato antigo (só cachorrinho) continua valendo e não ganha campos novos", () => {
+  const mem = memStorage(); const st = R.createStore(mem); st.setPlayer("Totó");
+  add(st, 1, 20000, 600); st.completeLevel("Totó", 1);
+  const legacy = JSON.parse(mem._m["cachorrinho.v1"]);
+  assert.ok(!("animal" in legacy) && !("G" in legacy.bests.toto) && !("G" in legacy.progress.toto), "sem outro animal, o formato guardado é o de sempre");
+  runOf(st, "cat", 1, 900); st.game("cat").completeLevel("Totó", 1); st.game("cat").saveGame("Totó", { l: 2 }); st.setAnimal("Totó", "cat");
+  const st2 = R.createStore(mem);
+  assert.strictEqual(st2.game("cat").personalBest("Totó", 1).p, 900);
+  assert.deepStrictEqual(st2.game("cat").progress("Totó"), { unlocked: 2, completed: [1] });
+  assert.strictEqual(st2.game("cat").loadGame("Totó").snap.l, 2);
+  assert.strictEqual(st2.animal("Totó"), "cat");
+  assert.strictEqual(st2.personalBest("Totó", 1).p, 600, "o cachorrinho continua igual");
+});
+test("animais: o animal escolhido é por jogador, o padrão é o cachorrinho e valores inválidos são recusados", () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  assert.strictEqual(st.animal("Totó"), "dog"); assert.strictEqual(st.animal("Ana"), "dog");
+  assert.strictEqual(st.setAnimal("Totó", "bird"), "bird"); assert.strictEqual(st.animal("Totó"), "bird"); assert.strictEqual(st.animal("Ana"), "dog");
+  assert.strictEqual(st.setAnimal("Totó", "Gato!"), null); assert.strictEqual(st.setAnimal("Totó", ""), null); assert.strictEqual(st.setAnimal("", "cat"), null);
+  assert.strictEqual(st.animal("Totó"), "bird", "pedido inválido não muda nada");
+  st.setAnimal("Totó", "dog"); assert.strictEqual(st.animal("Totó"), "dog");
+  assert.throws(() => st.game("Gato!"), /animal inválido/); assert.throws(() => st.game(""), /animal inválido/); assert.throws(() => st.game(undefined), /animal inválido/);
+});
+test("animais: dados adulterados dos outros animais são limpos sem derrubar nada (e o cachorrinho fica intacto)", () => {
+  const raw = { v: 2, player: "Totó", players: ["Totó"],
+    bests: { toto: { n: "Totó", L: { 1: { p: 600, t: 20000, w: 1 } }, G: { cat: { 1: { p: 700, t: 15000, w: 2 }, 2: { p: "x", t: 1 }, 1000: { p: 1, t: 1 }, "-3": { p: 1, t: 1 } }, "Gato!": { 1: { p: 9, t: 9 } }, dog: { 1: { p: 5, t: 5 } }, bird: [1, 2], rato: "x" } } },
+    progress: { toto: { unlocked: 2, completed: [1], G: { cat: { completed: [1, 1, "a", -1, 2] }, "Gato!": { completed: [1] }, dog: { completed: [9] }, bird: "x" } } },
+    animal: { toto: "cat", ana: "Gato!", rex: "dog", "": "cat" }, accounts: {}, wallet: {} };
+  const st = R.createStore(memStorage({ "cachorrinho.v1": JSON.stringify(raw) }));
+  assert.strictEqual(st.personalBest("Totó", 1).p, 600);
+  assert.strictEqual(st.game("cat").personalBest("Totó", 1).p, 700);
+  assert.strictEqual(st.game("cat").personalBest("Totó", 2), null);
+  assert.strictEqual(st.game("cat").personalBest("Totó", 1000), null);
+  assert.strictEqual(st.game("bird").totalScore("Totó"), 0);
+  assert.deepStrictEqual(st.game("cat").progress("Totó"), { unlocked: 3, completed: [1, 2] });
+  assert.deepStrictEqual(st.progress("Totó"), { unlocked: 2, completed: [1] }, "G.dog e `dog` dentro de G não mexem no cachorrinho");
+  assert.strictEqual(st.animal("Totó"), "cat"); assert.strictEqual(st.animal("ana"), "dog"); assert.strictEqual(st.animal("rex"), "dog");
+  const st2 = R.createStore(memStorage({ "cachorrinho.v1": JSON.stringify({ v: 2, player: "", players: [], bests: { toto: { n: "Totó", L: {}, G: [1, 2] } }, progress: { toto: { G: { cat: { completed: [3] } } } }, animal: [1], accounts: {}, wallet: {} }) }));
+  assert.deepStrictEqual(st2.game("cat").progress("Totó"), { unlocked: 4, completed: [3] }, "quem só jogou o gato tem progresso do gato sem ter o do cachorrinho");
+  assert.deepStrictEqual(st2.progress("Totó"), { unlocked: 1, completed: [] });
+  assert.strictEqual(st2.animal("Totó"), "dog");
+});
+test("animais: apagar a conta apaga o jogo de TODOS os animais (recordes, progresso, jogos salvos, escolha); carteira é única e compartilhada", async () => {
+  const st = R.createStore(memStorage()); st.setPlayer("Totó");
+  runOf(st, "cat", 1, 900); st.game("cat").completeLevel("Totó", 1); st.game("cat").saveGame("Totó", { l: 2 }); st.setAnimal("Totó", "cat"); st.saveGame("Totó", { l: 3 });
+  st.addTreats("Totó", 3); // a carteira é única: 1 petisco por fase concluída em qualquer animal
+  assert.strictEqual(st.wallet("Totó").treats, 3);
+  const r = await st.register("Totó", "senha1"); void r; // (conta criada só para poder apagar)
+  assert.ok(st.deleteAccount("Totó"));
+  assert.strictEqual(st.game("cat").personalBest("Totó", 1), null);
+  assert.deepStrictEqual(st.game("cat").progress("Totó"), { unlocked: 1, completed: [] });
+  assert.ok(!st.game("cat").hasGame("Totó") && !st.hasGame("Totó"));
+  assert.strictEqual(st.animal("Totó"), "dog"); assert.strictEqual(st.wallet("Totó").treats, 0);
+});
+test("animais: o limite de jogos salvos vale por animal (o cachorrinho continua como sempre)", () => {
+  const st = R.createStore(memStorage());
+  const names = Array.from({ length: 16 }, (_, i) => "Jog" + i); // (o limite é de 12 jogos salvos por animal)
+  names.forEach((n, i) => { st.saveGame(n, { i }); st.game("cat").saveGame(n, { i }); });
+  const dogSaves = names.filter((n) => st.hasGame(n)).length, catSaves = names.filter((n) => st.game("cat").hasGame(n)).length;
+  assert.strictEqual(dogSaves, 12, `cachorrinho: ${dogSaves} jogos salvos`); assert.strictEqual(catSaves, 12, `gato: ${catSaves} jogos salvos (o limite do cachorrinho não come os do gato)`);
+  assert.ok(!st.hasGame("Jog0") && st.hasGame("Jog15"), "saem os mais antigos");
+});
+
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
 process.exit(failed ? 1 : 0);

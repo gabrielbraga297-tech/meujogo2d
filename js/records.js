@@ -35,6 +35,10 @@
   // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
   const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 60;
   const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
+  // (0.17.0) cada ANIMALZINHO tem o seu jogo: pontos, recordes, progresso e jogo salvo independentes. "dog" (o cachorrinho) guarda no formato de sempre (campos L, unlocked/completed, save sem sufixo);
+  // os outros animais ficam em campos novos (G) e nos saves com sufixo "@animal". Carteira, contas e jogadores são de todos os animais.
+  const DEFAULT_ANIMAL = "dog", MAX_ANIMALS = 12;
+  const isAnimal = (a) => typeof a === "string" && /^[a-z]{2,12}$/.test(a);
   const RATION_POINTS = 100, BONE_POINTS = 150 /* 50 do osso + 100 de bônus */, POSTMAN_POINTS = 100, BALL_POINTS = 50 /* bolinha (0.15.8) */, LIFE_PENALTY = 50, RETRY_PENALTY = 100, MAX_RETRIES = 3;
   const count = (n) => (Number.isInteger(n) && n > 0 ? n : 0);
   // `extra` (opcional): { bones: ossos pegos (150 pontos cada), postmen: carteiros atingidos (100 cada), balls: bolinhas pegas (50 cada), bonusStep: pontos por degrau do bônus de tempo (padrão 10),
@@ -110,14 +114,30 @@
     }
 
     // guarda `best` para (jogador, fase) se for melhor que a atual; devolve true se mudou
-    function putBest(map, name, level, best) {
+    function putBest(map, name, level, best, animal = DEFAULT_ANIMAL) {
       const k = nameKey(name);
       const rec = map[k] || (map[k] = { n: name, L: Object.create(null) });
-      const cur = rec.L[level];
+      const L = bestsOf(rec, animal, true);
+      const cur = L[level];
       if (cur && !isBetter(best, cur)) return false;
-      rec.L[level] = best;
+      L[level] = best;
       return true;
     }
+    // o mapa fase → melhor pontuação de um jogador num animal (o cachorrinho fica em `rec.L`, como sempre; os outros em `rec.G[animal]`); `create`: cria se não existir
+    function bestsOf(rec, animal, create = false) {
+      if (!rec) return null;
+      if (animal === DEFAULT_ANIMAL) return rec.L;
+      if (!isAnimal(animal)) return null;
+      if (!rec.G) { if (!create) return null; rec.G = Object.create(null); }
+      return rec.G[animal] || (create ? (rec.G[animal] = Object.create(null)) : null);
+    }
+    // o progresso de um jogador num animal: { unlocked, completed } (o cachorrinho fica na raiz do registro, os outros em `p.G[animal]`)
+    function progressOf(p, animal) {
+      if (!p) return null;
+      if (animal === DEFAULT_ANIMAL) return p;
+      return p.G && p.G[animal] ? p.G[animal] : null;
+    }
+    const cleanDone = (list) => (Array.isArray(list) ? [...new Set(list.filter((n) => Number.isInteger(n) && n >= 1 && n <= 999))].sort((a, b) => a - b) : null);
 
     function load() {
       persistent = probe();
@@ -144,6 +164,15 @@
               const level = Number(lv), best = cleanBest(b);
               if (Number.isInteger(level) && level >= 1 && level <= 999 && best) putBest(bests, n, level, best);
             }
+            if (rec.G && typeof rec.G === "object" && !Array.isArray(rec.G)) { // recordes dos outros animais (0.17.0)
+              for (const [animal, map] of Object.entries(rec.G).slice(0, MAX_ANIMALS)) {
+                if (!isAnimal(animal) || animal === DEFAULT_ANIMAL || !map || typeof map !== "object" || Array.isArray(map)) continue;
+                for (const [lv, b] of Object.entries(map)) {
+                  const level = Number(lv), best = cleanBest(b);
+                  if (Number.isInteger(level) && level >= 1 && level <= 999 && best) putBest(bests, n, level, best, animal);
+                }
+              }
+            }
           }
         }
         if (Array.isArray(raw.runs)) { // formato antigo (histórico de partidas): fica só a melhor de cada jogador
@@ -160,7 +189,17 @@
         if (raw.progress && typeof raw.progress === "object") {
           for (const [k, p] of Object.entries(raw.progress)) {
             const done = p && Array.isArray(p.completed) ? [...new Set(p.completed.filter((n) => Number.isInteger(n) && n >= 1 && n <= 999))].sort((a, b) => a - b) : null;
-            if (typeof k === "string" && k && done) progress[k] = { unlocked: Math.max(1, ...done.map((n) => n + 1)), completed: done };
+            const G = Object.create(null); // progresso dos outros animais (0.17.0)
+            if (p && p.G && typeof p.G === "object" && !Array.isArray(p.G)) {
+              for (const [animal, q] of Object.entries(p.G).slice(0, MAX_ANIMALS)) {
+                const dn = q && cleanDone(q.completed);
+                if (isAnimal(animal) && animal !== DEFAULT_ANIMAL && dn) G[animal] = { unlocked: Math.max(1, ...dn.map((n) => n + 1)), completed: dn };
+              }
+            }
+            if (typeof k === "string" && k && (done || Object.keys(G).length)) {
+              progress[k] = { unlocked: done ? Math.max(1, ...done.map((n) => n + 1)) : 1, completed: done || [] };
+              if (Object.keys(G).length) progress[k].G = G;
+            }
           }
         }
         const accounts = Object.create(null);
@@ -183,6 +222,11 @@
           }
         }
         data = { v: 2, player, players: players.slice(0, MAX_PLAYERS), bests, progress, accounts, wallet };
+        if (raw.animal && typeof raw.animal === "object" && !Array.isArray(raw.animal)) { // o animalzinho escolhido por jogador (0.17.0; só existe quando não é o cachorrinho)
+          const animal = Object.create(null);
+          for (const [k, a] of Object.entries(raw.animal)) if (typeof k === "string" && k && isAnimal(a) && a !== DEFAULT_ANIMAL) animal[k] = a;
+          if (Object.keys(animal).length) data.animal = animal;
+        }
       } catch { /* dados corrompidos: começa do zero */ }
     }
 
@@ -230,6 +274,113 @@
 
     load();
     loadSaves();
+
+    // ---------- (0.17.0) o jogo de UM animalzinho ----------
+    // Pontuação, recordes, ranking, progresso e jogo salvo só daquele animal; jogar um nunca mexe nos dados do outro. `game("dog")` é o cachorrinho (o formato de sempre, o mesmo dos métodos
+    // soltos da loja: store.addRun, store.progress...). Dentro do mesmo animal a fase N só abre ao concluir a N−1 (completeLevel). Carteira, contas e jogadores são compartilhados.
+    function game(animal) {
+      if (!isAnimal(animal)) throw new Error("animal inválido");
+      const saveKey = (name) => (animal === DEFAULT_ANIMAL ? nameKey(name) : nameKey(name) + "@" + animal);
+      const g = {
+        // Registra o resultado de uma fase (`points` = rações + bônus de tempo − vidas perdidas − tentativas extras;
+        // pode ser negativo). Só a MELHOR pontuação de cada jogador em cada fase fica guardada: uma partida pior não
+        // muda nada e a pontuação da mesma fase nunca se soma. Fases diferentes somam (totalScore).
+        addRun({ level, timeMs, points, name }) {
+          const p = canonical(name || data.player);
+          const t = Math.round(timeMs);
+          if (!p || !Number.isInteger(level) || level < 1 || level > 999 || !Number.isFinite(t) || t <= 0 || t > MAX_TIME_MS) return null;
+          if (!Number.isInteger(points) || points < -MAX_POINTS || points > MAX_POINTS) return null;
+          const prevPersonal = g.personalBest(p, level), prevGeneral = g.generalBest(level);
+          const run = { p: points, t, w: now() };
+          const newPersonal = !prevPersonal || isBetter(run, prevPersonal);
+          if (newPersonal) putBest(data.bests, p, level, run, animal);
+          if (!data.players.some((x) => nameKey(x) === nameKey(p))) data.players = [p, ...data.players].slice(0, MAX_PLAYERS);
+          save();
+          return {
+            run: { n: p, l: level, ...run },
+            bonus: timeBonus(t),
+            first: !prevPersonal,
+            newPersonal,
+            newGeneral: !prevGeneral || isBetter(run, prevGeneral),
+            previousPersonal: prevPersonal,
+            personalBest: g.personalBest(p, level),
+            generalBest: g.generalBest(level),
+            gained: newPersonal ? run.p - (prevPersonal ? prevPersonal.p : 0) : 0, // quanto a pontuação total aumentou
+          };
+        },
+
+        personalBest(name, level) {
+          const rec = data.bests[nameKey(name)], L = bestsOf(rec, animal), b = L && L[level];
+          return b ? { n: rec.n, l: level, ...b } : null;
+        },
+        generalBest(level) { return g.ranking(level, 1)[0] || null; },
+
+        // Melhor pontuação de cada jogador na fase: maior pontuação primeiro (empate: menor tempo).
+        ranking(level, n = 10) {
+          const rows = [];
+          for (const rec of Object.values(data.bests)) { const L = bestsOf(rec, animal), b = L && L[level]; if (b) rows.push({ n: rec.n, l: level, ...b }); }
+          return rows.sort(byBest).slice(0, n);
+        },
+
+        // Pontuação total do jogador: soma da MELHOR pontuação de cada fase (`levels` limita quais fases contam).
+        totalScore(name, levels) {
+          const L = bestsOf(data.bests[nameKey(name)], animal);
+          if (!L) return 0;
+          let sum = 0;
+          for (const [lv, b] of Object.entries(L)) if (!levels || levels.includes(Number(lv))) sum += b.p;
+          return sum;
+        },
+
+        // Ranking geral: jogadores ordenados pela pontuação total.
+        totalRanking(n = 10, levels) {
+          const rows = [];
+          for (const rec of Object.values(data.bests)) {
+            const L = bestsOf(rec, animal) || {};
+            const lvs = Object.keys(L).map(Number).filter((l) => !levels || levels.includes(l));
+            if (lvs.length) rows.push({ n: rec.n, total: lvs.reduce((s, l) => s + L[l].p, 0) });
+          }
+          return rows.sort((a, b) => b.total - a.total || a.n.localeCompare(b.n)).slice(0, n);
+        },
+
+        // ---------- Progresso na campanha: fases concluídas e a próxima liberada (a fase N só abre ao concluir a N−1 DO MESMO animal) ----------
+        progress(name) {
+          const p = progressOf(data.progress[nameKey(name)], animal);
+          return p ? { unlocked: p.unlocked, completed: p.completed.slice() } : { unlocked: 1, completed: [] };
+        },
+        completeLevel(name, level) {
+          const k = nameKey(canonical(name));
+          if (!k || !Number.isInteger(level) || level < 1 || level > 999) return null;
+          const root = data.progress[k] || { unlocked: 1, completed: [] };
+          let p;
+          if (animal === DEFAULT_ANIMAL) p = root;
+          else { if (!root.G) root.G = Object.create(null); p = root.G[animal] || { unlocked: 1, completed: [] }; root.G[animal] = p; }
+          if (!p.completed.includes(level)) p.completed = [...p.completed, level].sort((a, b) => a - b);
+          p.unlocked = Math.max(p.unlocked, level + 1);
+          data.progress[k] = root;
+          save();
+          return g.progress(name);
+        },
+
+        // ---------- Jogo salvo (um por jogador E por animal). `snap` é qualquer objeto JSON; quem chama valida ao carregar ----------
+        saveGame(name, snap) {
+          const k = saveKey(canonical(name));
+          if (!nameKey(canonical(name)) || !snap || typeof snap !== "object") return false;
+          let json; try { json = JSON.stringify(snap); } catch { return false; }
+          if (json.length > MAX_SAVE_BYTES) return false;
+          saves[k] = { t: now(), snap: JSON.parse(json) };
+          const mine = Object.keys(saves).filter((x) => (animal === DEFAULT_ANIMAL ? !x.includes("@") : x.endsWith("@" + animal)));
+          if (mine.length > MAX_PLAYERS) delete saves[mine.sort((a, b) => saves[a].t - saves[b].t)[0]];
+          return persistSaves();
+        },
+        loadGame(name) {
+          const s = saves[saveKey(name)];
+          return s ? { savedAt: s.t, snap: JSON.parse(JSON.stringify(s.snap)) } : null;
+        },
+        hasGame(name) { return !!saves[saveKey(name)]; },
+        clearGame(name) { const k = saveKey(name); if (k in saves) { delete saves[k]; persistSaves(); } },
+      };
+      return g;
+    }
 
     const api = {
       get persistent() { return persistent && savesOk; },
@@ -305,84 +456,28 @@
         if (nameKey(data.player) === k) data.player = "";
         failures.delete(k);
         save();
-        if (k in saves) { delete saves[k]; persistSaves(); }
+        if (data.animal) { delete data.animal[k]; if (!Object.keys(data.animal).length) delete data.animal; }
+        const mine = Object.keys(saves).filter((x) => x === k || x.startsWith(k + "@"));
+        if (mine.length) { for (const x of mine) delete saves[x]; persistSaves(); }
         return true;
       },
 
-      // ---------- Pontuação ----------
-      // Registra o resultado de uma fase (`points` = rações + bônus de tempo − vidas perdidas − tentativas extras;
-      // pode ser negativo). Só a MELHOR pontuação de cada jogador em cada fase fica guardada: uma partida pior não
-      // muda nada e a pontuação da mesma fase nunca se soma. Fases diferentes somam (totalScore).
-      addRun({ level, timeMs, points, name }) {
-        const p = canonical(name || data.player);
-        const t = Math.round(timeMs);
-        if (!p || !Number.isInteger(level) || level < 1 || level > 999 || !Number.isFinite(t) || t <= 0 || t > MAX_TIME_MS) return null;
-        if (!Number.isInteger(points) || points < -MAX_POINTS || points > MAX_POINTS) return null;
-        const prevPersonal = this.personalBest(p, level), prevGeneral = this.generalBest(level);
-        const run = { p: points, t, w: now() };
-        const newPersonal = !prevPersonal || isBetter(run, prevPersonal);
-        if (newPersonal) putBest(data.bests, p, level, run);
-        if (!data.players.some((x) => nameKey(x) === nameKey(p))) data.players = [p, ...data.players].slice(0, MAX_PLAYERS);
-        save();
-        return {
-          run: { n: p, l: level, ...run },
-          bonus: timeBonus(t),
-          first: !prevPersonal,
-          newPersonal,
-          newGeneral: !prevGeneral || isBetter(run, prevGeneral),
-          previousPersonal: prevPersonal,
-          personalBest: this.personalBest(p, level),
-          generalBest: this.generalBest(level),
-          gained: newPersonal ? run.p - (prevPersonal ? prevPersonal.p : 0) : 0, // quanto a pontuação total aumentou
-        };
+      ...game(DEFAULT_ANIMAL), // pontuação, progresso e jogo salvo do cachorrinho (os métodos soltos da loja são os do cachorrinho)
+      // (0.17.0) o jogo de outro animalzinho: store.game("cat").addRun(...), .progress(...), .saveGame(...)...; o objeto tem os mesmos métodos
+      game(animal) {
+        const g = game(animal);
+        for (const name of Object.keys(g)) { const fn = g[name]; g[name] = (...args) => { sync(); return fn.apply(g, args); }; } // (como os outros: relê o armazenamento antes)
+        return g;
       },
-
-      personalBest(name, level) {
-        const rec = data.bests[nameKey(name)], b = rec && rec.L[level];
-        return b ? { n: rec.n, l: level, ...b } : null;
-      },
-      generalBest(level) { return this.ranking(level, 1)[0] || null; },
-
-      // Melhor pontuação de cada jogador na fase: maior pontuação primeiro (empate: menor tempo).
-      ranking(level, n = 10) {
-        const rows = [];
-        for (const rec of Object.values(data.bests)) { const b = rec.L[level]; if (b) rows.push({ n: rec.n, l: level, ...b }); }
-        return rows.sort(byBest).slice(0, n);
-      },
-
-      // Pontuação total do jogador: soma da MELHOR pontuação de cada fase (`levels` limita quais fases contam).
-      totalScore(name, levels) {
-        const rec = data.bests[nameKey(name)];
-        if (!rec) return 0;
-        let sum = 0;
-        for (const [lv, b] of Object.entries(rec.L)) if (!levels || levels.includes(Number(lv))) sum += b.p;
-        return sum;
-      },
-
-      // Ranking geral: jogadores ordenados pela pontuação total.
-      totalRanking(n = 10, levels) {
-        const rows = [];
-        for (const rec of Object.values(data.bests)) {
-          const lvs = Object.keys(rec.L).map(Number).filter((l) => !levels || levels.includes(l));
-          if (lvs.length) rows.push({ n: rec.n, total: lvs.reduce((s, l) => s + rec.L[l].p, 0) });
-        }
-        return rows.sort((a, b) => b.total - a.total || a.n.localeCompare(b.n)).slice(0, n);
-      },
-
-      // ---------- Progresso na campanha: fases concluídas e a próxima liberada ----------
-      progress(name) {
-        const p = data.progress[nameKey(name)];
-        return p ? { unlocked: p.unlocked, completed: p.completed.slice() } : { unlocked: 1, completed: [] };
-      },
-      completeLevel(name, level) {
+      // o animalzinho que o jogador escolheu no menu ("dog" = o cachorrinho, se nunca escolheu); fica guardado por jogador
+      animal(name) { const a = data.animal && data.animal[nameKey(name)]; return isAnimal(a) ? a : DEFAULT_ANIMAL; },
+      setAnimal(name, animal) {
         const k = nameKey(canonical(name));
-        if (!k || !Number.isInteger(level) || level < 1 || level > 999) return null;
-        const p = data.progress[k] || { unlocked: 1, completed: [] };
-        if (!p.completed.includes(level)) p.completed = [...p.completed, level].sort((a, b) => a - b);
-        p.unlocked = Math.max(p.unlocked, level + 1);
-        data.progress[k] = p;
+        if (!k || !isAnimal(animal)) return null;
+        if (animal === DEFAULT_ANIMAL) { if (data.animal) { delete data.animal[k]; if (!Object.keys(data.animal).length) delete data.animal; } }
+        else { if (!data.animal) data.animal = Object.create(null); data.animal[k] = animal; }
         save();
-        return this.progress(name);
+        return animal;
       },
 
       // ---------- Petiscos e skins (0.15.9): carteira de cada jogador ----------
@@ -422,23 +517,6 @@
         return this.wallet(name);
       },
 
-      // ---------- Jogo salvo (um por jogador). `snap` é qualquer objeto JSON; quem chama valida ao carregar ----------
-      saveGame(name, snap) {
-        const k = nameKey(canonical(name));
-        if (!k || !snap || typeof snap !== "object") return false;
-        let json; try { json = JSON.stringify(snap); } catch { return false; }
-        if (json.length > MAX_SAVE_BYTES) return false;
-        saves[k] = { t: now(), snap: JSON.parse(json) };
-        const keys = Object.keys(saves);
-        if (keys.length > MAX_PLAYERS) delete saves[keys.sort((a, b) => saves[a].t - saves[b].t)[0]];
-        return persistSaves();
-      },
-      loadGame(name) {
-        const s = saves[nameKey(name)];
-        return s ? { savedAt: s.t, snap: JSON.parse(JSON.stringify(s.snap)) } : null;
-      },
-      hasGame(name) { return !!saves[nameKey(name)]; },
-      clearGame(name) { const k = nameKey(name); if (k in saves) { delete saves[k]; persistSaves(); } },
     };
 
     // Toda operação começa sincronizando com o armazenamento (outras abas). Os métodos assíncronos (register/login) sincronizam de novo depois da espera.
