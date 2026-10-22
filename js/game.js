@@ -2038,7 +2038,7 @@
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS + ballsGot() * Records.BALL_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
-  // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
+  // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos e/ou pegar N rações; 0.16.1: assustar carteiros ou gatos NÃO é exigência).
   const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && collected >= lv.mission.rations);
   const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
   const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
@@ -2464,7 +2464,7 @@
   function applySnapshot(sv) {
     reset(sv.l, { lives: sv.lives, retries: sv.rs, active: sv.ba, upgrades: Object.fromEntries(UP_KEYS.map((k, i) => [k, sv.up[i]])) });
     items = sv.items.map(([c, r, t, l, b]) => Object.assign(tileItem([c, r], l === 1, b > 0, b > 0 ? BONE_KINDS[b - 1] : null), { taken: t === 1 }));
-    if (sv.legacyBones) { // (jogo salvo da 0.15.6) os ossos que faltam pegar ganham primeiro os comuns, para a missão de sustos continuar possível
+    if (sv.legacyBones) { // (jogo salvo da 0.15.6) os ossos que faltam pegar ganham primeiro os comuns, para o poder de assustar continuar possível
       const mix = lv.boneMix.slice().sort((a, b) => (a === "scare" ? 0 : 1) - (b === "scare" ? 0 : 1)), bn = items.filter((i) => i.bone);
       [...bn.filter((i) => !i.taken), ...bn.filter((i) => i.taken)].forEach((it, k) => { it.kind = mix[k]; });
     }
@@ -3489,7 +3489,7 @@
       const t = [["shield", "Escudo"], ["ice", "Gelo"], ["turbo", "Turbo"], ["magnet", "Ímã"]].filter(([k]) => fx[k] > 0).map(([k, n]) => `${n} ${Math.ceil(fx[k])} s`).join(" · ");
       if (hudCache.fx !== t) { hudCache.fx = t; hudEl.fxBar.textContent = t; hudEl.fxBar.classList.toggle("hidden", !t); }
     }
-    if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, sustos, rações); cumprida, manda ir para a saída
+    if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, rações); cumprida, manda ir para a saída
       const left = missionLeft(), t = left.length ? `Missão: ${left.join(" · ")}` : "Missão cumprida!";
       if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length); }
     }
