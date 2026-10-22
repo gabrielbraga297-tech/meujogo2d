@@ -151,7 +151,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #fff; outline-off
 #howto .menu-list, #scores .menu-list, #levels .menu-list:last-child { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
 .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.chips button { min-height: 40px; padding: 6px 16px; font-size: 17px; border-radius: 999px; }
+.chips button { min-height: 44px; padding: 6px 16px; font-size: 17px; border-radius: 999px; }
 label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 15px; text-align: left; }
 input {
   width: 100%; padding: 12px 14px; font: inherit; font-size: 22px; border-radius: 10px; border: 2px solid rgba(255, 255, 255, .3);
@@ -160,14 +160,15 @@ input {
 #name-form, #register-form, #login-form { display: flex; flex-direction: column; gap: 4px; text-align: left; }
 #name-form .row, #register-form .row, #login-form .row { margin-top: 6px; }
 input[type="checkbox"] { width: 22px; height: 22px; padding: 0; margin: 0; accent-color: var(--green); flex: none; }
-label.check { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; color: var(--ink); font-size: 17px; cursor: pointer; }
+label.check { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 6px 0 0; color: var(--ink); font-size: 17px; cursor: pointer; }
+label.check input[type="checkbox"] { width: 24px; height: 24px; flex: none; margin: 0; }
 .hint { margin: 2px 0 8px; font-size: 14px !important; color: var(--muted); line-height: 1.35 !important; text-align: left; }
 .count { display: inline-block; margin-left: 4px; font-weight: 700; color: var(--green); font-variant-numeric: tabular-nums; }
 .count.over { color: #ff9d90; }
 .controls-help { text-align: center !important; margin: 0 !important; }
 .note-soft { font-size: 14px !important; color: var(--muted); line-height: 1.4 !important; }
 .account-box { padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .12); display: flex; flex-direction: column; gap: 8px; }
-button.linky { background: transparent; color: var(--gold); text-decoration: underline; min-height: 40px; padding: 6px 10px; font-size: 16px; font-weight: 600; }
+button.linky { background: transparent; color: var(--gold); text-decoration: underline; min-height: 44px; padding: 6px 10px; font-size: 16px; font-weight: 600; }
 .hidden { display: none !important; }
 
 /* ---------- Pontuações ---------- */
@@ -195,6 +196,14 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .shop-card strong { font-size: 1.05em; }
 .shop-card .sub { font-size: .85em; opacity: .85; min-height: 2.4em; }
 .shop-card button { width: 100%; }
+.shop-card button:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.5); }
+.shop-card button:disabled:hover { filter: grayscale(.5); }
+.shop-card.equipped button:disabled { opacity: 1; filter: none; background: transparent; color: var(--green); border: 2px solid var(--green); cursor: default; } /* "Em uso": um selo verde, não um botão apagado */
+/* (0.16.0) o saldo e o aviso da compra ficam no alto e o Voltar no fim da tela, à vista mesmo com a lista longa (celular de tela baixa) */
+#shop .shop-head { position: sticky; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 6px 0; background: var(--bg); }
+#shop .shop-head p:empty { display: none; }
+#shop { scroll-padding-top: 90px; scroll-padding-bottom: 76px; }
+#shop .menu-list { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
 .level-list { display: flex; flex-direction: column; gap: 10px; }
 .level-list button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 20px; text-align: center; }
 .level-list button strong { font-size: 1.1em; }

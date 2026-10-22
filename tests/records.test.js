@@ -394,6 +394,19 @@ test("falha ao gravar o save vira memória sem perder o jogo atual", () => {
   assert.strictEqual(s.persistent, false);
   assert.strictEqual(s.loadGame("Totó").snap.a, 1);
 });
+test("falha ao gravar só o jogo salvo não desliga a gravação das pontuações e dos petscoin (0.16.0)", () => {
+  const st = memStorage(); let fail = false;
+  const flaky = { getItem: st.getItem, removeItem: st.removeItem, setItem(k, v) { if (fail && k.includes("save")) throw new Error("quota"); st.setItem(k, v); } };
+  const s = R.createStore(flaky); s.setPlayer("Totó");
+  fail = true;
+  assert.strictEqual(s.saveGame("Totó", { a: 1 }), false);
+  assert.strictEqual(s.saveGame("Totó", { a: 2 }), false, "depois da primeira falha o jogo salvo fica só na memória");
+  add(s, 1, 7000);
+  s.addTreats("Totó", 2);
+  const s2 = R.createStore(flaky); // outra aba / depois de recarregar: as pontuações e a carteira foram para o armazenamento
+  assert.strictEqual(s2.personalBest("Totó", 1).t, 7000);
+  assert.strictEqual(s2.wallet("Totó").treats, 2);
+});
 test("limite de saves: guarda no máximo um por jogador lembrado", () => {
   const s = R.createStore(memStorage());
   for (let i = 0; i < 20; i++) { s.setPlayer("Cao" + i); s.saveGame("Cao" + i, { i }); }

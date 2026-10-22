@@ -99,6 +99,7 @@
     let data = emptyData();
     const saves = Object.create(null); // jogo salvo por jogador: { chave: { t, snap } }
     let persistent = false;
+    let savesOk = true; // (0.16.0) falhar ao gravar só o JOGO SALVO (grande) não desliga a gravação das pontuações, do progresso, das contas e dos petscoin: o jogo salvo fica só na memória e o menu avisa
     // Várias abas (ou uma aba esquecida aberta) usam o mesmo armazenamento: cada operação primeiro relê o que está guardado,
     // se outra aba mudou, para nunca apagar o que ela gravou (ver sync()). `lastRaw`: o texto que esta cópia conhece.
     let lastRaw = null, lastSavesRaw = null;
@@ -202,7 +203,8 @@
 
     function persistSaves() {
       if (!persistent) return true;
-      try { const text = JSON.stringify({ v: 1, saves }); storage.setItem(SAVE_KEY, text); lastSavesRaw = text; return true; } catch { persistent = false; return false; }
+      if (!savesOk) return false;
+      try { const text = JSON.stringify({ v: 1, saves }); storage.setItem(SAVE_KEY, text); lastSavesRaw = text; return true; } catch { savesOk = false; return false; }
     }
 
     function save() {
@@ -230,7 +232,7 @@
     loadSaves();
 
     const api = {
-      get persistent() { return persistent; },
+      get persistent() { return persistent && savesOk; },
       player() { return data.player; },
       players() { return data.players.slice(); },
 

@@ -4151,7 +4151,7 @@ const PAGE_HELPERS = () => {
     // jogos salvos: o jogo novo grava a revisão dos mapas; um jogo salvo de mapas antigos é descartado, com um aviso no menu (recordes e progresso ficam)
     await playLevel(page, 5, { keepSave: true }); await ev(page, () => { __game.freezeVets = true; __game.save(); });
     const rev = await ev(page, () => { const g = Records.createStore(localStorage).loadGame("Totó"); return { mz: g.snap.mz, l: g.snap.l }; });
-    ok(rev.mz === 2 && rev.l === 5, "o jogo salvo grava a revisão dos mapas (2 = labirintos de cidade)");
+    ok(rev.mz === 3 && rev.l === 5, "o jogo salvo grava a revisão dos mapas (3 = mapas finais das Fases 1 a 20)");
     await ev(page, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); }); // (no menu a página não grava o jogo ao recarregar)
     await ev(page, () => { const st = Records.createStore(localStorage), g = st.loadGame("Totó"); delete g.snap.mz; st.saveGame("Totó", g.snap); st.completeLevel("Totó", 1); });
     await page.reload(); await page.evaluate(PAGE_HELPERS);

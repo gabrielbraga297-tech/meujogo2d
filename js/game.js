@@ -15,7 +15,7 @@
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
   // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
-  const MAP_REV = 2;        // revisão dos mapas das Fases 1 a 10: jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (0.15.1: labirintos com desenho de cidade)
+  const MAP_REV = 3;        // revisão dos mapas das Fases 1 a 20: jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (2 = 0.15.1, labirintos com desenho de cidade; 3 = 0.16.0, mapas finais das Fases 11 a 20 com as muretas de caixas dos gatos)
   const REINFORCE_SPEED = 0.08, REINFORCE_BONE = 8, REINFORCE_SHIELD = 2, REINFORCE_SLOW = 0.08; // por nível: +8% de velocidade, +8 s de poder, +2 s de proteção, agentes 8% mais lentos (0.15.2: antes 5%, 5 s, 1 s e 5%, pequenos demais para notar)
   const REINFORCEMENTS = [
     { id: "speed", name: "Patas ligeiras", text: "+8% de velocidade do cachorrinho", max: 4 },
@@ -105,7 +105,7 @@
     { id: "", name: "Caramelo", price: 0, text: "o cachorrinho de sempre (grátis)" },
     { id: "cinza", name: "Cinza-prata", price: 10, text: "pelo cinza de cachorro velho e sábio", tan: ["#cfd3d9", "#aeb4bd"], dark: ["#8c929c", "#6b7280"], light: "#e6e8ec" },
     { id: "dalmata", name: "Dálmata", price: 12, text: "branco com manchas pretas", tan: ["#f6f6f6", "#eeeeee"], dark: ["#2b2b2b", "#1f1f1f"], light: "#ffffff", spots: true },
-    { id: "chocolate", name: "Chocolate", price: 15, text: "pelo marrom de chocolate", tan: ["#8a5a3a", "#6b4226"], dark: ["#4a2c17", "#3a2010"], light: "#b98a62" },
+    { id: "chocolate", name: "Chocolate", price: 15, text: "pelo marrom de chocolate", tan: ["#a06a3f", "#85532f"], dark: ["#5a3a1f", "#472b15"], light: "#c99a70" },
     { id: "dourado", name: "Dourado", price: 20, text: "pelo dourado e coleira de ouro", tan: ["#f2cf7a", "#e0b04a"], dark: ["#c89a3a", "#a87c22"], light: "#fae6b0", collar: "#d4a017" },
     { id: "arco-iris", name: "Arco-íris", price: 25, text: "pelo rosa-bebê e coleira de arco-íris", tan: ["#ffd6f0", "#f3b6e4"], dark: ["#c9a0ff", "#a97bec"], light: "#fff0fb", collar: "rainbow" },
     { id: "pirata", name: "Pirata", price: 30, text: "bandana vermelha e tapa-olho", acc: "pirate" },
@@ -1469,6 +1469,7 @@
   const START_HINT = "O tempo só começa quando você se mexer.";
   let started = false;         // só vira true quando o jogador dá o primeiro passo na fase: antes disso o relógio, os agentes e os blocos ficam parados
   let startHint = false;       // o aviso "mova-se para começar" está na tela
+  let startEff = "";           // (0.16.0) os reforços que valem, para dizer no primeiro passo (o aviso de espera fica curto: no celular um aviso comprido cobria o campo e o cachorrinho)
   let autoStart = false;       // gancho dos testes: a fase começa a contar na hora (como antes da 0.7.0)
   let pickupToastUntil = 0;    // até quando o aviso de um osso/vida (poder, vida extra) está na tela: o aviso da meta espera por ele
   let goalReached = false;     // (fases com pontos mínimos) já avisou que a meta foi atingida e a saída abriu
@@ -1593,7 +1594,8 @@
     const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de um item já pego
     const near = []; // renascendo no lugar, nenhum item cai em cima do cachorro nem logo ao lado dele
     if (lv.respawnInPlace) { const [pc, pr] = tileOf(player.x + player.w / 2, player.y + player.h / 2); for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) near.push([c, r]); }
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near]);
+    const ballTiles = balls.filter((b) => !b.taken).map((b) => tileOf(b.x, b.y)); // (e nem em cima de uma bolinha que ainda está no chão)
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near, ...ballTiles]);
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone, it.kind)); });
   }
 
@@ -2232,7 +2234,7 @@
         return;
       }
       started = true;
-      if (startHint) { startHint = false; if ($("toast").textContent.includes(START_HINT)) { hintTimer = 0; $("toast").classList.remove("show"); } } // (só some o aviso do primeiro passo; outro aviso na tela segue até o fim)
+      if (startHint) { startHint = false; if ($("toast").textContent.includes(START_HINT)) { hintTimer = 0; $("toast").classList.remove("show"); if (startEff) toast(startEff, 4.5); } startEff = ""; } // (só some o aviso do primeiro passo; outro aviso na tela segue até o fim)
     }
     time += dt;
     player.moving = !!(ix || iy);
@@ -2345,7 +2347,7 @@
       : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionShort()}` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
-    else { toast(`${msg2} · ${START_HINT}`, 600); startHint = true; }
+    else { startEff = eff ? `Reforços valendo: ${eff}` : ""; toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
   }
 
   // ---------- Jogo salvo ----------
@@ -2588,7 +2590,7 @@
     list.replaceChildren();
     let firstFocus = true;
     for (const [i, k] of SKINS.entries()) {
-      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? w.equipped === k.id : k.id === "";
+      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (SKINS.some((s) => s.id === w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
       const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
       cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
       renderSkinPreview(cv, k.id);
@@ -2635,7 +2637,7 @@
 
   // ---------- Reforços: a tela de vitória deixa escolher 1 deles para a próxima fase ----------
   const winExtraText = (next) => `${theme.place} · Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
-    (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : "");
+    (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : ` · Parabéns! Você completou as ${LEVELS.length} fases!`);
   // `L` = a fase em que o reforço vai valer (o máximo de vidas sobe nas Fases 11 a 20); o Coração maior perde a graça quando o máximo da fase já é 10.
   function reinforceAvailable(r, u, curLives, L = lv) { return r.from && L.id < r.from ? false : r.id === "life" ? curLives < capFor(L, u) : r.id === "heart" ? u.heart < UP_MAX.heart && capFor(L, u) < LIFE_CAP_HARD : u[r.id] < UP_MAX[r.id]; }
   function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
@@ -3001,7 +3003,7 @@
       if (seq !== screenSeq) { renderMenu(); return; } // a pessoa já saiu desta tela (Esc/Voltar): não puxa de volta
       if (!r.ok) {
         $("login-pass").value = "";
-        return fail(r.error === "locked" ? `Muitas tentativas erradas. Tente de novo em ${Math.ceil(r.waitMs / 1000)} segundos.` : "Usuário ou senha incorretos.", "login-pass");
+        return fail(r.error === "locked" ? `Muitas tentativas erradas. Tente de novo em ${Math.ceil(r.waitMs / 1000)} ${Math.ceil(r.waitMs / 1000) === 1 ? "segundo" : "segundos"}.` : "Usuário ou senha incorretos.", "login-pass");
       }
       afterAuth();
     });
@@ -3404,7 +3406,7 @@
       const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
-    if (!(started && invuln > 0 && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível)
+    if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível; com "reduzir movimento" não pisca)
     drawChaseArrows(camX, camY, vw, vh);
     drawGuideArrows();
   }
@@ -3631,7 +3633,13 @@
     if (!scope) return;
     const els = [...scope.querySelectorAll("button, input")].filter((e) => !e.disabled && e.offsetParent !== null);
     if (!els.length) return;
-    const i = els.indexOf(document.activeElement);
+    if (els.length < 2 && scope.scrollHeight > scope.clientHeight + 1) { scope.scrollTop += dir * Math.max(80, scope.clientHeight * 0.5); return; } // (só há um botão, por exemplo a lojinha sem petscoin: as setas rolam a tela em vez de pular para ele)
+    let i = els.indexOf(document.activeElement);
+    const a = document.activeElement;
+    if (i < 0 && a && scope.contains(a)) { // o foco está num item que não é botão (o nome da skin depois de uma compra): segue a partir dele, em vez de pular para o primeiro ou o último botão da tela
+      const after = els.findIndex((e) => a.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);
+      i = dir > 0 ? (after < 0 ? els.length : after) - 1 : (after < 0 ? els.length : after);
+    }
     els[(i + dir + els.length) % els.length].focus();
   }
 
