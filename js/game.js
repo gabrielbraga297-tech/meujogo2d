@@ -1098,7 +1098,7 @@
     {
       id: 11, title: "Fase 11", map: MAP_11, balls: 4, vets: vetsOf(11, 5), rations: 44, bones: 5, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 16, lifePenalty: 300, minPoints: 2300, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
-      note: "labirinto ainda maior e mais agentes da carrocinha",
+      note: "labirinto ainda maior; os primeiros gatos e a missão do osso",
       cats: [[18, 32], [7, 27]], cat: { speed: 130, chaseSpeed: 200, hear: 7 },
       lifeCap: 6, mission: { bones: true }, missionBonus: 200,
       boneMix: ["scare", "scare", "scare", "gold", "ice"],
@@ -1818,8 +1818,11 @@
           // vai atrás do cachorro por um caminho que não passa pelo tile dos outros agentes (se houver outro caminho): eles se espalham em vez de andar em fila
           const from = tileOf(v.cx, v.cy), dogTile = tileOf(player.x + player.w / 2, player.y + player.h / 2);
           const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
-          let p = pathTo(bfs(from, false, taken), dogTile);
-          if (!p.length) p = pathTo(bfs(from), dogTile);
+          let p = [];
+          if (from[0] !== dogTile[0] || from[1] !== dogTile[1]) { // (já no tile do cachorrinho, por exemplo enquanto ele está protegido: não há caminho a buscar, e a busca não se repete 3 vezes por quadro)
+            p = pathTo(bfs(from, false, taken), dogTile);
+            if (!p.length) p = pathTo(bfs(from), dogTile);
+          }
           v.leg = p[0] || null;
         } else if (v.idle > 0) {
           if (!idled) v.idle -= dt;
@@ -1975,9 +1978,10 @@
           if (!c.leg) { c.idle = 0.2; return; }
         } else if (c.mode === "chase") {
           const goal = catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
-          let p = pathTo(bfs(from, false, taken, cw), goal);
-          if (!p.length) p = pathTo(bfs(from, false, null, cw), goal);
-          if (!p.length) p = pathTo(bfs(from, false, null, cw), dogTileNow()); // já está no tile do alvo: vai direto ao cachorrinho
+          const dogT = dogTileNow(), atGoal = from[0] === goal[0] && from[1] === goal[1], atDog = from[0] === dogT[0] && from[1] === dogT[1];
+          let p = [];
+          if (!atGoal) { p = pathTo(bfs(from, false, taken, cw), goal); if (!p.length) p = pathTo(bfs(from, false, null, cw), goal); }
+          if (!p.length && !atDog) p = pathTo(bfs(from, false, null, cw), dogT); // já está no tile do alvo: vai direto ao cachorrinho (se já está no tile dele, não há caminho a buscar)
           c.leg = p[0] || null;
         } else {
           if (c.idle > 0) { if (!idled) c.idle -= dt; return; }
@@ -2269,7 +2273,7 @@
     if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
       for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
       for (const c of cats) if (!c.slow && touching(c)) defeatCat(c); // (o gato assustado vale o mesmo: +100 por poder)
-    } else if (!protectedNow && !noCatch && fx.ice <= 0 && (vets.some(touching) || cats.some(touching))) { loseLife(); return; } // (congelado, o inimigo é inofensivo)
+    } else if (!protectedNow && !noCatch && fx.ice <= 0 && (vets.some(touching) || cats.some(touching))) { loseLife(vets.some(touching) ? undefined : "cat"); return; } // (congelado, o inimigo é inofensivo)
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
@@ -2516,7 +2520,7 @@
   const levelTitle = (id) => BUILT[id]?.title || `Fase ${id}`;
 
   function describeSave(sv) {
-    const L = BUILT[sv.l], gotR = sv.items.filter((i) => i[2] === 1 && i[4] !== 1).length, gotB = sv.items.filter((i) => i[2] === 1 && i[4] === 1).length;
+    const L = BUILT[sv.l], gotR = sv.items.filter((i) => i[2] === 1 && !(i[4] > 0)).length, gotB = sv.items.filter((i) => i[2] === 1 && i[4] > 0).length; // (osso = qualquer tipo: comum, ouro, gelo, turbo ou ímã)
     return `${levelTitle(sv.l)} · ${fmt(sv.time * 1000)} · ${gotR}/${L.rations} rações${L.bones ? ` · ${gotB}/${L.bones} ossos` : ""} · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
   }
 
@@ -2760,11 +2764,11 @@
   function gameOver(why) {
     if (state === "lost") return; // (só uma vez: nada de repetir o som nem a tela se a checagem de pontos rodar de novo)
     setState("lost");
-    sound.play("gameover", { delay: why ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
+    sound.play("gameover", { delay: why && why !== "cat" ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
     const missionFail = why === "short" && lv.mission && !missionDone() && (runningScore() >= lv.minPoints || !allCollected()); // (0.15.6) não dá mais para cumprir a missão (acabou o poder do osso sem os sustos); se pegou tudo e os pontos também faltam, vale a derrota dos pontos
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : "A carrocinha pegou o cachorrinho!";
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
     $("lose-lead").textContent = missionFail ? `${allCollected() ? "Você pegou tudo" : "Acabou o poder do osso"}, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
@@ -2799,7 +2803,9 @@
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
     $("menu-note").classList.toggle("hidden", store.persistent);
     const bests = me ? LEVELS.map((l) => [l, store.personalBest(me, l.id)]).filter(([, b]) => b) : [];
-    $("menu-best").textContent = bests.length ? `Suas melhores: ${bests.map(([l, b]) => `${l.title} ${b.p}`).join(" · ")}` : "";
+    const BEST_SHOWN = 4; // (0.16.0) com 20 fases a linha passava de 300 letras e empurrava o rodapé do menu para fora da tela: mostra as últimas fases e diz quantas ficaram de fora
+    const shownBests = bests.slice(-BEST_SHOWN);
+    $("menu-best").textContent = bests.length ? `Suas melhores: ${bests.length > shownBests.length ? `… (mais ${bests.length - shownBests.length}) · ` : ""}${shownBests.map(([l, b]) => `${l.title} ${b.p}`).join(" · ")}` : "";
     const done = me ? store.progress(me).completed.filter((l) => LEVEL_IDS.includes(l)).length : 0;
     $("menu-progress").textContent = me ? `Fases concluídas: ${done}/${LEVELS.length} · Pontuação total: ${store.totalScore(me, LEVEL_IDS)} · Petscoin: ${store.wallet(me).treats}` : "";
     refreshSkin();

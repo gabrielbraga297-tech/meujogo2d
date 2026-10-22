@@ -2185,7 +2185,7 @@ const PAGE_HELPERS = () => {
     const tbl = readme.slice(readme.indexOf("## Tabela das fases"), readme.indexOf("## Fases"));
     const rows = tbl.split("\n").filter((l) => /^\| \d+ \|/.test(l)).map((l) => l.split("|").map((c) => c.trim()).filter(Boolean));
     const num = (s) => Number(String(s).replace(",", "."));
-    const lvData = await ev(page, () => __game.levels.map((l) => ({ id: l.id, vets: l.vets.length, rations: l.rations, bones: l.bones, speed: l.vets[0].speed, chase: l.vets[0].chaseSpeed, minPoints: l.minPoints, dog: l.dogSpeed })));
+    const lvData = await ev(page, () => __game.levels.map((l) => ({ id: l.id, vets: l.vets.length, rations: l.rations, bones: l.bones, speed: l.vets[0].speed, chase: l.vets[0].chaseSpeed, minPoints: l.minPoints, dog: l.dogSpeed, mission: l.mission })));
     ok(rows.length === lvData.length && lvData.length === 20, `a tabela do README tem uma linha para cada fase do jogo (${rows.length} de ${lvData.length})`);
     const diffs = [];
     lvData.forEach((l, i) => {
@@ -2199,6 +2199,12 @@ const PAGE_HELPERS = () => {
       if (!(Math.abs(num(String(dog).replace(/ px\/s/, "")) - 252 * l.dog) < 1e-6)) diffs.push(`fase ${l.id}: cachorro ${dog} ≠ ${252 * l.dog}`);
       if (l.minPoints) { if (!new RegExp(`chegar a ${l.minPoints} pontos`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" sem ${l.minPoints} pontos`); }
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
+      // (0.16.0) a missão das Fases 11 a 20 também está na condição: cada parte dela com os números do jogo
+      if (l.mission) {
+        const parts = [l.mission.bones ? `pegar todos os ${l.bones} ossos` : "", l.mission.scare ? `assustar ${l.mission.scare} carteiros ou gatos` : "", l.mission.rations ? `pegar ${l.mission.rations} das ${l.rations} rações` : ""].filter(Boolean);
+        if (!/cumprir a missão/.test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" sem a missão`);
+        for (const t of parts) if (!cond.includes(t)) diffs.push(`fase ${l.id}: condição sem "${t}"`);
+      } else if (/missão/.test(cond)) diffs.push(`fase ${l.id}: condição cita missão, mas a fase não tem`);
     });
     ok(!diffs.length, `os números da tabela das fases do README (condição, agentes da carrocinha, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
     // ---- as tabelas "Fases 6 a 10" e "Fases 11 a 20" do README (mapa, alcance, peças móveis, pontos, renascer) também batem com o jogo ----
@@ -7891,6 +7897,66 @@ const PAGE_HELPERS = () => {
       return { over, taken: b.taken, moved: Math.round(Math.hypot(b.x - cx, b.y - cy)), still: b.vx === 0 && b.vy === 0 };
     });
     ok(!r.over && !r.taken && r.moved >= 8 && r.still, `uma bolinha embaixo de um bloco é empurrada para fora dele (andou ${r.moved} px e ficou parada)`);
+  });
+
+  // =====================================================================
+  // 0.16.0: correções da auditoria final (resumo do jogo salvo, derrota por gato, menu com 20 fases, mapas do repositório, textos)
+  await section("0.16.0: correções da auditoria final", async () => {
+    const until11 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    await fresh(page, { keepSave: true, done: until11 });
+    // ---- o resumo do jogo salvo conta TODOS os tipos de osso (ouro, gelo, turbo, ímã) como ossos, não como rações ----
+    const sv = await ev(page, () => {
+      __game.start(12); __game.noCatch = true;
+      const p = __game.player, bones = __game.items.filter((i) => i.bone);
+      for (const b of bones) { b.x = p.x + 4; b.y = p.y + 4; __game.tick(0.01); }
+      __game.save();
+      return { nb: bones.length, kinds: [...new Set(bones.map((i) => i.kind || "scare"))], got: bones.filter((i) => i.taken).length, rations: __game.levels.find((l) => l.id === 12).rations };
+    });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    const saved = await page.textContent("#menu-save");
+    ok(sv.kinds.length > 1 && sv.got === sv.nb && saved.includes(`${sv.nb}/${sv.nb} ossos`) && saved.includes(`0/${sv.rations} rações`),
+      `o resumo do jogo salvo (Fase 12, ossos ${sv.kinds.join("/")}) diz "${saved}": os ossos de tipos novos contam como ossos e não como rações`);
+    await page.click("#btn-start");
+    const conf = await page.textContent("#confirm-text");
+    ok(conf.includes(`${sv.nb}/${sv.nb} ossos`) && conf.includes(`0/${sv.rations} rações`), "a confirmação de novo jogo mostra a mesma contagem");
+    await page.click("#btn-confirm-back");
+
+    // ---- a última vida tirada por um gato: a tela diz que foi o gato ----
+    await fresh(page, { keepSave: true, done: until11 });
+    const cat = await ev(page, () => {
+      __game.start(12); __game.setLives(1); __game.noCatch = false;
+      for (const v of __game.vets) v.cool = 99;
+      for (const c of __game.cats) c.cool = 99;
+      for (let i = 0; i < 45; i++) __game.tick(0.05);
+      const c = __game.cats[0], p = __game.player;
+      c.cx = p.x + 12; c.cy = p.y + 12; __game.tick(0.01);
+      return { state: __game.state, title: document.getElementById("lose-title").textContent };
+    });
+    ok(cat.state === "lost" && cat.title === "O gato pegou o cachorrinho!", `perder a última vida para um gato mostra "${cat.title}"`);
+
+    // ---- o menu não passa de uma linha curta com 20 fases ----
+    await fresh(page, { keepSave: true });
+    await ev(page, () => { const st = Records.createStore(localStorage); for (let l = 1; l <= 12; l++) st.addRun({ level: l, timeMs: 30000, points: 1000 + l }); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS);
+    const best = await page.textContent("#menu-best");
+    ok(best.includes("Fase 12 1012") && best.includes("Fase 9 1009") && !best.includes("Fase 8 1008") && best.includes("(mais 8)") && best.length < 110, `"Suas melhores" mostra as últimas 4 fases e diz quantas ficaram de fora ("${best}")`);
+
+    // ---- os mapas do repositório (tools/citymaze/maps) têm as mesmas paredes dos mapas do jogo (Fases 1 a 20) ----
+    const gameMaps = await ev(page, () => __game.levels.map((l) => l.map.slice()));
+    const mapDiffs = [];
+    gameMaps.forEach((rows, i) => {
+      const n = i + 1, f = path.join(root, "tools", "citymaze", "maps", `map${n}.json`);
+      if (!fs.existsSync(f)) { mapDiffs.push(`fase ${n}: sem ${f}`); return; }
+      const jr = JSON.parse(fs.readFileSync(f, "utf8")).rows;
+      if (jr.length !== rows.length || jr.some((r, y) => r.length !== rows[y].length)) { mapDiffs.push(`fase ${n}: tamanho`); return; }
+      let d = 0; rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if ((r[x] === "#") !== (jr[y][x] === "#")) d++; });
+      if (d) mapDiffs.push(`fase ${n}: ${d} tiles de parede diferentes`);
+    });
+    ok(gameMaps.length === 20 && !mapDiffs.length, `os 20 mapas de tools/citymaze/maps têm as mesmas paredes dos mapas do jogo ${mapDiffs.join("; ")}`);
+
+    // ---- os textos do jogo: Como jogar e Pontuações citam bolinhas, missão e o renascer das Fases 9 a 20 ----
+    const how = await ev(page, () => document.getElementById("howto").textContent + " " + document.getElementById("scores").textContent);
+    ok(/da Fase 9 em diante ele renasce onde caiu/.test(how) && /50 por bolinha/.test(how) && /bônus da missão/.test(how) && !/nas Fases 9 e 10 ele renasce/.test(how), "Como jogar e Pontuações: renascer da Fase 9 em diante, bolinha (+50) e bônus da missão na fórmula");
   });
 
   console.log("erros JS:", errs);

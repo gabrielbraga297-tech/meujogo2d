@@ -1,6 +1,6 @@
 # Jogo 2D top-down (sem nome ainda)
 
-Versão atual: **Fase 1 a Fase 10**.
+Versão atual: **Fase 1 a Fase 20** (com gatos, missões, ossos de tipos novos, bolinhas, petiscos e lojinha de skins).
 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
@@ -12,7 +12,7 @@ A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exe
 - **Local:** abra `index.html` em qualquer navegador moderno (Chrome, Edge, Firefox, Safari), no computador, celular ou tablet.
 
 ## Objetivo
-Você é um cachorrinho. Pegue as tigelas de ração (e, a partir da Fase 2, os **ossos**) e chegue à saída. Nas Fases 1 a 3 a saída só abre quando você pegar **tudo**; nas **Fases 4 a 10** ela abre assim que a sua pontuação na fase chega aos **pontos mínimos** (800 na Fase 4, 1000 na 5 e de 1250 a 2050 nas Fases 6 a 10), sem precisar pegar tudo. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (escondida: você só descobre ao pegar o item).
+Você é um cachorrinho. Pegue as tigelas de ração (e, a partir da Fase 2, os **ossos**) e chegue à saída. Nas Fases 1 a 3 a saída só abre quando você pegar **tudo**; nas **Fases 4 a 20** ela abre assim que a sua pontuação na fase chega aos **pontos mínimos** (800 na Fase 4, 1000 na 5, de 1250 a 2050 nas Fases 6 a 10 e de 2300 a 4000 nas Fases 11 a 20), sem precisar pegar tudo; **a partir da Fase 11 também é preciso cumprir a missão da fase**. Os itens aparecem em **lugares diferentes a cada jogo**, e **alguns trazem uma vida extra** (escondida: você só descobre ao pegar o item).
 
 **O tempo só começa a correr quando você dá o primeiro passo** (em todas as fases): até lá o relógio, os agentes da carrocinha e os blocos ficam parados, e um aviso na tela lembra disso. O mesmo vale ao **continuar um jogo salvo** com o tempo em 0 e ao **tentar a fase de novo**.
 
@@ -33,16 +33,16 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 8 | chegar a 1650 pontos na fase (a saída abre) e sair | 5 | 32 | 4 | 82 / 163,98 px/s | 246,96 px/s |
 | 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 5 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
 | 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
-| 11 | chegar a 2300 pontos na fase (a saída abre) e sair | 5 | 44 | 5 | 89,32 / 178,62 px/s | 252 px/s |
-| 12 | chegar a 2450 pontos na fase (a saída abre) e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
-| 13 | chegar a 2650 pontos na fase (a saída abre) e sair | 6 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
-| 14 | chegar a 2800 pontos na fase (a saída abre) e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
-| 15 | chegar a 3000 pontos na fase (a saída abre) e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
-| 16 | chegar a 3200 pontos na fase (a saída abre) e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
-| 17 | chegar a 3400 pontos na fase (a saída abre) e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
-| 18 | chegar a 3600 pontos na fase (a saída abre) e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
-| 19 | chegar a 3800 pontos na fase (a saída abre) e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
-| 20 | chegar a 4000 pontos na fase (a saída abre) e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
+| 11 | chegar a 2300 pontos na fase **e cumprir a missão** (pegar todos os 5 ossos); só então a saída abre — e sair | 5 | 44 | 5 | 89,32 / 178,62 px/s | 252 px/s |
+| 12 | chegar a 2450 pontos na fase **e cumprir a missão** (assustar 3 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
+| 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 6 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
+| 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos e assustar 2 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
+| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (assustar 4 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
+| 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
+| 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e assustar 3 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
+| 18 | chegar a 3600 pontos na fase **e cumprir a missão** (assustar 5 carteiros ou gatos com o poder do osso e pegar 35 das 58 rações); só então a saída abre — e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
+| 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e assustar 4 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
+| 20 | chegar a 4000 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e assustar 5 carteiros ou gatos com o poder do osso e pegar 48 das 62 rações); só então a saída abre — e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os agentes da carrocinha ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa, fica tonto por 2 s e depois foge a **50% da velocidade de fuga** (0,625 × a velocidade de patrulha da tabela, ou seja 37,8 px/s na Fase 2) até o poder acabar.
@@ -82,7 +82,7 @@ Cidades cada vez maiores, a partir da Fase 6: mais rações, mais ossos, **mais 
 | Poder do osso | 35 s | 35 s | 35 s | 35 s | 35 s |
 | Ao ser pego ou esmagado | volta ao início | volta ao início | volta ao início | **renasce onde morreu** | **renasce onde morreu** |
 
-Nas **Fases 9 e 10** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os agentes da carrocinha voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
+Da **Fase 9 até a Fase 20** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os agentes da carrocinha voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
 
 ### Fases 11 a 20 (0.15.4)
 Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 8 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Todas têm **gatos** (de 2 a 7, veja *Os gatos*). Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
@@ -113,13 +113,13 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 
 Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a Fase 2 está liberada) aparece a escolha de fase, e ao vencer uma fase há o botão **Próxima fase**. No menu, **Jogar fases anteriores** (aparece depois de concluir alguma fase) leva às fases já concluídas para **melhorar o recorde** de cada uma: só a maior pontuação de cada fase vale, e a pontuação total é a soma do melhor de cada fase (jogar uma fase de novo ou pular para outra não soma partidas, só pode subir o recorde daquela fase).
 
-**O osso (a partir da Fase 2):** cada osso vale **150 pontos** (50 do osso + 100 de bônus), deixa o cachorrinho **10% mais rápido** (soma, até o fim da fase) e liga o **poder** por **30 segundos** (**35 s nas Fases 5 a 10**; o placar mostra *PODER* contando): os agentes da carrocinha viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho: ficam **mais lentos** (1,25 × a velocidade de patrulha, 62,5% da de perseguição) e **fogem** dele, escolhendo a cada passo o lugar mais longe do cachorrinho num raio de 12 passos (de preferência um que alcançam antes dele). Quem **encosta num carteiro ganha dele** e **+100 pontos**: o carteiro volta ao **centro do mapa**, fica tonto (parado) por 2 s e depois volta a fugir, **50% mais lento** ainda, até o poder acabar. **Cada carteiro rende pontos uma vez por poder** (pegar outro osso renova o poder e todos podem ser pegos de novo), então não adianta ficar parado no posto dele. Pegar o outro osso com o poder ligado **recomeça** a contagem (não soma). Quando o poder acaba, os carteiros voltam a ser agentes da carrocinha e o cachorrinho ganha **1 s de proteção**. Com o poder o cachorrinho também **não é esmagado** pelos blocos. O tempo do poder é `bonePower` da fase.
+**O osso (a partir da Fase 2):** cada osso vale **150 pontos** (50 do osso + 100 de bônus), deixa o cachorrinho **10% mais rápido** (soma, até o fim da fase) e liga o **poder** por **30 segundos** (**35 s nas Fases 5 a 20**; o placar mostra *PODER* contando): os agentes da carrocinha viram **carteiros** (azuis), que **não perseguem nem pegam** o cachorrinho: ficam **mais lentos** (1,25 × a velocidade de patrulha, 62,5% da de perseguição) e **fogem** dele, escolhendo a cada passo o lugar mais longe do cachorrinho num raio de 12 passos (de preferência um que alcançam antes dele). Quem **encosta num carteiro ganha dele** e **+100 pontos**: o carteiro volta ao **centro do mapa**, fica tonto (parado) por 2 s e depois volta a fugir, **50% mais lento** ainda, até o poder acabar. **Cada carteiro rende pontos uma vez por poder** (pegar outro osso renova o poder e todos podem ser pegos de novo), então não adianta ficar parado no posto dele. Pegar o outro osso com o poder ligado **recomeça** a contagem (não soma). Quando o poder acaba, os carteiros voltam a ser agentes da carrocinha e o cachorrinho ganha **1 s de proteção**. Com o poder o cachorrinho também **não é esmagado** pelos blocos. O tempo do poder é `bonePower` da fase.
 
 **Os blocos (a partir da Fase 3):** deslizam por trilhos curtos e abrem e fecham as portas dos corredores. Eles **mudam de lado a cada 3 segundos** (`blockEvery` da fase, em `js/game.js`), sem esperar ninguém chegar perto, e deslizam a 120 px/s (cerca de 0,27 s por mudança). **A quantidade de blocos é sorteada a cada jogo** (`blockRange`: Fase 3 de 1 a 2 portas; Fase 4 de 1 a 3; Fase 5 de 1 a 3 portas e de 1 a 3 paredes; Fases 6 a 10, veja a tabela acima), e também quais. Nos 0,6 s antes de cada mudança o **trilho pisca em amarelo**. Nas Fases 1 a 3 eles **nunca esmagam**: quem estiver no lugar para onde o bloco vai é **empurrado para o lado**. Cada porta tem um caminho alternativo, então **sempre sobra um caminho** (o teste confere isso para todas as combinações de posição dos blocos).
 
 **Fases 4 a 10, os blocos que esmagam:** se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e os pontos da fase (200, 250 ou 300). Os agentes da carrocinha continuam sendo empurrados, não esmagados. É `crush: true` da fase.
 
-**Fases 4 a 10, pontos mínimos:** cada vida perdida custa **200 pontos** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 e 10 (`lifePenalty`), e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**, de **1250 a 2050** nas Fases 6 a 10): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo. Se todos os itens já foram pegos, o poder acabou e a pontuação ainda não chega à meta, não há mais como passar: a tentativa termina (*Os pontos não bastaram!*, com a explicação de que o jogador pegou tudo mas a pontuação ficou abaixo do mínimo) e vale a regra das novas tentativas.
+**Fases 4 a 10, pontos mínimos:** cada vida perdida custa **200 pontos** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 a 20 (`lifePenalty`), e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**, de **1250 a 2050** nas Fases 6 a 10 e de **2300 a 4000** nas Fases 11 a 20): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo. Se todos os itens já foram pegos, o poder acabou e a pontuação ainda não chega à meta, não há mais como passar: a tentativa termina (*Os pontos não bastaram!*, com a explicação de que o jogador pegou tudo mas a pontuação ficou abaixo do mínimo) e vale a regra das novas tentativas.
 
 **Fase 4, o mapa:** um labirinto de cidade de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho): 7 × 5 quarteirões ligados por **ruas de 3 tiles**, a **praça da carrocinha** no centro (7 × 5, com 4 vans nos cantos e os 3 postos dos agentes), o início na borda esquerda e a saída na direita. Há **3 caminhos que não passam pela mesma célula** do início à saída e nenhum beco sem saída. As 3 portas de bloco ficam em vielas de 1 tile (com nicho) que são atalhos entre quarteirões: o teste confere que, com os blocos em qualquer posição, todo o chão continua ligado.
 
@@ -188,7 +188,7 @@ Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há *
 - **Sustos:** **assustar** N carteiros ou gatos com o poder do osso (a soma de todos os poderes da fase; 3 na Fase 12 até 5 nas Fases 18 e 20);
 - **Rações:** pegar pelo menos N rações (36 na Fase 13, 44 na 16, 35 na 18 e 48 na 20).
 
-Quando os pontos já bastam mas falta a missão, o jogo avisa (*Pontos suficientes! Falta a missão: …*) e, se o cachorrinho chega à saída, a saída continua fechada (*Falta a missão: …*). Se já pegou **tudo** e o poder do osso acabou sem dar para cumprir a missão (poucos sustos), **não há mais como passar**: a tentativa acaba como em *os pontos não bastaram* (*A missão não foi cumprida!*; custa uma nova tentativa). **Cumprir a missão vale pontos extras** (+200 na Fase 11, +50 a cada fase, +650 na Fase 20), mostrados na tela de vitória.
+Quando os pontos já bastam mas falta a missão, o jogo avisa (*Pontos suficientes! Falta a missão: …*) e, se o cachorrinho chega à saída, a saída continua fechada (*Falta a missão: …*). Se a missão pede sustos, o poder do osso acabou e **não sobrou nenhum osso comum** para pegar (os ossos de ouro, gelo, turbo e ímã não assustam), ou se já pegou **tudo** e a missão ficou incompleta, **não há mais como passar**: a tentativa acaba como em *os pontos não bastaram* (*A missão não foi cumprida!*; custa uma nova tentativa). **Cumprir a missão vale pontos extras** (+200 na Fase 11, +50 a cada fase, +650 na Fase 20), mostrados na tela de vitória.
 
 **Mais vidas:** o máximo de vidas **sobe a partir da Fase 11**: 6, 6, 7, 7, 8, 8, 9, 9, 10 e 10 nas Fases 11 a 20 (5 nas Fases 1 a 10), e o reforço *Coração maior* soma mais 1 por nível, mas **nunca passa de 10** (quando o máximo da fase já é 10 ele deixa de ser oferecido). As vidas extras escondidas (3 ou 4 por fase) e o reforço *Vida extra* levam você até esse máximo, e o placar mostra até **10 corações**.
 
@@ -267,11 +267,11 @@ Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos p
 
 - Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo da fase (5; de 6 a 10 nas Fases 11 a 20; mais os níveis de *Coração maior*, nunca acima de 10).
 - As vidas que sobram ao terminar uma fase **passam para a fase seguinte** (pelo botão *Próxima fase*). Escolher uma fase no menu ou usar *Jogar novamente* começa com 3 vidas.
-- Se o agente da carrocinha encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 e 10). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **nas Fases 9 e 10 ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
+- Se o agente da carrocinha encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 a 20). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **da Fase 9 em diante ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro (poder do osso) + 50 por bolinha (0.15.8) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro ou gato assustado (poder do osso) + 50 por bolinha (0.15.8) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 a 20) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 
@@ -395,7 +395,7 @@ css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
 js/themes.js          ambientes das fases (chão, paredes e caixas de cada lugar)
-tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py e apply_citymaze.py
+tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py (configuração das Fases 1 a 20), apply_citymaze.py (Fases 1 a 10), apply_levels11_20.py (Fases 11 a 20) e maps/map1.json … map20.json (os mapas que estão no jogo; o teste confere paredes iguais)
 js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)

@@ -32,6 +32,8 @@ V_POS = {                # postos 'V' dentro do pátio 7 x 5 (deslocamento em re
     4: [(-2, -1), (2, -1), (-2, 1), (2, 1)],
     5: [(-2, -1), (2, -1), (-2, 1), (2, 1), (0, 0)],
     6: [(-2, -1), (0, -1), (2, -1), (-2, 1), (0, 1), (2, 1)],
+    7: [(-2, -1), (0, -1), (2, -1), (-2, 1), (0, 1), (2, 1), (0, 0)],
+    8: [(-2, -1), (0, -1), (2, -1), (-2, 0), (2, 0), (-2, 1), (0, 1), (2, 1)],
 }
 
 # W x H = tamanho; nx, ny = células por eixo; cell/wall = faixas de tamanho das células e dos prédios entre elas;
@@ -49,6 +51,17 @@ CFG = {
     8:  dict(W=53, H=39, nx=9, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.3, braid=0.05, winding=0.7, routes=3, doors=5, walls=5, nv=5, dead=0.19),
     9:  dict(W=61, H=39, nx=11, ny=7, cell=(3, 3), wall=(2, 3), center=(7, 5), newest=0.25, braid=0.0, winding=0.8, routes=3, doors=6, walls=6, nv=5, dead=0.24),
     10: dict(W=63, H=41, nx=11, ny=7, cell=(3, 3), wall=(2, 3), center=(7, 5), newest=0.2, braid=0.0, winding=0.9, routes=3, doors=6, walls=6, nv=6, dead=0.3),
+    # Fases 11 a 20 (0.15.4): labirintos maiores e mais enrolados; `cats` = gatos (a partir da 0.15.5), `hops` = muretas de caixas "X" que só o gato pula
+    11: dict(W=65, H=41, nx=11, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.25, braid=0.0, winding=0.9, routes=3, doors=6, walls=6, nv=5, dead=0.25, cats=2, hops=3),
+    12: dict(W=67, H=41, nx=11, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.25, braid=0.0, winding=0.9, routes=3, doors=6, walls=6, nv=5, dead=0.25, cats=3, hops=4),
+    13: dict(W=71, H=43, nx=13, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.22, braid=0.0, winding=1.0, routes=3, doors=6, walls=6, nv=6, dead=0.26, cats=3, hops=5),
+    14: dict(W=73, H=43, nx=13, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.22, braid=0.0, winding=1.0, routes=3, doors=6, walls=6, nv=6, dead=0.26, cats=4, hops=6),
+    15: dict(W=75, H=45, nx=13, ny=7, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.2, braid=0.0, winding=1.0, routes=3, doors=6, walls=6, nv=6, dead=0.27, cats=4, hops=7),
+    16: dict(W=75, H=49, nx=13, ny=9, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.2, braid=0.0, winding=1.0, routes=3, doors=6, walls=6, nv=7, dead=0.27, cats=5, hops=8),
+    17: dict(W=77, H=49, nx=13, ny=9, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.2, braid=0.0, winding=1.0, routes=3, doors=6, walls=6, nv=7, dead=0.28, cats=5, hops=9),
+    18: dict(W=79, H=51, nx=13, ny=9, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.18, braid=0.0, winding=1.1, routes=3, doors=6, walls=6, nv=8, dead=0.28, cats=6, hops=10),
+    19: dict(W=81, H=51, nx=13, ny=9, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.18, braid=0.0, winding=1.1, routes=3, doors=6, walls=6, nv=8, dead=0.29, cats=6, hops=11),
+    20: dict(W=83, H=53, nx=13, ny=9, cell=(3, 4), wall=(2, 3), center=(7, 5), newest=0.15, braid=0.0, winding=1.2, routes=3, doors=6, walls=6, nv=8, dead=0.3, cats=7, hops=12),
 }
 MAX_RATIO = 1.7
 
@@ -436,6 +449,10 @@ def build(level, seed, cfg=None, tries=60):
             g = geom(e, kind)
             if not g:
                 continue
+            if kind == 'door' and e in edges:             # uma porta no lugar de uma rua já existente: com todas as portas fechadas as células têm de continuar ligadas
+                gone = {o['edge'] for o in chosen_geoms if o['kind'] == 'door' and o['edge'] in edges} | {e}
+                if not is_connected(edges, cells, skip=gone):
+                    continue
             t = tr(g)
             if any(cheb(t, tr(o)) < MIN_PIECE_GAP for o in chosen_geoms):
                 continue
@@ -452,9 +469,13 @@ def build(level, seed, cfg=None, tries=60):
     # (as portas fora do sorteio acima só entram se as primeiras não bastarem: take() embaralha, então separamos em duas listas)
     if take(bar_c, 'wall', cfg['walls']) < cfg['walls']:
         return why(4)
+    degb = degree_map(edges, nx, ny)
     new_c = [e for e in all_pairs if e not in edges and not hub(e)]
+    keep_dead = [e for e in new_c if degb[e[0]] >= 2 and degb[e[1]] >= 2]      # (as portas de preferência não ligam becos sem saída: os becos são o labirinto)
+    new_c = keep_dead + [e for e in new_c if e not in keep_dead]
     cyc_c = [e for e in sorted(edges) if not hub(e) and e not in bridges]
-    rnd.shuffle(new_c); rnd.shuffle(cyc_c)
+    rnd.shuffle(keep_dead); rnd.shuffle(cyc_c)
+    new_c = keep_dead + [e for e in new_c if e not in keep_dead]
     if take(new_c + cyc_c, 'door', cfg['doors'], keep_order=True) < cfg['doors']:
         return why(5)
     T.door_edges = {g['edge'] for g in chosen_geoms if g['kind'] == 'door'}
@@ -463,6 +484,28 @@ def build(level, seed, cfg=None, tries=60):
     deg2 = degree_map(T.edges, nx, ny)              # (as portas também são ruas: contam como ligação ao contar os becos sem saída)
     T.dead_frac = sum(1 for c in cells if deg2[c] == 1) / len(cells)
     T.cycles = len(T.edges) - len(cells) + 1
+    # ---- muretas de caixas "X" (só o gato pula): faixas de 1 tile atravessando um prédio entre duas células que não são ligadas por rua ----
+    hop_strips = []
+    if cfg.get('hops'):
+        busy_tiles = set()
+        for gg in chosen_geoms:
+            busy_tiles |= tr(gg)
+        cand_h = [e for e in all_pairs if e not in T.edges and not hub(e)]
+        rnd.shuffle(cand_h)
+        for e in cand_h:
+            if len(hop_strips) >= cfg['hops']:
+                break
+            a, b = e
+            if a[1] == b[1]:
+                gx, gw = wcols[min(a[0], b[0])]; ry, rh = crows[a[1]]
+                strip = [(gx + i, ry + rh // 2) for i in range(gw)]
+            else:
+                gy, gh = wrows[min(a[1], b[1])]; rx, rw = ccols[a[0]]
+                strip = [(rx + rw // 2, gy + i) for i in range(gh)]
+            if any(cheb([t], busy_tiles) < 3 for t in strip if busy_tiles) or any(cheb([t], [u for h in hop_strips for u in h]) < 2 for t in strip if hop_strips):
+                continue
+            hop_strips.append(strip)
+    T.hops = hop_strips
     # ---- rasterização ----
     g = [['#'] * W for _ in range(H)]
     def carve(x, y, w, h, ch='.'):
@@ -489,13 +532,51 @@ def build(level, seed, cfg=None, tries=60):
     g[P[1]][P[0]] = 'P'
     for (x, y) in Etiles:
         g[y][x] = 'E'
+    for strip in hop_strips:
+        for (x, y) in strip:
+            g[y][x] = 'X'
     for (x, y) in vans:
         g[y][x] = 'X'
     for (x, y) in vtiles:
         g[y][x] = 'V'
     T.rows = [''.join(r) for r in g]
     T.blocks = [gg['blk'] for gg in chosen_geoms]
+    T.cats = place_cats(T, cfg.get('cats', 0), cells, rnd) if cfg.get('cats') else []
+    if cfg.get('cats') and len(T.cats) < cfg['cats']:
+        return why(6)
     return T
+
+
+def place_cats(T, n, cells, rnd):
+    """Posições iniciais dos gatos: centros de células a 28+ passos do início, 10+ da saída e dos postos, a 14+ passos entre si, fora dos trilhos das peças."""
+    rows = T.rows
+    H, W = len(rows), len(rows[0])
+    floor = {(c, r) for r in range(H) for c in range(W) if rows[r][c] not in '#X'}
+    P = next((c, r) for r in range(H) for c in range(W) if rows[r][c] == 'P')
+    E = [(c, r) for r in range(H) for c in range(W) if rows[r][c] == 'E']
+    V = [(c, r) for r in range(H) for c in range(W) if rows[r][c] == 'V']
+    track = set()
+    for b in T.blocks:
+        track |= set(tiles_of(b, 'from')) | set(tiles_of(b, 'to'))
+    dP = bfs_dist(floor, P)
+    dE = [bfs_dist(floor, e) for e in E[:1]]
+    dV = bfs_dist(floor, V[0]) if V else {}
+    cand = []
+    for (i, j) in cells:
+        c = (T.ccols[i][0] + T.ccols[i][1] // 2, T.crows[j][0] + T.crows[j][1] // 2)
+        if c not in floor or c in track or (T.mid and (i, j) == T.mid):
+            continue
+        if dP.get(c, 0) >= 28 and dE[0].get(c, 0) >= 10 and dV.get(c, 0) >= 10:
+            cand.append(c)
+    rnd.shuffle(cand)
+    chosen = []
+    for c in cand:
+        if len(chosen) >= n:
+            break
+        dc = bfs_dist(floor, c)
+        if all(dc.get(o, 99) >= 14 for o in chosen):
+            chosen.append(c)
+    return chosen
 
 
 def tiles_of(b, which):
@@ -620,6 +701,7 @@ def make(level, seed, verbose=False):
 def to_json(T):
     out = dict(level=T.level, seed=T.seed, rows=T.rows, metrics=T.metrics, path=T.metrics['path'],
                blocks=[dict(kind=b['kind'], **{'from': b['from'], 'to': b['to'], 'size': b['size']}) for b in T.blocks],
+               cats=[list(c) for c in getattr(T, 'cats', [])], hops=[[list(t) for t in h] for h in getattr(T, 'hops', [])],
                lattice=dict(cx=[list(x) for x in T.ccols], wx=[list(x) for x in T.wcols], cy=[list(x) for x in T.crows], wy=[list(x) for x in T.wrows],
                             edges=[[list(a), list(b)] for a, b in sorted(T.edges)], P=list(T.pc), E=list(T.ec)))
     return out
@@ -634,6 +716,9 @@ def search(level, a, b, verbose=True):
     t0 = time.time()
     ok = 0
     for seed in range(a, b):
+        T0 = build(level, seed)
+        if T0 is None or abs(T0.dead_frac - CFG[level]['dead']) > (best[0] + 0.03 if best else 0.1):
+            continue                                   # (pré-filtro barato: só analisa as 4096 combinações das peças nas sementes promissoras)
         T = make(level, seed)
         if not T:
             continue
