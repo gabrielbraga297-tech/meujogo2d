@@ -837,6 +837,22 @@ test("animais: apagar a conta apaga o jogo de TODOS os animais (recordes, progre
   assert.ok(!st.game("cat").hasGame("Totó") && !st.hasGame("Totó"));
   assert.strictEqual(st.animal("Totó"), "dog"); assert.strictEqual(st.wallet("Totó").treats, 0);
 });
+test("animais: apagar o jogador também apaga, NO ARMAZENAMENTO, a escolha de bichinho e os dados dos outros animais (uma cópia nova da loja não os vê)", () => {
+  // (síncrono de propósito: este arquivo não espera testes assíncronos, o que vem depois de um `await` nunca roda; deleteAccount apaga os dados do nome com ou sem senha)
+  const mem = memStorage(), st = R.createStore(mem);
+  st.setPlayer("Totó"); runOf(st, "cat", 1, 900); st.game("cat").completeLevel("Totó", 1); st.game("cat").saveGame("Totó", { l: 2 }); st.setAnimal("Totó", "cat");
+  st.setPlayer("Ana"); st.setAnimal("Ana", "bird");
+  assert.strictEqual(R.createStore(mem).animal("Totó"), "cat", "(antes: a escolha está guardada)");
+  assert.ok(st.deleteAccount("Totó"));
+  const novo = R.createStore(mem); // outra cópia lendo o que ficou guardado
+  assert.strictEqual(novo.animal("Totó"), "dog", "a escolha do Totó não ficou guardada");
+  assert.ok(!JSON.parse(mem.getItem("cachorrinho.v1")).animal.toto, "nem no texto guardado");
+  assert.strictEqual(novo.animal("Ana"), "bird", "a escolha de quem não foi apagado continua");
+  assert.strictEqual(novo.game("cat").personalBest("Totó", 1), null);
+  assert.ok(!novo.game("cat").hasGame("Totó"));
+  const mem2 = memStorage(), so = R.createStore(mem2); so.setPlayer("Rex"); so.setAnimal("Rex", "cat"); so.deleteAccount("Rex"); // (o único jogador com escolha: o campo some do armazenamento)
+  assert.ok(!("animal" in JSON.parse(mem2.getItem("cachorrinho.v1"))), "sem nenhuma escolha guardada o campo `animal` some");
+});
 test("animais: o limite de jogos salvos vale por animal (o cachorrinho continua como sempre)", () => {
   const st = R.createStore(memStorage());
   const names = Array.from({ length: 16 }, (_, i) => "Jog" + i); // (o limite é de 12 jogos salvos por animal)

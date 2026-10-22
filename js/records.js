@@ -455,8 +455,8 @@
         data.players = data.players.filter((x) => nameKey(x) !== k);
         if (nameKey(data.player) === k) data.player = "";
         failures.delete(k);
+        if (data.animal) { delete data.animal[k]; if (!Object.keys(data.animal).length) delete data.animal; } // (a escolha de bichinho sai ANTES de gravar: senão ela ficaria no armazenamento)
         save();
-        if (data.animal) { delete data.animal[k]; if (!Object.keys(data.animal).length) delete data.animal; }
         const mine = Object.keys(saves).filter((x) => x === k || x.startsWith(k + "@"));
         if (mine.length) { for (const x of mine) delete saves[x]; persistSaves(); }
         return true;

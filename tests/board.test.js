@@ -112,6 +112,32 @@ test("sem servidor: localAll mostra só o aparelho e submit/fetchAll não fazem 
 });
 
 // ---------- stand by (desligado por padrão) ----------
+test("bichinhos (0.17.0): localAll(bichinho) mostra o ranking deste aparelho de cada bichinho; o padrão e o servidor são só do Cachorrinho", async () => {
+  const st = mkStore();
+  addRun(st, "Totó", 1, 600, 20000); addRun(st, "Ana", 1, 300, 30000); // Cachorrinho
+  st.setPlayer("Totó"); st.game("cat").addRun({ level: 1, points: 900, timeMs: 15000 }); st.game("cat").addRun({ level: 2, points: 100, timeMs: 15000 });
+  st.setPlayer("Bia"); st.game("cat").addRun({ level: 1, points: 700, timeMs: 15000 });
+  const S = await startServer();
+  try {
+    const b = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url } });
+    const dog = b.localAll(), cat = b.localAll("cat"), bird = b.localAll("bird");
+    assert.deepStrictEqual(dog.levels[1].map((r) => r.n + r.p), ["Totó600", "Ana300"], "sem argumento: o Cachorrinho, como sempre");
+    assert.deepStrictEqual(b.localAll("dog").levels[1].map((r) => r.n + r.p), ["Totó600", "Ana300"]);
+    assert.deepStrictEqual(cat.levels[1].map((r) => r.n + r.p), ["Totó900", "Bia700"], "o Gatinho tem o ranking dele");
+    assert.deepStrictEqual(cat.totals.map((r) => r.n + r.total), ["Totó1000", "Bia700"]);
+    assert.deepStrictEqual(bird.levels[1], []); assert.deepStrictEqual(bird.totals, []);
+    assert.strictEqual(cat.shared, false); assert.strictEqual(cat.label, "este aparelho");
+    assert.deepStrictEqual(b.localAll("cat", [2]).levels, { 2: [{ n: "Totó", l: 2, p: 100, t: 15000, w: cat.levels[2][0].w }] }, "as fases pedidas (a lista de fases do bichinho)");
+    // o servidor só recebe o Cachorrinho: fetchAll manda as pontuações do Cachorrinho e nada do Gatinho
+    await b.fetchAll();
+    await until(() => Object.keys(S.db.scores || {}).length > 0);
+    await sleep(100);
+    assert.deepStrictEqual(Object.keys(S.db.scores[1]).sort(), ["ana", "toto"]);
+    assert.strictEqual(S.db.scores[1].toto.p, 600, "o 600 do Totó no Cachorrinho, não o 900 do Gatinho");
+    assert.ok(!S.db.scores[1].bia && !S.db.scores[2], "nada do Gatinho foi enviado");
+  } finally { await S.close(); }
+});
+
 test("stand by: sem sharedRanking:true nada é consultado, mesmo com endereço e banco do Claude disponíveis", async () => {
   const S = await startServer();
   try {

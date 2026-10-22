@@ -61,7 +61,10 @@
   <section id="menu" class="screen page" aria-labelledby="menu-title">
     <div class="panel">
       <h1 id="menu-title">Menu inicial</h1>
-      <p class="who">Jogador: <strong id="menu-player">ainda não escolhido</strong></p>
+      <div class="menu-top">
+        <p class="who">Jogador: <strong id="menu-player">ainda não escolhido</strong></p>
+        <button id="btn-animal" class="animal-btn" type="button" aria-label="Bichinho: Cachorrinho. Trocar de bichinho"><span class="animal-lbl">Bichinho:</span> <span id="animal-emoji" aria-hidden="true">🐶</span> <strong id="animal-name">Cachorrinho</strong> <span class="animal-change">· Trocar</span></button>
+      </div>
       <p id="menu-best" class="muted"></p>
       <p id="menu-progress" class="muted"></p>
       <p id="menu-save" class="saved-info hidden"></p>
@@ -85,6 +88,16 @@
       <p id="menu-version" class="version" aria-label="Versão do jogo"></p>
       <p class="credit"><span>Criador do jogo</span><strong>GABRIEL BRAGA CAVALCANTE DE FRANÇA COSTA</strong></p>
     </footer>
+  </section>
+
+  <!-- Escolher o bichinho (0.17.0): cada bichinho tem o seu jogo de 20 fases -->
+  <section id="animals" class="screen page hidden" aria-labelledby="animals-title">
+    <div class="panel wide">
+      <h1 id="animals-title">Escolha seu bichinho</h1>
+      <p id="animals-help" class="muted">Cada bichinho tem as suas fases, pontos e recordes. Você pode jogar qualquer um quando quiser. A lojinha e os petscoin são de todos.</p>
+      <div id="animals-list" class="animal-list"></div>
+      <div class="menu-list"><button id="btn-animals-back" type="button">Voltar</button></div>
+    </div>
   </section>
 
   <!-- Escolher a fase -->
@@ -121,6 +134,7 @@
         <li><strong>Ossos de cores diferentes (a partir da Fase 11):</strong> o osso branco é o de sempre. O <strong>osso de ouro</strong> dá um escudo (nada pega o cachorrinho), o <strong>osso de gelo</strong> congela os agentes e os gatos, o <strong>osso turbo</strong> deixa o cachorrinho mais rápido e o <strong>osso ímã</strong> puxa as rações que estão perto. Os efeitos aparecem numa faixa no alto do jogo.</li>
         <li><strong>Bolinhas (a partir da Fase 2):</strong> cachorro adora bolinha! As <strong>bolinhas coloridas</strong> espalhadas pela fase valem <strong>50 pontos</strong> cada, mas <strong>fogem rolando</strong> quando você chega perto: corra atrás e encoste nelas. Elas não são obrigatórias para abrir a saída.</li>
         <li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins para o cachorrinho (a partir de 10 petscoin): cores, bandana de pirata, capacete de astronauta, capa de super-cão...</li>
+        <li><strong>Bichinhos:</strong> no menu, toque em <strong>Bichinho</strong> para escolher com quem jogar. <strong>Cada bichinho tem as suas próprias 20 fases</strong>, com pontos, recordes, ranking, progresso e jogo salvo só dele: jogar um não mexe nos outros. Você pode escolher qualquer bichinho a qualquer momento, sem precisar terminar nada nos outros, mas <strong>dentro de um bichinho a fase seguinte só abre quando você conclui a anterior</strong>. Por enquanto só o <strong>Cachorrinho</strong> está pronto (o Gatinho e o Passarinho chegam em breve). A <strong>lojinha de skins</strong>, os <strong>petscoin</strong>, o nome de usuário e a conta são de todos os bichinhos.</li>
         <li><strong>Reforços:</strong> ao vencer uma fase você escolhe <strong>1 reforço</strong> entre <strong>3 opções sorteadas</strong> (de um conjunto de 6: mais velocidade, poder do osso mais longo, vida extra, mais vidas no máximo, mais proteção ou agentes mais lentos; a partir da Fase 11 entram mais 3: patas de veludo, faro e ímã de ração). Ele fica com você nas fases seguintes; a próxima fase só começa depois da escolha. Começar uma fase pelo menu ou jogá-la de novo começa sem reforços.</li>
         <li><strong>Crescer:</strong> na Fase 1 o cachorrinho é um <strong>filhote</strong> (cabeça grande, coleira vermelha). A cada fase vencida e a cada reforço escolhido ele cresce: vira um cachorro <strong>jovem</strong> (coleira azul) e, por fim, um cachorro <strong>adulto</strong> (coleira verde com plaquinha). É só o desenho: o tamanho de contato e as regras são os mesmos. Na pausa o jogo diz em que fase de crescimento ele está.</li>
         <li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5 (até 8 com o reforço <em>Coração maior</em>); <strong>a partir da Fase 11 o máximo sobe até 10</strong>. Alguns itens escondem uma <strong>vida extra</strong> (você só descobre ao pegar o item): cada uma dá +1 vida, até o máximo. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>
