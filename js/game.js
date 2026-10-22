@@ -1123,7 +1123,7 @@
       alertTiles: 16, lifePenalty: 300, minPoints: 2450, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais rações e mais pontos",
       cats: [[33, 27], [46, 8], [58, 38]], cat: { speed: 132, chaseSpeed: 203, hear: 7 },
-      lifeCap: 6, mission: { scare: 3 }, missionBonus: 250,
+      lifeCap: 6, mission: { rations: 34 }, missionBonus: 250,
       boneMix: ["scare", "scare", "scare", "ice", "turbo"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 7], [39, 3], [45, 3], [51, 3], [57, 3], [63, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 5], [26, 3], [31, 3], [37, 3]], p: [0, 1], e: [10, 5] },
       blocks: [
@@ -1169,7 +1169,7 @@
       alertTiles: 17, lifePenalty: 325, minPoints: 2800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "blocos e paredes mais rápidos",
       cats: [[59, 14], [13, 28], [43, 8], [49, 28]], cat: { speed: 135, chaseSpeed: 208, hear: 7 },
-      lifeCap: 7, mission: { bones: true, scare: 2 }, missionBonus: 350,
+      lifeCap: 7, mission: { bones: true }, missionBonus: 350,
       boneMix: ["scare", "scare", "scare", "gold", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [12, 3], [17, 3], [22, 3], [27, 3], [33, 7], [42, 3], [48, 3], [53, 3], [58, 3], [64, 3], [69, 3]], y: [[1, 3], [7, 3], [13, 3], [19, 5], [27, 3], [33, 3], [39, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
@@ -1192,7 +1192,7 @@
       alertTiles: 18, lifePenalty: 350, minPoints: 3000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais um bom pedaço de labirinto para explorar",
       cats: [[24, 15], [7, 42], [13, 22], [60, 29]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
-      lifeCap: 8, mission: { scare: 4 }, missionBonus: 400,
+      lifeCap: 8, mission: { rations: 40 }, missionBonus: 400,
       boneMix: ["scare", "scare", "scare", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [28, 3], [34, 7], [43, 3], [49, 3], [54, 3], [59, 3], [65, 3], [71, 3]], y: [[1, 3], [7, 3], [13, 4], [20, 5], [28, 3], [34, 4], [41, 3]], p: [0, 1], e: [12, 5] },
       blocks: [
@@ -1238,7 +1238,7 @@
       alertTiles: 19, lifePenalty: 375, minPoints: 3400, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "peças móveis ainda mais rápidas",
       cats: [[31, 30], [45, 7], [25, 24], [51, 30], [38, 46]], cat: { speed: 141, chaseSpeed: 216, hear: 8 },
-      lifeCap: 9, mission: { bones: true, scare: 3 }, missionBonus: 500,
+      lifeCap: 9, mission: { bones: true, rations: 40 }, missionBonus: 500,
       boneMix: ["scare", "scare", "scare", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [24, 3], [30, 3], [35, 7], [44, 3], [50, 3], [55, 3], [61, 3], [67, 3], [73, 3]], y: [[1, 3], [6, 3], [12, 3], [17, 3], [22, 5], [29, 3], [34, 3], [40, 3], [45, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
@@ -1261,7 +1261,7 @@
       alertTiles: 19, lifePenalty: 375, minPoints: 3600, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "8 agentes da carrocinha e muitos becos",
       cats: [[76, 31], [65, 25], [31, 8], [53, 2], [59, 2], [53, 37]], cat: { speed: 143, chaseSpeed: 219, hear: 8 },
-      lifeCap: 9, mission: { scare: 5, rations: 35 }, missionBonus: 550,
+      lifeCap: 9, mission: { rations: 46 }, missionBonus: 550,
       boneMix: ["scare", "scare", "scare", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [18, 3], [24, 3], [30, 3], [36, 7], [46, 3], [52, 3], [58, 3], [64, 3], [69, 3], [75, 3]], y: [[1, 3], [7, 3], [12, 3], [17, 3], [23, 5], [30, 3], [36, 3], [41, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
@@ -1284,7 +1284,7 @@
       alertTiles: 20, lifePenalty: 400, minPoints: 3800, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "quase no fim: o labirinto mais enrolado até aqui",
       cats: [[66, 37], [32, 8], [32, 48], [20, 19], [72, 2], [26, 43]], cat: { speed: 144, chaseSpeed: 222, hear: 9 },
-      lifeCap: 10, mission: { bones: true, scare: 4 }, missionBonus: 600,
+      lifeCap: 10, mission: { bones: true, rations: 48 }, missionBonus: 600,
       boneMix: ["scare", "scare", "scare", "gold", "gold", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 3], [25, 3], [31, 3], [37, 7], [47, 3], [53, 3], [59, 3], [65, 3], [71, 3], [77, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [23, 5], [31, 3], [36, 3], [42, 3], [47, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
@@ -1307,7 +1307,7 @@
       alertTiles: 20, lifePenalty: 400, minPoints: 4000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "a Fase 20: o maior labirinto de todos",
       cats: [[33, 14], [80, 19], [61, 38], [61, 8], [49, 26], [14, 33], [21, 26]], cat: { speed: 146, chaseSpeed: 224, hear: 9 },
-      lifeCap: 10, mission: { bones: true, scare: 5, rations: 48 }, missionBonus: 650,
+      lifeCap: 10, mission: { bones: true, rations: 52 }, missionBonus: 650,
       boneMix: ["scare", "scare", "scare", "gold", "ice", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [7, 3], [13, 3], [19, 4], [26, 3], [32, 3], [38, 7], [48, 3], [54, 3], [60, 3], [66, 4], [73, 3], [79, 3]], y: [[1, 3], [7, 3], [13, 3], [18, 3], [24, 5], [32, 3], [37, 3], [43, 3], [49, 3]], p: [0, 1], e: [12, 7] },
       blocks: [
@@ -1367,17 +1367,17 @@
       throw new Error(`Regras de pontos ou poder inválidas: ${def.title}`);
     }
     const boneMix = def.boneMix ? def.boneMix.slice() : Array(bones).fill("scare");
-    if (boneMix.length !== bones || !boneMix.every((k) => BONE_KINDS.includes(k)) || (bones && !boneMix.includes("scare") && bonePower > 0) || (def.mission && def.mission.scare && boneMix.filter((k) => k === "scare").length < 2)) throw new Error(`Ossos da fase inválidos: ${def.title}`);
+    if (boneMix.length !== bones || !boneMix.every((k) => BONE_KINDS.includes(k)) || (bones && !boneMix.includes("scare") && bonePower > 0)) throw new Error(`Ossos da fase inválidos: ${def.title}`);
     const balls = def.balls ?? 0;
     if (!Number.isInteger(balls) || balls < 0 || balls > BALL_MAX) throw new Error(`Bolinhas inválidas: ${def.title}`);
     const lifeCap = def.lifeCap ?? MAX_LIVES;
     if (!Number.isInteger(lifeCap) || lifeCap < MAX_LIVES || lifeCap > LIFE_CAP_HARD) throw new Error(`Máximo de vidas inválido: ${def.title}`);
-    // missão (0.15.6): além dos pontos mínimos, a saída só abre com a missão cumprida: `bones` (pegar todos os ossos), `scare` (assustar tantos carteiros/gatos com o poder do osso) e `rations` (pegar tantas rações)
+    // missão (0.15.6): além dos pontos mínimos, a saída só abre com a missão cumprida: `bones` (pegar todos os ossos) e/ou `rations` (pegar tantas rações). (0.16.1: assustar carteiros e gatos NÃO é mais exigência: continua valendo +100 pontos, mas ninguém precisa disso para passar)
     const ms = def.mission || null, missionBonus = def.missionBonus ?? 0;
-    if (ms && (!minPoints || (ms.bones !== undefined && ms.bones !== true) || (ms.scare !== undefined && !(Number.isInteger(ms.scare) && ms.scare >= 1 && ms.scare <= 99 && bonePower > 0 && bones > 0 && def.vets.length + (def.cats || []).length >= 1))
-        || (ms.rations !== undefined && !(Number.isInteger(ms.rations) && ms.rations >= 1 && ms.rations <= def.rations)) || (ms.bones && !bones) || (!ms.bones && ms.scare === undefined && ms.rations === undefined))) throw new Error(`Missão inválida: ${def.title}`);
+    if (ms && (!minPoints || ms.scare !== undefined || (ms.bones !== undefined && ms.bones !== true)
+        || (ms.rations !== undefined && !(Number.isInteger(ms.rations) && ms.rations >= 1 && ms.rations <= def.rations)) || (ms.bones && !bones) || (!ms.bones && ms.rations === undefined))) throw new Error(`Missão inválida: ${def.title}`);
     if (!Number.isInteger(missionBonus) || missionBonus < 0 || missionBonus > 5000 || (missionBonus && !ms)) throw new Error(`Bônus da missão inválido: ${def.title}`);
-    const mission = ms ? { bones: !!ms.bones, scare: ms.scare || 0, rations: ms.rations || 0 } : null;
+    const mission = ms ? { bones: !!ms.bones, rations: ms.rations || 0 } : null;
     const alertTiles = def.alertTiles;
     if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 24) throw new Error(`Alcance do "!" inválido: ${def.title}`);
     // gatos: `cats` = tiles de chão onde cada um começa; `cat` = velocidades (px/s) e alcance do ouvido (passos) que mudam o padrão CAT_BASE
@@ -2039,14 +2039,12 @@
   const allCollected = () => collected >= lv.rations && bonesGot >= lv.bones;
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
   // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos, assustar N carteiros ou gatos, pegar N rações).
-  const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && postmen >= lv.mission.scare && collected >= lv.mission.rations);
-  const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.scare ? `assustar ${L.mission.scare} carteiros ou gatos com o poder do osso` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
-  const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.scare ? `${L.mission.scare} sustos` : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
-  const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.scare && postmen < lv.mission.scare ? `sustos ${postmen}/${lv.mission.scare}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && collected >= lv.mission.rations);
+  const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
+  const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
+  const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
   // 0.15.8: com tudo pego e a missão cumprida, os pontos que faltam para o mínimo ainda podem vir das bolinhas que sobraram: a tentativa só acaba se nem elas bastarem
   const ballsCanOpen = () => missionDone() && runningScore() < lv.minPoints && runningScore() + (balls.length - ballsGot()) * Records.BALL_POINTS >= lv.minPoints;
-  // A missão de sustos fica impossível quando o poder acabou e não sobrou nenhum osso comum (os outros tipos não assustam).
-  const missionImpossible = () => !!lv.mission && lv.mission.scare > 0 && postmen < lv.mission.scare && power <= 0 && !items.some((it) => !it.taken && it.bone && (it.kind || "scare") === "scare");
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
 
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
@@ -2264,7 +2262,7 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && ((allCollected() && !exitOpen() && !ballsCanOpen()) || missionImpossible())) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
+    if (lv.minPoints && power <= 0 && allCollected() && !exitOpen() && !ballsCanOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
@@ -2768,9 +2766,8 @@
     sound.play("gameover", { delay: why && why !== "cat" ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    const missionFail = why === "short" && lv.mission && !missionDone() && (runningScore() >= lv.minPoints || !allCollected()); // (0.15.6) não dá mais para cumprir a missão (acabou o poder do osso sem os sustos); se pegou tudo e os pontos também faltam, vale a derrota dos pontos
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : missionFail ? "A missão não foi cumprida!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
-    $("lose-lead").textContent = missionFail ? `${allCollected() ? "Você pegou tudo" : "Acabou o poder do osso"}, mas faltou a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
+    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
+    $("lose-lead").textContent = why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`

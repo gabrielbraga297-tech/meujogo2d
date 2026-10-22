@@ -34,15 +34,15 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 9 | chegar a 1800 pontos na fase (a saída abre) e sair | 5 | 36 | 4 | 84,92 / 169,84 px/s | 249,48 px/s |
 | 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
 | 11 | chegar a 2300 pontos na fase **e cumprir a missão** (pegar todos os 5 ossos); só então a saída abre — e sair | 5 | 44 | 5 | 89,32 / 178,62 px/s | 252 px/s |
-| 12 | chegar a 2450 pontos na fase **e cumprir a missão** (assustar 3 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
+| 12 | chegar a 2450 pontos na fase **e cumprir a missão** (pegar 34 das 46 rações); só então a saída abre — e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
 | 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 6 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
-| 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos e assustar 2 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
-| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (assustar 4 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
+| 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos); só então a saída abre — e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
+| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
 | 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
-| 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e assustar 3 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
-| 18 | chegar a 3600 pontos na fase **e cumprir a missão** (assustar 5 carteiros ou gatos com o poder do osso e pegar 35 das 58 rações); só então a saída abre — e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
-| 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e assustar 4 carteiros ou gatos com o poder do osso); só então a saída abre — e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
-| 20 | chegar a 4000 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e assustar 5 carteiros ou gatos com o poder do osso e pegar 48 das 62 rações); só então a saída abre — e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
+| 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e pegar 40 das 56 rações); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
+| 18 | chegar a 3600 pontos na fase **e cumprir a missão** (pegar 46 das 58 rações); só então a saída abre — e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
+| 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 48 das 60 rações); só então a saída abre — e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
+| 20 | chegar a 4000 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 52 das 62 rações); só então a saída abre — e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os agentes da carrocinha ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa, fica tonto por 2 s e depois foge a **50% da velocidade de fuga** (0,625 × a velocidade de patrulha da tabela, ou seja 37,8 px/s na Fase 2) até o poder acabar.
@@ -103,7 +103,7 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 | Portas mudam de lado a cada | 3 s | 3 s | 3 s | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **2,5 s** (160 px/s) | **1,8 s** (220 px/s) | **1,8 s** (220 px/s) | **1,6 s** (240 px/s) | **1,6 s** (240 px/s) |
 | Paredes mudam de lado a cada | 10 s | 10 s | 10 s | **8 s** (140 px/s) | **8 s** (140 px/s) | **8 s** (140 px/s) | **5,5 s** (180 px/s) | **5,5 s** (180 px/s) | **5 s** (200 px/s) | **5 s** (200 px/s) |
 | Máximo de vidas (sem reforço; até 10 com *Coração maior*) | 6 | 6 | 7 | 7 | 8 | 8 | 9 | 9 | 10 | 10 |
-| **Missão** (além dos pontos) | todos os 5 ossos | assustar 3 | 36 rações | todos os 6 ossos e assustar 2 | assustar 4 | 44 rações | todos os 7 ossos e assustar 3 | assustar 5 e 35 rações | todos os 8 ossos e assustar 4 | todos os 8 ossos, assustar 5 e 48 rações |
+| **Missão** (além dos pontos) | todos os 5 ossos | 34 rações | 36 rações | todos os 6 ossos | 40 rações | 44 rações | todos os 7 ossos e 40 rações | 46 rações | todos os 8 ossos e 48 rações | todos os 8 ossos e 52 rações |
 | Bônus por cumprir a missão | +200 | +250 | +300 | +350 | +400 | +450 | +500 | +550 | +600 | +650 |
 | Perda por vida / pontos para passar | −300 / 2300 | −300 / 2450 | −325 / 2650 | −325 / 2800 | −350 / 3000 | −350 / 3200 | −375 / 3400 | −375 / 3600 | −400 / 3800 | −400 / 4000 |
 | Poder do osso | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s | 35 s |
@@ -182,13 +182,14 @@ Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há *
 - Encostar num gato custa **1 vida**, como o agente (com a mesma proteção depois). Quando um gato nota o cachorrinho ele dá um **miau** (um só a cada 4 s, mesmo com vários gatos), e um gato que persegue fora da tela aparece como um **"!" vermelho na borda** da tela, como os agentes.
 - O jogo salvo guarda a posição dos gatos e quais já foram assustados.
 ## Missões e mais vidas (0.15.6, Fases 11 a 20)
-**Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/5 · sustos 1/3 · rações 20/36*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina de 1 a 3 destas exigências:
+**Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/5 · rações 20/36*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina 1 ou 2 destas exigências:
 
 - **Ossos:** pegar **todos** os ossos da fase (Fases 11, 14, 17, 19 e 20);
-- **Sustos:** **assustar** N carteiros ou gatos com o poder do osso (a soma de todos os poderes da fase; 3 na Fase 12 até 5 nas Fases 18 e 20);
-- **Rações:** pegar pelo menos N rações (36 na Fase 13, 44 na 16, 35 na 18 e 48 na 20).
+- **Rações:** pegar pelo menos N rações (34 na Fase 12, 36 na 13, 40 na 15 e na 17, 44 na 16, 46 na 18, 48 na 19 e 52 na 20).
 
-Quando os pontos já bastam mas falta a missão, o jogo avisa (*Pontos suficientes! Falta a missão: …*) e, se o cachorrinho chega à saída, a saída continua fechada (*Falta a missão: …*). Se a missão pede sustos, o poder do osso acabou e **não sobrou nenhum osso comum** para pegar (os ossos de ouro, gelo, turbo e ímã não assustam), ou se já pegou **tudo** e a missão ficou incompleta, **não há mais como passar**: a tentativa acaba como em *os pontos não bastaram* (*A missão não foi cumprida!*; custa uma nova tentativa). **Cumprir a missão vale pontos extras** (+200 na Fase 11, +50 a cada fase, +650 na Fase 20), mostrados na tela de vitória.
+**Assustar os gatos (e os carteiros) NÃO é exigência para passar de fase (0.16.1).** Antes algumas missões pediam *assustar N carteiros ou gatos*, e isso confundia (só dá para assustar com o poder do osso comum, e só enquanto ele dura). Agora ninguém precisa assustar nada para abrir a saída; mas **o cachorrinho continua podendo assustar**: com o poder do osso (o osso branco) os gatos **fogem** e quem encosta num gato que foge ganha **+100 pontos**, uma vez por poder (como com os carteiros). É um extra que ajuda nos pontos mínimos.
+
+Quando os pontos já bastam mas falta a missão, o jogo avisa (*Pontos suficientes! Falta a missão: …*) e, se o cachorrinho chega à saída, a saída continua fechada (*Falta a missão: …*). Como a missão só pede ossos e rações, ela nunca fica impossível: se pegou **tudo** e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram), a tentativa acaba em *Os pontos não bastaram!* e custa uma nova tentativa. **Cumprir a missão vale pontos extras** (+200 na Fase 11, +50 a cada fase, +650 na Fase 20), mostrados na tela de vitória.
 
 **Mais vidas:** o máximo de vidas **sobe a partir da Fase 11**: 6, 6, 7, 7, 8, 8, 9, 9, 10 e 10 nas Fases 11 a 20 (5 nas Fases 1 a 10), e o reforço *Coração maior* soma mais 1 por nível, mas **nunca passa de 10** (quando o máximo da fase já é 10 ele deixa de ser oferecido). As vidas extras escondidas (3 ou 4 por fase) e o reforço *Vida extra* levam você até esse máximo, e o placar mostra até **10 corações**.
 
