@@ -6315,7 +6315,7 @@ const PAGE_HELPERS = () => {
       const a = await K.snap(); K.toExit(); const b = await K.snap();
       return { a, b, min: __game.minPoints };
     });
-    ok(few.a.bar === "Missão cumprida!" && few.a.score < few.min && few.a.state === "playing" && few.b.state === "playing" && few.b.toast === `Faltam ${few.min - few.b.score} pontos para abrir a saída (meta: ${few.min}).` && !/missão/i.test(few.b.toast),
+    ok(few.a.bar === `Missão cumprida! Faltam ${few.min - few.a.score} pontos` && few.a.score < few.min && few.a.state === "playing" && few.b.state === "playing" && few.b.toast === `Faltam ${few.min - few.b.score} pontos para abrir a saída (meta: ${few.min}).` && !/missão/i.test(few.b.toast),
       `Fase 11 com todos os ossos (${few.a.score} pontos de ${few.min}): a missão está cumprida mas a saída fica fechada pelos pontos ("${few.b.toast}")`);
 
     // ---- a Fase 10 (sem missão) continua como era: meta de pontos atingida abre a saída, sem falar de missão ----

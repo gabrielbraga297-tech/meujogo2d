@@ -2032,7 +2032,7 @@
   }
 
   // ---------- Pontuação e vidas ----------
-  // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 e 10) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
+  // Pontuação corrente: 100 por ração + 150 por osso + 100 por carteiro ou gato assustado + 50 por bolinha − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 a 12; 325 a 400 nas Fases 13 a 20) − 100 por nova tentativa (o bônus de tempo entra ao terminar).
   // PODE FICAR NEGATIVA.
   const ballsGot = () => balls.reduce((n, b) => n + (b.taken ? 1 : 0), 0);
   const runningScore = () => collected * Records.RATION_POINTS + bonesGot * Records.BONE_POINTS + postmen * Records.POSTMAN_POINTS + ballsGot() * Records.BALL_POINTS - livesLost * lv.lifePenalty - retries * Records.RETRY_PENALTY;
@@ -3489,9 +3489,10 @@
       const t = [["shield", "Escudo"], ["ice", "Gelo"], ["turbo", "Turbo"], ["magnet", "Ímã"]].filter(([k]) => fx[k] > 0).map(([k, n]) => `${n} ${Math.ceil(fx[k])} s`).join(" · ");
       if (hudCache.fx !== t) { hudCache.fx = t; hudEl.fxBar.textContent = t; hudEl.fxBar.classList.toggle("hidden", !t); }
     }
-    if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, rações); cumprida, manda ir para a saída
-      const left = missionLeft(), t = left.length ? `Missão: ${left.join(" · ")}` : "Missão cumprida!";
-      if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length); }
+    if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, rações); cumprida, diz "Missão cumprida!" (e quantos pontos ainda faltam, se for o caso)
+      const left = missionLeft(), short = lv.minPoints ? lv.minPoints - runningScore() : 0; // (0.16.1) missão cumprida mas os pontos ainda faltam: a faixa não fica verde e diz quantos pontos faltam
+      const t = left.length ? `Missão: ${left.join(" · ")}` : short > 0 ? `Missão cumprida! Faltam ${short} pontos` : "Missão cumprida!";
+      if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length && short <= 0); }
     }
     if (hudCache.bp !== lv.bonePower) { hudCache.bp = lv.bonePower; hudEl.powerItem.classList.toggle("hidden", !lv.bonePower); }
     if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? `Poder do osso: ${Math.ceil(power)} segundos` : "Poder do osso: desligado"; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }

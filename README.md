@@ -119,7 +119,7 @@ Cada fase é liberada ao terminar a anterior. Em **Iniciar jogo** (depois que a 
 
 **Fases 4 a 10, os blocos que esmagam:** se um bloco alcança o cachorrinho (sem o poder do osso e fora da proteção de 2 s depois de perder uma vida), ele é **esmagado**: perde 1 vida e os pontos da fase (200, 250 ou 300). Os agentes da carrocinha continuam sendo empurrados, não esmagados. É `crush: true` da fase.
 
-**Fases 4 a 10, pontos mínimos:** cada vida perdida custa **200 pontos** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 a 20 (`lifePenalty`), e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**, de **1250 a 2050** nas Fases 6 a 10 e de **2300 a 4000** nas Fases 11 a 20): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo. Se todos os itens já foram pegos, o poder acabou e a pontuação ainda não chega à meta, não há mais como passar: a tentativa termina (*Os pontos não bastaram!*, com a explicação de que o jogador pegou tudo mas a pontuação ficou abaixo do mínimo) e vale a regra das novas tentativas.
+**Fases 4 a 20, pontos mínimos:** cada vida perdida custa **200 pontos** nas Fases 4 e 5, **250** nas Fases 6 a 8, **300** nas Fases 9 a 12 e de **325 a 400** nas Fases 13 a 20 (`lifePenalty`), e a saída **abre quando a pontuação corrente da fase** (rações + ossos + carteiros ou gatos assustados + bolinhas − vidas perdidas − tentativas, ainda sem o bônus de tempo) **chega a 800** (**1000 na Fase 5**, de **1250 a 2050** nas Fases 6 a 10 e de **2300 a 4000** nas Fases 11 a 20): não é preciso pegar todos os itens (por isso há mais rações disponíveis). O placar mostra *PONTOS 450 / 800* e um aviso diz quando a meta foi atingida; se uma vida perdida derrubar a pontuação abaixo da meta, a saída fecha de novo. Se todos os itens já foram pegos, o poder acabou e a pontuação ainda não chega à meta, não há mais como passar: a tentativa termina (*Os pontos não bastaram!*, com a explicação de que o jogador pegou tudo mas a pontuação ficou abaixo do mínimo) e vale a regra das novas tentativas.
 
 **Fase 4, o mapa:** um labirinto de cidade de 41 × 29 tiles (a tela mostra uma parte e a câmera segue o cachorrinho): 7 × 5 quarteirões ligados por **ruas de 3 tiles**, a **praça da carrocinha** no centro (7 × 5, com 4 vans nos cantos e os 3 postos dos agentes), o início na borda esquerda e a saída na direita. Há **3 caminhos que não passam pela mesma célula** do início à saída e nenhum beco sem saída. As 3 portas de bloco ficam em vielas de 1 tile (com nicho) que são atalhos entre quarteirões: o teste confere que, com os blocos em qualquer posição, todo o chão continua ligado.
 
@@ -152,7 +152,7 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 **Pausa automática:** o jogo **pausa sozinho** quando a janela perde o foco (ou a aba fica escondida) e salva ao fechar a página.
 
 ## Ossos de tipos novos (0.15.7, Fases 11 a 20)
-**A partir da Fase 11 há ossos de cores diferentes, cada um com um poder.** Todos valem **150 pontos** e dão **+10% de velocidade** até o fim da fase (como o osso comum), contam para a missão *pegar todos os ossos* e podem esconder uma vida extra; o que muda é o poder (o *Osso poderoso* soma **+4 s por nível** em todos os efeitos). Os tipos de osso de cada fase são fixos (`boneMix` em `js/game.js`), mas **quais ossos ficam em qual lugar é sorteado a cada jogo**; em toda fase há **pelo menos 3 ossos comuns**, para que a missão *assustar* seja sempre possível.
+**A partir da Fase 11 há ossos de cores diferentes, cada um com um poder.** Todos valem **150 pontos** e dão **+10% de velocidade** até o fim da fase (como o osso comum), contam para a missão *pegar todos os ossos* e podem esconder uma vida extra; o que muda é o poder (o *Osso poderoso* soma **+4 s por nível** em todos os efeitos). Os tipos de osso de cada fase são fixos (`boneMix` em `js/game.js`), mas **quais ossos ficam em qual lugar é sorteado a cada jogo**; em toda fase há **pelo menos 3 ossos comuns**, para o poder de assustar (+100 extra) estar sempre à mão.
 
 | Osso | Cor | Poder |
 |---|---|---|
@@ -182,7 +182,7 @@ Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há *
 - Encostar num gato custa **1 vida**, como o agente (com a mesma proteção depois). Quando um gato nota o cachorrinho ele dá um **miau** (um só a cada 4 s, mesmo com vários gatos), e um gato que persegue fora da tela aparece como um **"!" vermelho na borda** da tela, como os agentes.
 - O jogo salvo guarda a posição dos gatos e quais já foram assustados.
 ## Missões e mais vidas (0.15.6, Fases 11 a 20)
-**Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/5 · rações 20/36*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina 1 ou 2 destas exigências:
+**Para abrir a saída das Fases 11 a 20 não bastam os pontos mínimos: é preciso também cumprir a MISSÃO da fase.** A missão aparece no aviso do começo da fase, na lista de fases, no *Como jogar* e numa **faixa no alto do jogo** que mostra só o que ainda falta (*Missão: ossos 3/7 · rações 20/40*; cumprida, a faixa diz *Missão cumprida!*). Cada missão combina 1 ou 2 destas exigências:
 
 - **Ossos:** pegar **todos** os ossos da fase (Fases 11, 14, 17, 19 e 20);
 - **Rações:** pegar pelo menos N rações (34 na Fase 12, 36 na 13, 40 na 15 e na 17, 44 na 16, 46 na 18, 48 na 19 e 52 na 20).
@@ -245,7 +245,7 @@ Ao **vencer uma fase** (menos a última) o jogador escolhe **1 reforço entre 3 
 | **Patas ligeiras** | +8% de velocidade do cachorrinho | 4 níveis (+32%) |
 | **Osso poderoso** | +8 s no poder do osso | 4 níveis (+32 s) |
 | **Vida extra** | +1 vida agora (some se as vidas já estão no máximo) | — |
-| **Coração maior** | +1 vida no máximo (de 5 até 8) e +1 vida agora | 3 níveis |
+| **Coração maior** | +1 vida no máximo (de 5 até 8 nas Fases 1 a 10; a partir da Fase 11 o máximo da fase já é 6 a 10 e o reforço soma mais 1, sem passar de 10) e +1 vida agora | 3 níveis |
 | **Pelo grosso** | +2 s de proteção depois de perder uma vida (2 s → até 8 s) | 3 níveis |
 | **Carrocinha lenta** | agentes 8% mais lentos (patrulha, perseguição e fuga dos carteiros; **a partir da 0.15.5 vale também para os gatos**) | 4 níveis (−32%) |
 | **Patas de veludo** *(0.15.7, a partir da Fase 11)* | agentes e gatos **notam você 1 quadrado mais tarde** (alcance do "!" e ouvido dos gatos menores) | 3 níveis (−3 quadrados) |
@@ -286,11 +286,11 @@ Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos p
 
 - Pegar um item (ração ou osso) com vida extra dá **+1 vida**, até o máximo da fase (5; de 6 a 10 nas Fases 11 a 20; mais os níveis de *Coração maior*, nunca acima de 10).
 - As vidas que sobram ao terminar uma fase **passam para a fase seguinte** (pelo botão *Próxima fase*). Escolher uma fase no menu ou usar *Jogar novamente* começa com 3 vidas.
-- Se o agente da carrocinha encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8 e **300** nas Fases 9 a 20). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **da Fase 9 em diante ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
+- Se o agente da carrocinha encosta, você perde **1 vida** e **50 pontos** (**200** nas Fases 4 e 5, **250** nas Fases 6 a 8, **300** nas Fases 9 a 12 e de **325 a 400** nas Fases 13 a 20). O cachorrinho **volta ao início da fase** (no mesmo lugar de quando ela começou; **da Fase 9 em diante ele renasce onde caiu**), ganha uns segundos de proteção, o **tempo continua contando** (não zera) e **as rações que ainda não foram pegas mudam de lugar**, sorteadas de novo. As que já foram pegas continuam pegas.
 - **Sem vidas:** você tem até **3 novas tentativas da fase em que está** (na Fase 2, recomeça a Fase 2). Cada nova tentativa recomeça a fase **do zero** (3 vidas, rações novas, tempo zerado) e custa **100 pontos**. Usadas as 3, só resta voltar ao menu.
 
 ## Pontuação
-A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro ou gato assustado (poder do osso) + 50 por bolinha (0.15.8) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 a 20) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
+A pontuação da fase é: **100 por ração + 150 por osso + 100 por carteiro ou gato assustado (poder do osso) + 50 por bolinha (0.15.8) + bônus de tempo − pontos por vida perdida (50; 200 nas Fases 4 e 5; 250 nas Fases 6 a 8; 300 nas Fases 9 a 12; 325 a 400 nas Fases 13 a 20) − 100 por nova tentativa + bônus da missão (Fases 11 a 20)**. Ela **pode ficar negativa** (por exemplo, −50 ao perder a primeira vida sem ter pegado nenhuma ração).
 
 O **bônus de tempo** vai de **0 a 100** e é proporcional: **10 pontos a cada 10 segundos**, e quanto menos tempo, mais pontos.
 
