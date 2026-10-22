@@ -737,7 +737,7 @@ test("carteira: ganhar petiscos não mexe nas pontuações, e trocar de jogador 
   st.setPlayer("totó"); assert.strictEqual(st.wallet(st.player()).treats, 5, "o nome em outra caixa é o mesmo jogador");
 });
 
-// ---------- (0.17.0) um jogo por animalzinho: pontos, recordes, progresso e jogo salvo independentes ----------
+// ---------- (0.17.0) um jogo por bichinho: pontos, recordes, progresso e jogo salvo independentes ----------
 const runOf = (st, animal, level, points, timeMs = 30000) => st.game(animal).addRun({ level, timeMs, points });
 test("animais: recorde, ranking e pontuação total de um animal não aparecem no outro (e o cachorrinho é o formato de sempre)", () => {
   const st = R.createStore(memStorage()); st.setPlayer("Totó");
@@ -836,12 +836,24 @@ test("animais: apagar a conta apaga o jogo de TODOS os animais (recordes, progre
   runOf(st, "cat", 1, 900); st.game("cat").completeLevel("Totó", 1); st.game("cat").saveGame("Totó", { l: 2 }); st.setAnimal("Totó", "cat"); st.saveGame("Totó", { l: 3 });
   st.addTreats("Totó", 3); // a carteira é única: 1 petisco por fase concluída em qualquer animal
   assert.strictEqual(st.wallet("Totó").treats, 3);
-  const r = await st.register("Totó", "senha1"); void r; // (conta criada só para poder apagar)
+  const r = await st.register("Totó", "senha1"); assert.ok(r.ok, "(a conta foi criada de verdade antes de apagar)");
   assert.ok(st.deleteAccount("Totó"));
   assert.strictEqual(st.game("cat").personalBest("Totó", 1), null);
   assert.deepStrictEqual(st.game("cat").progress("Totó"), { unlocked: 1, completed: [] });
   assert.ok(!st.game("cat").hasGame("Totó") && !st.hasGame("Totó"));
   assert.strictEqual(st.animal("Totó"), "dog"); assert.strictEqual(st.wallet("Totó").treats, 0);
+});
+test("animais: apagar a conta regrava os jogos salvos mesmo depois de uma falha de gravação (o jogo salvo da conta apagada não volta ao recarregar)", () => {
+  const mem = memStorage(); let failSaves = false;
+  const flaky = { ...mem, setItem: (k, v) => { if (failSaves && k === "cachorrinho.save.v1") throw new Error("cheio"); mem.setItem(k, v); } };
+  const st = R.createStore(flaky);
+  st.setPlayer("Ana"); st.saveGame("Ana", { l: 1 }); st.game("cat").saveGame("Ana", { l: 2 });
+  assert.ok(st.hasGame("Ana") && st.game("cat").hasGame("Ana"));
+  failSaves = true; st.setPlayer("Bia"); st.saveGame("Bia", { l: 3 }); // a gravação dos jogos salvos falha (armazenamento cheio)
+  failSaves = false;
+  assert.ok(st.deleteAccount("Ana"));
+  const st2 = R.createStore(flaky); // outra aba / depois de recarregar
+  assert.ok(!st2.hasGame("Ana") && !st2.game("cat").hasGame("Ana"), "o jogo salvo da Ana (cachorrinho e gato) não voltou");
 });
 test("animais: apagar o jogador também apaga, NO ARMAZENAMENTO, a escolha de bichinho e os dados dos outros animais (uma cópia nova da loja não os vê)", () => {
   // (versão síncrona, sem conta com senha: deleteAccount apaga os dados do nome com ou sem senha)

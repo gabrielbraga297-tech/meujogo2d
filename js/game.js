@@ -2376,7 +2376,7 @@
   function begin(id = levelId, o = {}) {
     const me = typeof o.player === "string" ? o.player : store.player();
     const a = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.17.0) o bichinho da partida: quem segue na mesma partida (Próxima fase...) continua com o mesmo
-    droppedSave = false;
+    droppedSave = "";
     if (me) gs(a).clearGame(me); // um jogo novo substitui o salvo DESTE bichinho (só aqui: cancelar a escolha da fase não apaga nada)
     reset(id, { ...o, animal: a });
     beginPlay();
@@ -2492,14 +2492,14 @@
     } catch { return null; }
   }
 
-  let droppedSave = false; // um jogo salvo de uma versão com outros mapas foi descartado: o menu avisa até começar uma partida
+  let droppedSave = ""; // id do bichinho cujo jogo salvo (de uma versão com outros mapas) foi descartado: o menu desse bichinho avisa até começar uma partida
   function savedGame() { // jogo salvo válido do jogador atual NO BICHINHO ESCOLHIDO, ou null (e limpa um save inválido)
     const me = store.player();
     if (!me) return null;
-    const g = gs().loadGame(me);
+    const a = syncAnimal(), g = gs(a).loadGame(me);
     if (!g) return null;
     const sv = parseSnapshot(g.snap);
-    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = true; gs().clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
+    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = a; gs(a).clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
     return { savedAt: g.savedAt, snap: sv };
   }
 
@@ -2570,7 +2570,7 @@
     if (!store.player()) { openName(true); return; }
     const g = savedGame();
     if (!g) { chooseLevel(); return; }
-    $("confirm-text").textContent = `${store.player()} já tem um jogo salvo (${describeSave(g.snap)}). Se você começar um novo jogo, esse progresso será apagado.`;
+    $("confirm-text").textContent = `${store.player()} já tem um jogo salvo do ${gameOf(syncAnimal()).name} (${describeSave(g.snap)}). Se você começar um novo jogo, esse progresso será apagado.`;
     showScreen("confirm");
   }
 
@@ -2808,7 +2808,7 @@
       const me = gone ? "" : gamePlayer;
       if (me) { G.completeLevel(me, levelId); G.clearGame(me); } // fase concluída: o jogo em andamento termina
       // o ranking compartilhado entre aparelhos (em stand by) só recebe os recordes do Cachorrinho por enquanto: os outros bichinhos ainda não têm lugar nele (ver js/board.js)
-      if (res && res.newPersonal && gameAnimal === DEFAULT_ANIMAL) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t });
+      if (res && res.newPersonal && gameAnimal === DEFAULT_ANIMAL) board.submit({ name: res.personalBest.n, level: levelId, points: res.personalBest.p, timeMs: res.personalBest.t, animal: gameAnimal });
     } catch { /* seguem sem registrar */ }
     if (res) {
       const best = res.personalBest.p;
@@ -2894,9 +2894,10 @@
     $("btn-continue").classList.toggle("hidden", !g);
     $("btn-start").classList.toggle("primary", !g);
     $("btn-replay").classList.toggle("hidden", !(me && done >= 1)); // só depois de concluir alguma fase
-    $("menu-save").classList.toggle("hidden", !g && !droppedSave);
+    const dropped = droppedSave === A; // o aviso é do bichinho cujo jogo salvo foi descartado
+    $("menu-save").classList.toggle("hidden", !g && !dropped);
     if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
-    else if (droppedSave) $("menu-save").textContent = "O jogo salvo era de uma versão com outros mapas e não pode continuar. Seus recordes e o progresso foram mantidos.";
+    else if (dropped) $("menu-save").textContent = "O jogo salvo era de uma versão com outros mapas e não pode continuar. Seus recordes e o progresso foram mantidos.";
   }
 
   // ---------- Pontuações: as suas (só você vê) e o ranking do jogo (todos veem; só a melhor de cada jogador) ----------
@@ -3744,8 +3745,8 @@
       e.preventDefault(); // segurar a tecla não repete o clique nem corre pelos botões (a escolha do reforço vale uma vez e não se desfaz)
     } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen && !document.querySelector(".screen:not(.hidden)")?.hasAttribute("data-scroll")) {
       e.preventDefault(); moveFocus(k === "ArrowDown" ? 1 : -1); // navega pelos botões das telas
-    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#reinforce-list")) {
-      e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // a grade de reforços tem duas colunas
+    } else if ((k === "ArrowLeft" || k === "ArrowRight") && e.target instanceof HTMLButtonElement && e.target.closest("#reinforce-list, #animals-list")) {
+      e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // as grades de reforços (duas colunas) e de bichinhos (cartões lado a lado)
     }
   });
   window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });

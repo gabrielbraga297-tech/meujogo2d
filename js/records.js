@@ -35,7 +35,7 @@
   // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
   const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 60;
   const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
-  // (0.17.0) cada ANIMALZINHO tem o seu jogo: pontos, recordes, progresso e jogo salvo independentes. "dog" (o cachorrinho) guarda no formato de sempre (campos L, unlocked/completed, save sem sufixo);
+  // (0.17.0) cada BICHINHO tem o seu jogo: pontos, recordes, progresso e jogo salvo independentes. "dog" (o cachorrinho) guarda no formato de sempre (campos L, unlocked/completed, save sem sufixo);
   // os outros animais ficam em campos novos (G) e nos saves com sufixo "@animal". Carteira, contas e jogadores são de todos os animais.
   const DEFAULT_ANIMAL = "dog", MAX_ANIMALS = 12;
   const isAnimal = (a) => typeof a === "string" && /^[a-z]{2,12}$/.test(a);
@@ -222,7 +222,7 @@
           }
         }
         data = { v: 2, player, players: players.slice(0, MAX_PLAYERS), bests, progress, accounts, wallet };
-        if (raw.animal && typeof raw.animal === "object" && !Array.isArray(raw.animal)) { // o animalzinho escolhido por jogador (0.17.0; só existe quando não é o cachorrinho)
+        if (raw.animal && typeof raw.animal === "object" && !Array.isArray(raw.animal)) { // o bichinho escolhido por jogador (0.17.0; só existe quando não é o cachorrinho)
           const animal = Object.create(null);
           for (const [k, a] of Object.entries(raw.animal)) if (typeof k === "string" && k && isAnimal(a) && a !== DEFAULT_ANIMAL) animal[k] = a;
           if (Object.keys(animal).length) data.animal = animal;
@@ -275,7 +275,7 @@
     load();
     loadSaves();
 
-    // ---------- (0.17.0) o jogo de UM animalzinho ----------
+    // ---------- (0.17.0) o jogo de UM bichinho ----------
     // Pontuação, recordes, ranking, progresso e jogo salvo só daquele animal; jogar um nunca mexe nos dados do outro. `game("dog")` é o cachorrinho (o formato de sempre, o mesmo dos métodos
     // soltos da loja: store.addRun, store.progress...). Dentro do mesmo animal a fase N só abre ao concluir a N−1 (completeLevel). Carteira, contas e jogadores são compartilhados.
     function game(animal) {
@@ -458,18 +458,18 @@
         if (data.animal) { delete data.animal[k]; if (!Object.keys(data.animal).length) delete data.animal; } // (a escolha de bichinho sai ANTES de gravar: senão ela ficaria no armazenamento)
         save();
         const mine = Object.keys(saves).filter((x) => x === k || x.startsWith(k + "@"));
-        if (mine.length) { for (const x of mine) delete saves[x]; persistSaves(); }
+        if (mine.length) { for (const x of mine) delete saves[x]; savesOk = true; persistSaves(); } // (savesOk: uma falha antiga de gravação não pode deixar o jogo salvo de uma conta apagada voltar ao recarregar; apagar encolhe o texto)
         return true;
       },
 
       ...game(DEFAULT_ANIMAL), // pontuação, progresso e jogo salvo do cachorrinho (os métodos soltos da loja são os do cachorrinho)
-      // (0.17.0) o jogo de outro animalzinho: store.game("cat").addRun(...), .progress(...), .saveGame(...)...; o objeto tem os mesmos métodos
+      // (0.17.0) o jogo de outro bichinho: store.game("cat").addRun(...), .progress(...), .saveGame(...)...; o objeto tem os mesmos métodos
       game(animal) {
         const g = game(animal);
         for (const name of Object.keys(g)) { const fn = g[name]; g[name] = (...args) => { sync(); return fn.apply(g, args); }; } // (como os outros: relê o armazenamento antes)
         return g;
       },
-      // o animalzinho que o jogador escolheu no menu ("dog" = o cachorrinho, se nunca escolheu); fica guardado por jogador
+      // o bichinho que o jogador escolheu no menu ("dog" = o cachorrinho, se nunca escolheu); fica guardado por jogador
       animal(name) { const a = data.animal && data.animal[nameKey(name)]; return isAnimal(a) ? a : DEFAULT_ANIMAL; },
       setAnimal(name, animal) {
         const k = nameKey(canonical(name));

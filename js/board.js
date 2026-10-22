@@ -175,7 +175,7 @@
     if (enabled && claude && typeof claude.use === "function") backends.push(claudeBackend(claude, levelSet));
 
     // as linhas deste aparelho (por padrão as do Cachorrinho: os métodos soltos da loja); `animal` = id de outro bichinho (store.game(animal)), `ids` = as fases dele
-    const localRows = (animal = DEFAULT_ANIMAL, ids = levels) => { const g = animal === DEFAULT_ANIMAL || typeof store.game !== "function" ? store : store.game(animal); return ids.flatMap((l) => g.ranking(l, Infinity)); };
+    const localRows = (animal = DEFAULT_ANIMAL, ids = levels) => { const g = animal === DEFAULT_ANIMAL ? store : typeof store.game === "function" ? store.game(animal) : null; return g ? ids.flatMap((l) => g.ranking(l, Infinity)) : []; };
 
     return {
       get enabled() { return enabled; },
@@ -185,7 +185,8 @@
       localAll(animal = DEFAULT_ANIMAL, ids = levels) { return { shared: false, label: "este aparelho", ...summarize(localRows(animal, ids), ids) }; },
 
       // Envia a melhor pontuação de um jogador (chamado só quando ela é um novo recorde pessoal). Nunca lança erro.
-      async submit({ name, level, points, timeMs }) {
+      async submit({ name, level, points, timeMs, animal = DEFAULT_ANIMAL }) {
+        if (animal !== DEFAULT_ANIMAL) return false; // os bichinhos novos ainda não têm lugar no servidor: nunca misturar com os recordes do Cachorrinho
         const r = cleanRow(levelSet, level, { n: name, p: points, t: Math.round(timeMs), w: Date.now() });
         if (!r || !backends.length) return false;
         const results = await Promise.allSettled(backends.map((b) => b.push([r])));

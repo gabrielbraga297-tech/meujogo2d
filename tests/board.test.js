@@ -138,6 +138,24 @@ test("bichinhos (0.17.0): localAll(bichinho) mostra o ranking deste aparelho de 
   } finally { await S.close(); }
 });
 
+test("bichinhos (0.17.0): submit de outro bichinho nunca vai ao servidor, e localAll(outro bichinho) nunca devolve o Cachorrinho (nem sem store.game)", async () => {
+  const st = mkStore();
+  addRun(st, "Totó", 1, 600, 20000);
+  const S = await startServer();
+  try {
+    const b = Board.create({ store: st, levels: LEVELS, config: { sharedRanking: true, rankingUrl: S.url } });
+    assert.strictEqual(await b.submit({ name: "Totó", level: 1, points: 900, timeMs: 15000, animal: "cat" }), false, "o recorde do Gatinho não é enviado");
+    await sleep(100);
+    assert.ok(!S.db.scores, "o servidor não recebeu nada");
+    assert.strictEqual(await b.submit({ name: "Totó", level: 1, points: 600, timeMs: 20000 }), true, "sem `animal` vale o Cachorrinho, como sempre");
+    assert.strictEqual(await b.submit({ name: "Ana", level: 1, points: 300, timeMs: 30000, animal: "dog" }), true);
+  } finally { await S.close(); }
+  const plain = { ranking: (l) => (l === 1 ? [row("Totó", 1, 600, 20000)] : []), player: () => "Totó" }; // uma loja sem store.game (só testes)
+  const b2 = Board.create({ store: plain, levels: LEVELS, config: {} });
+  assert.deepStrictEqual(b2.localAll().levels[1].map((r) => r.n), ["Totó"], "o Cachorrinho vem dos métodos soltos da loja");
+  assert.deepStrictEqual(b2.localAll("cat").levels[1], [], "sem store.game, outro bichinho fica vazio (não vira o Cachorrinho)");
+});
+
 test("stand by: sem sharedRanking:true nada é consultado, mesmo com endereço e banco do Claude disponíveis", async () => {
   const S = await startServer();
   try {

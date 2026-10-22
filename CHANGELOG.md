@@ -1,17 +1,21 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.16.1 · 22/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.17.0 · 22/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
 ## 0.17.0 — 22/10/2026 (em preparação)
-**Atualização 2 · Escolha do bichinho e progresso independente por animal.**
+**Atualização 2 · Escolha do bichinho.**
 Pedido do dono: cada bichinho terá o **seu próprio jogo de 20 fases**, com pontos, recordes, ranking, progresso, "fases anteriores" e jogo salvo **independentes**; qualquer bichinho pode ser escolhido a qualquer momento; a lojinha e a carteira de petscoin são **únicas**.
 - **Botão "Bichinho" no menu** (ao lado do jogador) e nova tela **Escolha seu bichinho**: um cartão por bichinho, com a situação *dele* (fases concluídas e pontuação total). Hoje só o **Cachorrinho** 🐶 está pronto; o **Gatinho** 🐱 e o **Passarinho** 🐦 aparecem como *Em breve* e chegam nas próximas atualizações.
 - **Tudo é separado por bichinho:** *Fases concluídas*, *Pontuação total*, *Continuar jogo*, *Iniciar jogo*, *Jogar fases anteriores*, *Pontuações* e ranking mostram só o bichinho escolhido. Dentro do mesmo bichinho a fase N só abre depois da N−1; entre bichinhos não há exigência nenhuma. A escolha é guardada **por jogador**.
 - **Compartilhado por todos os bichinhos:** contas e jogadores, **petscoin** (1 petisco por fase concluída em qualquer bichinho) e **lojinha**.
 - **As 20 fases do Cachorrinho continuam exatamente como estavam** na 0.16.1, e tudo o que já estava guardado (progresso, recordes, ranking, jogo salvo, skins) vira "Cachorrinho" sem perder nada.
-- **Data de fundação no menu:** *Fundado em 06/10/2026* (dia do primeiro commit do jogo), logo abaixo da versão (`founded` em `js/version.js`).
+- **Data de fundação no menu:** *Fundado em 06/10/2026* (dia do primeiro commit do jogo), na linha pequena do crédito, no canto de baixo do menu (`founded` em `js/version.js`).
+- **Ranking compartilhado entre aparelhos (em stand by):** continua só do Cachorrinho; as Pontuações dos outros bichinhos mostram só este aparelho. *Como jogar* ganhou um item sobre os bichinhos, e em telas baixas o menu ficou um pouco mais compacto para o botão novo caber.
+- **Setas ← → andam entre os cartões** da tela *Escolha seu bichinho*; o aviso de *Novo jogo* diz de qual bichinho é o jogo salvo; o aviso *o jogo salvo era de uma versão com outros mapas* aparece só no bichinho a que ele pertence.
+- **Reparo na conta apagada:** se uma gravação do jogo salvo tivesse falhado antes, o jogo salvo de uma conta apagada voltava ao recarregar (e uma conta nova com o mesmo nome o herdava); agora apagar a conta regrava os jogos salvos.
+- **Aviso para quem tem duas versões abertas:** depois que o Gatinho e o Passarinho existirem, não abra o jogo numa aba ainda na 0.16.1 e não volte a ela: a versão antiga não conhece os dados de outros bichinhos e os apagaria ao gravar.
 - **Dados** (`js/records.js`): `store.game(bichinho)` (pontuações, progresso e jogo salvo daquele bichinho), `store.animal` / `store.setAnimal`; o Cachorrinho mantém o formato antigo; apagar a conta apaga os dados de todos os bichinhos. Testes unitários de independência, migração, adulteração e limite de jogos salvos por bichinho; testes de navegador (`node tests/e2e.js "0.17.0"`) com um gancho de teste que liga um segundo bichinho com uma cópia das fases.
 
 ## 0.16.1 — 22/10/2026

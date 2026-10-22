@@ -76,6 +76,7 @@ test("o README fala da versão e do CHANGELOG", () => {
   const readme = read("README.md");
   assert.ok(/CHANGELOG\.md/.test(readme) && /Versão/.test(readme));
   assert.ok(readme.includes(`Versão ${V.number} ·`), `o exemplo do README mostra a versão atual (Versão ${V.number} · ...)`);
+  assert.ok(read("CHANGELOG.md").includes(`Versão ${V.number} ·`), `o exemplo do CHANGELOG mostra a versão atual (Versão ${V.number} · ...)`);
 });
 
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de versão passaram");

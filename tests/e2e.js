@@ -226,13 +226,13 @@ const PAGE_HELPERS = () => {
     ok(ver.visible && ver.text === `Versão ${ver.v.number}${stageTxt} · ${dd}/${mm}/${yy}`, `o menu mostra a versão do jogo (${ver.text})`);
     ok(/^\d+\.\d+\.\d+$/.test(ver.v.number) && ver.v.build === "dev", "a versão vem de js/version.js (no código o build é 'dev' e não aparece)");
     ok(ver.left < 40 && ver.bottom < 40 && ver.left < ver.creditLeft && ver.fs >= 13, `versão no canto inferior esquerdo, legível (${ver.fs}px), sem tapar o crédito`);
-    // (0.17.0) data de fundação do jogo no menu, logo abaixo da versão (06/10/2026 = primeiro commit)
+    // (0.17.0) data de fundação do jogo no menu, na linha pequena do crédito (06/10/2026 = primeiro commit)
     const fnd = await page.evaluate(() => {
-      const f = document.getElementById("menu-founded"), v = document.getElementById("menu-version"), fr = f.getBoundingClientRect(), vr = v.getBoundingClientRect(), c = document.querySelector("#menu .credit").getBoundingClientRect();
-      return { text: f.textContent, founded: window.GAME_VERSION.founded, visible: fr.width > 0 && fr.height > 0, below: fr.top >= vr.bottom - 1, sameLeft: Math.abs(fr.left - vr.left) < 2, creditLeft: c.left, right: fr.right, bottom: innerHeight - fr.bottom, fs: parseFloat(getComputedStyle(f).fontSize), docH: document.documentElement.scrollHeight, winH: innerHeight };
+      const f = document.getElementById("menu-founded"), fr = f.getBoundingClientRect(), cr = document.querySelector("#menu .credit").getBoundingClientRect(), role = document.querySelector("#menu .credit-role").getBoundingClientRect(), name = document.querySelector("#menu .credit strong").getBoundingClientRect();
+      return { text: f.textContent, founded: window.GAME_VERSION.founded, visible: fr.width > 0 && fr.height > 0, inCredit: fr.left >= cr.left - 1 && fr.right <= cr.right + 1 && fr.top >= cr.top - 1 && fr.bottom <= cr.bottom + 1, overRole: fr.right <= role.left + 1 || Math.abs(fr.top - role.top) > 2, aboveName: fr.bottom <= name.top + 1, bottom: innerHeight - cr.bottom, fs: parseFloat(getComputedStyle(f).fontSize), hs: document.documentElement.scrollWidth - innerWidth };
     });
     ok(fnd.founded === "2026-10-06" && fnd.text === "Fundado em 06/10/2026", `o menu mostra a data em que o jogo foi fundado (${fnd.text})`);
-    ok(fnd.visible && fnd.below && fnd.sameLeft && fnd.fs >= 13 && fnd.bottom < 40 && fnd.right < fnd.creditLeft + 1, `a data de fundação fica sob a versão, legível (${fnd.fs}px), sem tapar o crédito`);
+    ok(fnd.visible && fnd.inCredit && fnd.overRole && fnd.aboveName && fnd.fs >= 10 && fnd.bottom < 40 && fnd.hs <= 0, `a data de fundação fica na linha pequena do crédito (sem tapar o "Criador do jogo", acima do nome, ${fnd.fs}px)`);
     await page.evaluate(() => { window.GAME_VERSION = { number: "9.8.7", date: "2030-01-02", build: "abc1234" }; });
     await page.click("#btn-howto"); await page.click("#btn-howto-back");
     ok(await page.textContent("#menu-version") === "Versão 9.8.7 · 02/01/2030 · build abc1234", "publicado no GitHub Pages, a versão mostra também o código do commit (build)");
@@ -8082,8 +8082,6 @@ const PAGE_HELPERS = () => {
       return { progress: g.progress(name), best1: g.personalBest(name, 1), total: g.totalScore(name, ids), ranking1: g.ranking(1, 99), hasGame: g.hasGame(name), save: g.loadGame(name) && JSON.stringify(g.loadGame(name).snap) };
     }, [animal, name]),
     rawSaves: (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem("cachorrinho.save.v1") || '{"saves":{}}').saves),
-    // dá o jogo do Totó: cada coisa entra no bichinho pedido (a página é recarregada no fim)
-    seed: async (pg, fn, arg) => { await pg.evaluate(fn, arg); await pg.reload(); await pg.evaluate(PAGE_HELPERS); },
     levelsList: (pg) => pg.$$eval("#levels-list button", (bs) => bs.map((b) => ({ title: b.querySelector("strong").textContent, sub: b.querySelector(".sub").textContent, locked: b.disabled }))),
   };
 
@@ -8173,6 +8171,20 @@ const PAGE_HELPERS = () => {
       fits.push({ vp, m, n });
       await t.context().close();
     }
+    // ---- o aviso "o jogo salvo era de uma versão com outros mapas" é só do bichinho a que o jogo salvo pertencia ----
+    {
+      const t = await newPage({ viewport: { width: 1000, height: 700 } });
+      await fresh(t, { done: [1], keepSave: true });
+      await ev(t, () => { const st = Records.createStore(localStorage); st.game("cat").saveGame("Totó", { l: 1, mz: 1 }); st.setAnimal("Totó", "cat"); }); // um jogo salvo do Gatinho de mapas antigos
+      await t.reload(); await t.evaluate(PAGE_HELPERS); await ev(t, () => __game.enableTestAnimal("cat"));
+      const catNote = { shown: await t.isVisible("#menu-save"), text: await t.textContent("#menu-save"), cont: await t.isVisible("#btn-continue") };
+      ok(catNote.shown && /outros mapas/.test(catNote.text) && !catNote.cont, "o jogo salvo de mapas antigos do Gatinho é descartado e o menu do Gatinho explica o porquê");
+      await t.click("#btn-animal"); await t.click("#animal-dog");
+      ok(await t.isHidden("#menu-save") && await t.isHidden("#btn-continue"), "no menu do Cachorrinho o aviso do Gatinho não aparece (o Cachorrinho não perdeu jogo nenhum)");
+      await t.click("#btn-animal"); await t.click("#animal-cat");
+      ok(await t.isVisible("#menu-save") && /outros mapas/.test(await t.textContent("#menu-save")), "ao voltar para o Gatinho o aviso continua (até começar uma partida)");
+      await t.context().close();
+    }
     const label = (f) => `${f.vp.width}x${f.vp.height}`;
     const badMenu = fits.filter((f) => !(f.m.continueShown && f.m.hs <= 0 && f.m.over <= 1 && f.m.last <= f.m.vh && f.m.credit <= f.m.vh + 1 && f.m.aH >= 44 && f.m.aL >= 0 && f.m.aR <= f.m.vw && f.m.onSound === 0 && f.m.animalFont >= 15));
     ok(badMenu.length === 0, `o menu com jogo salvo e recorde cabe sem rolar (nem para os lados), com o botão do bichinho de pelo menos 44 px e todos os botões e o crédito à vista em ${fits.map(label).join(", ")} (rolagem: ${fits.map((f) => f.m.over).join(", ")} px)${badMenu.length ? " — problema: " + JSON.stringify(badMenu.map((f) => [label(f), f.m])) : ""}`);
@@ -8195,7 +8207,16 @@ const PAGE_HELPERS = () => {
 
     // ---- sem jogador: a escolha fica só na memória ----
     await page.click("#btn-animal");
-    ok(await page.isEnabled("#animal-cat") && /Fases|fases/.test(await page.textContent("#animal-dog .animal-status")) && !/Fases concluídas/.test(await page.textContent("#animal-cat .animal-status")), `sem jogador o cartão pede um nome em vez de mostrar pontos ("${await page.textContent("#animal-cat .animal-status")}")`);
+    {
+      const sd = await page.textContent("#animal-dog .animal-status"), sc = await page.textContent("#animal-cat .animal-status");
+      ok(await page.isEnabled("#animal-cat") && /escolha um nome de usuário/.test(sd) && /escolha um nome de usuário/.test(sc) && !/Fases concluídas|Pontuação total/.test(sd + sc), `sem jogador os cartões pedem um nome em vez de mostrar pontos ("${sd}" / "${sc}")`);
+    }
+    // as setas ← → andam entre os cartões dos bichinhos que estão prontos (os desligados são pulados)
+    await page.focus("#animal-dog"); await page.keyboard.press("ArrowRight");
+    const toCat = await ev(page, () => document.activeElement.id);
+    await page.keyboard.press("ArrowRight"); const pastCat = await ev(page, () => document.activeElement.id);
+    await page.focus("#animal-cat"); await page.keyboard.press("ArrowLeft"); const backToDog = await ev(page, () => document.activeElement.id);
+    ok(toCat === "animal-cat" && pastCat === "btn-animals-back" && backToDog === "animal-dog", `seta → vai do Cachorrinho ao Gatinho e pula o Passarinho desligado; seta ← volta ao Cachorrinho (${toCat} / ${pastCat} / ${backToDog})`);
     await page.click("#animal-cat");
     ok(await page.isVisible("#menu") && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat" && await page.getAttribute("#btn-animal", "aria-label") === "Bichinho: Gatinho. Trocar de bichinho", "escolher o Gatinho (sem jogador) volta ao menu e troca o rótulo do botão");
     ok(await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes("animal")), "sem jogador a escolha não é guardada em lugar nenhum (só na memória)");
@@ -8209,7 +8230,7 @@ const PAGE_HELPERS = () => {
     // ---- por jogador: escolha, recarregar, outro jogador ----
     await fresh(page);
     await ev(page, () => __game.enableTestAnimal("cat"));
-    ok(await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes("animal")), "um jogador que nunca escolheu não tem campo de bichinho guardado (o formato antigo não ganha nada)");
+    ok(await ev(page, () => { const raw = localStorage.getItem("cachorrinho.v1") || ""; return raw.includes("Totó") && !raw.includes('"animal"'); }), "um jogador que nunca escolheu não tem campo de bichinho guardado (o formato antigo não ganha nada; os dados do Totó estão lá)");
     await page.click("#btn-animal"); await page.click("#animal-cat");
     ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => Records.createStore(localStorage).animal("Totó")) === "cat" && await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1")).animal.toto) === "cat", "o Totó escolhe o Gatinho: o menu muda e a escolha fica guardada no nome dele");
     await page.reload(); await page.evaluate(PAGE_HELPERS);
@@ -8272,7 +8293,7 @@ const PAGE_HELPERS = () => {
     ok(await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await AN.progress(page) === "Fases concluídas: 6/20 · Pontuação total: 4410 · Petscoin: 0", `Cachorrinho: o menu diz "${await AN.progress(page)}"`);
     const dogMenu = { best: await page.textContent("#menu-best"), save: await page.textContent("#menu-save") };
     ok(/Fase 6 760/.test(dogMenu.best) && !/321|999/.test(dogMenu.best) && await page.isVisible("#btn-continue") && /Jogo salvo: Fase 2 /.test(dogMenu.save) && await page.isVisible("#btn-replay"), `Cachorrinho: "${dogMenu.best}", "${dogMenu.save}", Continuar jogo e Jogar fases anteriores`);
-    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 2/.test(await page.textContent("#confirm-text")), "Cachorrinho: Iniciar jogo avisa do jogo salvo dele (Fase 2)");
+    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 2/.test(await page.textContent("#confirm-text")) && /jogo salvo do Cachorrinho/.test(await page.textContent("#confirm-text")), "Cachorrinho: Iniciar jogo avisa do jogo salvo dele (Fase 2) e diz que é do Cachorrinho");
     await page.click("#btn-confirm-new");
     const dogList = await AN.levelsList(page);
     ok(dogList.length === 20 && dogList.filter((l) => !l.locked).length === 7 && dogList[6].locked === false && dogList[7].locked && /bloqueada: termine a Fase 7/.test(dogList[7].sub) && /sua melhor: 710 pts/.test(dogList[0].sub), `Cachorrinho: a lista de fases abre até a Fase 7 (as Fases 1 a 6 estão concluídas) e mostra o recorde dele (${dogList[0].sub.slice(-24)})`);
@@ -8298,7 +8319,7 @@ const PAGE_HELPERS = () => {
     ok(await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await AN.progress(page) === "Fases concluídas: 1/20 · Pontuação total: 321 · Petscoin: 0", `Gatinho: o menu diz "${await AN.progress(page)}" (Petscoin é a carteira única)`);
     const catMenu = { best: await page.textContent("#menu-best"), save: await page.textContent("#menu-save") };
     ok(/Suas melhores: Fase 1 321/.test(catMenu.best) && !/710|760/.test(catMenu.best) && /Jogo salvo: Fase 1 /.test(catMenu.save) && await page.isVisible("#btn-continue") && await page.isVisible("#btn-replay"), `Gatinho: "${catMenu.best}", "${catMenu.save}"`);
-    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 1 /.test(await page.textContent("#confirm-text")), "Gatinho: Iniciar jogo avisa do jogo salvo do Gatinho (Fase 1), não do Cachorrinho");
+    await page.click("#btn-start"); ok(await page.isVisible("#confirm") && /Fase 1 /.test(await page.textContent("#confirm-text")) && /jogo salvo do Gatinho/.test(await page.textContent("#confirm-text")), "Gatinho: Iniciar jogo avisa do jogo salvo do Gatinho (Fase 1) e diz que é do Gatinho, não do Cachorrinho");
     await page.click("#btn-confirm-new");
     const catList = await AN.levelsList(page);
     ok(catList.length === 20 && catList.filter((l) => !l.locked).length === 2 && catList[2].locked && /bloqueada: termine a Fase 2/.test(catList[2].sub) && /sua melhor: 321 pts/.test(catList[0].sub) && /ainda não jogada/.test(catList[1].sub), `Gatinho: a lista abre só até a Fase 2 (a Fase 1 do Gatinho está concluída), com o recorde 321 do Gatinho e não os do Cachorrinho`);
