@@ -144,9 +144,7 @@ const PAGE_HELPERS = () => {
     __game.freezeVets = true;
     for (let i = 0; i < n; i++) __game.tick(0.05);
     for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
-    // 0.15.6 (Fases 11 a 20): a saída também exige a missão. Com o poder do osso ainda ligado (os ossos já foram pegos), leva os agentes e os gatos até o cachorro para os sustos que faltam
-    const M = __game.levels[__game.level - 1].mission;
-    if (M && M.scare) for (const a of [...__game.vets, ...__game.cats]) { if (__game.postmen >= M.scare) break; if (a.slow) continue; const p = __game.player; a.cx = p.x + 12; a.cy = p.y + 12; a.leg = null; __game.tick(0.01); }
+    // 0.15.6 (Fases 11 a 20): a saída também exige a missão (0.16.1: só ossos e/ou rações). Como o cachorrinho já pegou TODAS as rações e TODOS os ossos, a missão está cumprida: não precisa assustar ninguém
     const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
   }, Math.round(seconds / 0.05));
   // A Próxima fase abre a tela de reforços: escolhe `id` (por padrão "Pelo grosso", que não muda vidas nem velocidades) e clica em Próxima fase
@@ -2201,9 +2199,11 @@ const PAGE_HELPERS = () => {
       else if (!new RegExp(`pegar as ${l.rations} rações${l.bones ? ` e os ${l.bones} ossos` : ""}`).test(cond)) diffs.push(`fase ${l.id}: condição "${cond}"`);
       // (0.16.0) a missão das Fases 11 a 20 também está na condição: cada parte dela com os números do jogo
       if (l.mission) {
-        const parts = [l.mission.bones ? `pegar todos os ${l.bones} ossos` : "", l.mission.scare ? `assustar ${l.mission.scare} carteiros ou gatos` : "", l.mission.rations ? `pegar ${l.mission.rations} das ${l.rations} rações` : ""].filter(Boolean);
+        const parts = [l.mission.bones ? `pegar todos os ${l.bones} ossos` : "", l.mission.rations ? `pegar ${l.mission.rations} das ${l.rations} rações` : ""].filter(Boolean);
         if (!/cumprir a missão/.test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" sem a missão`);
         for (const t of parts) if (!cond.includes(t)) diffs.push(`fase ${l.id}: condição sem "${t}"`);
+        if (/assustar|susto/.test(cond)) diffs.push(`fase ${l.id}: condição "${cond}" ainda fala em assustar (0.16.1: assustar não é exigência)`);
+        if (l.mission.scare !== undefined) diffs.push(`fase ${l.id}: a missão ainda tem scare`);
       } else if (/missão/.test(cond)) diffs.push(`fase ${l.id}: condição cita missão, mas a fase não tem`);
     });
     ok(!diffs.length, `os números da tabela das fases do README (condição, agentes da carrocinha, rações, ossos, velocidades) são os do jogo ${diffs.join("; ")}`);
@@ -5043,7 +5043,7 @@ const PAGE_HELPERS = () => {
     const stroll = (arg) => {
       const [n, seed, secs] = arg;
       const L = __game.levels[n - 1], M = L.map, R = M.length, C = M[0].length, p = __game.player, cs = __game.cats;
-      for (const it of __game.items) { it.x = -9999; it.y = -9999; } // (itens fora do mapa: o passeio não pega nada, e a missão de sustos da Fase 20 não fica impossível por falta de osso)
+      for (const it of __game.items) { it.x = -9999; it.y = -9999; } // (itens fora do mapa: o passeio não pega nada)
       const track = new Set(); for (const bk of L.blocks) { const [w, h] = bk.size || [1, 1]; for (const k of ["from", "to"]) for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) track.add((bk[k][1] + j + dr) * C + bk[k][0] + i + dc); }
       const ok = (c, r) => c >= 0 && r >= 0 && c < C && r < R && M[r][c] !== "#" && M[r][c] !== "X" && !track.has(r * C + c);
       let s2 = seed * 104729 + 17; const rnd = () => ((s2 = (s2 * 1664525 + 1013904223) >>> 0) / 4294967296);
