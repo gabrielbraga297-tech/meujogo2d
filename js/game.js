@@ -2094,7 +2094,7 @@
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
     for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
     for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
-    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros${cats.length ? " e os gatos" : ""} fogem!`, 2.6); pickupToastUntil = time + 2.6;
+    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros${cats.length ? " e os gatos" : ""} fogem! Encoste neles: +100 cada.`, 2.6); pickupToastUntil = time + 2.6;
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -2276,7 +2276,7 @@
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
-      else if (hintTimer <= 0) toast(lv.minPoints && runningScore() >= lv.minPoints ? `Falta a missão: ${missionTexts().join(" e ")} (${missionLeft().join(" · ")}).` : lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
+      else if (hintTimer <= 0) toast(lv.minPoints && runningScore() >= lv.minPoints ? `Falta a missão: ${missionLeft().join(" · ")}.` : lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
     }
   }
 
@@ -2341,7 +2341,8 @@
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}${lv.mission ? ` · missão: ${missionShort()}` : ""}`;
+      : lv.mission ? `${lv.title}: ${n} ${n === 1 ? "agente" : "agentes"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""} · mínimo ${lv.minPoints} pontos · missão: ${missionShort()}` // (0.16.1: nas Fases 11 a 20 o aviso é curto, senão cobria até metade do campo no celular)
+      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { startEff = eff ? `Reforços valendo: ${eff}` : ""; toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
@@ -2767,7 +2768,7 @@
     if (gamePlayer) store.clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
     $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
-    $("lose-lead").textContent = why === "short" ? "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." : "Acabaram as suas vidas.";
+    $("lose-lead").textContent = why === "short" ? `Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída. Faltaram ${Math.max(0, lv.minPoints - score)} pontos${livesLost ? ` (cada vida perdida custou ${lv.lifePenalty}: você perdeu ${livesLost})` : ""}.` : "Acabaram as suas vidas.";
     $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
@@ -3234,7 +3235,7 @@
     }
     if (v.hitCool > 0) { // tonto: estrelinhas girando em volta da cabeça
       ctx.fillStyle = "#ffe066";
-      for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y - 22 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
+      for (let k = 0; k < 3; k++) { const a = (calm ? 0 : time * 7) + k * 2.1; ctx.beginPath(); ctx.arc(x + Math.cos(a) * 9, y - 22 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
   }
@@ -3304,6 +3305,7 @@
     { fur: "#efe9df", dark: "#d79b5a", light: "#ffffff", eye: "#6bb7ff" },
   ];
   function drawCat(c) {
+    if (c.slow) ctx.globalAlpha = 0.55; // gato já assustado neste poder (não rende mais pontos): fica esmaecido, como o carteiro
     const coat = CAT_COATS[c.look % CAT_COATS.length], flee = c.mode === "flee", chase = c.mode === "chase", d = c.dir || 1, pounce = c.pounce > 0, walking = !!c.leg;
     let lift = 0; // pulo: sobe até 11 px quando está sobre uma caixa "X" e desce ao se afastar dela
     for (const t of [tileOf(c.cx, c.cy), c.leg]) if (t && lv.crate[t[1]] && lv.crate[t[1]][t[0]]) { const [x0, y0] = centerOf(t[0], t[1]); lift = Math.max(lift, 11 * (1 - Math.min(1, Math.hypot(c.cx - x0, c.cy - y0) / TILE))); }
@@ -3345,8 +3347,9 @@
     }
     if (c.hitCool > 0) { // tonto: estrelinhas girando em volta da cabeça
       ctx.fillStyle = "#ffe066";
-      for (let k = 0; k < 3; k++) { const a = time * 7 + k * 2.1; ctx.beginPath(); ctx.arc(c.cx + Math.cos(a) * 9, c.cy - 18 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
+      for (let k = 0; k < 3; k++) { const a = (calm ? 0 : time * 7) + k * 2.1; ctx.beginPath(); ctx.arc(c.cx + Math.cos(a) * 9, c.cy - 18 + Math.sin(a) * 3, 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
+    ctx.globalAlpha = 1;
   }
 
   function draw() {

@@ -4239,7 +4239,7 @@ const PAGE_HELPERS = () => {
       return out;
     });
     ok(info.map((i) => i.place).join("|") === PLACES.join("|") && new Set(info.map((i) => i.blurb)).size === 20, `as 20 fases são 20 lugares diferentes: ${info.map((i) => i.place).join(", ")}`);
-    ok(info.every((i) => i.toast.startsWith(i.place + " — Fase " + i.id)), `o aviso de começar cada fase diz o lugar (${info[2].toast})`);
+    ok(info.every((i) => (i.id <= 10 ? i.toast.startsWith(i.place + " — Fase " + i.id) : i.toast.startsWith("Fase " + i.id + ":"))), `o aviso de começar cada fase diz o lugar nas Fases 1 a 10 (${info[2].toast}) e, nas Fases 11 a 20 (0.16.1, aviso curto por causa da missão), começa pela fase (${info[10].toast})`);
     await fresh(page, { done: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] }); await page.click("#btn-start");
     const list = await page.$$eval("#levels-list button strong", (bs) => bs.map((b) => b.textContent));
     ok(list.length === 20 && list.every((t, i) => t === `Fase ${i + 1} · ${PLACES[i]}`), `a lista de fases mostra o lugar de cada uma (${list.slice(0, 3).join(", ")}...)`);
@@ -4944,7 +4944,7 @@ const PAGE_HELPERS = () => {
 
     // ---- (e) a lista de fases e o aviso do começo da fase falam dos gatos só nas Fases 11 a 20 ----
     const catWord = (k) => `e ${k} ${k === 1 ? "gato" : "gatos"}`;
-    ok(info.every((x, i) => (i < 10 ? !/gato/i.test(x.toast) : x.toast.includes(`${x.nv} agentes da carrocinha ${catWord(x.cats.length)}`))), `o aviso do começo de cada fase cita os gatos só nas Fases 11 a 20 (Fase 11: "${info[10].toast}"; Fase 20: "${info[19].toast}"; Fase 10: "${info[9].toast}")`);
+    ok(info.every((x, i) => (i < 10 ? !/gato/i.test(x.toast) : x.toast.includes(`${x.nv} agentes ${catWord(x.cats.length)}`))), `o aviso do começo de cada fase cita os gatos só nas Fases 11 a 20 (Fase 11: "${info[10].toast}"; Fase 20: "${info[19].toast}"; Fase 10: "${info[9].toast}")`);
     await fresh(page, { done: Array.from({ length: 19 }, (_, i) => i + 1) }); await page.click("#btn-start");
     const subs = await page.$$eval("#levels-list button", (bs) => bs.map((b) => b.querySelector(".sub").textContent));
     const nv = await (async () => { await loadKit(); return ev(page, () => __game.levels.map((l) => l.vets.length)); })();
@@ -6237,7 +6237,7 @@ const PAGE_HELPERS = () => {
           if (r.t1.toast !== `Pontos suficientes! Falta a missão: ${atCross}.`) problems.push(`aviso dos pontos: "${r.t1.toast}" (esperado "${atCross}")`);
           if (r.t1.bar !== `Missão: ${left}` || r.t1.hidden || r.t1.done) problems.push(`faixa: "${r.t1.bar}" ${r.t1.hidden ? "oculta" : ""}${r.t1.done ? " .done" : ""}`);
           if (r.closed.state !== "playing") problems.push(`a saída venceu sem ${miss}`);
-          if (r.closed.toast !== `Falta a missão: ${missionText(L)} (${left}).`) problems.push(`aviso da saída: "${r.closed.toast}"`);
+          if (r.closed.toast !== `Falta a missão: ${left}.`) problems.push(`aviso da saída: "${r.closed.toast}"`);
           if (r.open.state !== "playing" || r.open.bar !== "Missão cumprida!" || !r.open.done || r.open.toast !== `Meta de ${L.minPoints} pontos e missão cumpridas! A saída está aberta.`) problems.push(`ao cumprir: ${r.open.state} "${r.open.bar}" ${r.open.done ? ".done" : "sem .done"} "${r.open.toast}"`);
           if (r.won.state !== "won") problems.push("cumprida a missão, a saída não venceu");
         } else {
@@ -6276,7 +6276,7 @@ const PAGE_HELPERS = () => {
       const { I, need, start, mid, closed, open, won } = r, tag = `F${n}`;
       if (start.bar !== `Missão: rações 0/${need}` || start.postmen !== 0 || start.bones !== 0 || start.power > 0) nsc.push(`${tag} começo: "${start.bar}", ${start.postmen} sustos, ${start.bones} ossos, poder ${start.power}`);
       if (mid.bar !== `Missão: rações ${need - 1}/${need}` || mid.score < I.minPoints || !mid.toast.startsWith("Pontos suficientes! Falta a missão: rações")) nsc.push(`${tag} faltando 1 ração: faixa "${mid.bar}", ${mid.score} pontos (mínimo ${I.minPoints}), aviso "${mid.toast}"`);
-      if (closed.state !== "playing" || closed.toast !== `Falta a missão: pegar ${need} das ${I.rations} rações (rações ${need - 1}/${need}).`) nsc.push(`${tag} saída com 1 ração faltando: ${closed.state} / "${closed.toast}"`);
+      if (closed.state !== "playing" || closed.toast !== `Falta a missão: rações ${need - 1}/${need}.`) nsc.push(`${tag} saída com 1 ração faltando: ${closed.state} / "${closed.toast}"`);
       if (open.bar !== "Missão cumprida!" || !open.done || open.toast !== `Meta de ${I.minPoints} pontos e missão cumpridas! A saída está aberta.`) nsc.push(`${tag} missão cumprida: "${open.bar}" / "${open.toast}"`);
       if (won.state !== "won" || won.postmen !== 0 || won.bones !== 0 || won.power > 0 || /carteiros|gatos/.test(r.win)) nsc.push(`${tag} vitória: ${won.state}, ${won.postmen} sustos, ${won.bones} ossos, poder ${won.power}, "${r.win}"`);
     }
@@ -6418,7 +6418,7 @@ const PAGE_HELPERS = () => {
         const T = (x) => document.getElementById(x).textContent;
         return { state: __game.state, title: T("lose-title"), lead: T("lose-lead"), text: T("lose-text"), score: __game.score, lost: __game.livesLost };
       }, [id, start, lose]);
-      ok(r.state === "lost" && r.title === "Os pontos não bastaram!" && r.lead === "Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída." && !/missão/i.test(r.title + r.lead + r.text) && r.score < minShort && r.text.includes(`(mínimo ${minShort})`) && r.lost === lose,
+      ok(r.state === "lost" && r.title === "Os pontos não bastaram!" && r.lead.startsWith(`Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída. Faltaram ${minShort - r.score} pontos`) && /\.$/.test(r.lead) && (!lose || /cada vida perdida custou \d+: você perdeu \d+/.test(r.lead)) && !/missão/i.test(r.title + r.lead + r.text) && r.score < minShort && r.text.includes(`(mínimo ${minShort})`) && r.lost === lose,
         `Fase ${id}: com ${r.lost} vidas perdidas e tudo pego (${r.score} pontos, mínimo ${minShort}) a derrota é "${r.title}", sem falar de missão (${id >= 11 ? "Fase com missão: a missão está cumprida, só os pontos faltam" : "fase sem missão"})`);
     }
     const retry = await ev(page, () => { document.getElementById("btn-retry").click(); return { state: __game.state, level: __game.level, retries: __game.retries, lives: __game.lives, bar: document.getElementById("mission-bar").textContent }; });
@@ -6539,7 +6539,7 @@ const PAGE_HELPERS = () => {
       return { a, b0, b, c, d, min: __game.minPoints };
     });
     ok(cont.a.state === "playing" && cont.a.postmen === sv.postmen && cont.a.bones === 1 && cont.a.collected === sv.collected && cont.a.bar === `Missão: rações ${sv.collected}/34` && cont.a.power > 20
-      && cont.b0.bar === "Missão: rações 33/34" && cont.b0.score >= cont.min && cont.b.state === "playing" && cont.b.toast === "Falta a missão: pegar 34 das 46 rações (rações 33/34)."
+      && cont.b0.bar === "Missão: rações 33/34" && cont.b0.score >= cont.min && cont.b.state === "playing" && cont.b.toast === "Falta a missão: rações 33/34."
       && cont.c.bar === "Missão cumprida!" && cont.c.toast === `Meta de ${cont.min} pontos e missão cumpridas! A saída está aberta.` && cont.d.state === "won" && cont.d.postmen === sv.postmen,
       `continuar o jogo salvo da Fase 12 mantém a missão (faixa "${cont.a.bar}" com poder de ${cont.a.power.toFixed(0)} s e ${cont.a.postmen} sustos que só valem pontos), a saída segue fechada com 33 de 34 rações ("${cont.b.toast}"), a 34ª abre ("${cont.c.bar}") e vence (${cont.d.state})`);
   });
