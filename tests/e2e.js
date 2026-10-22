@@ -2214,7 +2214,7 @@ const PAGE_HELPERS = () => {
         de: doors.map((b) => b.every ?? 3), ds: doors.map((b) => b.speed ?? 120), we: walls.map((b) => b.every), ws: walls.map((b) => b.speed ?? 120), pen: l.lifePenalty, min: l.minPoints, power: l.bonePower, respawn: l.respawnInPlace };
     }));
     const fmtS = (x) => String(x).replace(".", ",");
-    for (const [first, last, head, tail] of [[6, 10, "### Fases 6 a 10", "Nas **Fases 9 e 10**"], [11, 20, "### Fases 11 a 20", "**Labirintos com desenho de cidade"]]) {
+    for (const [first, last, head, tail] of [[6, 10, "### Fases 6 a 10", "Da **Fase 9 até a Fase 20**"], [11, 20, "### Fases 11 a 20", "**Labirintos com desenho de cidade"]]) {
       const sec = readme.slice(readme.indexOf(head), readme.indexOf(tail, readme.indexOf(head)));
       const n = last - first + 1, T6 = {};
       for (const l of sec.split("\n")) { if (!l.startsWith("| ") || /^\|[-| ]+\|$/.test(l)) continue; const c = l.split("|").slice(1, -1).map((x) => x.trim().replace(/\*\*/g, "")); T6[c[0]] = c.slice(1); }

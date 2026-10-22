@@ -1594,8 +1594,7 @@
     const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de um item já pego
     const near = []; // renascendo no lugar, nenhum item cai em cima do cachorro nem logo ao lado dele
     if (lv.respawnInPlace) { const [pc, pr] = tileOf(player.x + player.w / 2, player.y + player.h / 2); for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) near.push([c, r]); }
-    const ballTiles = balls.filter((b) => !b.taken).map((b) => tileOf(b.x, b.y)); // (e nem em cima de uma bolinha que ainda está no chão)
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near, ...ballTiles]);
+    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near]); // (as bolinhas têm sorteio à parte: não entram aqui, para os itens sorteados com a mesma semente não mudarem)
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone, it.kind)); });
   }
 
