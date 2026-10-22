@@ -27,6 +27,11 @@ test("o CHANGELOG marca 'em preparação' na entrada do topo se, e só se, js/ve
   assert.strictEqual(/\(em preparação\)/.test(head), !!V.stage, `cabeçalho do topo: "${head}" / stage: ${JSON.stringify(V.stage)}`);
 });
 
+test("sem stage em js/version.js, nenhuma entrada do CHANGELOG diz '(em preparação)'", () => {
+  const marked = [...read("CHANGELOG.md").matchAll(/^## .*\(em preparação\).*$/gm)].map((m) => m[0]);
+  if (!V.stage) assert.deepStrictEqual(marked, [], `entradas ainda marcadas: ${marked.join(" | ")}`);
+});
+
 test("o CHANGELOG começa pela versão atual, com a mesma data", () => {
   const first = read("CHANGELOG.md").match(/^## (\d+\.\d+\.\d+) — (\d{2})\/(\d{2})\/(\d{4})/m); // aceita " (em preparação)" depois da data
   assert.ok(first, "há uma versão no CHANGELOG");

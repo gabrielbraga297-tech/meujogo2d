@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 20** (com gatos, missões, ossos de tipos novos, 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.15.9 · 21/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.16.0 · 22/10/2026". No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -165,7 +165,7 @@ Depois que o "!" liga, ele fica ligado enquanto o agente da carrocinha vê o cac
 Os efeitos ativos aparecem numa **faixa no alto do jogo** (*Escudo 8 s · Gelo 3 s*) e podem se somar. O jogo salvo guarda o tipo de cada osso e os efeitos que ainda faltam. Composição por fase (`boneMix`): 11 = 3 comuns + ouro + gelo; 12 = 3 + gelo + turbo; 13 = 3 + ouro + gelo + ímã; 14 = 3 + ouro + turbo + ímã; 15 = 3 + gelo + turbo + ímã; 16 a 18 = 3 + ouro + gelo + turbo + ímã; 19 = 3 + 2 ouros + gelo + turbo + ímã; 20 = 3 + ouro + 2 gelos + turbo + ímã.
 
 ## Bolinhas (0.15.8, a partir da Fase 2)
-**Cachorros adoram correr atrás de bolinhas.** Cada fase, a partir da Fase 2, tem **bolinhas coloridas** espalhadas pelo chão: **1 nas Fases 2 e 3, 2 nas Fases 4 e 5, 3 nas Fases 6 a 10, 4 nas Fases 11 a 15 e 5 nas Fases 16 a 20**. Cada bolinha vale **+50 pontos** (o placar mostra **BOLINHAS n/N**), mas ela **foge**: quando o cachorrinho chega a **3 tiles** dela (e a vê), ela é **chutada** para longe pelo eixo em que ele está, **rola, quica nas paredes e nos blocos e para sozinha (um bloco que desliza por cima dela a empurra para o lado)** depois de uns 5 tiles (a velocidade do chute cresce com a fase: 196 px/s na Fase 2, 340 na Fase 20; o cachorrinho anda de 200 a 252). É só correr atrás dela e encostar: ela some com um *plim*. As bolinhas **não são obrigatórias** (a saída abre sem elas, e elas contam para os pontos mínimos), os agentes e os gatos não ligam para elas, e se o cachorrinho perde uma vida as bolinhas ficam onde estão. Com tudo pego, a tentativa só termina em *"Os pontos não bastaram!"* se nem as bolinhas que sobraram completarem os pontos mínimos. O lugar de cada bolinha é sorteado no começo de cada jogo (fora do caminho dos itens, dos trilhos dos blocos e do início); o jogo salvo guarda a posição e quais já foram pegas.
+**Cachorros adoram correr atrás de bolinhas.** Cada fase, a partir da Fase 2, tem **bolinhas coloridas** espalhadas pelo chão: **1 nas Fases 2 e 3, 2 nas Fases 4 e 5, 3 nas Fases 6 a 10, 4 nas Fases 11 a 15 e 5 nas Fases 16 a 20**. Cada bolinha vale **+50 pontos** (o placar mostra **BOLINHAS n/N**), mas ela **foge**: quando o cachorrinho chega a **3 tiles** dela (e a vê), ela é **chutada** para longe pelo eixo em que ele está, **rola, quica nas paredes e nos blocos e para sozinha (um bloco que desliza por cima dela a empurra para o lado)** depois de uns 4 tiles na Fase 2 até uns 12 na Fase 20 (a velocidade do chute cresce com a fase: 196 px/s na Fase 2, 340 na Fase 20, e ela perde 150 px/s a cada segundo; o cachorrinho anda de 200 a 252). É só correr atrás dela e encostar: ela some com um *plim*. As bolinhas **não são obrigatórias** (a saída abre sem elas, e elas contam para os pontos mínimos), os agentes e os gatos não ligam para elas, e se o cachorrinho perde uma vida as bolinhas ficam onde estão. Com tudo pego, a tentativa só termina em *"Os pontos não bastaram!"* se nem as bolinhas que sobraram completarem os pontos mínimos. O lugar de cada bolinha é sorteado no começo de cada jogo (fora do caminho dos itens, dos trilhos dos blocos e do início); o jogo salvo guarda a posição e quais já foram pegas.
 
 ## Petiscos, petscoin e lojinha de skins (0.15.9)
 **Ao completar cada fase o cachorrinho ganha 1 petisco; 1 petisco = 1 petscoin.** O saldo fica guardado no nome de usuário do jogador (só neste aparelho, como as pontuações; quem não tem nome não guarda) e aparece no menu (*Petscoin: N*) e na tela de vitória (*Petisco ganho! +1 petscoin*). Em **Menu → Lojinha de skins** os petscoin viram **skins** para o cachorrinho, **a partir de 10 petscoin**: Cinza-prata (10), Dálmata (12), Chocolate (15), Dourado (20), Arco-íris (25), Pirata (30), Astronauta (40) e Super-cão (50), além do Caramelo grátis. A skin só muda o desenho (o tamanho de contato, a velocidade e as regras são os mesmos) e vale nos três tamanhos e nas quatro direções. O plano completo, as regras e as ideias para depois estão em [`docs/LOJINHA.md`](docs/LOJINHA.md); o preço mínimo (`MIN_SKIN_PRICE = 10`) é conferido pelo código e pelos testes.
@@ -207,6 +207,21 @@ Cada fase é um **lugar que o cachorrinho conhece**, com chão, paredes e "caixa
 | 8 | **Feira** | paralelepípedo | barracas de toldo listrado | caixas de frutas | cancelas de madeira |
 | 9 | **Praia** | areia (o anel de fora é o mar) | quiosques de palha | guarda-sóis | tábuas |
 | 10 | **Central da carrocinha** | concreto com faixas de alerta | paredes de aço com grades | jaulas | blocos de aço |
+
+**Fases 11 a 20 (0.15.4):** os dez lugares novos (cada um com chão, paredes, "caixas" e peças móveis no estilo do ambiente, em `js/themes.js`):
+
+| Fase | Lugar | Como é |
+|---|---|---|
+| 11 | **Beco dos gatos** | O beco dos gatos: paralelepípedo molhado, muros de tijolo e latões |
+| 12 | **Pet shop** | O pet shop: prateleiras coloridas e caixas de ração |
+| 13 | **Fazenda** | A fazenda: terra batida, celeiro vermelho, fardos e sacos |
+| 14 | **Bosque** | O bosque: folhas secas, árvores densas e troncos caídos |
+| 15 | **Lago e docas** | O lago e as docas: tábuas, água e barris |
+| 16 | **Mercadão** | O mercadão: ladrilho quente, barracas de toldo e caixotes de legumes |
+| 17 | **Estacionamento** | O estacionamento: asfalto, vagas, carros e cones |
+| 18 | **Telhados** | Os telhados da cidade à noite: calhas, chaminés e antenas |
+| 19 | **Estação de trem** | A estação de trem: plataforma, vagões e malas |
+| 20 | **Fortaleza da carrocinha** | A fortaleza da carrocinha: muralhas de aço, luzes vermelhas e jaulas pesadas |
 
 O aviso de começar cada fase diz o lugar (*Casa — Fase 3: 2 agentes da carrocinha*), a lista de fases mostra **Fase 3 · Casa** e a vitória começa por *Casa · Vidas restantes…*. Nas cidades (Fases 4 a 10) as 4 caixas dos cantos do pátio da praça central são **vans da carrocinha**. O teste `0.14.0` confere os 10 nomes, o aviso, a lista, a vitória, que a cor média do chão de cada lugar é diferente das outras e o mar da Praia.
 
@@ -259,6 +274,9 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 | fim de jogo (sem vidas ou "os pontos não bastaram") | quatro notas descendo (1,2 s) |
 | escolher um reforço e ligar o som | toque curto de confirmação |
 | pegar uma bolinha (0.15.8) | o mesmo *plim* da escolha de reforço (sem som novo) |
+| comprar uma skin na lojinha (0.15.9) | a fanfarra curta de passar de fase |
+| usar uma skin que já é sua (0.15.9) | o mesmo *plim* da escolha de reforço |
+| pegar osso de ouro, gelo, turbo ou ímã (0.15.7) | o som do osso (o ímã também o da ração que ele puxa); o fim dos efeitos é silencioso |
 
 Os sons são **baixos por padrão** (volume 0,35) e foram medidos (pico, duração, cliques, equilíbrio de volume e diferença entre eles: 182 de 182 verificações); no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. **Menu, pausa, jogo carregado e reinício não tocam nada.** O botão **Som: ligado / desligado** (no menu e na pausa) e a tecla **M** ligam e desligam; a escolha fica em `localStorage` na chave `cachorrinho.som.v1` (separada do jogo salvo e das contas). O gancho de testes `window.__game.sounds` registra todo pedido de som (nome, instante e se tocou).
 
@@ -346,6 +364,7 @@ Se o jogo for publicado como página (artifact) no Claude **e** `sharedRanking` 
 ## Menu
 - **Iniciar jogo** (e **Continuar jogo**, quando há um jogo salvo)
 - **Jogar fases anteriores** (depois de concluir alguma fase): repete as fases já vencidas para melhorar o recorde de cada uma
+- **Lojinha de skins** (0.15.9): troque os petscoin (1 por fase completada) por skins do cachorrinho; a loja mostra o saldo no alto e o botão Voltar fica sempre à vista
 - **Como jogar**
 - **Pontuações:** suas pontuações (só você) e o ranking do jogo (todos)
 - **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes. Ali também dá para **Criar conta** (com senha) e **Entrar**.
@@ -356,7 +375,7 @@ Além do nome simples, dá para criar uma **conta**: nome de usuário + senha.
 - **Senha:** de **4 a 20 caracteres**, com letras **minúsculas e MAIÚSCULAS**, números e símbolos (`! @ # $ …`), acentos e espaços. Números e símbolos são opcionais. O campo mostra um contador (n/20) e há "Mostrar senha".
 - **Nome de usuário:** até 16 letras ou números (pode ter espaço, hífen e apóstrofo). "Totó", "toto" e "TOTÓ" são o mesmo usuário.
 - **Entrar / Sair da conta:** depois de entrar, o jogo lembra de você até tocar em *Sair da conta*. Um nome que tem conta só pode ser usado entrando com a senha.
-- **Esqueci a senha:** não há como recuperar (não existe servidor de contas). A saída é **apagar a conta** (com as pontuações e o jogo salvo dela, neste aparelho) e criar outra.
+- **Esqueci a senha:** não há como recuperar (não existe servidor de contas). A saída é **apagar a conta** (com as pontuações, o progresso, o jogo salvo, os petscoin e as skins dela, neste aparelho) e criar outra.
 - **Tentativas:** depois de 5 senhas erradas seguidas, o jogo pede para esperar 30 s (e dobra nas rodadas seguintes).
 
 **Como a senha é guardada:** nunca como texto. O jogo guarda só um sal aleatório e uma "impressão" PBKDF2-SHA256 com 150.000 repetições (`js/auth.js`; usa a criptografia do navegador e, se ela não existir, uma versão em JavaScript equivalente, testada contra a do Node).
@@ -394,7 +413,8 @@ index.html            canvas, placar (HTML) e todas as telas (menu, fases, como 
 css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
-js/themes.js          ambientes das fases (chão, paredes e caixas de cada lugar)
+js/themes.js          ambientes das 20 fases (chão, paredes e caixas de cada lugar)
+docs/LOJINHA.md      plano e regras da lojinha de skins (petiscos e petscoin)
 tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py (configuração das Fases 1 a 20), apply_citymaze.py (Fases 1 a 10), apply_levels11_20.py (Fases 11 a 20) e maps/map1.json … map20.json (os mapas que estão no jogo; o teste confere paredes iguais)
 js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo (testável sozinho)
@@ -406,6 +426,7 @@ tests/records.test.js testes unitários das pontuações e melhores pontuações
 tests/accounts.test.js testes unitários do cadastro e da entrada (Node)
 tests/board.test.js   testes unitários do ranking compartilhado, com servidor de mentira (Node)
 tests/sound.test.js   testes unitários dos efeitos sonoros (Node, com um áudio de mentira) 
+tests/themes.test.js  testes unitários dos ambientes das fases (Node)
 tests/version.test.js confere a versão (js/version.js) com o CHANGELOG.md e o workflow
 tests/e2e.js          testes no navegador (Playwright)
 .github/workflows/pages.yml   publicação no GitHub Pages
@@ -419,6 +440,7 @@ node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
 node tests/sound.test.js
+node tests/themes.test.js
 npm i playwright
 npx playwright install chromium   # ou use CHROMIUM_PATH=/caminho/do/chromium
 node tests/e2e.js              # opcional: node tests/e2e.js "toque" roda só as seções com esse texto

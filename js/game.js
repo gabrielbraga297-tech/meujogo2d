@@ -15,7 +15,7 @@
   const INVULN = 2;         // segundos de proteção depois de perder uma vida
   // Reforços (0.8.0): ao vencer uma fase o jogador escolhe 1 entre no máximo 3 (0.13.0: 3 sorteados entre os 6 que ainda valem); o escolhido fica com ele nas próximas fases da mesma sequência ("Próxima fase").
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
-  const MAP_REV = 3;        // revisão dos mapas das Fases 1 a 20: jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (2 = 0.15.1, labirintos com desenho de cidade; 3 = 0.16.0, mapas finais das Fases 11 a 20 com as muretas de caixas dos gatos)
+  const MAP_REV = 2;        // revisão dos mapas (Fases 1 a 20): jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (2 = 0.15.1, labirintos com desenho de cidade; os jogos salvos das Fases 11 a 20 feitos desde a 0.15.4 continuam valendo, conferido na auditoria da 0.16.0)
   const REINFORCE_SPEED = 0.08, REINFORCE_BONE = 8, REINFORCE_SHIELD = 2, REINFORCE_SLOW = 0.08; // por nível: +8% de velocidade, +8 s de poder, +2 s de proteção, agentes 8% mais lentos (0.15.2: antes 5%, 5 s, 1 s e 5%, pequenos demais para notar)
   const REINFORCEMENTS = [
     { id: "speed", name: "Patas ligeiras", text: "+8% de velocidade do cachorrinho", max: 4 },
@@ -3024,7 +3024,7 @@
     const typed = $("login-user").value;
     forgotName = store.accountNames().find((n) => Records.nameKey(n) === Records.nameKey(typed.trim())) || "";
     if (!forgotName) { $("login-error").textContent = "Escreva o seu nome de usuário primeiro, depois toque em Esqueci a senha."; $("login-user").focus(); return; }
-    $("forgot-text").textContent = `Este jogo guarda tudo só neste aparelho e não tem como recuperar uma senha. Você pode apagar a conta de ${forgotName} (com as pontuações e o jogo salvo dela) e criar uma nova.`;
+    $("forgot-text").textContent = `Este jogo guarda tudo só neste aparelho e não tem como recuperar uma senha. Você pode apagar a conta de ${forgotName} (com as pontuações, o progresso, o jogo salvo, os petscoin e as skins dela) e criar uma nova.`;
     showScreen("forgot");
   }
 
@@ -3273,7 +3273,7 @@
     ctx.fillRect(x - 7 + (d > 0 ? 0 : -3), y - 13.5, 14 + 3, 2.2);                                       // aba
     ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18.5, 3, 3);                                     // distintivo
     ellipse(x - 2.2 + d, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + d, y - 11, 1, 1, "#222");
-    if (chase) {
+    if (chase && fx.ice <= 0) { // (congelado, não persegue: sem o "!")
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("!", x, y - 24 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
     }
@@ -3282,7 +3282,7 @@
   // Indicador de perseguição (0.10.0): nas ruas largas o agente liga o "!" de longe, muitas vezes fora da tela (no celular, com zoom, quase sempre).
   // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
-    if (power > 0) return;
+    if (power > 0 || fx.ice > 0) return; // (com o poder do osso ou o gelo ninguém persegue)
     const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0) + (fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? 26 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão e da faixa dos efeitos)
     for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
@@ -3339,7 +3339,7 @@
     ctx.strokeStyle = coat.light === "#ffffff" ? "#cfcfcf" : "#f2f2f2"; ctx.lineWidth = 0.6; // bigodes
     for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(hx + 4.2, hy + 1.5 + k * 1.2); ctx.lineTo(hx + 10, hy + 0.5 + k * 2.6); ctx.stroke(); }
     ctx.restore();
-    if (chase) {
+    if (chase && fx.ice <= 0) { // (congelado, não persegue: sem o "!")
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("!", c.cx, c.cy - 17 - lift - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
     }
