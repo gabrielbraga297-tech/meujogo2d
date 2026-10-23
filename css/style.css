@@ -90,6 +90,8 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 #mission-bar b { color: var(--gold); }
 #mission-bar.done { color: var(--green); }
 /* Gatinho (0.18.0): barra de fôlego da arrancada no placar (só aparece nas fases do Gatinho) */
+/* só para leitor de tela: fora da vista, sem ocupar lugar no placar (Gatinho: avisa quando o estado muda) */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 #hud-state-item b { color: var(--gold); white-space: nowrap; }
 #hud-state:empty::before { content: "\00a0"; } /* sem estado o espaço continua com a altura de uma linha: o placar não cresce quando aparece A SALVO, MOLHADO ou OFEGANTE */
 #hud-stamina .meter { display: inline-block; width: 46px; height: 9px; margin-left: .45em; vertical-align: -1px; border-radius: 5px; background: rgba(255, 255, 255, .16); overflow: hidden; }

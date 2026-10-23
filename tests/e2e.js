@@ -10319,6 +10319,39 @@ const PAGE_HELPERS = () => {
     ok(base[0] === " + cães: 800" && base[1] === " + carteiros e gatos: 800", `a frase da soma: Gatinho "${base[0]}", Cachorrinho "${base[1]}" (a do Cachorrinho não mudou)`);
   });
 
+  // Leitor de tela: o estado do gatinho (A SALVO, MOLHADO, OFEGANTE) é dito quando muda, e só quando muda (auditoria 3).
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (leitor de tela: o estado do gatinho é dito quando muda, não a cada quadro)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    const r = await ev(cp, async () => {
+      __game.autoStart = true; __game.setAnimal("cat"); __game.start(9); __game.freezeVets = true; __game.noCatch = true;
+      const live = document.getElementById("hud-state-live"), lv = __game.builtOf("cat")[9]; let T = null; lv.high.forEach((row, rr) => row.forEach((x, c) => { if (x && !T) T = [c, rr]; }));
+      let muts = 0; new MutationObserver((l) => { muts += l.length; }).observe(live, { childList: true, characterData: true, subtree: true });
+      const frame = () => new Promise((r2) => setTimeout(r2, 60)), step = async (fn, n = 1) => { fn(); for (let i = 0; i < n; i++) { __game.tick(0.05); } await frame(); };
+      const out = { attrs: [live.getAttribute("role"), live.getAttribute("aria-live"), live.className, getComputedStyle(live).position, Math.round(live.getBoundingClientRect().width)] };
+      await step(() => { __game.player.x = 36; __game.player.y = 36; __game.wet = 0; __game.winded = 0; }, 3);
+      out.start = live.textContent; out.mStart = muts;
+      await step(() => { __game.wet = 6; }); out.wet = live.textContent; out.mWet = muts;
+      for (let i = 0; i < 5; i++) await step(() => {}, 20); // 5 s de contagem do MOLHADO n s: o estado não mudou
+      out.afterCount = live.textContent; out.mCount = muts; out.visible = document.getElementById("hud-state").textContent;
+      await step(() => { __game.player.x = T[0] * 32 + 4; __game.player.y = T[1] * 32 + 4; __game.wet = 6; }); out.salvoWet = live.textContent;
+      await step(() => { __game.winded = 1.4; }); out.trio = live.textContent; out.trioVisible = document.getElementById("hud-state").textContent;
+      await step(() => { __game.wet = 0; __game.winded = 0; __game.player.x = 36; __game.player.y = 36; }, 2); out.back = live.textContent; out.mEnd = muts;
+      __game.setAnimal("dog"); __game.start(1); __game.freezeVets = true; for (let i = 0; i < 5; i++) __game.tick(0.05); await frame();
+      out.dog = live.textContent;
+      return out;
+    });
+    ok(r.attrs[0] === "status" && r.attrs[1] === "polite" && r.attrs[2] === "sr-only" && r.attrs[3] === "absolute" && r.attrs[4] <= 1, `a região do estado é de leitor de tela (role=status, aria-live=polite) e não aparece na tela (${r.attrs.join(", ")})`);
+    ok(r.start === "" && r.mStart === 0, "ao começar a fase o estado é normal e a região fica calada");
+    ok(r.wet === "Estado do gatinho: molhado" && r.mWet === 1, `pisou na poça: a região diz "${r.wet}"`);
+    ok(r.afterCount === "Estado do gatinho: molhado" && r.mCount === 1 && /^MOLHADO [1-6] s$/.test(r.visible), `5 s de contagem do MOLHADO n s (placar "${r.visible}") não repetem o aviso (${r.mCount} mudança(s) no total)`);
+    ok(r.salvoWet === "Estado do gatinho: a salvo e molhado", `no lugar alto, molhado: "${r.salvoWet}"`);
+    ok(r.trio === "Estado do gatinho: a salvo, molhado e ofegante" && r.trioVisible === "A SALVO · MOLHADO 6 s", `com os três a região diz tudo ("${r.trio}") mesmo que o placar mostre só "${r.trioVisible}"`);
+    ok(r.back === "Estado do gatinho: normal" && r.mEnd === 4, `voltou ao normal: "${r.back}" (4 avisos em todo o teste, um por mudança: molhado; a salvo e molhado; os três; normal; foram ${r.mEnd})`);
+    ok(r.dog === "", "no Cachorrinho a região fica vazia");
+    await cp.context().close();
+  });
+
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));

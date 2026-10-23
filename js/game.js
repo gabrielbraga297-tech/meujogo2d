@@ -3920,7 +3920,7 @@
     level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), ballsItem: $("hud-balls-item"), balls: $("hud-balls"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
     pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), fxBar: $("fx-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
-    stamina: $("hud-stamina"), staminaFill: $("hud-stamina-fill"), stateItem: $("hud-state-item"), state: $("hud-state"), // (Gatinho: fôlego e estado)
+    stamina: $("hud-stamina"), staminaFill: $("hud-stamina-fill"), stateItem: $("hud-state-item"), state: $("hud-state"), stateLive: $("hud-state-live"), // (Gatinho: fôlego e estado)
   };
   const hudCache = {};
   function setHud(key, node, value) { if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; } }
@@ -3969,7 +3969,7 @@
     { // Gatinho (0.18.0): a barra FÔLEGO e o ESTADO (A SALVO, MOLHADO n s, OFEGANTE); escondidos e parados nas fases do Cachorrinho
       const spr = !!lv.sprint, any = !!(lv.sprint || lv.water || lv.refuge);
       if (hudCache.cs !== spr) { hudCache.cs = spr; hudEl.stamina.classList.toggle("hidden", !spr); }
-      if (hudCache.cst !== any) { hudCache.cst = any; hudEl.stateItem.classList.toggle("hidden", !any); }
+      if (hudCache.cst !== any) { hudCache.cst = any; hudEl.stateItem.classList.toggle("hidden", !any); hudCache.cstl = "normal"; hudEl.stateLive.textContent = ""; } // (começa calado: só o que MUDA depois é dito)
       if (spr) {
         const pct = Math.round(stamina * 100), mode = winded > 0 ? "winded" : sprintOn ? "run" : "";
         if (hudCache.sta !== pct) { hudCache.sta = pct; hudEl.staminaFill.style.transform = `scaleX(${stamina.toFixed(3)})`; hudEl.stamina.setAttribute("aria-valuenow", String(pct)); hudEl.stamina.setAttribute("aria-valuetext", `Fôlego: ${pct}%`); }
@@ -3978,6 +3978,9 @@
       if (any) {
         const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 && wet <= 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · "); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura. Molhado e ofegante impedem a arrancada do mesmo jeito: com os dois o estado diz só MOLHADO, e a barra FÔLEGO continua vermelha; assim o texto nunca passa de "A SALVO · MOLHADO 6 s")
         if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t ? t.toLowerCase() : "normal"}`); }
+        // leitor de tela: a região `#hud-state-live` diz o estado quando ele MUDA (a contagem do MOLHADO n s não conta como mudança, senão repetiria a cada segundo); diz também o OFEGANTE que o texto do placar omite enquanto está molhado
+        const parts = [safe ? "a salvo" : "", wet > 0 ? "molhado" : "", winded > 0 ? "ofegante" : ""].filter(Boolean), said = parts.length ? parts.join(", ").replace(/, ([^,]*)$/, " e $1") : "normal";
+        if (hudCache.cstl !== said) { hudCache.cstl = said; hudEl.stateLive.textContent = `Estado do gatinho: ${said}`; }
       }
     }
     setHud("t", hudEl.time, fmt(time * 1000));
