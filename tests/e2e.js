@@ -9267,7 +9267,7 @@ const PAGE_HELPERS = () => {
       return { first, crossed, arrive, cfg: { speed: t.cfg.speed, chase: t.cfg.chaseSpeed, hear: t.cfg.hear }, meows: __game.sounds.filter((e) => e.name === "meow").length, sameGrid: lv.catWalk === lv.walk };
     });
     ok(tk.first !== null && tk.crossed === 0 && tk.sameGrid && tk.arrive > 1.5, `o rastreador percebe o gatinho (ouve, mesmo atrás do muro) e vai atrás dele dando a volta, sem pular o X (chegou em ${tk.arrive && tk.arrive.toFixed(1)} s)`);
-    ok(tk.meows === 0, "o rastreador não mia ao notar o gatinho (o som dele é da etapa de sons)");
+    ok(tk.meows === 0, "o rastreador não mia ao notar o gatinho (o som dele é o rosnado, growl)");
     // ele pega o gatinho como os gatos de hoje
     const catchTk = await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false; const t = __game.cats[0]; __at(12, 15); t.cx = __game.player.x + 12; t.cy = __game.player.y + 12; __game.tick(0.01); return [__game.lives, __game.livesLost]; });
     ok(catchTk[0] === 2, "o contato com o rastreador tira 1 vida");

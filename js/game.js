@@ -131,7 +131,7 @@
   const CAT_SPRINT = 1.35, SPRINT_DRAIN = 0.4, SPRINT_REGEN = 0.2, WINDED_TIME = 1.5; // arrancada: × velocidade; fôlego (0 a 1) gasto por s (2,5 s de tanque cheio) e recuperado por s (5 s); s "ofegante" (sem arrancada) quando o fôlego acaba
   const WET_TIME = 6, WET_SLOW = 0.65, JUMP_SLOW = 0.85; // pelo molhado: s depois de sair da poça (renova enquanto está nela) e × velocidade (sem arrancada); × velocidade sobre um obstáculo baixo (X), o "pulo suave"
   const REFUGE_WAIT = 4, LOW_REACH = 34;                 // lugar alto (T): s que o cão espera ao pé dele antes de desistir; alcance (px) dos cães sobre um X (o gatinho não fica a salvo no meio de um obstáculo baixo)
-  const NIGHT_DARK = 0.75, NIGHT_HALO = 5;               // fases noturnas: quanto escurece (0 a 1) e o raio da luz em volta do gatinho (tiles); o desenho é da etapa seguinte
+  const NIGHT_DARK = 0.75, NIGHT_HALO = 5;               // fases noturnas: quanto escurece (0 a 1) e o raio da luz em volta do gatinho (tiles); o halo é desenhado em CatArt/draw (veja README, Desenhos do Gatinho)
   // Sons (0.18.0, E2b-2): quais sons tocam em cada momento é do perfil do bichinho (P().sfx: o Cachorrinho toca os de sempre, o Gatinho os do README "Sons do Gatinho"); aqui ficam só os atrasos (s) e os intervalos mínimos.
   const SFX_WIN = 0.9, SFX_WIN_MORE = 1.7, SFX_BALL_MORE = 0.15, SFX_HURT = 0.1, SFX_TRANSFORM = 0.3; // atrasos: o miado/latido depois da fanfarra, o ronronar, o 2º som do camundongo, o miado de susto depois da captura, o chiado depois do novelo
   const SFX_WOOF_DOG = 2.5, SFX_WOOF_ALL = 0.4, SFX_JUMP_EVERY = 0.4, SFX_DASH_EVERY = 0.6; // intervalos mínimos (s): latido de cada cão, latido de qualquer cão, pulo, arrancada
@@ -2877,7 +2877,7 @@
   function openAnimals() { renderAnimals(); showScreen("animals"); }
 
   // ---------- Lojinha de skins (0.15.9): petiscos (1 por fase completada = 1 petscoin) por skins do cachorrinho ----------
-  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin (no Gatinho, o gatinho adulto: E2b-2 troca a lista de skins pelas do gato)
+  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin (no Gatinho, o gatinho adulto, com a skin do catálogo do gato)
     const c2 = canvas.getContext("2d"), keep = ctx;
     c2.clearRect(0, 0, canvas.width, canvas.height);
     if (syncAnimal() === "cat" && typeof CatArt !== "undefined") {
