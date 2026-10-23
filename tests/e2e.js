@@ -10537,6 +10537,16 @@ const PAGE_HELPERS = () => {
     await tp.context().close();
   });
 
+  // ===== Lojinha única (0.19.0): cada agente acrescenta as suas seções SÓ no seu marcador (para as mesclas não brigarem) =====
+  //SKINS-S-NEXT (lojinha, carteira, liberação por fase)
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+  //SKINS-D-NEXT (skins dos objetos do Cachorrinho)
+
+  // ----------------------------------------------------------------------------------------------------------------------------
+  //SKINS-C-NEXT (skins dos objetos do Gatinho)
+
+  // ----------------------------------------------------------------------------------------------------------------------------
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
