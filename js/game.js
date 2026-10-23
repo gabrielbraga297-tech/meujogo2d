@@ -3733,7 +3733,7 @@
     CatArt.drawDog(ctx, { x: v.cx, y: v.cy, dir, mode, kind, size: catSize(), frozen, slow: !!v.slow, idx: v.idx }, { time, calm });
     if (v.mode === "chase" && !frozen) { // o "!" vermelho de sempre
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("!", v.cx, v.cy - 25 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
+      ctx.fillText("!", v.cx, v.cy - 22 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4)); // (um pouco mais perto da cabeça do cão do que o do agente, que é mais alto)
     }
   }
   function drawCatPlayer() { // o gatinho: cresce como o cachorrinho, afina com a arrancada, escurece molhado, fica maior a salvo e eriça o pelo com o poder do novelo
@@ -3785,7 +3785,7 @@
     const c0 = Math.max(0, Math.floor(camX / TILE)), c1 = Math.min(COLS - 1, Math.floor((camX + vw) / TILE)), r0 = Math.max(0, Math.floor(camY / TILE)), r1 = Math.min(ROWS - 1, Math.floor((camY + vh) / TILE));
     // o ambiente da fase (js/themes.js) desenha o chão, as paredes e as "caixas"; as paredes vizinhas se juntam num bloco só
     const g = themeG; g.ctx = ctx; g.rect = rect; g.solid = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
-    if (catDraw && lv.kinds) drawCatTiles(c0, c1, r0, r1, rect, g); // (Gatinho: os ambientes de js/cat-themes*.js: chão em todos os tiles e por cima #, X, T e ~)
+    if (lv.kinds) drawCatTiles(c0, c1, r0, r1, rect, g); // (fases do Gatinho: os ambientes de js/cat-themes*.js, ou os do Cachorrinho se faltarem: chão em todos os tiles e por cima #, X, T e ~; os obstáculos baixos, lugares altos e poças nunca somem)
     else {
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
         g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c];
@@ -3799,7 +3799,7 @@
       if (s.kind === "M") drawMovingBlock(s);
       else if (s.kind === "W") drawMovingWall(s);
       else if (s.van) drawVan(s);
-      else if (catDraw && lv.kinds) continue; // (Gatinho: as paredes já foram desenhadas junto com os outros tiles)
+      else if (lv.kinds) continue; // (Gatinho: as paredes já foram desenhadas junto com os outros tiles)
       else { // parede ("#") ou caixa ("X") no estilo do ambiente
         const c = s.x / TILE, r = s.y / TILE;
         g.x = s.x; g.y = s.y; g.c = c; g.r = r; g.free = false; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;

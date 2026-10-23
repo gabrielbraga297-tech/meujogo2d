@@ -1,12 +1,13 @@
 // Capturas do JOGO DO GATINHO de verdade (index.html + js/cat-levels.js + CatArt + CatThemes) com o Playwright: abre cada uma das 20 fases reais e enquadra o gatinho em lugares típicos.
 // Uso (sempre com o trinco do navegador, por haver outros agentes):
 //   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium PREVIEW_LOCK=<trinco> node tools/cat-preview/shoot-game.js <pasta-de-saida> [opções]
-// Opções: fases=1,2,3 (padrão: as 20) · telas=1,9,18,20 (fases em que também sai a captura da página inteira: placar, botão Correr; padrão: 1,9,18,20) · tam=desktop,celular,deitado (padrão: desktop;
-//   desktop 1000×700, celular 390×780 em pé com toque, deitado 740×390 com toque; em celular e deitado só saem as capturas inteiras das fases de `telas`) · escala=1.4 (zoom das miniaturas das folhas).
+// Opções: fases=1,2,3 (padrão: as 20) · telas=1,9,18,20 (fases que saem também no celular em pé e deitado) · tam=desktop,celular,deitado (padrão: desktop;
+//   desktop 1000×700 (folhas de recortes e a tela inteira de TODAS as fases), celular 390×780 em pé com toque e deitado 740×390 com toque: só a tela inteira das fases de `telas`) · escala=1.4 (zoom dos recortes das folhas).
+//   CALM=1 liga "reduzir movimento".
 // Gera, em <pasta>:
 //   folha-NN.png         uma folha por fase com 9 recortes de 9×6 tiles em torno do gatinho: início, perto de um X, em cima de um T (a salvo), entrando na poça (molhado), arrancada,
 //                        eriçado (novelo comum), cães perseguindo/afugentados, e as skins preta e branca (contraste com o chão);
-//   tela-NN-<tam>.png    a página inteira (placar, botão Correr, noite) numa posição típica;
+//   tela-NN-<tam>.png    a página inteira (placar, botão Correr, noite) com o gatinho molhado perto de X, T e poça;
 //   geral-1.png e geral-2.png  folhas de contato com a captura inteira de cada fase (1 a 10 e 11 a 20).
 // Os recortes saem do próprio canvas do jogo, no mesmo quadro (o laço do jogo só roda depois): o estado de cada recorte é exato. Os cães ficam congelados (freezeVets).
 // PREVIEW_LOCK=<arquivo>: o script se reexecuta sob `flock` nesse arquivo (para vários agentes não abrirem o navegador ao mesmo tempo).
@@ -46,7 +47,8 @@ const SHEET = ({ id, scale }) => {
     const out = document.createElement("canvas"); out.width = Math.round(tw * T * scale); out.height = Math.round(th * T * scale);
     const o = out.getContext("2d"); o.fillStyle = "#1d2330"; o.fillRect(0, 0, out.width, out.height);
     o.imageSmoothingEnabled = true;
-    o.drawImage(cv, (cx - tw * T / 2 - v.camX) * k, (cy - th * T / 2 - v.camY) * k, tw * T * k, th * T * k, 0, 0, out.width, out.height);
+    const sw = tw * T * k, sh = th * T * k, sx0 = Math.max(0, Math.min(cv.width - sw, (cx - tw * T / 2 - v.camX) * k)), sy0 = Math.max(0, Math.min(cv.height - sh, (cy - th * T / 2 - v.camY) * k)); // (o recorte fica dentro do que o jogo mostra: nas bordas do mapa ele desliza, o gatinho sai do centro)
+    o.drawImage(cv, sx0, sy0, sw, sh, 0, 0, out.width, out.height);
     return { label, cv: out };
   };
   const shots = [];

@@ -113,7 +113,7 @@
   const TABBY = { pat: "tabby", fur: "#b98a5b", dark: "#6a4a2e", light: "#efdcc0", eye: "#9be36e", chest: "light" };
   look("", TABBY);
   look("preto", { pat: "solid", fur: "#363741", dark: "#1b1c23", light: "#575968", eye: "#ffd24a", line: "rgba(214,224,248,.62)" });
-  look("branco", { pat: "solid", fur: "#f6f3ed", dark: "#cdc5b8", light: "#ffffff", eye: "#6bb7ff" });
+  look("branco", { pat: "solid", fur: "#f6f3ed", dark: "#cdc5b8", light: "#ffffff", eye: "#6bb7ff", line: "rgba(46,34,30,.82)" }); // (contorno mais escuro: o gatinho branco aparece sobre a areia e outros chãos claros)
   look("cinza", { pat: "solid", fur: "#9aa3b2", dark: "#6a7381", light: "#d6dbe3", eye: "#7fdc92", chest: "light" });
   look("laranja", { pat: "tabby", fur: "#ee9a3f", dark: "#c0661a", light: "#fbdca6", eye: "#7bd96b", chest: "light" });
   look("siames", { pat: "points", fur: "#efe3cf", dark: "#4b3a33", light: "#faf2e3", eye: "#58a9ff", head: "fur", ear: "dark", tail: "dark", tip: "dark", paw: "dark", muzzle: "dark", nose: "#8a5a60" });
@@ -121,7 +121,7 @@
   look("tricolor", { pat: "calico", fur: "#f7f2e9", dark: "#2f2f38", light: "#ffffff", orange: "#ec8a35", eye: "#7bd96b", tail: "orange", tip: "dark" });
   look("smoking", { pat: "tux", fur: "#2d2e38", dark: "#17181e", light: "#fbfbfb", eye: "#ffd24a", chest: "light", paw: "light", muzzle: "light", line: "rgba(214,224,248,.62)" });
   look("pirata", { pat: "tabby", fur: "#b98a5b", dark: "#6a4a2e", light: "#efdcc0", eye: "#9be36e", chest: "light", acc: "pirate" });
-  look("astronauta", { pat: "solid", fur: "#eef1f6", dark: "#aab4c6", light: "#ffffff", eye: "#4f9ff0", acc: "helmet" });
+  look("astronauta", { pat: "solid", fur: "#eef1f6", dark: "#aab4c6", light: "#ffffff", eye: "#4f9ff0", acc: "helmet", line: "rgba(40,48,66,.8)" });
   look("supergato", { pat: "tabby", fur: "#b98a5b", dark: "#6a4a2e", light: "#efdcc0", eye: "#9be36e", chest: "light", acc: "cape" });
 
   const WET_TINT = "#2a3d5a";

@@ -550,6 +550,9 @@ css/style.css         visual, tamanho proporcional e controle de toque
 js/version.js         versão do jogo (mostrada no menu)
 js/auth.js            regras da senha e impressão PBKDF2-SHA256 (testável sozinho)
 js/themes.js          ambientes das 20 fases (chão, paredes e caixas de cada lugar; Themes.of(fase, bichinho))
+js/cat-levels.js      as 20 fases do Gatinho (mapas e dados; gerado por tools/catmaze/gen_cat.py)
+js/cat-themes.js      ambientes do Gatinho: núcleo (registro CatThemes e auxiliares); js/cat-themes-1.js (Fases 1 a 10) e js/cat-themes-2.js (11 a 20)
+js/cat-art.js         desenhos do Gatinho (CatArt): gatinho, cães, ratinhos, camundongos, novelos, postos, efeitos e as 12 skins
 js/profiles.js        perfis de texto por bichinho (substantivos, avisos, placar, reforços, skins, textos fixos; testável sozinho)
 docs/LOJINHA.md      plano e regras da lojinha de skins (petiscos e petscoin)
 tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py (configuração das Fases 1 a 20), apply_citymaze.py (Fases 1 a 10), apply_levels11_20.py (Fases 11 a 20) e maps/map1.json … map20.json (os mapas que estão no jogo; o teste confere paredes iguais)
@@ -567,6 +570,8 @@ tests/themes.test.js  testes unitários dos ambientes das fases (Node)
 tests/profiles.test.js testes unitários dos perfis por bichinho (Node): o Cachorrinho com os textos de sempre, o Gatinho com as mesmas chaves
 tests/version.test.js confere a versão (js/version.js) com o CHANGELOG.md e o workflow
 tests/e2e.js          testes no navegador (Playwright)
+tests/ab-dog.js       A/B de pixels do Cachorrinho: hash do canvas com a mesma semente e os mesmos passos (usado pelo e2e)
+tools/cat-preview/    prévias e capturas do Gatinho (art.html, themes1/2.html, shoot-art.js, shoot-themes*.js e shoot-game.js, que fotografa o jogo de verdade)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
 
