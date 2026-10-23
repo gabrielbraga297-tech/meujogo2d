@@ -10239,6 +10239,34 @@ const PAGE_HELPERS = () => {
     await wide.context().close();
   });
 
+  // O estado do gatinho (A SALVO, MOLHADO, OFEGANTE) muda várias vezes por partida: o placar e o campo não podem mudar de tamanho junto (auditoria 3).
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (o placar e o campo não mudam de tamanho com A SALVO, MOLHADO e OFEGANTE juntos)", async () => {
+    for (const [w, h, touch] of [[320, 568, true], [360, 640, true], [390, 780, true], [1000, 700, false]]) {
+      const pg = await newPage({ realCat: true, viewport: { width: w, height: h }, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
+      await fresh(pg, { name: "Totó", query: touch ? "?touch=1" : "" });
+      const snaps = await ev(pg, async () => {
+        __game.autoStart = true; __game.setAnimal("cat"); __game.start(9); __game.freezeVets = true; __game.noCatch = true;
+        const lv = __game.builtOf("cat")[9]; let T = null; lv.high.forEach((row, r) => row.forEach((x, c) => { if (x && !T) T = [c, r]; }));
+        const rect = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; };
+        const snap = async (name, fn) => { fn(); __game.tick(0.001); await new Promise((r) => setTimeout(r, 120)); return { name, text: document.getElementById("hud-state").textContent, sizes: [rect("hud"), rect("game"), rect("hud-state-item")].flat().join("x"), bar: document.getElementById("hud-stamina").classList.contains("winded") }; };
+        const out = [];
+        out.push(await snap("normal", () => { __game.player.x = 36; __game.player.y = 36; __game.wet = 0; __game.winded = 0; }));
+        out.push(await snap("molhado", () => { __game.wet = 6; }));
+        out.push(await snap("a salvo", () => { __game.wet = 0; __game.player.x = T[0] * 32 + 4; __game.player.y = T[1] * 32 + 4; }));
+        out.push(await snap("a salvo + molhado", () => { __game.wet = 6; }));
+        out.push(await snap("a salvo + ofegante", () => { __game.wet = 0; __game.winded = 1.4; }));
+        out.push(await snap("a salvo + molhado + ofegante", () => { __game.wet = 6; __game.winded = 1.4; }));
+        out.push(await snap("normal de novo", () => { __game.wet = 0; __game.winded = 0; __game.player.x = 36; __game.player.y = 36; }));
+        return out;
+      });
+      const base = snaps[0].sizes;
+      ok(snaps.every((s) => s.sizes === base), `${w}×${h}: placar, campo e lugar do estado têm sempre o mesmo tamanho (${base}) com ${snaps.map((s) => `"${s.text}"`).join(", ")}${snaps.filter((s) => s.sizes !== base).map((s) => ` [${s.name}: ${s.sizes}]`).join("")}`);
+      const trio = snaps[5];
+      ok(trio.text === "A SALVO · MOLHADO 6 s" && trio.bar === true && snaps[4].text === "A SALVO · OFEGANTE", `${w}×${h}: com A SALVO, MOLHADO e OFEGANTE o estado diz "${trio.text}" (molhado vale mais que ofegante: os dois impedem a arrancada) e a barra FÔLEGO continua vermelha`);
+      await pg.context().close();
+    }
+  });
+
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));

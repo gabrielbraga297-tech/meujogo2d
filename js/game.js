@@ -3939,7 +3939,7 @@
       wide(hudEl.balls, `${lv.balls}/${lv.balls}`);
       wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
       wide(hudEl.power, `${bonePowerNow()} s`);
-      wide(hudEl.state, "MOLHADO 6 s");
+      hudEl.state.style.minWidth = "19ch"; // (Gatinho) o pior caso do ESTADO: "A SALVO · MOLHADO 6 s" (21 letras maiúsculas, que cabem em 19 larguras do "0"); o estado nunca passa disso, então o placar não cresce no meio da partida
       wide(hudEl.time, "0:00,0");
       wide(hudEl.bonus, `+${lv.bonusStep * 10}`);
     }
@@ -3976,7 +3976,7 @@
         if (hudCache.stm !== mode) { hudCache.stm = mode; hudEl.stamina.classList.toggle("winded", mode === "winded"); hudEl.stamina.classList.toggle("run", mode === "run"); }
       }
       if (any) {
-        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · "); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura)
+        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 && wet <= 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · "); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura. Molhado e ofegante impedem a arrancada do mesmo jeito: com os dois o estado diz só MOLHADO, e a barra FÔLEGO continua vermelha; assim o texto nunca passa de "A SALVO · MOLHADO 6 s")
         if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t ? t.toLowerCase() : "normal"}`); }
       }
     }
