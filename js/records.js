@@ -35,6 +35,11 @@
   // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
   const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 60;
   const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
+  // (0.18.0, E2b-2) a carteira é ÚNICA, mas as skins são POR BICHINHO: as do Cachorrinho ficam com o id puro ("cinza", como sempre) e as dos outros ficam com o prefixo do bichinho ("cat:cinza"),
+  // para não colidirem (o Gatinho tem Cinza, Pirata e Astronauta como o Cachorrinho). Uma skin guardada é, então, "id" (Cachorrinho) ou "bichinho:id" (os outros; nunca "dog:id").
+  const ownKey = (animal, id) => (animal === "dog" ? id : `${animal}:${id}`);
+  const isOwnKey = (key) => { if (isSkinId(key)) return true; const m = typeof key === "string" && /^([a-z]{2,12}):([a-z0-9-]{1,24})$/.exec(key); return !!m && m[1] !== "dog"; };
+  const ownOf = (own, animal) => (animal === "dog" ? own.filter(isSkinId) : own.filter((k) => k.startsWith(animal + ":")).map((k) => k.slice(animal.length + 1)));
   // (0.17.0) cada BICHINHO tem o seu jogo: pontos, recordes, progresso e jogo salvo independentes. "dog" (o cachorrinho) guarda no formato de sempre (campos L, unlocked/completed, save sem sufixo);
   // os outros animais ficam em campos novos (G) e nos saves com sufixo "@animal". Carteira, contas e jogadores são de todos os animais.
   const DEFAULT_ANIMAL = "dog", MAX_ANIMALS = 12;
@@ -216,9 +221,14 @@
         if (raw.wallet && typeof raw.wallet === "object" && !Array.isArray(raw.wallet)) { // (uma lista no lugar do mapa seria lida como jogadores "0", "1"...)
           for (const [k, w] of Object.entries(raw.wallet)) {
             if (!k || !w || typeof w !== "object") continue;
-            const own = Array.isArray(w.own) ? [...new Set(w.own.filter(isSkinId))].slice(0, MAX_OWNED) : [];
-            const eq = typeof w.eq === "string" && own.includes(w.eq) ? w.eq : "";
+            const own = Array.isArray(w.own) ? [...new Set(w.own.filter(isOwnKey))].slice(0, MAX_OWNED) : [];
+            const eq = isSkinId(w.eq) && own.includes(w.eq) ? w.eq : ""; // (a skin em uso do Cachorrinho é sempre um id puro: "cat:x" aqui seria adulteração)
             wallet[k] = { t: Number.isInteger(w.t) && w.t >= 0 ? Math.min(w.t, MAX_TREATS) : 0, own, eq };
+            if (w.eqa && typeof w.eqa === "object" && !Array.isArray(w.eqa)) { // a skin em uso dos outros bichinhos (só existe quando alguém usa uma skin que não é a padrão)
+              const eqa = Object.create(null);
+              for (const [a, id] of Object.entries(w.eqa)) if (isAnimal(a) && a !== DEFAULT_ANIMAL && isSkinId(id) && own.includes(ownKey(a, id))) eqa[a] = id;
+              if (Object.keys(eqa).length) wallet[k].eqa = eqa;
+            }
           }
         }
         data = { v: 2, player, players: players.slice(0, MAX_PLAYERS), bests, progress, accounts, wallet };
@@ -481,10 +491,15 @@
       },
 
       // ---------- Petiscos e skins (0.15.9): carteira de cada jogador ----------
-      wallet(name) {
+      // `animal` (0.18.0): de qual bichinho são as skins (o padrão é o Cachorrinho; o saldo é o mesmo para todos): { treats, owned: [ids puros desse bichinho], equipped: id em uso ("" = a padrão) }
+      wallet(name, animal = DEFAULT_ANIMAL) {
         const w = data.wallet[nameKey(name)];
-        return w ? { treats: w.t, owned: w.own.slice(), equipped: w.eq } : { treats: 0, owned: [], equipped: "" };
+        if (!w) return { treats: 0, owned: [], equipped: "" };
+        if (!isAnimal(animal)) return { treats: w.t, owned: [], equipped: "" };
+        return { treats: w.t, owned: ownOf(w.own, animal), equipped: animal === DEFAULT_ANIMAL ? w.eq : (w.eqa && w.eqa[animal]) || "" };
       },
+      // a skin em uso do bichinho ("" = a padrão, também quando o jogador não existe)
+      equippedSkin(name, animal = DEFAULT_ANIMAL) { return this.wallet(name, animal).equipped; },
       // +n petiscos (1 por fase completada); devolve a carteira ou null (sem jogador ou n inválido)
       addTreats(name, n = 1) {
         const k = nameKey(canonical(name));
@@ -495,26 +510,31 @@
         return this.wallet(name);
       },
       // compra uma skin: o preço tem de ser de pelo menos MIN_SKIN_PRICE; { ok:false, error } se faltam petiscos, já tem ou o pedido é inválido
-      buySkin(name, id, price) {
+      // (`animal`, 0.18.0: o bichinho dono da skin; o preço mínimo e a carteira de petscoin são os mesmos)
+      buySkin(name, id, price, animal = DEFAULT_ANIMAL) {
         const k = nameKey(canonical(name));
-        if (!k || !isSkinId(id) || !Number.isInteger(price) || price < MIN_SKIN_PRICE || price > MAX_TREATS) return { ok: false, error: "invalid" };
-        const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
-        if (w.own.includes(id)) return { ok: false, error: "owned" };
+        if (!k || !isAnimal(animal) || !isSkinId(id) || !Number.isInteger(price) || price < MIN_SKIN_PRICE || price > MAX_TREATS) return { ok: false, error: "invalid" };
+        const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" }), key = ownKey(animal, id);
+        if (w.own.includes(key)) return { ok: false, error: "owned" };
         if (w.t < price) return { ok: false, error: "funds" };
         if (w.own.length >= MAX_OWNED) return { ok: false, error: "invalid" };
-        w.t -= price; w.own = [...w.own, id];
+        w.t -= price; w.own = [...w.own, key];
         save();
-        return { ok: true, wallet: this.wallet(name) };
+        return { ok: true, wallet: this.wallet(name, animal) };
       },
       // usa uma skin que já é do jogador ("" = a padrão)
-      equipSkin(name, id) {
+      equipSkin(name, id, animal = DEFAULT_ANIMAL) {
         const k = nameKey(canonical(name));
-        if (!k || (id !== "" && !isSkinId(id))) return null;
+        if (!k || !isAnimal(animal) || (id !== "" && !isSkinId(id))) return null;
         const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
-        if (id !== "" && !w.own.includes(id)) return null;
-        w.eq = id;
+        if (id !== "" && !w.own.includes(ownKey(animal, id))) return null;
+        if (animal === DEFAULT_ANIMAL) w.eq = id;
+        else { // (os outros bichinhos: `eqa` só existe enquanto alguém usa uma skin que não é a padrão)
+          if (id) (w.eqa || (w.eqa = Object.create(null)))[animal] = id;
+          else if (w.eqa) { delete w.eqa[animal]; if (!Object.keys(w.eqa).length) delete w.eqa; }
+        }
         save();
-        return this.wallet(name);
+        return this.wallet(name, animal);
       },
 
     };
