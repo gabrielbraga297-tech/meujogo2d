@@ -529,5 +529,6 @@
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,
-    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, MIN_SKIN_PRICE, MAX_TREATS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS };
+    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, MIN_SKIN_PRICE, MAX_TREATS, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS,
+    DEFAULT_ANIMAL }; // (0.18.0) DEFAULT_ANIMAL: o bichinho padrão ("dog"); board.js e game.js usam este, em vez de repetir o texto
 });

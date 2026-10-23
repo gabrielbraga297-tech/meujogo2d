@@ -8224,9 +8224,9 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-animal");
     ok(await ev(page, () => document.activeElement.id) === "animal-cat" && await page.getAttribute("#animal-cat", "aria-current") === "true" && await page.getAttribute("#animal-dog", "aria-current") === null, "ao reabrir a tela o Gatinho é o escolhido e recebe o foco");
     await page.keyboard.press("Escape");
-    // ao escolher um nome o jogo relê o bichinho DELE (um jogador novo começa com o Cachorrinho)
+    // ao escolher um nome o jogo relê o bichinho DELE; 0.18.0: quem escolheu o Gatinho SEM nome e depois digita um nome (jogador novo, sem escolha guardada) continua com o Gatinho que escolheu (antes jogava o Cachorrinho)
     await page.click("#btn-name"); await page.fill("#name-input", "Ana"); await page.click("#name button[type=submit]");
-    ok(await page.textContent("#menu-player") === "Ana" && await AN.label(page) === "Bichinho: 🐶 Cachorrinho · Trocar" && await ev(page, () => __game.animal) === "dog", "ao escolher um nome o jogo relê o bichinho do jogador (Ana começa com o Cachorrinho)");
+    ok(await page.textContent("#menu-player") === "Ana" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => __game.animal) === "cat" && await ev(page, () => Records.createStore(localStorage).animal("Ana")) === "cat", "ao escolher um nome o jogo mantém o bichinho já escolhido sem nome (a Ana continua com o Gatinho, e a escolha fica guardada no nome dela)");
 
     // ---- por jogador: escolha, recarregar, outro jogador ----
     await fresh(page);
@@ -8541,6 +8541,209 @@ const PAGE_HELPERS = () => {
     await page.keyboard.press("Escape");
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     ok(/## Bichinhos \(0\.17\.0\)/.test(readme) && /store\.game\(/.test(readme) && /\*\*Qualquer bichinho pode ser escolhido a qualquer momento/.test(readme) && /Bichinho: 🐶 Cachorrinho · Trocar/.test(readme) && /enableTestAnimal/.test(readme), "o README tem a seção Bichinhos (0.17.0) com as regras, o modelo de dados, a tela e o gancho de teste");
+  });
+
+  // =====================================================================
+  // 0.18.0 (Gatinho, etapa 1): perfis por bichinho. O Cachorrinho continua dizendo o de sempre; o Gatinho de teste (enableTestAnimal) usa as fases e as palavras do perfil dele.
+  // =====================================================================
+  await section("0.18.0: perfis por bichinho (registro, fases por bichinho e ganchos)", async () => {
+    await fresh(page, { done: [1] });
+    // ---- o registro: o Gatinho tem fases próprias (de teste), mas continua desligado em produção ----
+    const g0 = await ev(page, () => __game.games);
+    ok(JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total, g.rev, g.placeholder])) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", false, 0, 20, 2, true], ["bird", false, 0, 0, 1, false]]), `o registro: Cachorrinho pronto (20 fases), Gatinho desligado mas com as 20 fases de teste (placeholder) e Passarinho sem fases (${JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total]))})`);
+    ok(await ev(page, () => __game.setAnimal("cat")) === false && await page.isDisabled("#animal-cat").catch(() => true), "em produção o Gatinho continua desligado (não dá para escolher)");
+    const fx = await ev(page, () => {
+      const dogB = __game.builtOf("dog"), catB = __game.builtOf("cat");
+      return {
+        dog: Object.keys(dogB).length, cat: Object.keys(catB).length, bird: Object.keys(__game.builtOf("bird")).length, unk: __game.builtOf("zzz") === dogB,
+        sep: dogB[1] !== catB[1] && dogB[20] !== catB[20], catPh: Object.values(catB).every((l) => l.placeholder === true), dogPh: Object.values(dogB).some((l) => l.placeholder),
+        hooks: Object.values(dogB).every((l) => l.sprint === null && l.water === null && l.refuge === null) && Object.values(catB).every((l) => l.sprint === null && l.water === null && l.refuge === null),
+        sameMaps: JSON.stringify(__game.levelsOf("cat")) === JSON.stringify(__game.levels) && __game.levelsOf("bird").length === 0 && __game.levelsOf("dog").length === 20,
+        rev: [__game.mapRev("dog"), __game.mapRev("cat"), __game.mapRev("bird"), __game.mapRev("zzz")],
+        cached: __game.builtOf("cat") === catB && __game.builtOf("dog") === dogB,
+      };
+    });
+    ok(fx.dog === 20 && fx.cat === 20 && fx.bird === 0 && fx.unk && fx.sep && fx.catPh && !fx.dogPh, `builtOf: 20 fases montadas do Cachorrinho e 20 do Gatinho (objetos separados, as do gato marcadas placeholder), 0 do Passarinho e um bichinho que não existe usa as do Cachorrinho (${JSON.stringify(fx)})`);
+    ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,1,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
+    // ---- o perfil de cada bichinho (a tabela completa está em tests/profiles.test.js) ----
+    const pr = await ev(page, () => ({ dog: __game.profile.id, bird: __game.profileOf("bird").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) }));
+    ok(pr.dog === "dog" && pr.bird === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); sem perfil próprio o Passarinho usa o do Cachorrinho; os ambientes do Gatinho são os do Cachorrinho");
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    ok(/## Perfis por bichinho \(0\.18\.0\)/.test(readme) && /js\/profiles\.js/.test(readme) && /builtOf\(bichinho\)/.test(readme) && /Como o Passarinho entra/.test(readme) && /`sprint`/.test(readme) && /`water`/.test(readme) && /`refuge`/.test(readme) && /Themes\.of\(fase, bichinho\)/.test(readme) && /DEFAULT_ANIMAL/.test(readme), "o README tem a seção Perfis por bichinho (0.18.0): fases por bichinho, perfil de textos, ganchos, como o Passarinho entra e a pendência do bichinho sem nome");
+    ok(!/const DEFAULT_ANIMAL = "dog"/.test(src) && /const DEFAULT_ANIMAL = Records\.DEFAULT_ANIMAL;/.test(src) && !/const BUILT\b/.test(src), "js/game.js usa o DEFAULT_ANIMAL de js/records.js e não tem mais o BUILT do Cachorrinho");
+  });
+
+  // =====================================================================
+  await section("0.18.0: perfis por bichinho (o Cachorrinho continua dizendo o de sempre, e volta ao normal depois do Gatinho)", async () => {
+    await fresh(page, { done: [1] });
+    const snap = () => ev(page, () => ({
+      labels: [...document.querySelectorAll("#hud .hud-item")].map((e) => e.firstChild.nodeValue),
+      titles: [document.getElementById("hud-balls-item").title, document.getElementById("hud-power-item").title],
+      howto: document.getElementById("howto-steps").innerHTML, shop: document.getElementById("shop-help").innerHTML, scores: document.getElementById("scores-help").innerHTML,
+      tip: document.getElementById("name-tip").innerHTML, step: document.getElementById("name-step1").innerHTML, reg: document.getElementById("reg-hint").innerHTML,
+      canvas: document.getElementById("game").getAttribute("aria-label"), pad: document.getElementById("pad").getAttribute("aria-label"),
+    }));
+    const orig = await snap();
+    ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /skins para o cachorrinho/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
+    // ---- jogando o Cachorrinho (Fase 2): placar, avisos, vitória, derrota ----
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
+    const hudDog = await ev(page, () => ({ prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), toast: document.getElementById("toast").textContent }));
+    ok(hudDog.prey === "RAÇÕES 0/7" && hudDog.bones === "OSSOS 0/2" && hudDog.balls === "BOLINHAS 0/1" && hudDog.power === "PODER —" && hudDog.aria === "Poder do osso: desligado", `Cachorrinho: o placar diz ${JSON.stringify([hudDog.prey, hudDog.bones, hudDog.balls, hudDog.power])} e a leitura do poder "${hudDog.aria}"`);
+    ok(/Fase 2: 2 agentes da carrocinha$/.test(hudDog.toast), `Cachorrinho: o aviso do começo da fase diz "${hudDog.toast}"`);
+    await ev(page, () => { const it = __game.items.find((i) => i.bone); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); });
+    ok(await page.textContent("#toast") === "Poder do osso por 30 s: os agentes viram carteiros fogem! Encoste neles: +100 cada.", `Cachorrinho: o aviso do osso "${await page.textContent("#toast")}"`);
+    await ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); });
+    ok(await page.textContent("#toast") === "Você ganhou do carteiro! +100 pontos", "Cachorrinho: o aviso de ganhar do carteiro");
+    await hudIs(page, "#hud-power", "30 s");
+    ok(await page.getAttribute("#hud-power-item", "aria-label") === "Poder do osso: 30 segundos", "Cachorrinho: a leitura do poder ligado");
+    await page.click("#btn-pause");
+    ok(/^Cachorrinho: filhote\./.test(await page.textContent("#pause-up")), "Cachorrinho: a pausa diz Cachorrinho: filhote.");
+    await page.click("#btn-resume");
+    await finishNow(page, 10);
+    ok(/^Rações: 700 \+ ossos: 300 \+ carteiros: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Cachorrinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
+    ok((await ev(page, () => __game.sounds.map((e) => e.name))).some((n) => n === "bark1") && !(await ev(page, () => __game.sounds.map((e) => e.name))).includes("meow"), "Cachorrinho: completar a fase toca o latido de filhote (e nenhum miado)");
+    await page.click("#btn-next");
+    ok(JSON.stringify(await page.$$eval("#reinforce-list strong", (e) => e.map((x) => x.textContent))) === JSON.stringify(["Patas ligeiras", "Osso poderoso", "Pelo grosso"]), "Cachorrinho: as opções de reforço têm os nomes de sempre");
+    await page.click('#reinforce-list button[data-id="speed"]');
+    ok(/^Reforço escolhido: Patas ligeiras — \+8% de velocidade do cachorrinho\. Ele vale a partir da Fase 3\. Com ele você terá: \+8% de velocidade\.$/.test(await page.textContent("#reinforce-msg")), `Cachorrinho: "${await page.textContent("#reinforce-msg")}"`);
+    await page.click("#btn-reinforce-go");
+    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.gameAnimal) === "dog", "Cachorrinho: a Próxima fase leva à Fase 3 do Cachorrinho");
+    await ev(page, () => { __game.setLives(1); });
+    const lost = await catchOnce(page, 0);
+    ok(lost[1] === "lost" && await page.textContent("#lose-title") === "A carrocinha pegou o cachorrinho!" && /^Rações coletadas: 0\/\d+ · Ossos: 0\/2 · Pontos: /.test(await page.textContent("#lose-text")), `Cachorrinho: a derrota diz "${await page.textContent("#lose-title")}" e "${await page.textContent("#lose-text")}"`);
+    await page.click("#btn-lose-menu");
+
+    // ---- o Gatinho de teste: as palavras e as fases dele ----
+    await ev(page, () => { __game.enableTestAnimal("cat"); Records.createStore(localStorage).game("cat").completeLevel("Totó", 1); });
+    ok(await ev(page, () => __game.setAnimal("cat")) === true && await ev(page, () => __game.profile.id) === "cat", "escolhido o Gatinho, o perfil em uso no menu é o dele");
+    await page.click("#btn-howto");
+    const catHow = await page.textContent("#howto");
+    ok(/ajude o gatinho a pegar todos os ratinhos/.test(catHow) && /novelo/.test(catHow) && /cães/.test(catHow) && !/cachorr|carroc|carteiro/i.test(catHow) && /Controle \(gamepad\)/.test(catHow) && /Conta \(opcional\)/.test(catHow), "Gatinho: o Como jogar fala do gatinho, dos ratinhos, dos novelos e dos cães");
+    ok(await ev(page, () => document.getElementById("howto-steps").children.length) >= 18, "Gatinho: o Como jogar tem todos os itens (objetivo, mover, cães, novelo, missão, bolinhas, petiscos, bichinhos, reforços, vidas, pontuação, salvar...)");
+    await page.keyboard.press("Escape");
+    await page.click("#btn-shop");
+    const shopCat = { help: await page.textContent("#shop-help"), names: await page.$$eval("#shop-list .shop-card strong", (e) => e.map((x) => x.textContent)), subs: await page.$$eval("#shop-list .shop-card .sub", (e) => e.map((x) => x.textContent)) };
+    ok(/skins para o gatinho/.test(shopCat.help) && shopCat.names.join() === "Caramelo,Cinza-prata,Vaquinha,Chocolate,Dourado,Arco-íris,Pirata,Astronauta,Super-gato" && /o gatinho de sempre/.test(shopCat.subs[0]) && /capa vermelha de super-herói · 50 petscoin/.test(shopCat.subs[8]), `Gatinho: a lojinha diz skins para o gatinho, com os nomes do gato (${shopCat.names.join(", ")})`);
+    await page.keyboard.press("Escape");
+    await page.click("#btn-scores");
+    ok(/100 por ratinho \+ 150 por novelo \+ 100 por cão afugentado/.test(await page.textContent("#scores-help")) && await page.textContent("#scores-title") === "Pontuações do Gatinho", "Gatinho: as Pontuações explicam os pontos com as palavras do gato");
+    await page.keyboard.press("Escape");
+    await page.click("#btn-name");
+    ok(/nome de um gatinho/.test(await page.textContent("#name-tip")) && /do seu gatinho/.test(await page.textContent("#name-step1")), "Gatinho: a tela do nome sugere nome de gatinho");
+    await page.keyboard.press("Escape");
+    // a lista de fases: a Fase 1 do Gatinho está concluída, a lista abre até a Fase 2
+    await page.click("#btn-start");
+    const catList = await AN.levelsList(page);
+    ok(catList.length === 20 && /^1 cão · /.test(catList[0].sub) && /^2 cães · ossos que dão poder · /.test(catList[1].sub) && !/carrocinha|agente/.test(catList.map((l) => l.sub).join(" ")), `Gatinho: a lista de fases diz "${catList[0].sub.slice(0, 40)}" e "${catList[1].sub.slice(0, 60)}"`);
+    await page.keyboard.press("Escape");
+    // jogando a Fase 2 do Gatinho
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
+    const cg = await ev(page, () => ({ animal: __game.gameAnimal, level: __game.level, ph: __game.builtOf("cat")[2].placeholder, prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), ptitle: document.getElementById("hud-power-item").title, btitle: document.getElementById("hud-balls-item").title, toast: document.getElementById("toast").textContent, canvas: document.getElementById("game").getAttribute("aria-label"), pad: document.getElementById("pad").getAttribute("aria-label") }));
+    ok(cg.animal === "cat" && cg.level === 2 && cg.ph, "Gatinho: a partida usa o bichinho Gatinho e as fases dele");
+    ok(cg.prey === "RATINHOS 0/7" && cg.bones === "NOVELOS 0/2" && cg.balls === "BOLINHAS 0/1" && cg.power === "PODER —" && cg.aria === "Poder do novelo: desligado" && /cães afugentados/.test(cg.ptitle) && /^Bolinhas: cada uma vale 50 pontos/.test(cg.btitle), `Gatinho: o placar diz ${JSON.stringify([cg.prey, cg.bones, cg.balls, cg.power])} e a leitura do poder "${cg.aria}"`);
+    ok(/Fase 2: 2 cães$/.test(cg.toast) && !/agente|carrocinha/.test(cg.toast), `Gatinho: o aviso do começo da fase diz "${cg.toast}"`);
+    ok(/^Área do jogo: um gatinho coleta ratinhos e novelos e foge dos cães/.test(cg.canvas) && /mover o gatinho$/.test(cg.pad), "Gatinho: a descrição do jogo e do controle falam do gatinho");
+    await ev(page, () => { const it = __game.items.find((i) => i.bone); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); });
+    ok(await page.textContent("#toast") === "Poder do novelo por 30 s: os cães ficam afugentados e fogem! Encoste neles: +100 cada.", `Gatinho: o aviso do novelo "${await page.textContent("#toast")}"`);
+    await ev(page, () => { const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); });
+    ok(await page.textContent("#toast") === "Você afugentou o cão! +100 pontos", "Gatinho: o aviso de afugentar o cão");
+    await hudIs(page, "#hud-power", "30 s");
+    ok(await page.getAttribute("#hud-power-item", "aria-label") === "Poder do novelo: 30 segundos", "Gatinho: a leitura do poder ligado");
+    await page.click("#btn-pause");
+    ok(await page.textContent("#pause-up") === "Gatinho: filhote.", `Gatinho: a pausa diz "${await page.textContent("#pause-up")}"`);
+    await page.click("#btn-resume");
+    await ev(page, () => { __game.sound.reset(); });
+    await finishNow(page, 10);
+    ok(/^Ratinhos: 700 \+ novelos: 300 \+ cães afugentados: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Gatinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
+    const catSounds = await ev(page, () => __game.sounds.map((e) => e.name));
+    ok(catSounds.includes("meow") && !catSounds.some((n) => /^bark/.test(n)), `Gatinho: completar a fase toca o miado, não o latido (${catSounds.join(", ")})`);
+    ok(await ev(page, () => { const c = Records.createStore(localStorage).game("cat"); return c.progress("Totó").completed.includes(2) && c.progress("Totó").unlocked === 3 && c.personalBest("Totó", 2).p > 0; }), "Gatinho: a Fase 2 concluída vai para o jogo do Gatinho (libera a Fase 3 dele e guarda o recorde dele)");
+    await page.click("#btn-next");
+    const opts = await page.$$eval("#reinforce-list strong", (e) => e.map((x) => x.textContent));
+    ok(JSON.stringify(opts) === JSON.stringify(["Patas ágeis", "Novelo poderoso", "Pelo grosso"]), `Gatinho: as opções de reforço têm nomes do gato (${opts.join(", ")})`);
+    await page.click('#reinforce-list button[data-id="bone"]');
+    ok(await page.textContent("#reinforce-msg") === "Reforço escolhido: Novelo poderoso — +8 s no poder do novelo. Ele vale a partir da Fase 3. Com ele você terá: +8 s de poder do novelo.", `Gatinho: "${await page.textContent("#reinforce-msg")}"`);
+    await page.click("#btn-reinforce-go");
+    ok(await ev(page, () => __game.level) === 3 && await ev(page, () => __game.gameAnimal) === "cat", "Gatinho: a Próxima fase leva à Fase 3 do Gatinho (ele segue na mesma partida)");
+    await page.click("#btn-pause");
+    ok(await page.textContent("#pause-up") === "Gatinho: filhote. Reforços: Novelo poderoso 1/4. Efeitos: +8 s de poder do novelo.", `Gatinho: a pausa lista os reforços "${await page.textContent("#pause-up")}"`);
+    await page.click("#btn-resume");
+    await ev(page, () => { __game.setLives(1); });
+    const lostCat = await catchOnce(page, 0);
+    ok(lostCat[1] === "lost" && await page.textContent("#lose-title") === "Um cão pegou o gatinho!" && /^Ratinhos pegos: 0\/\d+ · Novelos: 0\/2 · Pontos: /.test(await page.textContent("#lose-text")), `Gatinho: a derrota diz "${await page.textContent("#lose-title")}" e "${await page.textContent("#lose-text")}"`);
+    await page.click("#btn-lose-menu");
+    // o resumo do jogo salvo (menu e confirmação) usa as palavras do Gatinho
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.tick(2); __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    const sv = await page.textContent("#menu-save");
+    ok(/^Jogo salvo: Fase 2 · .* · 0\/7 ratinhos · 0\/2 novelos · 3 vidas$/.test(sv), `Gatinho: o jogo salvo diz "${sv}"`);
+    await page.click("#btn-start");
+    ok(/jogo salvo do Gatinho \(Fase 2 · .* 0\/7 ratinhos · 0\/2 novelos/.test(await page.textContent("#confirm-text")), "Gatinho: a confirmação de novo jogo usa o resumo do Gatinho");
+    await page.keyboard.press("Escape");
+    // um jogo salvo do Gatinho é conferido contra as fases e a revisão de mapas DELE
+    const parse = await ev(page, () => {
+      const snap = Records.createStore(localStorage).game("cat").loadGame("Totó").snap;
+      return { cat: __game.parseSave(snap, "cat"), old: __game.parseSave({ ...snap, mz: 1 }, "cat"), l99: __game.parseSave({ ...snap, l: 99 }, "cat"), bird: __game.parseSave(snap, "bird") };
+    });
+    ok(parse.cat === true && parse.old === false && parse.l99 === false && parse.bird === false, `parseSnapshot usa as fases e a revisão do bichinho do jogo salvo (${JSON.stringify(parse)})`);
+
+    // ---- de volta ao Cachorrinho: a página volta a ser byte a byte a de antes ----
+    ok(await ev(page, () => __game.setAnimal("dog")) === true, "(volta ao Cachorrinho)");
+    await ev(page, () => { __game.start(1); });
+    const back = await snap();
+    ok(JSON.stringify(back) === JSON.stringify(orig), `depois do Gatinho, o Cachorrinho volta com os textos de sempre (placar, Como jogar, lojinha, pontuações, nome, descrição do jogo e do controle) ${JSON.stringify(Object.keys(orig).filter((k) => JSON.stringify(back[k]) !== JSON.stringify(orig[k])))}`);
+  });
+
+  // =====================================================================
+  await section("0.18.0: perfis por bichinho (quem escolhe um bichinho sem nome e depois digita um nome, cria uma conta ou entra, joga o bichinho escolhido)", async () => {
+    // ---- digitar um nome novo ----
+    await fresh(page, { name: "" });
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    ok(await page.textContent("#menu-player") === "ainda não escolhido" && await ev(page, () => __game.animal) === "cat", "(sem nome, escolheu o Gatinho)");
+    await page.click("#btn-start");
+    ok(await page.isVisible("#name") && await page.isVisible("#name-why"), "Iniciar jogo sem nome pede o nome");
+    await page.fill("#name-input", "Zeca"); await page.click("#name button[type=submit]");
+    ok(await ev(page, () => __game.state) === "playing" && await ev(page, () => __game.gameAnimal) === "cat" && await ev(page, () => document.getElementById("hud-items").parentNode.textContent.startsWith("RATINHOS")), "depois do nome a partida começa com o Gatinho que foi escolhido (e não com o Cachorrinho)");
+    ok(await ev(page, () => Records.createStore(localStorage).animal("Zeca")) === "cat" && await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1")).animal.zeca) === "cat", "a escolha ficou guardada no nome do jogador novo");
+    await ev(page, () => { __game.freezeVets = true; __game.tick(1); __game.save(); });
+    ok(await ev(page, () => Records.createStore(localStorage).game("cat").hasGame("Zeca")) && !(await ev(page, () => Records.createStore(localStorage).hasGame("Zeca"))), "o jogo salvo vai para o Gatinho do Zeca, não para o Cachorrinho");
+    // ---- sem escolher nada (Cachorrinho): nada é guardado ----
+    await fresh(page, { name: "" });
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    await page.click("#btn-start"); await page.fill("#name-input", "Rex"); await page.click("#name button[type=submit]");
+    ok(await ev(page, () => __game.gameAnimal) === "dog" && await ev(page, () => !(localStorage.getItem("cachorrinho.v1") || "").includes('"animal"')), "quem não escolheu nada continua com o Cachorrinho (e nenhum campo de bichinho é guardado)");
+    // ---- um nome que já existe neste aparelho (atalho de nomes), sem escolha guardada ----
+    await fresh(page, { name: "", runs: [{ name: "Bia", level: 1, timeMs: 30000 }] });
+    await ev(page, () => { const raw = JSON.parse(localStorage.getItem("cachorrinho.v1")); raw.player = ""; localStorage.setItem("cachorrinho.v1", JSON.stringify(raw)); });
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await page.textContent("#menu-player") === "ainda não escolhido", "(sem jogador atual; a Bia já existe neste aparelho)");
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await page.click("#btn-name"); await page.click("#name-chips button:text-is('Bia')");
+    ok(await page.textContent("#menu-player") === "Bia" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => Records.createStore(localStorage).animal("Bia")) === "cat", "escolher um nome do atalho também leva o Gatinho escolhido (a Bia não tinha escolha guardada)");
+    ok(await ev(page, () => Records.createStore(localStorage).personalBest("Bia", 1)) !== null, "os recordes do Cachorrinho da Bia continuam lá (só a escolha do bichinho mudou)");
+    // ---- criar uma conta ----
+    await fresh(page, { name: "" });
+    await ev(page, () => __game.enableTestAnimal("cat"));
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await page.click("#btn-name"); await page.click("#btn-open-register");
+    await page.fill("#reg-user", "Mel"); await page.fill("#reg-pass", "abcd1234"); await page.fill("#reg-pass2", "abcd1234"); await page.click("#btn-register-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"), null, { timeout: 15000 });
+    ok(await page.textContent("#menu-player") === "Mel (conta com senha)" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => Records.createStore(localStorage).animal("Mel")) === "cat", "criar uma conta depois de escolher o Gatinho sem nome leva o Gatinho para a conta");
+    // ---- entrar numa conta que já existe ----
+    await ev(page, () => { const st = Records.createStore(localStorage); st.logout(); });
+    await ev(page, () => Records.createStore(localStorage).register("Bidu", "abcd1234"));
+    await ev(page, () => Records.createStore(localStorage).logout());
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await page.textContent("#menu-player") === "ainda não escolhido", "(ninguém entrou)");
+    await page.click("#btn-animal"); await page.click("#animal-cat");
+    await page.click("#btn-name"); await page.click("#btn-open-login");
+    await page.fill("#login-user", "Bidu"); await page.fill("#login-pass", "abcd1234"); await page.click("#btn-login-submit");
+    await page.waitForFunction(() => !document.getElementById("menu").classList.contains("hidden"), null, { timeout: 15000 });
+    ok(await page.textContent("#menu-player") === "Bidu (conta com senha)" && await AN.label(page) === "Bichinho: 🐱 Gatinho · Trocar" && await ev(page, () => Records.createStore(localStorage).animal("Bidu")) === "cat", "entrar numa conta (sem escolha guardada) depois de escolher o Gatinho sem nome leva o Gatinho para a conta");
+    // ---- sem nome e sem escolha o bichinho é o Cachorrinho (nada é levado de uma sessão para a outra) ----
+    await ev(page, () => Records.createStore(localStorage).logout());
+    await page.reload(); await page.evaluate(PAGE_HELPERS); await ev(page, () => __game.enableTestAnimal("cat"));
+    ok(await page.textContent("#menu-player") === "ainda não escolhido" && await ev(page, () => __game.animal) === "dog", "sair da conta e recarregar volta ao Cachorrinho");
   });
 
   console.log("erros JS:", errs);

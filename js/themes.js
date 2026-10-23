@@ -1,7 +1,7 @@
 // Ambientes das fases (0.14.0): cada fase é um lugar que o cachorrinho conhece. Cada ambiente diz como desenhar o chão, as paredes (ou prédios, cercas, cercas vivas...)
 // e as "caixas" (X) do mapa, tudo com formas simples e cores fixas; nada aqui mexe nas regras do jogo.
 //
-// Uso (js/game.js): const th = Themes.of(idDaFase); a cada tile visível: th.floor(g), th.wall(g) ou th.crate(g), onde `g` traz
+// Uso (js/game.js): const th = Themes.of(idDaFase, bichinho); a cada tile visível: th.floor(g), th.wall(g) ou th.crate(g), onde `g` traz
 //   g.ctx, g.rect(x, y, w, h)  retângulo alinhado aos pixels do aparelho
 //   g.x, g.y, g.c, g.r         canto de cima à esquerda do tile (px) e a coluna e a linha
 //   g.h(k)                     número de 0 a 1 sempre igual para o mesmo tile e o mesmo k (sem piscar)
@@ -766,6 +766,13 @@
   };
 
   const BY_ID = { 1: quintal, 2: campo, 3: casa, 4: rua, 5: condominio, 6: praca, 7: parque, 8: feira, 9: praia, 10: central, 11: beco, 12: petshop, 13: fazenda, 14: bosque, 15: lago, 16: mercadao, 17: estacionamento, 18: telhados, 19: estacao, 20: fortaleza };
+  // (0.18.0) Ambientes por bichinho: `of(id, animal)`. O Cachorrinho tem os 20 de cima; um bichinho SEM ambientes próprios (o Gatinho, por enquanto) usa os do Cachorrinho, e sem o 2º argumento
+  // (ou com "dog") a resposta é exatamente a de sempre. Para dar ambientes próprios a um bichinho, registre aqui `BY_ANIMAL.cat = { 1: ..., 2: ... }` (os que faltarem usam o do Cachorrinho daquela fase).
+  const BY_ANIMAL = { dog: BY_ID };
   // Fases sem ambiente próprio (de 21 em diante, se um dia existirem) usam o da Rua do bairro.
-  return { of: (id) => BY_ID[id] || rua, ids: Object.keys(BY_ID).map(Number), hash, TILE: T };
+  const of = (id, animal) => {
+    const own = animal !== undefined && animal !== "dog" && Object.prototype.hasOwnProperty.call(BY_ANIMAL, animal) ? BY_ANIMAL[animal] : null;
+    return (own && own[id]) || BY_ID[id] || rua;
+  };
+  return { of, ids: Object.keys(BY_ID).map(Number), hash, TILE: T, animals: Object.keys(BY_ANIMAL) };
 });

@@ -14,9 +14,8 @@
   else root.Board = api;
 })(typeof window !== "undefined" ? window : globalThis, function (root) {
   const Records = typeof module === "object" && module.exports ? require("./records.js") : root.Records;
-  const { isBetter, byBest, nameKey, sanitizeName, cleanBest } = Records;
+  const { isBetter, byBest, nameKey, sanitizeName, cleanBest, DEFAULT_ANIMAL } = Records; // DEFAULT_ANIMAL = "dog", o Cachorrinho: o único bichinho do ranking compartilhado (0.18.0: vem de js/records.js)
 
-  const DEFAULT_ANIMAL = "dog"; // o Cachorrinho: o único bichinho do ranking compartilhado
   const TOP = 10;            // linhas mostradas em cada ranking
   const MAX_ROWS = 5000;     // o que passar disso, de um servidor, é ignorado
   const TIMEOUT_MS = 6000;   // espera máxima por uma resposta do servidor

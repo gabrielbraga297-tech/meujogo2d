@@ -17,17 +17,18 @@
   // Começar uma fase pelo menu (ou "Jogar novamente") começa sem reforços, como começa com 3 vidas; "Tentar novamente" e "Continuar jogo" mantêm os que a partida já tinha.
   const MAP_REV = 2;        // revisão dos mapas (Fases 1 a 20): jogos salvos de uma revisão anterior (mapas diferentes) são descartados com um aviso no menu (2 = 0.15.1, labirintos com desenho de cidade; os jogos salvos das Fases 11 a 20 feitos desde a 0.15.4 continuam valendo, conferido na auditoria da 0.16.0)
   const REINFORCE_SPEED = 0.08, REINFORCE_BONE = 8, REINFORCE_SHIELD = 2, REINFORCE_SLOW = 0.08; // por nível: +8% de velocidade, +8 s de poder, +2 s de proteção, agentes 8% mais lentos (0.15.2: antes 5%, 5 s, 1 s e 5%, pequenos demais para notar)
+  // (0.18.0) aqui ficam só as regras de cada reforço (id, nível máximo, fase em que entra); o NOME e o TEXTO de cada um vêm do perfil do bichinho: P().reinforce[id] (js/profiles.js; veja `reinf`).
   const REINFORCEMENTS = [
-    { id: "speed", name: "Patas ligeiras", text: "+8% de velocidade do cachorrinho", max: 4 },
-    { id: "bone", name: "Osso poderoso", text: "+8 s no poder do osso", max: 4 },
-    { id: "life", name: "Vida extra", text: "+1 vida agora" },
-    { id: "heart", name: "Coração maior", text: "+1 vida no máximo (e +1 vida agora)", max: 3 },
-    { id: "shield", name: "Pelo grosso", text: "+2 s de proteção depois de perder uma vida", max: 3 },
-    { id: "slow", name: "Carrocinha lenta", text: "agentes da carrocinha 8% mais lentos", max: 4 },
+    { id: "speed", max: 4 },
+    { id: "bone", max: 4 },
+    { id: "life" },
+    { id: "heart", max: 3 },
+    { id: "shield", max: 3 },
+    { id: "slow", max: 4 },
     // Reforços novos da 0.15.7: só são oferecidos a partir da Fase 11 (`from`)
-    { id: "stealth", name: "Patas de veludo", text: "agentes e gatos notam você 1 quadrado mais tarde", max: 3, from: 11 },
-    { id: "scent", name: "Faro", text: "uma seta mostra o osso mais perto (e, no nível 2, a saída aberta)", max: 2, from: 11 },
-    { id: "lure", name: "Ímã de ração", text: "as rações perto de você vêm sozinhas", max: 3, from: 11 },
+    { id: "stealth", max: 3, from: 11 },
+    { id: "scent", max: 2, from: 11 },
+    { id: "lure", max: 3, from: 11 },
   ];
   const REINFORCE_OFFER = 3; // quantas opções de reforço aparecem por fase
   const UP_KEYS = ["speed", "bone", "heart", "shield", "slow", "stealth", "scent", "lure"]; // os reforços que ficam guardados (a "Vida extra" vira vida na hora); esta é a ordem no jogo salvo
@@ -94,7 +95,7 @@
   // Ossos de tipos novos (0.15.7, a partir da Fase 11): além do osso comum (poder de assustar), há o de ouro (escudo), o de gelo (congela agentes e gatos), o turbo (corre mais) e o ímã (pega as rações perto). Cada fase diz quais ossos tem em `boneMix`.
   const BONE_KINDS = ["scare", "gold", "ice", "turbo", "magnet"];
   const SHIELD_TIME = 10, ICE_TIME = 6, TURBO_TIME = 8, TURBO_FACTOR = 1.4, MAGNET_TIME = 12, MAGNET_RADIUS = 4 * TILE; // s de cada efeito (o reforço Osso poderoso soma 4 s por nível), × velocidade do cachorrinho, px
-  const BONE_LABEL = { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" };
+  // (o nome de cada tipo de osso vem do perfil: P().boneLabel[tipo])
   // Bolinhas (0.15.8, a partir da Fase 2): cachorros adoram correr atrás de bolinhas. Cada bolinha vale 50 pontos e FOGE rolando quando o cachorrinho chega a 3 tiles: ele tem de correr atrás dela (ela quica nas paredes e para sozinha).
   const BALL_R = 8, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
   const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
@@ -1326,7 +1327,10 @@
       ],
     },
   ];
-  const LEVEL_IDS = LEVELS.map((l) => l.id);
+  const LEVEL_IDS = LEVELS.map((l) => l.id); // (as fases do Cachorrinho; o ranking compartilhado em stand by, js/board.js, é só dele)
+  // (0.18.0) As 20 fases do GATINHO: por enquanto uma CÓPIA das do Cachorrinho (mesmos mapas, números e textos), marcada `placeholder: true`, só para o encanamento por bichinho (builtOf, jogo salvo, ranking,
+  // textos do perfil) poder ser testado. Os mapas de verdade do gato substituem esta lista (cada fase com o seu `map`, `vets`... e sem `placeholder`); nada mais precisa mudar.
+  const CAT_LEVELS = LEVELS.map((l) => ({ ...l, placeholder: true }));
 
   // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. `bt` = segundos de relógio do bloco. Ele fica parado em `from` até `every` s;
   // a partir daí muda de lado a cada `every` s (começa a deslizar em every, 2·every, 3·every...) e leva `slide` s para chegar.
@@ -1422,20 +1426,26 @@
     { const q = []; for (const [c, r] of exitTiles) { exitDist[r * cols + c] = 0; q.push([c, r]); }
       for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = exitDist[r * cols + c]; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc >= 0 && nr >= 0 && nc < cols && nr < rows && catWalk[nr][nc] && exitDist[nr * cols + nc] < 0) { exitDist[nr * cols + nc] = d + 1; q.push([nc, nr]); } } } }
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
+    // GANCHOS (0.18.0) para recursos que só algumas fases de outros bichinhos terão; ficam DESLIGADOS (null) em todas as fases do Cachorrinho e ainda não fazem nada no jogo.
+    // Cada fase liga o seu com um campo opcional na definição (LEVELS / CAT_LEVELS). Quem implementar a mecânica valida o campo aqui e lê `lv.sprint`, `lv.water` e `lv.refuge`:
+    //  - `sprint`: corrida/fôlego do Gatinho (ex.: { max: segundos de fôlego, regen: s para encher })  -> entra em update() (updateSprint) e no placar (updateHud)
+    //  - `water`: poças/água que molham o pelo do gato e o deixam lento (ex.: lista de tiles ou retângulos) -> entra em update() (updateWater) e no desenho (drawLevelExtras)
+    //  - `refuge`: lugares altos onde os cães não alcançam (ex.: lista de tiles de refúgio)               -> entra em updateVet() (o cão não entra) e no desenho (drawLevelExtras)
+    // (um campo que a fase trouxer agora é guardado e ignorado: não quebra nada)
+    const sprint = def.sprint || null, water = def.water || null, refuge = def.refuge || null;
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
       balls, lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
+      sprint, water, refuge, placeholder: !!def.placeholder, // (ganchos desligados nas fases do Cachorrinho; placeholder = fase de teste copiada de outro bichinho)
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
     };
   }
-  const BUILT = Object.create(null);
-  for (const def of LEVELS) BUILT[def.id] = buildLevel(def);
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("game");
@@ -1448,22 +1458,39 @@
   // Efeitos sonoros (sintetizados na hora, sem arquivos): o navegador só libera o som depois do primeiro gesto do jogador; a preferência (mudo/volume) fica em "cachorrinho.som.v1".
   const sound = Sound.create({ storage: safeStorage() });
   sound.bindUnlock();
-  const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} });
+  const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} }); // (o ranking compartilhado é só do Cachorrinho: veja js/board.js)
 
   // ---------- (0.17.0) Os bichinhos: cada um tem o SEU jogo de 20 fases ----------
   // Pontos, recordes, ranking, progresso e jogo salvo são INDEPENDENTES por bichinho (store.game(id): js/records.js) e jogar um nunca mexe nos dados de outro.
   // Qualquer bichinho pronto pode ser escolhido a qualquer momento, sem exigir nada dos outros; DENTRO de um bichinho a fase N só abre quando a N−1 foi concluída.
   // A carteira de petscoin, a lojinha, as contas e os jogadores são ÚNICOS (de todos os bichinhos). `levels` = a lista de fases do bichinho (o menu e a lista de fases usam ela);
-  // `ready` = dá para jogar. Hoje só o Cachorrinho existe (as fases e o motor do jogo são os dele: LEVELS/BUILT); o Gatinho e o Passarinho entram em atualizações futuras.
-  const DEFAULT_ANIMAL = "dog";
+  // `ready` = dá para jogar. Hoje só o Cachorrinho está pronto; o Gatinho já tem o encanamento e as fases de teste (cópia das do Cachorrinho: `placeholder`) mas fica `ready: false` até os mapas dele chegarem; o Passarinho vem depois.
+  // (0.18.0) Cada jogo também tem: `rev` (revisão dos MAPAS dele: jogos salvos de outra revisão são descartados com aviso) e `built` (as fases montadas por buildLevel, id -> fase, montadas na primeira vez que alguém pede e
+  // refeitas se `levels` for trocada). TUDO o que depende das fases de uma partida passa por builtOf(bichinho)/levelsOf(bichinho): o da partida em andamento (`gameAnimal`) ou o escolhido no menu (syncAnimal()).
+  // O texto de cada bichinho (substantivos, avisos, placar) vem do perfil dele: js/profiles.js (`P()` mais abaixo).
+  const DEFAULT_ANIMAL = Records.DEFAULT_ANIMAL;
+  function makeGame(def) {
+    const g = { ...def };
+    let cache = null, cacheFor = null;
+    Object.defineProperty(g, "built", { enumerable: true, get() {
+      if (cacheFor !== g.levels) { const b = Object.create(null); for (const d of g.levels) b[d.id] = buildLevel(d); cache = b; cacheFor = g.levels; }
+      return cache;
+    } });
+    return g;
+  }
   const GAMES = [
-    { id: "dog", name: "Cachorrinho", emoji: "🐶", blurb: "Rações, ossos, carrocinha e gatos: 20 fases de aventura.", ready: true, levels: LEVELS },
-    { id: "cat", name: "Gatinho", emoji: "🐱", blurb: "Ágil e curioso: vai ter as suas próprias 20 fases.", ready: false, levels: [] },
-    { id: "bird", name: "Passarinho", emoji: "🐦", blurb: "Voando alto: vai ter as suas próprias 20 fases.", ready: false, levels: [] },
+    makeGame({ id: "dog", name: "Cachorrinho", emoji: "🐶", blurb: "Rações, ossos, carrocinha e gatos: 20 fases de aventura.", ready: true, rev: MAP_REV, levels: LEVELS }),
+    makeGame({ id: "cat", name: "Gatinho", emoji: "🐱", blurb: "Ágil e curioso: vai ter as suas próprias 20 fases.", ready: false, rev: 2 /* (a cópia das fases do Cachorrinho está na revisão 2 deles; os mapas de verdade do gato definem a revisão deles) */, levels: CAT_LEVELS }),
+    makeGame({ id: "bird", name: "Passarinho", emoji: "🐦", blurb: "Voando alto: vai ter as suas próprias 20 fases.", ready: false, rev: 1, levels: [] }),
   ];
   const gameOf = (id) => GAMES.find((g) => g.id === id) || null;
   const levelsOf = (id) => (gameOf(id) || gameOf(DEFAULT_ANIMAL)).levels;
+  const builtOf = (id) => (gameOf(id) || gameOf(DEFAULT_ANIMAL)).built; // as fases já montadas do bichinho: builtOf("dog")[3] = a Fase 3 (um bichinho que não existe usa as do Cachorrinho)
+  const mapRevOf = (id) => (gameOf(id) || gameOf(DEFAULT_ANIMAL)).rev;
   const levelIdsOf = (id) => (id === DEFAULT_ANIMAL ? LEVEL_IDS : levelsOf(id).map((l) => l.id));
+  builtOf(DEFAULT_ANIMAL); // (as 20 fases do Cachorrinho são montadas e conferidas já ao carregar: uma fase inválida impede o jogo de abrir)
+  // (0.18.0) Perfis de texto por bichinho (js/profiles.js): PROFILES[id] = substantivos, avisos, placar, reforços, skins e textos fixos. O jogo sempre pega o texto do perfil, nunca com `if (bichinho === ...)`.
+  const PROFILES = Profiles.PROFILES, profileOf = Profiles.of;
   // O bichinho escolhido do jogador atual (guardado por jogador em store.animal; sem jogador vale o Cachorrinho, e a escolha fica só na memória). `animalFor` = de quem é `animal`.
   // syncAnimal() relê a escolha quando o jogador mudou (nome, entrar, sair da conta, outra aba); `force` (o menu) relê sempre que há jogador.
   let animal = DEFAULT_ANIMAL, animalFor = null;
@@ -1478,6 +1505,14 @@
   }
   // O jogo (pontos, recordes, progresso, jogo salvo) de um bichinho: por padrão o escolhido agora. Para o Cachorrinho é idêntico aos métodos soltos da loja (store.addRun, store.progress...).
   const gs = (a) => store.game(a || syncAnimal());
+  // (0.18.0) Quem escolhe um bichinho SEM nome de jogador (a escolha fica só na memória) e depois digita um nome, cria uma conta ou entra, continua com o bichinho escolhido: `memoryAnimal()` lembra qual era
+  // ANTES de o jogador mudar e `adoptAnimal(...)` o guarda para o jogador novo, se ele ainda não tinha uma escolha guardada (quem já tem uma escolha guardada fica com a dela).
+  const memoryAnimal = () => (animalFor === "" && animal !== DEFAULT_ANIMAL ? animal : null);
+  function adoptAnimal(mem) {
+    const me = store.player();
+    if (mem && me && gameOf(mem) && gameOf(mem).ready && store.animal(me) === DEFAULT_ANIMAL) store.setAnimal(me, mem);
+    syncAnimal();
+  }
   // Escolhe o bichinho do jogador atual (sem jogador: só na memória). Devolve false se ele não existe ou ainda não está pronto.
   function pickAnimal(id) {
     const g = gameOf(id);
@@ -1493,14 +1528,14 @@
   let touchInput = false; // a última direção veio do controle de toque (e não do teclado nem do controle)
   const assist = () => !!(lv.touchEase && touchInput); // a fase tem facilitação para o toque e a pessoa está jogando com ele
   let state = "menu"; // menu | playing | paused | won | lost
-  let levelId = LEVELS[0].id, lv = BUILT[levelId];
+  let levelId = LEVELS[0].id, lv = builtOf(DEFAULT_ANIMAL)[levelId];
   let solids, items, vets, exitRect, player, spawn, walk;
   let cats = [];               // gatos da fase atual (a partir da Fase 11): veja updateCat
   let catOverride = null;      // usado apenas em testes: posições dos gatos no lugar das da fase
   let catsThaw = false;        // usado apenas em testes: com `freezeVets` ligado, os gatos continuam andando (assim os testes congelam só os agentes)
   let meowAt = -99;            // quando foi o último miau (um só som a cada CAT_MEOW_EVERY s, mesmo com vários gatos)
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
-  let theme = Themes.of(1); // o ambiente (lugar) da fase atual: js/themes.js
+  let theme = Themes.of(1, DEFAULT_ANIMAL); // o ambiente (lugar) da fase atual: js/themes.js (Themes.of(fase, bichinho))
   const themeG = { ctx: null, rect: null, x: 0, y: 0, c: 0, r: 0, free: false, border: false, solid: null, h: (k) => Themes.hash(themeG.c, themeG.r, k) }; // o que cada função de desenho do ambiente recebe
   let gpNavLock = false; // o direcional/analógico segurado ao abrir uma tela só vale depois de voltar ao neutro (não corre pelos botões)
   let power = 0;               // segundos que faltam do poder do osso (os agentes viram carteiros e o cachorro ganha deles); 0 = sem poder
@@ -1519,6 +1554,9 @@
   let gameIsAccount = false; // a partida começou com uma conta: se ela for apagada em outra aba, nada mais é gravado em nome dela
   let gamePlayer = ""; // quem começou a partida em andamento (outra aba pode trocar o jogador atual: o jogo salvo e a pontuação seguem com quem jogou)
   let gameAnimal = DEFAULT_ANIMAL; // (0.17.0) o bichinho da partida em andamento: pontos, progresso e jogo salvo vão para o jogo DELE, mesmo que a escolha mude no menu
+  // O perfil de texto em uso (0.18.0): na partida (jogando, pausa, vitória, derrota) o do bichinho DA PARTIDA; no menu, o do bichinho ESCOLHIDO. Barato: não relê o armazenamento (as telas do menu já chamam syncAnimal() ao desenhar).
+  const P = () => profileOf(state === "menu" ? animal : gameAnimal);
+  const reinf = (r, p = P()) => p.reinforce[r.id]; // { name, text } de um reforço no perfil
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let up = noUp();         // reforços desta partida (valem até o fim da sequência de fases)
   let nextUp = null;       // na tela de vitória: reforços que a próxima fase receberá (já com o escolhido); null = ainda não escolheu
@@ -1584,8 +1622,9 @@
 
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
-    levelId = id; lv = BUILT[id]; theme = Themes.of(id); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
-    gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal();
+    gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.18.0: o bichinho da partida vem ANTES das fases: elas, o ambiente e o texto são os dele)
+    levelId = id; lv = builtOf(gameAnimal)[id]; theme = Themes.of(id, gameAnimal); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
+    applyGameUi(gameAnimal);
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn; refreshSkin();
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
@@ -1697,6 +1736,15 @@
     }
     refreshBlockTiles();
   }
+
+  // ---------- GANCHOS (0.18.0): recursos novos que só algumas fases de outros bichinhos terão ----------
+  // Ainda NÃO fazem nada (a fase só os chama se ligar o campo: `lv.sprint`, `lv.water` ou `lv.refuge`, veja buildLevel; nas fases do Cachorrinho os três são null). Quem implementar a mecânica preenche estas funções:
+  //  - updateSprint(dt): fôlego da corrida do Gatinho (gasta correndo, enche parado); o botão e o medidor entram no placar (updateHud)
+  //  - updateWater(dt): poças que molham o pelo e deixam o gato lento
+  //  - drawLevelExtras(): desenha a água e os lugares altos (refúgio) sobre o chão, antes dos itens
+  function updateSprint(dt) { /* gancho: ainda sem mecânica */ }
+  function updateWater(dt) { /* gancho: ainda sem mecânica */ }
+  function drawLevelExtras() { /* gancho: ainda sem desenho */ }
 
   // ---------- Cachorro ----------
   const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade
@@ -1993,7 +2041,7 @@
         c.think = cfg.thinkEvery;
         if (sees || heard) { // notou o cachorrinho: persegue (e mia, no máximo uma vez a cada CAT_MEOW_EVERY s)
           c.mode = "chase"; c.modeT = cfg.chaseTime; c.chaseAge = 0; c.route = []; c.goal = null; c.idle = 0;
-          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; sound.play("meow"); }
+          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; sound.play(P().sfx.alert2); }
         }
       }
       if (c.mode === "chase") {
@@ -2080,9 +2128,10 @@
   // A saída abre quando pegou tudo; nas fases com pontos mínimos (4 a 10) basta a pontuação corrente (sem o bônus de tempo) chegar ao mínimo: não é preciso pegar todos os itens.
   // 0.15.6: a partir da Fase 11 a saída também exige a MISSÃO da fase (pegar todos os ossos e/ou pegar N rações; 0.16.1: assustar carteiros ou gatos NÃO é exigência).
   const missionDone = () => !lv.mission || ((!lv.mission.bones || bonesGot >= lv.bones) && collected >= lv.mission.rations);
-  const missionTexts = (L = lv) => !L.mission ? [] : [L.mission.bones ? `pegar todos os ${L.bones} ossos` : "", L.mission.rations ? `pegar ${L.mission.rations} das ${L.rations} rações` : ""].filter(Boolean);
-  const missionShort = (L = lv) => !L.mission ? "" : [L.mission.bones ? "todos os ossos" : "", L.mission.rations ? `${L.mission.rations} rações` : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
-  const missionLeft = () => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? `ossos ${bonesGot}/${lv.bones}` : "", lv.mission.rations && collected < lv.mission.rations ? `rações ${collected}/${lv.mission.rations}` : ""].filter(Boolean);
+  // (os textos das missões vêm do perfil: P().mission; `p` = o perfil, para quem desenha o menu de um bichinho que não é o da partida)
+  const missionTexts = (L = lv, p = P()) => !L.mission ? [] : [L.mission.bones ? p.mission.bones(L.bones) : "", L.mission.rations ? p.mission.rations(L.mission.rations, L.rations) : ""].filter(Boolean);
+  const missionShort = (L = lv, p = P()) => !L.mission ? "" : [L.mission.bones ? p.mission.shortBones : "", L.mission.rations ? p.mission.shortRations(L.mission.rations) : ""].filter(Boolean).join(" + "); // (aviso do começo da fase: curto, a faixa já mostra o resto)
+  const missionLeft = (p = P()) => !lv.mission ? [] : [lv.mission.bones && bonesGot < lv.bones ? p.mission.leftBones(bonesGot, lv.bones) : "", lv.mission.rations && collected < lv.mission.rations ? p.mission.leftRations(collected, lv.mission.rations) : ""].filter(Boolean);
   // 0.15.8: com tudo pego e a missão cumprida, os pontos que faltam para o mínimo ainda podem vir das bolinhas que sobraram: a tentativa só acaba se nem elas bastarem
   const ballsCanOpen = () => missionDone() && runningScore() < lv.minPoints && runningScore() + (balls.length - ballsGot()) * Records.BALL_POINTS >= lv.minPoints;
   const exitOpen = () => (lv.minPoints ? runningScore() >= lv.minPoints : allCollected()) && missionDone();
@@ -2090,7 +2139,7 @@
   function giveLife(it, extra = "") { // `extra`: outro aviso do mesmo item (o poder do osso), para um não apagar o outro
     pickupToastUntil = time + 2.8;
     if (lives < maxLivesNow()) { lives++; sound.play("life", { delay: it && it.bone ? 0.8 : 0.15 }); toast(`Vida extra! +1 vida${extra}`, 2.6); } // (depois do som do osso ou da ração)
-    else toast(`${it && it.bone ? "Este osso" : "Esta ração"} tinha uma vida extra, mas você já está com o máximo (${maxLivesNow()} vidas).${extra}`, 2.8);
+    else toast(P().say.lifeMaxed(!!(it && it.bone), maxLivesNow(), extra), 2.8);
   }
 
   // O cachorro volta ao início da fase (o mesmo lugar de quando ela começou) e o agente volta ao seu posto.
@@ -2115,14 +2164,14 @@
   function loseLife(why) {
     lives--; livesLost++;
     score = runningScore();
-    if (why !== "crush") sound.play("capture"); // o agente da carrocinha pegou o cachorrinho
+    if (why !== "crush") sound.play(P().sfx.capture); // o agente da carrocinha pegou o cachorrinho
     if (lives <= 0) { gameOver(why); return; }
     sound.play("lifelost", { delay: why === "crush" ? 0 : 0.5 }); // depois do som da captura
     const inPlace = respawn();
     relocateItems();
     const what = why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!";
-    toast(inPlace ? `${what} −${lv.lifePenalty} pontos. Renasceu aqui, protegido por ${invulnNow()} s. ${lv.bones ? "Itens trocaram" : "Rações trocaram"} de lugar.`
-      : `${what} −${lv.lifePenalty} pontos. ${lv.bones ? "Os itens mudaram" : "As rações mudaram"} de lugar.`, 2.6);
+    toast(inPlace ? `${what} −${lv.lifePenalty} pontos. Renasceu aqui, protegido por ${invulnNow()} s. ${P().say.relocated(true, !!lv.bones)}`
+      : `${what} −${lv.lifePenalty} pontos. ${P().say.relocated(false, !!lv.bones)}`, 2.6);
     saveNow();
   }
 
@@ -2134,7 +2183,7 @@
     for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
     for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
     for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
-    toast(`Poder do osso por ${bonePowerNow()} s: os agentes viram carteiros${cats.length ? " e os gatos" : ""} fogem! Encoste neles: +100 cada.`, 2.6); pickupToastUntil = time + 2.6;
+    toast(P().say.powerOn(bonePowerNow(), cats.length > 0), 2.6); pickupToastUntil = time + 2.6;
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -2150,16 +2199,16 @@
     return best || { cx: x, cy: y };
   }
   // Ossos de tipos novos (0.15.7): cada um liga um efeito por alguns segundos (o osso comum, `scare`, é o poder de assustar de sempre).
-  const FX_INFO = {
-    gold: { key: "shield", time: SHIELD_TIME, text: (t) => `escudo dourado por ${t} s: nada pega o cachorrinho!` },
-    ice: { key: "ice", time: ICE_TIME, text: (t) => `agentes e gatos congelados por ${t} s!` },
-    turbo: { key: "turbo", time: TURBO_TIME, text: (t) => `+${Math.round((TURBO_FACTOR - 1) * 100)}% de velocidade por ${t} s!` },
-    magnet: { key: "magnet", time: MAGNET_TIME, text: (t) => `as rações vêm sozinhas por ${t} s!` },
+  const FX_INFO = { // (a frase de cada efeito vem do perfil: P().fx[tipo](segundos, porcentagem do turbo))
+    gold: { key: "shield", time: SHIELD_TIME },
+    ice: { key: "ice", time: ICE_TIME },
+    turbo: { key: "turbo", time: TURBO_TIME },
+    magnet: { key: "magnet", time: MAGNET_TIME },
   };
   function startFx(kind) {
     const f = FX_INFO[kind], t = fxTime(f.time);
     fx[f.key] = t;
-    toast(`${BONE_LABEL[kind]}: ${f.text(t)}`, 2.6); pickupToastUntil = time + 2.6;
+    toast(`${P().boneLabel[kind]}: ${P().fx[kind](t, Math.round((TURBO_FACTOR - 1) * 100))}`, 2.6); pickupToastUntil = time + 2.6;
   }
   function endFx(key) { // o efeito acabou: quem estava congelado volta devagar e o cachorrinho ganha 1 s de proteção
     if (key === "ice") { for (const e of everyone()) e.cool = Math.max(e.cool, 1.5); invuln = Math.max(invuln, POWER_END_GRACE); }
@@ -2199,7 +2248,7 @@
       if (overlap(player, { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R })) { // pegou!
         b.taken = true; b.vx = 0; b.vy = 0;
         sound.play("pick"); puffs.push({ x: b.x, y: b.y, t: 0.4 });
-        if (time >= pickupToastUntil) toast(`Bolinha! +${Records.BALL_POINTS} pontos (${ballsGot()}/${balls.length})`, 1.4);
+        if (time >= pickupToastUntil) toast(P().say.ballGot(Records.BALL_POINTS, ballsGot(), balls.length), 1.4);
         score = runningScore(); saveNow();
       }
     }
@@ -2217,29 +2266,29 @@
     it.taken = true;
     const kind = it.kind || "scare";
     if (it.bone) {
-      bonesGot++; sound.play("bone");
+      bonesGot++; sound.play(P().sfx.bone);
       if (kind !== "scare") startFx(kind);
-      else if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play("transform", { delay: 0.3 }); } // os agentes viram carteiros
-    } else { collected++; sound.play("ration"); }
-    if (it.life) giveLife(it, it.bone ? (kind !== "scare" ? ` · ${BONE_LABEL[kind]}!` : lv.bonePower ? ` · Poder do osso por ${bonePowerNow()} s!` : "") : "");
+      else if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play(P().sfx.transform, { delay: 0.3 }); } // os agentes viram carteiros
+    } else { collected++; sound.play(P().sfx.ration); }
+    if (it.life) giveLife(it, it.bone ? (kind !== "scare" ? ` · ${P().boneLabel[kind]}!` : lv.bonePower ? ` · ${P().say.powerShort(bonePowerNow())}` : "") : "");
     score = runningScore(); saveNow();
   }
   function defeatPostman(v) {
-    sound.play("postman");
+    sound.play(P().sfx.beat);
     puffs.push({ x: v.cx, y: v.cy, t: 0 });
     const post = freeSpotNear(v, v.sx, v.sy); // o posto dele; se outro agente estiver nele, o tile livre mais perto
     Object.assign(v, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "flee", idle: 0, modeT: 0, chaseAge: 0, slow: true, hitCool: POSTMAN_STUN }); // fica tonto (parado) por POSTMAN_STUN s e depois volta a fugir, 50% mais lento
     postmen++; score = runningScore();
-    toast(`Você ganhou do carteiro! +${Records.POSTMAN_POINTS} pontos`, 1.6);
+    toast(P().say.beat(Records.POSTMAN_POINTS), 1.6);
     saveNow();
   }
   function defeatCat(c) { // o cachorrinho com o poder do osso encosta num gato: +100 pontos; o gato volta ao posto, tonto, e foge mais devagar até o poder acabar
-    sound.play("postman");
+    sound.play(P().sfx.beat);
     puffs.push({ x: c.cx, y: c.cy, t: 0 });
     const post = freeSpotNear(c, c.sx, c.sy);
     Object.assign(c, { cx: post.cx, cy: post.cy, leg: null, route: [], goal: null, hold: 0, mode: "flee", idle: 0, modeT: 0, chaseAge: 0, slow: true, hitCool: CAT_STUN, pounce: 0 });
     postmen++; score = runningScore();
-    toast(`Você assustou o gato! +${Records.POSTMAN_POINTS} pontos`, 1.6);
+    toast(P().say.beat2(Records.POSTMAN_POINTS), 1.6);
     saveNow();
   }
   function endPower() {
@@ -2247,7 +2296,7 @@
     for (const c of cats) Object.assign(c, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(c.cool, 2), seen: null, pounce: 0 }); // os gatos voltam a patrulhar
     for (const v of vets) { Object.assign(v, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(v.cool, 2) }); } // os carteiros voltam a ser agentes (e à velocidade normal); o trecho em andamento termina
     invuln = Math.max(invuln, POWER_END_GRACE);
-    toast(cats.length ? "O poder acabou: os carteiros voltaram a ser agentes da carrocinha e os gatos voltaram!" : "O poder acabou: os carteiros voltaram a ser agentes da carrocinha!", 2.4);
+    toast(P().say.powerOff(cats.length > 0), 2.4);
   }
 
   // ---------- Atualização ----------
@@ -2282,6 +2331,8 @@
     moveAxis(0, iy * step);
 
     updateBlocks(dt);
+    if (lv.sprint) updateSprint(dt);
+    if (lv.water) updateWater(dt);
     if (crushed) { crushed = false; loseLife("crush"); return; }
     for (const k of ["shield", "ice", "turbo", "magnet"]) if (fx[k] > 0 && (fx[k] -= dt) <= 0) { fx[k] = 0; endFx(k); } // (os efeitos dos ossos novos acabam)
     for (const it of items) if (!it.taken && overlap(player, it)) takeItem(it);
@@ -2316,7 +2367,7 @@
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
-      else if (hintTimer <= 0) toast(lv.minPoints && runningScore() >= lv.minPoints ? `Falta a missão: ${missionLeft().join(" · ")}.` : lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : lv.bones ? "Colete todas as rações e todos os ossos antes de sair!" : "Colete todas as rações antes de sair!", 1.8);
+      else if (hintTimer <= 0) toast(lv.minPoints && runningScore() >= lv.minPoints ? `Falta a missão: ${missionLeft().join(" · ")}.` : lv.minPoints ? `Faltam ${lv.minPoints - runningScore()} pontos para abrir a saída (meta: ${lv.minPoints}).` : P().say.needAll(!!lv.bones), 1.8);
     }
   }
 
@@ -2382,8 +2433,8 @@
     beginPlay();
     const n = vets.length, nc = cats.length;
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
-      : lv.mission ? `${lv.title}: ${n} ${n === 1 ? "agente" : "agentes"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""} · mínimo ${lv.minPoints} pontos · missão: ${missionShort()}` // (0.16.1: nas Fases 11 a 20 o aviso é curto, senão cobria até metade do campo no celular)
-      : `${theme.place} — ${lv.title}: ${n} ${n === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${nc ? ` e ${nc} ${nc === 1 ? "gato" : "gatos"}` : ""}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : lv.mission ? `${lv.title}: ${P().say.foes(n, nc, true)} · mínimo ${lv.minPoints} pontos · missão: ${missionShort()}` // (0.16.1: nas Fases 11 a 20 o aviso é curto, senão cobria até metade do campo no celular)
+      : `${theme.place} — ${lv.title}: ${P().say.foes(n, nc, false)}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { startEff = eff ? `Reforços valendo: ${eff}` : ""; toast(`${msg} · ${START_HINT}`, 600); startHint = true; }
@@ -2395,7 +2446,7 @@
   function snapshot() {
     const r2 = (n) => Math.round(n * 100) / 100;
     return {
-      v: 4, mz: MAP_REV, l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
+      v: 4, mz: mapRevOf(gameAnimal), l: levelId, time: r2(time), lives, lost: livesLost, rs: retries, invuln: r2(clamp(invuln, 0, invulnNow())), up: UP_KEYS.map((k) => up[k]),
       items: items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE, it.taken ? 1 : 0, it.life ? 1 : 0, it.bone ? 1 + BONE_KINDS.indexOf(it.kind || "scare") : 0]), // coluna, linha, pego, vida extra, osso (0 = ração; 1 = osso comum; 2 a 5 = ouro, gelo, turbo, ímã)
       p: { x: r2(player.x), y: r2(player.y), f: player.facing },
       vets: vets.map((v) => [r2(v.cx), r2(v.cy)]),
@@ -2410,11 +2461,11 @@
 
   // Confere um jogo salvo antes de usar (o armazenamento pode ter sido editado ou corrompido).
   // Aceita o formato v4 e o v3 da 0.4.0 (itens de 4 posições, sem ossos nem blocos); devolve sempre no formato v4.
-  function parseSnapshot(sv) {
+  function parseSnapshot(sv, A = syncAnimal()) { // (0.18.0) `A` = o bichinho dono do jogo salvo: as fases e a revisão dos mapas são as DELE
     try {
       const num = (n, lo, hi) => Number.isFinite(n) && n >= lo && n <= hi;
-      if (!sv || (sv.v !== 3 && sv.v !== 4) || !Number.isInteger(sv.l) || sv.mz !== MAP_REV) return null;
-      const L = BUILT[sv.l];
+      if (!sv || (sv.v !== 3 && sv.v !== 4) || !Number.isInteger(sv.l) || sv.mz !== mapRevOf(A)) return null;
+      const L = builtOf(A)[sv.l];
       if (!L) return null;
       if (sv.v === 3 && (L.bones || L.blockDefs.length)) return null; // o formato antigo não tem ossos nem blocos
       let upv = noUp(); // reforços (campo novo da 0.8.0; jogos salvos antigos não têm: começam sem nenhum)
@@ -2498,8 +2549,8 @@
     if (!me) return null;
     const a = syncAnimal(), g = gs(a).loadGame(me);
     if (!g) return null;
-    const sv = parseSnapshot(g.snap);
-    if (!sv) { if (g.snap && g.snap.mz !== MAP_REV) droppedSave = a; gs(a).clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
+    const sv = parseSnapshot(g.snap, a);
+    if (!sv) { if (g.snap && g.snap.mz !== mapRevOf(a)) droppedSave = a; gs(a).clearGame(me); return null; } // (um jogo salvo de mapas antigos não vale mais: o menu avisa)
     return { savedAt: g.savedAt, snap: sv };
   }
 
@@ -2558,11 +2609,11 @@
     return ok;
   }
 
-  const levelTitle = (id) => BUILT[id]?.title || `Fase ${id}`;
+  const levelTitle = (id, A = syncAnimal()) => builtOf(A)[id]?.title || `Fase ${id}`;
 
-  function describeSave(sv) {
-    const L = BUILT[sv.l], gotR = sv.items.filter((i) => i[2] === 1 && !(i[4] > 0)).length, gotB = sv.items.filter((i) => i[2] === 1 && i[4] > 0).length; // (osso = qualquer tipo: comum, ouro, gelo, turbo ou ímã)
-    return `${levelTitle(sv.l)} · ${fmt(sv.time * 1000)} · ${gotR}/${L.rations} rações${L.bones ? ` · ${gotB}/${L.bones} ossos` : ""} · ${sv.lives} ${sv.lives === 1 ? "vida" : "vidas"}`;
+  function describeSave(sv, A = syncAnimal()) { // (0.18.0) o resumo do jogo salvo do bichinho `A`, com as palavras dele
+    const L = builtOf(A)[sv.l], gotR = sv.items.filter((i) => i[2] === 1 && !(i[4] > 0)).length, gotB = sv.items.filter((i) => i[2] === 1 && i[4] > 0).length; // (osso = qualquer tipo: comum, ouro, gelo, turbo ou ímã)
+    return profileOf(A).say.saved(levelTitle(sv.l, A), fmt(sv.time * 1000), gotR, L.rations, gotB, L.bones, sv.lives);
   }
 
   // "Novo jogo": pede nome se ainda não há um, confirma antes de apagar um jogo salvo e deixa escolher a fase liberada.
@@ -2570,7 +2621,7 @@
     if (!store.player()) { openName(true); return; }
     const g = savedGame();
     if (!g) { chooseLevel(); return; }
-    $("confirm-text").textContent = `${store.player()} já tem um jogo salvo do ${gameOf(syncAnimal()).name} (${describeSave(g.snap)}). Se você começar um novo jogo, esse progresso será apagado.`;
+    $("confirm-text").textContent = `${store.player()} já tem um jogo salvo do ${gameOf(syncAnimal()).name} (${describeSave(g.snap, syncAnimal())}). Se você começar um novo jogo, esse progresso será apagado.`;
     showScreen("confirm");
   }
 
@@ -2585,7 +2636,7 @@
   }
 
   function renderLevels() {
-    const me = store.player(), A = syncAnimal(), G = gs(A), LV = levelsOf(A), prog = G.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay"; // (0.17.0) as fases, o progresso e os recordes são os do bichinho escolhido
+    const me = store.player(), A = syncAnimal(), G = gs(A), LV = levelsOf(A), B = builtOf(A), PA = profileOf(A), prog = G.progress(me), unlocked = prog.unlocked, list = $("levels-list"), replay = levelsMode === "replay"; // (0.17.0) as fases, o progresso e os recordes são os do bichinho escolhido (0.18.0: e o texto também)
     $("levels-title").textContent = replay ? "Jogar fases anteriores" : "Escolher a fase";
     $("levels-help").textContent = `Fases do ${gameOf(A).name}. ` + (replay
       ? "Escolha uma fase que você já concluiu para tentar melhorar o seu recorde. Só a maior pontuação de cada fase vale (a pontuação total é a soma do melhor de cada fase) e você começa a fase com 3 vidas."
@@ -2598,13 +2649,13 @@
       const open = l.id <= unlocked, best = G.personalBest(me, l.id);
       const b = el("button", open ? "primary-ish" : "locked");
       b.type = "button"; b.disabled = !open;
-      b.append(el("strong", null, `${l.title} · ${Themes.of(l.id).place}`), el("span", "sub", open
-        ? `${l.vets.length} ${l.vets.length === 1 ? "agente da carrocinha" : "agentes da carrocinha"}${(l.cats || []).length ? ` e ${l.cats.length} ${l.cats.length === 1 ? "gato" : "gatos"}` : ""}${BUILT[l.id].note ? ` · ${BUILT[l.id].note}` : ""}${BUILT[l.id].mission ? ` · missão: ${missionTexts(BUILT[l.id]).join(" e ")}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
-        : `bloqueada: termine a ${levelTitle(l.id - 1)}`));
+      b.append(el("strong", null, `${l.title} · ${Themes.of(l.id, A).place}`), el("span", "sub", open
+        ? `${PA.say.foes(l.vets.length, (l.cats || []).length, false)}${B[l.id].note ? ` · ${B[l.id].note}` : ""}${B[l.id].mission ? ` · missão: ${missionTexts(B[l.id], PA).join(" e ")}` : ""} · ${best ? `sua melhor: ${best.p} pts${replay ? " · jogue de novo para melhorar" : ""}` : "ainda não jogada"}`
+        : `bloqueada: termine a ${levelTitle(l.id - 1, A)}`));
       if (open) {
         if (l.id === focusId) b.dataset.autofocus = "";
         b.addEventListener("click", () => { // a lista pode estar velha (outra aba trocou o jogador): confere antes de começar
-          if (gs(A).progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1)}.`, 2.4); return; }
+          if (gs(A).progress(store.player()).unlocked < l.id) { renderLevels(); toast(`A ${l.title} está bloqueada: termine a ${levelTitle(l.id - 1, A)}.`, 2.4); return; }
           begin(l.id, { animal: A });
         });
       }
@@ -2659,7 +2710,9 @@
     $("shop-msg").textContent = shopMsg;
     list.replaceChildren();
     let firstFocus = true;
-    for (const [i, k] of SKINS.entries()) {
+    const PA = profileOf(syncAnimal());
+    for (const [i, k0] of SKINS.entries()) {
+      const k = PA.skins && PA.skins[k0.id] ? { ...k0, ...PA.skins[k0.id] } : k0; // (0.18.0) o nome e a frase da skin vêm do perfil do bichinho escolhido; o preço e o desenho são do motor
       const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (SKINS.some((s) => s.id === w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
       const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
       cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
@@ -2697,7 +2750,7 @@
     saveNow(); // pausar também salva
     setState("paused");
     $("pause-msg").textContent = "";
-    $("pause-up").textContent = `Cachorrinho: ${dogStage(dogGrowth())}.${upSummary(up) ? ` Reforços: ${upSummary(up)}. Efeitos: ${upEffects(up)}.` : ""}`;
+    $("pause-up").textContent = `${P().say.pauseGrowth(dogStage(dogGrowth()))}${upSummary(up) ? ` Reforços: ${upSummary(up)}. Efeitos: ${upEffects(up)}.` : ""}`;
     showScreen("pause");
   }
   function resumeGame() { if (state !== "paused") return; setState("playing"); showScreen(null); last = performance.now(); }
@@ -2707,22 +2760,22 @@
 
   // ---------- Reforços: a tela de vitória deixa escolher 1 deles para a próxima fase ----------
   const winExtraText = (next) => `${theme.place} · Vidas restantes: ${lives} · Vidas perdidas: ${livesLost}` +
-    (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : ` · Parabéns! Você completou as ${LEVELS.length} fases!`);
+    (next ? ` · Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"} para a ${next.title}` : ` · Parabéns! Você completou as ${levelsOf(gameAnimal).length} fases!`);
   // `L` = a fase em que o reforço vai valer (o máximo de vidas sobe nas Fases 11 a 20); o Coração maior perde a graça quando o máximo da fase já é 10.
   function reinforceAvailable(r, u, curLives, L = lv) { return r.from && L.id < r.from ? false : r.id === "life" ? curLives < capFor(L, u) : r.id === "heart" ? u.heart < UP_MAX.heart && capFor(L, u) < LIFE_CAP_HARD : u[r.id] < UP_MAX[r.id]; }
-  function upSummary(u) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível)
-    return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${r.name} ${u[r.id]}/${r.max}`).join(" · ");
+  function upSummary(u, p = P()) { // "Patas ligeiras 2/4 · Coração maior 1/3" (só os que têm nível; os nomes são os do perfil)
+    return REINFORCEMENTS.filter((r) => r.max && u[r.id] > 0).map((r) => `${reinf(r, p).name} ${u[r.id]}/${r.max}`).join(" · ");
   }
-  function upEffects(u, L = lv) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
+  function upEffects(u, L = lv, p = P()) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
     const o = [];
     if (u.speed) o.push(`+${Math.round(REINFORCE_SPEED * 100 * u.speed)}% de velocidade`);
-    if (u.bone) o.push(`+${REINFORCE_BONE * u.bone} s de poder do osso`);
+    if (u.bone) o.push(p.effect.bone(REINFORCE_BONE * u.bone));
     if (u.heart) o.push(`${capFor(L, u)} vidas no máximo`);
     if (u.shield) o.push(`${INVULN + REINFORCE_SHIELD * u.shield} s de proteção ao perder uma vida`);
-    if (u.slow) o.push(`agentes ${Math.round(REINFORCE_SLOW * 100 * u.slow)}% mais lentos`);
+    if (u.slow) o.push(p.effect.slow(Math.round(REINFORCE_SLOW * 100 * u.slow)));
     if (u.stealth) o.push(`inimigos notam você ${u.stealth} ${u.stealth === 1 ? "quadrado" : "quadrados"} mais tarde`);
-    if (u.scent) o.push(u.scent >= 2 ? "setas para o osso e para a saída" : "seta para o osso mais perto");
-    if (u.lure) o.push(`rações a até ${String(lureRadius(u.lure) / TILE).replace(".", ",")} quadrados vêm sozinhas`); // (2,5 / 3,5 / 4,5 com vírgula, como em português)
+    if (u.scent) o.push(u.scent >= 2 ? p.effect.scent2 : p.effect.scent1);
+    if (u.lure) o.push(p.effect.lure(String(lureRadius(u.lure) / TILE).replace(".", ","))); // (2,5 / 3,5 / 4,5 com vírgula, como em português)
     return o.join(" · ");
   }
   // Monta os botões da tela de reforços; devolve true se há algum para escolher.
@@ -2730,7 +2783,7 @@
   let offerFixed = null; // só para testes: ids que entram primeiro na oferta (se ainda valem); o resto é sorteado
   // As opções desta vitória: no máximo REINFORCE_OFFER, sorteadas entre as que ainda valem (se há 3 ou menos, são todas), sempre na ordem de REINFORCEMENTS.
   function pickOffer(next) {
-    const avail = REINFORCEMENTS.filter((r) => reinforceAvailable(r, up, lives, BUILT[next.id]));
+    const avail = REINFORCEMENTS.filter((r) => reinforceAvailable(r, up, lives, builtOf(gameAnimal)[next.id]));
     if (avail.length <= REINFORCE_OFFER) return avail;
     const first = (offerFixed || []).map((id) => avail.find((r) => r.id === id)).filter(Boolean);
     const rest = shuffle(avail.filter((r) => !first.includes(r)));
@@ -2747,8 +2800,8 @@
     for (const r of offer) {
       const b = el("button", "reinforce-opt");
       b.type = "button"; b.dataset.id = r.id;
-      const state = r.id === "life" ? `você tem ${lives} de ${capFor(BUILT[next.id], up)}` : `agora ${up[r.id]}/${r.max}`;
-      b.append(el("strong", null, r.name), el("span", "sub", `${r.text} · ${state}`));
+      const state = r.id === "life" ? `você tem ${lives} de ${capFor(builtOf(gameAnimal)[next.id], up)}` : `agora ${up[r.id]}/${r.max}`;
+      b.append(el("strong", null, reinf(r).name), el("span", "sub", `${reinf(r).text} · ${state}`));
       if (!offerIds.length) b.dataset.autofocus = ""; // o primeiro já vem escolhido: Enter/Espaço escolhem, Tab e as setas passam para os outros
       offerIds.push(r.id);
       b.addEventListener("click", () => chooseReinforcement(r.id));
@@ -2760,21 +2813,21 @@
   }
   function chooseReinforcement(id) {
     if (state !== "won" || nextUp) return; // um reforço por fase
-    const r = REINFORCEMENTS.find((x) => x.id === id), next = LEVELS.find((l) => l.id === levelId + 1);
-    if (!r || !next || !reinforceAvailable(r, up, lives, BUILT[next.id])) return;
+    const r = REINFORCEMENTS.find((x) => x.id === id), next = levelsOf(gameAnimal).find((l) => l.id === levelId + 1), NB = builtOf(gameAnimal);
+    if (!r || !next || !reinforceAvailable(r, up, lives, NB[next.id])) return;
     sound.play("pick");
     nextUp = { ...up };
     chosenReinforce = id;
-    if (id === "life") carriedLives = Math.min(capFor(BUILT[next.id], up), lives + 1);
-    else { nextUp[id]++; if (id === "heart") carriedLives = Math.min(capFor(BUILT[next.id], nextUp), lives + 1); }
+    if (id === "life") carriedLives = Math.min(capFor(NB[next.id], up), lives + 1);
+    else { nextUp[id]++; if (id === "heart") carriedLives = Math.min(capFor(NB[next.id], nextUp), lives + 1); }
     for (const b of $("reinforce-list").querySelectorAll("button")) {
       const chosen = b.dataset.id === id;
       b.disabled = !chosen; b.classList.toggle("chosen", chosen); b.setAttribute("aria-pressed", chosen ? "true" : "false");
     }
-    const eff = upEffects(nextUp, BUILT[next.id]);
-    $("reinforce-msg").textContent = `Reforço escolhido: ${r.name} — ${r.text}. Ele vale a partir da ${next.title}.${eff ? ` Com ele você terá: ${eff}.` : ""}${id === "life" ? ` Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}.` : ""}`;
+    const eff = upEffects(nextUp, NB[next.id]);
+    $("reinforce-msg").textContent = `Reforço escolhido: ${reinf(r).name} — ${reinf(r).text}. Ele vale a partir da ${next.title}.${eff ? ` Com ele você terá: ${eff}.` : ""}${id === "life" ? ` Você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}.` : ""}`;
     const chosenSub = $("reinforce-list").querySelector(`button[data-id="${id}"] .sub`);
-    if (chosenSub) chosenSub.textContent = `${r.text} · ${id === "life" ? `você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}` : `agora ${nextUp[id]}/${r.max}`}`;
+    if (chosenSub) chosenSub.textContent = `${reinf(r).text} · ${id === "life" ? `você leva ${carriedLives} ${carriedLives === 1 ? "vida" : "vidas"}` : `agora ${nextUp[id]}/${r.max}`}`;
     $("win-extra").textContent = winExtraText(next);
     $("btn-reinforce-go").disabled = false;
     $("btn-reinforce-go").focus({ preventScroll: true });
@@ -2788,12 +2841,12 @@
     score = points;
     setState("won");
     sound.play("levelup");
-    sound.play(dogStage(dogGrowth()) === "filhote" ? "bark1" : dogStage(dogGrowth()) === "jovem" ? "bark2" : "bark3", { delay: 0.9 }); // (0.15.3) o cachorrinho late ao completar a fase: agudo de filhote, médio de jovem, grave de adulto, depois da fanfarra
+    sound.play(P().sfx.win[dogStage(dogGrowth())], { delay: 0.9 }); // (0.15.3) o cachorrinho late ao completar a fase: agudo de filhote, médio de jovem, grave de adulto, depois da fanfarra (0.18.0: o som de cada estágio vem do perfil)
     carriedLives = lives; nextUp = null; chosenReinforce = null;
-    const next = LEVELS.find((l) => l.id === levelId + 1);
+    const next = levelsOf(gameAnimal).find((l) => l.id === levelId + 1), pw = P();
     $("win-title").textContent = `${lv.title} concluída!`;
     $("win-points").textContent = String(points);
-    $("win-breakdown").textContent = `Rações: ${collected * Records.RATION_POINTS}` + (lv.bones ? ` + ossos: ${bonesGot * Records.BONE_POINTS}` : "") + (postmen ? ` + ${lv.catSpawns.length ? "carteiros e gatos" : "carteiros"}: ${postmen * Records.POSTMAN_POINTS}` : "") + (ballsGot() ? ` + bolinhas: ${ballsGot() * Records.BALL_POINTS}` : "") + ` + bônus de tempo: ${bonus}` + (lv.missionBonus ? ` + missão: ${lv.missionBonus}` : "") +
+    $("win-breakdown").textContent = pw.say.winPrey(collected * Records.RATION_POINTS) + (lv.bones ? pw.say.winPower(bonesGot * Records.BONE_POINTS) : "") + (postmen ? pw.say.winScared(lv.catSpawns.length > 0, postmen * Records.POSTMAN_POINTS) : "") + (ballsGot() ? pw.say.winBalls(ballsGot() * Records.BALL_POINTS) : "") + ` + bônus de tempo: ${bonus}` + (lv.missionBonus ? ` + missão: ${lv.missionBonus}` : "") +
       (livesLost ? ` − vidas perdidas: ${livesLost * lv.lifePenalty}` : "") +
       (retries ? ` − tentativas extras: ${retries * Records.RETRY_PENALTY}` : "") + ` · tempo: ${fmt(timeMs)}`;
     $("win-extra").textContent = winExtraText(next);
@@ -2840,9 +2893,10 @@
     sound.play("gameover", { delay: why && why !== "cat" ? 0 : 0.5 }); // pego pelo agente (sem `why`): espera o som da captura terminar
     if (gamePlayer) gs(gameAnimal).clearGame(gamePlayer); // acabaram as vidas (ou os pontos não bastaram): não há o que continuar
     const left = MAX_RETRIES - retries;
-    $("lose-title").textContent = why === "crush" ? "O bloco esmagou o cachorrinho!" : why === "short" ? "Os pontos não bastaram!" : why === "cat" ? "O gato pegou o cachorrinho!" : "A carrocinha pegou o cachorrinho!";
+    const pl = P();
+    $("lose-title").textContent = why === "crush" ? pl.lose.crush : why === "short" ? pl.lose.short : why === "cat" ? pl.lose.foe2 : pl.lose.foe;
     $("lose-lead").textContent = why === "short" ? `Você pegou tudo, mas a pontuação ficou abaixo do mínimo para abrir a saída. Faltaram ${Math.max(0, lv.minPoints - score)} pontos${livesLost ? ` (cada vida perdida custou ${lv.lifePenalty}: você perdeu ${livesLost})` : ""}.` : "Acabaram as suas vidas.";
-    $("lose-text").textContent = `Rações coletadas: ${collected}/${lv.rations}${lv.bones ? ` · Ossos: ${bonesGot}/${lv.bones}` : ""} · Pontos: ${score}${lv.minPoints ? ` (mínimo ${lv.minPoints})` : ""}`;
+    $("lose-text").textContent = pl.lose.stats(collected, lv.rations, bonesGot, lv.bones, score, lv.minPoints);
     $("lose-chances").textContent = left > 0
       ? `Você ainda pode tentar a ${lv.title} de novo ${left} ${left === 1 ? "vez" : "vezes"}. Cada nova tentativa começa a fase do zero e custa ${Records.RETRY_PENALTY} pontos.`
       : `Acabaram as suas chances nesta fase (as ${MAX_RETRIES} novas tentativas já foram usadas).`;
@@ -2857,6 +2911,34 @@
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
+  }
+
+  // ---------- (0.18.0) Textos fixos da página que mudam com o bichinho (perfil: ui e hud) ----------
+  // O index.html traz o texto do Cachorrinho. Cada alvo abaixo é [id do elemento, "html" ou o atributo]; o perfil troca o conteúdo com `ui.<chave>` (null = fica o que veio no index.html, guardado em UI_ORIG).
+  // As do jogo (placar, descrição da tela e do controle) valem para o bichinho da PARTIDA e são aplicadas em reset(); as do menu (Como jogar, ajuda da lojinha...) para o ESCOLHIDO e são aplicadas em renderMenu().
+  const UI_TARGETS = { howto: ["howto-steps", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"] };
+  const UI_MENU = ["howto", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel"];
+  const UI_ORIG = {};
+  for (const [k, [id, how]] of Object.entries(UI_TARGETS)) UI_ORIG[k] = how === "html" ? $(id).innerHTML : $(id).getAttribute(how);
+  const uiShown = { menu: "", game: "" };
+  function applyUi(part, keys, animalId) {
+    if (uiShown[part] === animalId) return;
+    uiShown[part] = animalId;
+    const p = profileOf(animalId);
+    for (const k of keys) {
+      const [id, how] = UI_TARGETS[k], v = p.ui[k] ?? UI_ORIG[k], e = $(id);
+      if (how === "html") { if (e.innerHTML !== v) e.innerHTML = v; } else if (e.getAttribute(how) !== v) e.setAttribute(how, v);
+    }
+  }
+  const applyMenuUi = (animalId) => applyUi("menu", UI_MENU, animalId);
+  function setHudLabel(valueId, text) { const n = $(valueId).previousSibling; if (n && n.nodeType === 3 && n.nodeValue !== `${text} `) n.nodeValue = `${text} `; } // o rótulo é o texto que vem antes do número ("RAÇÕES <b>0/5</b>")
+  function applyGameUi(animalId) {
+    applyUi("game", UI_GAME, animalId);
+    if (uiShown.hud === animalId) return;
+    uiShown.hud = animalId;
+    const h = profileOf(animalId).hud;
+    setHudLabel("hud-items", h.prey); setHudLabel("hud-bones", h.power); setHudLabel("hud-balls", h.balls); setHudLabel("hud-power", h.powerBadge);
+    $("hud-balls-item").title = h.ballsTitle; $("hud-power-item").title = h.powerTitle;
   }
 
   // "Versão 0.3.0 · 07/10/2026" (e "· build abc1234" quando publicado no GitHub Pages): para saber qual versão está aberta.
@@ -2881,6 +2963,7 @@
     $("btn-logout").classList.toggle("hidden", !(me && store.hasAccount(me)));
     $("menu-note").classList.toggle("hidden", store.persistent);
     const A = syncAnimal(true), AG = gameOf(A), G = gs(A), LV = AG.levels, ids = levelIdsOf(A); // (0.17.0) o menu mostra só os dados do bichinho escolhido
+    applyMenuUi(A); // (0.18.0) e os textos fixos (Como jogar, ajuda da lojinha...) são os dele
     $("animal-emoji").textContent = AG.emoji; $("animal-name").textContent = AG.name;
     $("btn-animal").setAttribute("aria-label", `Bichinho: ${AG.name}. Trocar de bichinho`);
     const bests = me ? LV.map((l) => [l, G.personalBest(me, l.id)]).filter(([, b]) => b) : [];
@@ -2896,7 +2979,7 @@
     $("btn-replay").classList.toggle("hidden", !(me && done >= 1)); // só depois de concluir alguma fase
     const dropped = droppedSave === A; // o aviso é do bichinho cujo jogo salvo foi descartado
     $("menu-save").classList.toggle("hidden", !g && !dropped);
-    if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap)}`;
+    if (g) $("menu-save").textContent = `Jogo salvo: ${describeSave(g.snap, A)}`;
     else if (dropped) $("menu-save").textContent = "O jogo salvo era de uma versão com outros mapas e não pode continuar. Seus recordes e o progresso foram mantidos.";
   }
 
@@ -2993,12 +3076,13 @@
       $("name-input").focus();
       return;
     }
-    const p = store.setPlayer(raw);
+    const mem = memoryAnimal(), p = store.setPlayer(raw);
     if (!p) {
       $("name-error").textContent = "Escreva um nome com pelo menos uma letra ou número. Exemplo: Totó.";
       $("name-input").focus();
       return;
     }
+    adoptAnimal(mem);
     renderMenu();
     if (nameThenStart) requestNewGame(); else goMenu();
   }
@@ -3058,8 +3142,9 @@
       if (why) return fail(PW_MESSAGES[why], "reg-pass");
       if (p1 !== p2) return fail("As duas senhas precisam ser iguais.", "reg-pass2");
       let r;
-      const seq = screenSeq;
+      const seq = screenSeq, mem = memoryAnimal();
       try { r = await store.register(user, p1); } catch { r = { ok: false, error: "crypto" }; }
+      if (r.ok) adoptAnimal(mem);
       if (seq !== screenSeq) { renderMenu(); return; } // a pessoa já saiu desta tela (Esc/Voltar): não puxa de volta
       if (!r.ok) {
         if (r.error === "taken") return fail("Esse nome de usuário já tem uma conta. Toque em Voltar e depois em Entrar.", "reg-user");
@@ -3080,8 +3165,9 @@
       if (!user.trim()) return fail("Escreva o seu nome de usuário.", "login-user");
       if (!pass) return fail("Escreva a sua senha.", "login-pass");
       let r;
-      const seq = screenSeq;
+      const seq = screenSeq, mem = memoryAnimal();
       try { r = await store.login(user, pass); } catch { r = { ok: false, error: "wrong" }; }
+      if (r.ok) adoptAnimal(mem);
       if (seq !== screenSeq) { renderMenu(); return; } // a pessoa já saiu desta tela (Esc/Voltar): não puxa de volta
       if (!r.ok) {
         $("login-pass").value = "";
@@ -3464,6 +3550,7 @@
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
     ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
     ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
+    if (lv.water || lv.refuge) drawLevelExtras();
     drawBlocks();
     for (const s of solids) {
       if (s.x + s.w < camX || s.x > camX + vw || s.y + s.h < camY || s.y > camY + vh) continue; // fora da tela
@@ -3546,6 +3633,7 @@
   function setHud(key, node, value) { if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; } }
   function updateHud() {
     if (!solids) return;
+    const hp = profileOf(gameAnimal); // o placar é da partida: as palavras são as do bichinho dela (no menu ele nem aparece)
     setHud("lv", hudEl.level, String(levelId));
     const wkey = `${levelId}|${UP_KEYS.map((k) => up[k]).join(",")}`;
     if (hudCache.wl !== wkey) { // largura fixa dos números do placar (a do pior caso da fase): quando um valor ganha um dígito o placar não cresce no meio da partida
@@ -3563,7 +3651,7 @@
     }
     const nUp = UP_KEYS.reduce((a, k) => a + up[k], 0);
     if (hudCache.nup !== nUp) { hudCache.nup = nUp; hudEl.upItem.classList.toggle("hidden", nUp === 0); }
-    if (nUp) { setHud("up", hudEl.up, String(nUp)); const t = `Reforços ativos: ${upSummary(up)}`; if (hudCache.upt !== t) { hudCache.upt = t; hudEl.upItem.title = t; hudEl.upItem.setAttribute("aria-label", t); } }
+    if (nUp) { setHud("up", hudEl.up, String(nUp)); const t = `Reforços ativos: ${upSummary(up, hp)}`; if (hudCache.upt !== t) { hudCache.upt = t; hudEl.upItem.title = t; hudEl.upItem.setAttribute("aria-label", t); } }
     setHud("i", hudEl.items, `${collected}/${lv.rations}`);
     if (hudCache.bn !== lv.bones) { hudCache.bn = lv.bones; hudEl.bonesItem.classList.toggle("hidden", !lv.bones); }
     if (lv.bones) setHud("o", hudEl.bones, `${bonesGot}/${lv.bones}`);
@@ -3572,18 +3660,18 @@
     if (hudCache.bs !== lv.bonusStep) { hudCache.bs = lv.bonusStep; hudEl.bonusItem.title = `Bônus de tempo: ${lv.bonusStep * 10} pontos até 20 s, menos ${lv.bonusStep} a cada 10 s (0 depois de 110 s)`; }
     if (hudCache.mp !== lv.minPoints) { hudCache.mp = lv.minPoints; hudEl.pointsItem.title = lv.minPoints ? `Para passar da ${lv.title} são necessários pelo menos ${lv.minPoints} pontos nesta fase` : ""; }
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
-    if (hudCache.ms !== lv.id + "|" + !!lv.mission) { hudCache.ms = lv.id + "|" + !!lv.mission; hudEl.missionBar.classList.toggle("hidden", !lv.mission); hudEl.missionBar.setAttribute("aria-label", lv.mission ? `Missão da ${lv.title}: ${missionTexts().join(" e ")}. A saída só abre com os pontos mínimos e a missão cumprida${lv.missionBonus ? `; cumprir a missão vale +${lv.missionBonus} pontos` : ""}.` : "Missão da fase"); }
+    if (hudCache.ms !== gameAnimal + "|" + lv.id + "|" + !!lv.mission) { hudCache.ms = gameAnimal + "|" + lv.id + "|" + !!lv.mission; hudEl.missionBar.classList.toggle("hidden", !lv.mission); hudEl.missionBar.setAttribute("aria-label", lv.mission ? `Missão da ${lv.title}: ${missionTexts(lv, hp).join(" e ")}. A saída só abre com os pontos mínimos e a missão cumprida${lv.missionBonus ? `; cumprir a missão vale +${lv.missionBonus} pontos` : ""}.` : "Missão da fase"); }
     { // faixa dos efeitos dos ossos de tipo novo (escudo, gelo, turbo, ímã): só aparece enquanto há algum
       const t = [["shield", "Escudo"], ["ice", "Gelo"], ["turbo", "Turbo"], ["magnet", "Ímã"]].filter(([k]) => fx[k] > 0).map(([k, n]) => `${n} ${Math.ceil(fx[k])} s`).join(" · ");
       if (hudCache.fx !== t) { hudCache.fx = t; hudEl.fxBar.textContent = t; hudEl.fxBar.classList.toggle("hidden", !t); }
     }
     if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, rações); cumprida, diz "Missão cumprida!" (e quantos pontos ainda faltam, se for o caso)
-      const left = missionLeft(), short = lv.minPoints ? lv.minPoints - runningScore() : 0; // (0.16.1) missão cumprida mas os pontos ainda faltam: a faixa não fica verde e diz quantos pontos faltam
+      const left = missionLeft(hp), short = lv.minPoints ? lv.minPoints - runningScore() : 0; // (0.16.1) missão cumprida mas os pontos ainda faltam: a faixa não fica verde e diz quantos pontos faltam
       const t = left.length ? `Missão: ${left.join(" · ")}` : short > 0 ? `Missão cumprida! Faltam ${short} pontos` : "Missão cumprida!";
       if (hudCache.mt !== t) { hudCache.mt = t; hudEl.missionBar.textContent = t; hudEl.missionBar.classList.toggle("done", !left.length && short <= 0); }
     }
     if (hudCache.bp !== lv.bonePower) { hudCache.bp = lv.bonePower; hudEl.powerItem.classList.toggle("hidden", !lv.bonePower); }
-    if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? `Poder do osso: ${Math.ceil(power)} segundos` : "Poder do osso: desligado"; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }
+    if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? hp.hud.powerOn(Math.ceil(power)) : hp.hud.powerOff; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }
     setHud("t", hudEl.time, fmt(time * 1000));
     setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs(), lv.bonusStep)}`);
     if (hudCache.r !== retries) {
@@ -3833,7 +3921,7 @@
   on("btn-resume", resumeGame);
   on("btn-pause-menu", goMenu);
   on("btn-next", () => { // as vidas e os reforços passam para a próxima fase
-  const next = LEVELS.find((l) => l.id === levelId + 1);
+  const next = levelsOf(gameAnimal).find((l) => l.id === levelId + 1);
   if (!next || state !== "won") return;
   if (!reinforceOffered) { begin(next.id, { lives: carriedLives, upgrades: up, player: gamePlayer, animal: gameAnimal }); return; }
   $("btn-reinforce-go").textContent = `Começar a ${next.title}`;
@@ -3841,7 +3929,7 @@
   showScreen("reinforce");
   if (nextUp) $("btn-reinforce-go").focus({ preventScroll: true }); // já escolheu (voltou para ver o resultado): o foco vai para Começar
 });
-on("btn-reinforce-go", () => { if (nextUp && state === "won" && LEVELS.some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp, player: gamePlayer, animal: gameAnimal }); });
+on("btn-reinforce-go", () => { if (nextUp && state === "won" && levelsOf(gameAnimal).some((l) => l.id === levelId + 1)) begin(levelId + 1, { lives: carriedLives, upgrades: nextUp, player: gamePlayer, animal: gameAnimal }); });
 on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   on("btn-again", () => begin(levelId, { player: gamePlayer, animal: gameAnimal }));
   on("btn-win-scores", () => openScores("win"));
@@ -3856,6 +3944,8 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals(); else if (screen === "shop") renderShop(); else if (screen === "scores") renderScores(); else if (screen === "levels") renderLevels();
   });
 
+  // (0.18.0) resumo das fases de uma lista (para os testes): __game.levels (Cachorrinho) e __game.levelsOf(bichinho)
+  const levelSummary = (list) => list.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), balls: l.balls ?? 0, cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 }));
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
@@ -3867,23 +3957,27 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
-    get levels() { return LEVELS.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), balls: l.balls ?? 0, cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 })); },
+    get levels() { return levelSummary(LEVELS); },
+    levelsOf(id) { return levelSummary(levelsOf(id)); }, // (0.18.0) o mesmo resumo das fases de qualquer bichinho
+    get profile() { return P(); }, profileOf(id) { return profileOf(id); }, builtOf(id) { return builtOf(id); }, mapRev(id) { return mapRevOf(id); }, // (0.18.0) perfil de texto em uso, perfil de um bichinho, suas fases montadas e a revisão dos mapas dele
     set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     // (0.17.0) bichinhos: `animal` = o escolhido do jogador atual, `games` = o registro (id, nome, emoji, frase, pronto, quantas fases), `setAnimal(id)` = o mesmo que escolher na tela (false se não existe ou não está pronto).
     get animal() { return syncAnimal(); }, get gameAnimal() { return gameAnimal; }, setAnimal(id) { const ok = pickAnimal(id); if (ok && document.body.dataset.screen === "menu") renderMenu(); return ok; },
-    get games() { return GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb, ready: g.ready, levels: g.levels.length })); },
-    // SÓ PARA TESTES: marca um bichinho que ainda não existe ("cat" ou "bird") como pronto, com uma CÓPIA da lista de fases do Cachorrinho (e o mesmo motor de jogo), para testar no navegador que cada bichinho
-    // tem os seus pontos, recordes, progresso e jogo salvo, sem esperar os jogos novos. Vale só até recarregar a página; o jogo de verdade nunca chama isto.
+    // `levels` = quantas fases dá para JOGAR (0 enquanto o bichinho não está pronto); `total` = quantas fases estão cadastradas (o Gatinho tem as 20 de teste, `placeholder`, mesmo desligado); `rev` = revisão dos mapas
+    get games() { return GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb, ready: g.ready, levels: g.ready ? g.levels.length : 0, total: g.levels.length, rev: g.rev, placeholder: g.levels.length > 0 && g.levels.every((l) => l.placeholder) })); },
+    // SÓ PARA TESTES: marca um bichinho que ainda não existe ("cat" ou "bird") como pronto. O Gatinho usa as fases dele (por enquanto a cópia `placeholder` das 20 do Cachorrinho); o Passarinho, que ainda não tem fases,
+    // ganha uma cópia delas. Serve para testar no navegador que cada bichinho tem os seus pontos, recordes, progresso, jogo salvo e textos, sem esperar os jogos novos. Vale só até recarregar a página; o jogo de verdade nunca chama isto.
     enableTestAnimal(id) {
       const g = gameOf(id);
       if (!g || g.id === DEFAULT_ANIMAL) return false;
-      g.ready = true; g.levels = LEVELS.slice();
+      g.ready = true;
+      if (!g.levels.length) g.levels = LEVELS.map((l) => ({ ...l, placeholder: true }));
       syncAnimal(true); // (a escolha guardada do jogador, se era este bichinho, passa a valer)
       const screen = document.body.dataset.screen;
       if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
       return true;
     },
-    padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv) { return !!parseSnapshot(sv); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
+    padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
   reset();

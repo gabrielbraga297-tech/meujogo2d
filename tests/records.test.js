@@ -880,6 +880,17 @@ test("animais: o limite de jogos salvos vale por animal (o cachorrinho continua 
   assert.ok(!st.hasGame("Jog0") && st.hasGame("Jog15"), "saem os mais antigos");
 });
 
+test("DEFAULT_ANIMAL (0.18.0): js/records.js exporta o bichinho padrão e é o que a loja usa; board.js e game.js não repetem o texto", () => {
+  assert.strictEqual(R.DEFAULT_ANIMAL, "dog");
+  const st = R.createStore(memStorage());
+  assert.strictEqual(st.animal("Totó"), R.DEFAULT_ANIMAL, "sem escolha guardada vale o padrão");
+  st.setPlayer("Totó"); st.setAnimal("Totó", "cat"); st.setAnimal("Totó", R.DEFAULT_ANIMAL);
+  assert.strictEqual(st.animal("Totó"), R.DEFAULT_ANIMAL, "escolher o padrão apaga a escolha guardada");
+  const fs = require("fs"), path = require("path");
+  for (const f of ["board.js", "game.js"]) assert.ok(!/const DEFAULT_ANIMAL = "dog"/.test(fs.readFileSync(path.join(__dirname, "../js", f), "utf8")), `js/${f} não repete a constante`);
+  assert.strictEqual((fs.readFileSync(path.join(__dirname, "../js/records.js"), "utf8").match(/const DEFAULT_ANIMAL = "dog"/g) || []).length, 1, "só records.js define a constante");
+});
+
 Promise.all(pending).then(() => {
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
   process.exit(failed ? 1 : 0);

@@ -124,7 +124,7 @@
   <section id="howto" class="screen page hidden" aria-labelledby="howto-title" tabindex="-1" data-scroll>
     <div class="panel">
       <h1 id="howto-title">Como jogar</h1>
-      <ol class="steps">
+      <ol id="howto-steps" class="steps">
         <li><strong>Objetivo:</strong> ajude o cachorrinho a pegar todas as tigelas de ração (e os <strong>ossos</strong>, nas fases em que eles aparecem) e depois chegar à <strong>SAÍDA</strong>. A saída abre quando você pegar tudo; nas fases com <strong>pontos mínimos</strong> (o placar mostra <strong>PONTOS n / meta</strong>), ela abre assim que a sua pontuação na fase chega a essa meta (e, a partir da Fase 11, também a <strong>missão</strong> da fase precisa estar cumprida).</li>
         <li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio, os agentes da carrocinha e os blocos ficam parados.</li>
         <li><strong>Cuidado com a carrocinha!</strong> Os agentes da carrocinha patrulham a rua atrás de cachorrinhos. Quando aparecer um <span class="red">!</span> vermelho em cima de um agente, ele fica bem mais rápido e vai atrás do cachorrinho. Se ele encostar no cachorrinho, você perde 1 vida e o cachorrinho volta ao início da fase (da Fase 9 em diante ele renasce onde caiu); o tempo continua contando. As rações que ainda não foram pegas <strong>mudam de lugar</strong>, e elas também ficam em lugares novos a cada jogo.</li>
@@ -156,7 +156,7 @@
   <section id="scores" class="screen page hidden" aria-labelledby="scores-title" tabindex="-1" data-scroll>
     <div class="panel wide">
       <h1 id="scores-title">Pontuações</h1>
-      <p class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + 150 por osso + 100 por carteiro ou gato assustado + 50 por bolinha + bônus da missão nas Fases 11 a 20 + bônus de tempo − pontos por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
+      <p id="scores-help" class="muted">Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ração + 150 por osso + 100 por carteiro ou gato assustado + 50 por bolinha + bônus da missão nas Fases 11 a 20 + bônus de tempo − pontos por vida perdida − 100 por nova tentativa). Fases diferentes se somam.</p>
       <div id="scores-private" class="score-private"></div>
       <h2>Ranking do jogo</h2>
       <p id="scores-source" class="muted" role="status" aria-live="polite"></p>
@@ -170,10 +170,10 @@
   <section id="name" class="screen page hidden" aria-labelledby="name-title">
     <div class="panel">
       <h1 id="name-title">Escolher nome de usuário</h1>
-      <p class="tip"><strong>Dica:</strong> o nome pode ser o nome de um cachorrinho! Por exemplo: <strong>Totó</strong>.</p>
+      <p id="name-tip" class="tip"><strong>Dica:</strong> o nome pode ser o nome de um cachorrinho! Por exemplo: <strong>Totó</strong>.</p>
       <p id="name-why" class="muted hidden">Antes de começar, escolha um nome para guardar as suas pontuações.</p>
       <ol class="steps">
-        <li>Pense em um nome. Pode ser o do seu cachorrinho.</li>
+        <li id="name-step1">Pense em um nome. Pode ser o do seu cachorrinho.</li>
         <li>Escreva o nome no campo abaixo (até 16 letras).</li>
         <li>Toque em <strong>Salvar nome</strong>. O jogo vai lembrar dele nas próximas vezes.</li>
       </ol>
@@ -209,7 +209,7 @@
       <form id="register-form" autocomplete="on" novalidate>
         <label for="reg-user">Nome de usuário</label>
         <input id="reg-user" name="username" type="text" maxlength="16" autocomplete="username" autocapitalize="words" autocorrect="off" spellcheck="false" placeholder="Ex.: Totó" data-autofocus>
-        <p class="hint">Pode ser o nome de um cachorrinho! Até 16 letras ou números.</p>
+        <p id="reg-hint" class="hint">Pode ser o nome de um cachorrinho! Até 16 letras ou números.</p>
         <label for="reg-pass">Senha</label>
         <input id="reg-pass" name="password" type="password" autocomplete="new-password" aria-describedby="pass-rules" spellcheck="false">
         <p id="pass-rules" class="hint">De 4 a 20 caracteres. Pode usar letras minúsculas e MAIÚSCULAS, números e símbolos (! @ # $ …). Números e símbolos são opcionais. <span id="reg-count" class="count">0/20</span></p>
@@ -341,6 +341,7 @@
 
   <script src="js/sound.js"></script>
   <script src="js/themes.js"></script>
+  <script src="js/profiles.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/records.js"></script>
   <script src="js/config.js"></script>
