@@ -156,6 +156,8 @@ test("Gatinho: substantivos do gato (ratinho, novelo, cão, cão afugentado) e s
   assert.deepStrictEqual(cat.hud, { ...cat.hud, prey: "RATINHOS", power: "NOVELOS", balls: "CAMUNDONGOS", powerBadge: "PODER" });
   assert.strictEqual(cat.say.ballGot(50, 1, 3), "Camundongo! +50 pontos (1/3)");
   assert.strictEqual(cat.say.winBalls(50), " + camundongos: 50");
+  assert.strictEqual(cat.say.winScared(true, 200), " + cães: 200"); // (curto de propósito: a soma da vitória do Gatinho cabe em telas baixas; o Cachorrinho diz "carteiros e gatos", acima)
+  assert.ok(cat.say.winScared(true, 800).length <= dog.say.winScared(true, 800).length, "a frase da soma do Gatinho não é mais longa que a do Cachorrinho");
   assert.strictEqual(cat.say.foes(5, 2, true), "5 cães e 2 rastreadores"); // (0.18.0: os `R` do mapa são os cães rastreadores)
   assert.strictEqual(cat.say.foes(6, 1, false), "6 cães e 1 rastreador");
   // os sons do Gatinho, pelo contrato do README ("Sons do Gatinho")
