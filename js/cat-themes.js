@@ -9,6 +9,7 @@
 //   g.h(k)                     número de 0 a 1 sempre igual para o mesmo tile e o mesmo k (sem piscar)
 //   g.solid(c, r)              true se o tile é parede ou está fora do mapa
 //   g.kind(c, r)               (novo) o caractere do mapa no tile ("#", ".", "X", "T", "~", "E", "P", "V", "R"; "#" fora do mapa)
+//   g.mass(c, r)               (opcional, só no jogo) quantos tiles tem a mancha de paredes (`#` ligadas) daquele tile, sem contar o anel de fora do mapa (0 se não é parede): o Parque (Fase 9) a usa para que a mancha enorme seja o lago
 //   g.border                   true no anel de fora do mapa
 //   g.time                     (novo) segundos de jogo (para água que brilha e folhas que balançam; 0 quando "reduzir movimento")
 // Um tema é { id, place (nome do lugar), blurb (frase curta), night (true: fase noturna), mover: { wall: [3 cores], door: [3 cores] }, rail: [2 cores],

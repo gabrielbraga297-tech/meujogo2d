@@ -630,7 +630,10 @@
 
   // 9. Parque e lago: gramado verde-azulado com trilhas de cascalho, arbustos e o lago de água funda com margens, bancos e troncos, árvores grandes e pinheiros
   const trail9 = (c, r) => (r + 36) % 9 < 2 || (c + 39) % 13 < 2;
-  const lakeAt = (g, c, r) => g.solid(c, r) && hv(Math.floor(c / 5), Math.floor(r / 5), 80) < 0.5; // regiões de 5 x 5 tiles
+  // O jogo passa g.mass(c, r) = quantos tiles tem a mancha de paredes (`#` ligadas) daquele tile (sem o anel de fora do mapa): a mancha enorme do meio do mapa é o LAGO (inteiro, sem retalhos);
+  // as outras são arbustos. Sem g.mass (a prévia e os testes de Node) vale o sorteio por regiões de 5 x 5 tiles.
+  const LAKE_MIN = 200;
+  const lakeAt = (g, c, r) => g.solid(c, r) && (g.mass ? g.mass(c, r) >= LAKE_MIN : hv(Math.floor(c / 5), Math.floor(r / 5), 80) < 0.5);
   const parque = {
     place: "Parque e lago", blurb: "o parque e o lago: trilhas, arbustos, bancos e árvores grandes",
     mover: { wall: ["#c0623a", "#e8946a", "#6a2e14"], door: ["#a04bb0", "#cf86dc", "#4a1a52"] },

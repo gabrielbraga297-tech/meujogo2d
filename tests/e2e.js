@@ -9398,6 +9398,322 @@ const PAGE_HELPERS = () => {
     ok(idx.indexOf('src="js/cat-levels.js"') > 0 && idx.indexOf('src="js/cat-levels.js"') < idx.indexOf('src="js/game.js"'), "o index.html carrega js/cat-levels.js antes do js/game.js");
   });
 
+  // =====================================================================
+  // 0.18.0 (Gatinho, E2b-1): o JOGO DO GATINHO COM A CARA DELE. No modo Gatinho o jogo desenha com CatThemes (ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos e efeitos);
+  // o Cachorrinho desenha exatamente como antes (A/B de pixels com referências do código anterior). Estas seções abrem as páginas com os mapas de verdade (`realCat: true`).
+  // =====================================================================
+  const { DOG_START, DOG_HASH } = require("./ab-dog.js");
+  const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "c113ca15" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700) do código de 40e8f96, ANTES do desenho do Gatinho
+  // ajudantes que rodam dentro da página: espiões nas funções de CatArt e CatThemes (contam as chamadas) e leituras do canvas
+  const CAT_DRAW_PAGE = () => {
+    const counts = {}; window.__cnt = counts;
+    const wrap = (obj, name, key) => { const f = obj[name]; obj[name] = function (...a) { counts[key] = (counts[key] || 0) + 1; return f.apply(this, a); }; };
+    for (const n of ["drawCat", "drawDog", "drawMouse", "drawAgileMouse", "drawYarn", "drawPost", "drawFx"]) wrap(CatArt, n, "art." + n);
+    for (const id of CatThemes.ids()) { const th = CatThemes.of(id); for (const k of ["floor", "wall", "crate", "high", "water"]) wrap(th, k, "th." + k); }
+    wrap(CatThemes, "of", "CatThemes.of");
+    window.__resetCnt = () => { for (const k of Object.keys(counts)) delete counts[k]; };
+    window.__hash = () => { const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, u = new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2); let h = 2166136261 >>> 0; for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0; return h.toString(16); };
+    window.__nonEmpty = () => { const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, u = new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2); const seen = new Set(); let n = 0; for (let i = 0; i < u.length; i++) { if (u[i] !== 0xff1d2330 && u[i] !== 0) n++; if (seen.size < 5000) seen.add(u[i]); } return { n, colors: seen.size, total: u.length }; };
+    window.__lum = (px, py, r0, r1) => { // luminância média dos pixels do canvas a uma distância de [r0, r1) de (px, py)
+      const cv = document.getElementById("game"), c = cv.getContext("2d"), x0 = Math.max(0, Math.floor(px - r1)), y0 = Math.max(0, Math.floor(py - r1)), x1 = Math.min(cv.width, Math.ceil(px + r1)), y1 = Math.min(cv.height, Math.ceil(py + r1));
+      const d = c.getImageData(x0, y0, x1 - x0, y1 - y0).data; let s = 0, n = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const dd = Math.hypot(x - px, y - py); if (dd < r0 || dd >= r1) continue; const i = ((y - y0) * (x1 - x0) + (x - x0)) * 4; s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; n++; }
+      return n ? s / n : 0;
+    };
+    window.__catPx = () => { const v = __game.view, k = v.k * v.zoom, p = __game.player; return [(p.x + 12 - v.camX) * k, (p.y + 12 - v.camY) * k, k]; }; // o centro do gatinho no canvas (px) e a escala
+    window.__rgb = (wx, wy, n = 2) => { const v = __game.view, k = v.k * v.zoom, cv = document.getElementById("game"), x = Math.round((wx - v.camX) * k), y = Math.round((wy - v.camY) * k); const d = cv.getContext("2d").getImageData(x - n, y - n, 2 * n + 1, 2 * n + 1).data; let r = 0, g = 0, b = 0, m = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; m++; } return [r / m, g / m, b / m]; };
+    window.__at = (c, r) => { __game.player.x = c * 32 + 4; __game.player.y = r * 32 + 4; };
+  };
+  const catDrawPage = async (opts = {}) => { const pg = await newPage({ realCat: true, ...opts }); await fresh(pg, { name: "Totó" }); await pg.evaluate(CAT_DRAW_PAGE); return pg; };
+
+  await section("0.18.0 · Gatinho: desenho e ambientes (no modo Gatinho o jogo chama CatArt e CatThemes; no Cachorrinho NÃO chama; o Cachorrinho não mudou um pixel)", async () => {
+    const cp = await catDrawPage();
+    const ids = await ev(cp, () => CatThemes.ids());
+    ok(ids.length === 20 && ids.join() === Array.from({ length: 20 }, (_, i) => i + 1).join(), "CatThemes tem os 20 ambientes e o jogo os carrega (js/cat-themes.js, cat-themes-1.js, cat-themes-2.js e cat-art.js no index.html)");
+    const idx = fs.readFileSync(path.join(root, "index.html"), "utf8"), pos = (f) => idx.indexOf(`src="js/${f}"`);
+    ok(["cat-themes.js", "cat-themes-1.js", "cat-themes-2.js", "cat-art.js"].every((f) => pos(f) > 0 && pos(f) < pos("game.js")) && pos("cat-themes.js") < pos("cat-themes-1.js") && pos("cat-themes.js") < pos("cat-themes-2.js") && pos("themes.js") < pos("cat-themes.js"), "o index.html carrega o núcleo dos ambientes do Gatinho antes dos ambientes e todos antes do js/game.js");
+    // ---- Gatinho, Fase 3 (a fase toda cabe na tela: contagens exatas) ----
+    const cat = await ev(cp, () => {
+      __game.setAnimal("cat"); __resetCnt(); __game.autoStart = true; __game.start(3); __game.freezeVets = true; const ofCalls = __cnt["CatThemes.of"] || 0; __game.catFloorAll = true; __game.drawNow();
+      const lv = __game.builtOf("cat")[3], n = (ch) => lv.kinds.join("").split(ch).length - 1, c = { ...__cnt, "CatThemes.of": ofCalls };
+      __game.catFloorAll = false; __resetCnt(); __game.drawNow(); const lean = { ...__cnt };
+      return { c, lean, catDraw: __game.catDraw, mice: __game.items.filter((i) => !i.bone && !i.taken).length, yarn: __game.items.filter((i) => i.bone && !i.taken).length, balls: __game.balls.length, vets: __game.vets.length, cats: __game.cats.length, walls: n("#"), X: n("X"), T: n("T"), W: n("~"), tiles: lv.cols * lv.rows, place: __game.theme.place, hash: __hash(), px: __nonEmpty() };
+    });
+    ok(cat.catDraw, "numa partida do Gatinho o jogo desenha com CatArt/CatThemes (__game.catDraw)");
+    ok(cat.c["art.drawCat"] === 1 && cat.c["art.drawDog"] === cat.vets + cat.cats && cat.c["art.drawMouse"] === cat.mice && cat.c["art.drawYarn"] === cat.yarn && cat.c["art.drawAgileMouse"] === cat.balls && cat.c["art.drawPost"] === cat.vets + cat.cats,
+      `por quadro: 1 gatinho, ${cat.vets} cães (drawDog), ${cat.mice} ratinhos, ${cat.yarn} novelos, ${cat.balls} camundongo e ${cat.vets} postos: ${JSON.stringify(cat.c)}`);
+    ok(cat.c["th.floor"] === cat.tiles && cat.c["th.wall"] === cat.walls && cat.c["th.crate"] === cat.X && cat.c["th.high"] === cat.T && cat.c["th.water"] === cat.W && cat.X > 0 && cat.T > 0 && cat.W > 0,
+      `o ambiente do Gatinho desenha o chão em TODOS os tiles (${cat.c["th.floor"]}/${cat.tiles}, com catFloorAll) e por cima as paredes (${cat.c["th.wall"]}/${cat.walls}), os X (${cat.c["th.crate"]}/${cat.X}), os T (${cat.c["th.high"]}/${cat.T}) e as poças (${cat.c["th.water"]}/${cat.W})`);
+    ok(cat.lean["th.floor"] === cat.tiles - cat.walls && cat.lean["th.wall"] === cat.walls, `no uso normal o chão não é desenhado por baixo das paredes, que o cobrem por inteiro (${cat.lean["th.floor"]} = ${cat.tiles} − ${cat.walls}): a economia é só de tempo, o quadro é idêntico (conferido nas 20 fases abaixo)`);
+    ok(cat.c["CatThemes.of"] >= 1, "o ambiente da fase vem de CatThemes.of (via Themes.of(fase, \"cat\"))");
+    ok(cat.px.n > cat.px.total * 0.5 && cat.px.colors > 150, `o canvas do Gatinho não está vazio (${cat.px.n} de ${cat.px.total} pixels pintados, ${cat.px.colors} cores)`);
+    // ---- Cachorrinho: nenhuma chamada (Fases 1, 4, 11 e 20) ----
+    const dog = [];
+    for (const id of [1, 4, 11, 20]) dog.push(await ev(cp, (id) => { __game.setAnimal("dog"); __game.autoStart = true; __game.start(id); __game.freezeVets = true; __resetCnt(); __game.drawNow(); for (let i = 0; i < 30; i++) { __game.tick(1 / 60); } __game.drawNow(); return { id, c: { ...__cnt }, catDraw: __game.catDraw, fx: __game.catFx.length, same: Themes.of(id, "dog") === Themes.of(id) }; }, id));
+    ok(dog.every((d) => Object.keys(d.c).length === 0 && !d.catDraw && d.fx === 0 && d.same), `no Cachorrinho (Fases 1, 4, 11 e 20) nenhuma função de CatArt nem de CatThemes é chamada (${JSON.stringify(dog.map((d) => d.c))})`);
+    // ---- pixels: o do Gatinho não está vazio e é diferente do do Cachorrinho (mesma fase, mesmo tamanho) ----
+    const pix = await ev(cp, () => {
+      const out = {};
+      for (const a of ["cat", "dog"]) { __game.setAnimal(a); __game.autoStart = true; __game.start(3); __game.freezeVets = true; __game.drawNow(); out[a] = { hash: __hash(), nz: __nonEmpty().n, w: document.getElementById("game").width }; }
+      return out;
+    });
+    ok(pix.cat.hash !== pix.dog.hash && pix.cat.nz > 100000 && pix.dog.nz > 100000 && pix.cat.w === pix.dog.w, `o canvas do Gatinho tem pixels próprios, diferentes dos do Cachorrinho na mesma fase (hash ${pix.cat.hash} x ${pix.dog.hash})`);
+    // ---- sem CatThemes, o Gatinho cai nos ambientes do Cachorrinho (fallback) ----
+    const fb = await ev(cp, () => { const real = window.CatThemes; try { window.CatThemes = undefined; return [3, 9, 20].map((id) => Themes.of(id, "cat") === Themes.of(id, "dog")); } finally { window.CatThemes = real; } });
+    ok(fb.every(Boolean), "se CatThemes faltar, Themes.of(fase, \"cat\") devolve o ambiente do Cachorrinho (sem erro)");
+    ok(await ev(cp, () => [1, 5, 9, 20].every((id) => Themes.of(id, "cat") === CatThemes.of(id) && Themes.of(id, "cat") !== Themes.of(id) && Themes.of(id, "cat").place === CatThemes.of(id).place)), "com CatThemes, Themes.of(fase, \"cat\") é o ambiente de CatThemes e o do Cachorrinho continua o de sempre");
+    await cp.context().close();
+
+    // ---- A/B de pixels do Cachorrinho: mesmos passos, mesma semente ----
+    const ab = await newPage({ viewport: { width: 1000, height: 700 } });
+    await ab.goto(URL);
+    const got = {};
+    for (const id of [1, 4, 11, 20]) {
+      await ab.evaluate(DOG_START, id);
+      await ab.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))));
+      got[id] = await ab.evaluate(DOG_HASH);
+    }
+    ok([1, 4, 11, 20].every((id) => got[id].hash === HASHES_0170[id] && got[id].nonEmpty > 100000), `A/B: o canvas do Cachorrinho nas Fases 1, 4, 11 e 20 é IDÊNTICO ao do código anterior (hash ${[1, 4, 11, 20].map((id) => got[id].hash).join(", ")} contra ${Object.values(HASHES_0170).join(", ")})`);
+    await ab.context().close();
+    // ... e não depende de CatArt nem de CatThemes: sem os dois arquivos o desenho é o mesmo
+    const nb = await newPage({ viewport: { width: 1000, height: 700 } });
+    await nb.route(/\/js\/cat-(art|themes|themes-1|themes-2)\.js$/, (route) => route.fulfill({ body: "", contentType: "application/javascript" })); // (sem os arquivos do Gatinho)
+    await nb.goto(URL);
+    const got2 = {};
+    for (const id of [1, 4, 11, 20]) {
+      await nb.evaluate(DOG_START, id);
+      await nb.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))));
+      got2[id] = await nb.evaluate(DOG_HASH);
+    }
+    ok([1, 4, 11, 20].every((id) => got2[id].hash === HASHES_0170[id]), `sem js/cat-art.js e js/cat-themes*.js o Cachorrinho desenha exatamente igual (${[1, 4, 11, 20].map((id) => got2[id].hash).join(", ")})`);
+    await nb.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: desenho e ambientes (contrato do ambiente: g.kind, g.time, g.border, g.mass; ordem de desenho; um ambiente por fase)", async () => {
+    const cp = await catDrawPage();
+    // o ambiente de cada fase é o do Gatinho (nome do lugar do CatThemes = o do mapa) e aparece na lista de fases, no aviso e em __game.theme
+    const per = await ev(cp, () => {
+      __game.setAnimal("cat"); const out = [];
+      for (let id = 1; id <= 20; id++) { __game.start(id); const th = CatThemes.of(id), lv = __game.builtOf("cat")[id]; out.push({ id, place: __game.theme.place, want: th.place, lvPlace: lv.place, blurb: __game.theme.blurb === th.blurb && !!th.blurb, rail: JSON.stringify(__game.theme.rail) === JSON.stringify(th.rail), night: !!th.night, lvNight: !!lv.night, toast: document.getElementById("toast").textContent }); }
+      return out;
+    });
+    ok(per.every((p) => p.place === p.want && p.place === p.lvPlace && p.blurb && p.rail), `o lugar de cada fase do Gatinho é o do CatThemes e o do mapa (${per.map((p) => p.id + ":" + p.place).join(" | ")})`);
+    ok(new Set(per.map((p) => p.place)).size === 20, "as 20 fases do Gatinho têm 20 lugares diferentes");
+    ok(per.every((p) => p.night === (p.id === 18 || p.id === 19)) && per.every((p) => p.night === p.lvNight), "só as Fases 18 e 19 são noturnas (tema.night = lv.night)");
+    ok(per.filter((p) => p.id <= 10).every((p) => p.toast.includes(p.place)), "no aviso do começo das Fases 1 a 10 aparece o nome do lugar do Gatinho");
+    await ev(cp, () => { __game.setAnimal("cat"); const g = Records.createStore(localStorage).game("cat"); g.completeLevel("Totó", 1); g.completeLevel("Totó", 2); });
+    await cp.reload(); await cp.evaluate(PAGE_HELPERS); await cp.evaluate(CAT_DRAW_PAGE);
+    await ev(cp, () => { document.getElementById("btn-replay").click(); });
+    const list = await cp.$$eval("#levels-list button", (bs) => bs.map((b) => b.textContent));
+    ok(list.length >= 2 && list[0].includes("Sala de estar") && list[1].includes("Cozinha e despensa"), `na lista de fases o lugar é o do Gatinho (${list.slice(0, 2).join(" | ")})`);
+    // ---- contrato do g (Fase 9: 55×39) ----
+    for (const calm of [false, true]) {
+      const pg = calm ? await catDrawPage({ reducedMotion: "reduce" }) : cp;
+      const r = await ev(pg, () => {
+        __game.setAnimal("cat"); __game.autoStart = true; __game.start(9); __game.freezeVets = true; __game.catFloorAll = true;
+        for (let i = 0; i < 90; i++) __game.tick(1 / 60);
+        __game.player.moving = false;
+        const th = CatThemes.of(9), log = [], orig = {}, lv = __game.builtOf("cat")[9];
+        for (const k of ["floor", "wall", "crate", "high", "water"]) { orig[k] = th[k]; th[k] = function (g) { log.push([k, g.c, g.r, g.x, g.y, g.kind(g.c, g.r), g.kind(-3, 4), g.kind(g.c, 999), g.time, g.border, g.solid(g.c, g.r), g.h(1) === CatThemes.hash(g.c, g.r, 1), g.mass(g.c, g.r), g.free]); return orig[k].call(this, g); }; }
+        try { __game.drawNow(); } finally { for (const k of Object.keys(orig)) th[k] = orig[k]; __game.catFloorAll = false; }
+        const floors = log.filter((l) => l[0] === "floor"), rest = log.filter((l) => l[0] !== "floor"), lastFloor = log.map((l) => l[0]).lastIndexOf("floor"), firstOther = log.findIndex((l) => l[0] !== "floor");
+        const want = { wall: "#", crate: "X", high: "T", water: "~" };
+        const tiles = new Set(floors.map((l) => l[1] + "," + l[2]));
+        return {
+          n: log.length, floors: floors.length, uniqueFloors: tiles.size, order: lastFloor < firstOther, view: [__game.view.camX, __game.view.camY],
+          kinds: log.every((l) => l[5] === lv.kinds[l[2]][l[1]]), out: log.every((l) => l[6] === "#" && l[7] === "#"), partsOk: rest.every((l) => l[5] === want[l[0]]), xy: log.every((l) => l[3] === l[1] * 32 && l[4] === l[2] * 32),
+          time: [...new Set(log.map((l) => l[8]))], gtime: __game.time, border: log.every((l) => l[9] === (l[1] === 0 || l[2] === 0 || l[1] === lv.cols - 1 || l[2] === lv.rows - 1)), solid: log.every((l) => l[10] === (lv.kinds[l[2]][l[1]] === "#")), h: log.every((l) => l[11]),
+          mass: log.every((l) => l[12] === (l[1] < 1 || l[2] < 1 || l[1] >= lv.cols - 1 || l[2] >= lv.rows - 1 ? 0 : lv.mass[l[2] * lv.cols + l[1]])), free: floors.every((l) => l[13] === (lv.kinds[l[2]][l[1]] !== "#")),
+          kindsSeen: [...new Set(log.map((l) => l[0] + l[5]))].sort(),
+        };
+      });
+      ok(r.floors === r.uniqueFloors && r.floors > 300 && r.order, `${calm ? "(reduzir movimento) " : ""}o chão é desenhado em TODOS os tiles da tela (${r.floors}, um por tile) ANTES de qualquer parede, X, T ou poça (${r.n - r.floors} por cima)`);
+      ok(r.kinds && r.out && r.partsOk && r.xy && r.border && r.solid && r.h && r.mass && r.free, `g.kind(c, r) é o caractere do mapa ("#" fora do mapa), cada função recebe só o seu símbolo, g.x/g.y/g.border/g.solid/g.h/g.mass/g.free estão certos`);
+      ok(calm ? r.time.length === 1 && r.time[0] === 0 : r.time.length === 1 && Math.abs(r.time[0] - r.gtime) < 1e-9 && r.gtime > 1, `g.time ${calm ? "é 0 com \"reduzir movimento\"" : `é o relógio do jogo (${r.time[0].toFixed(2)} s)`}`);
+      if (calm) await pg.context().close();
+    }
+    // ---- Fase 9: o lago é UMA mancha só (g.mass) e as manchas pequenas são arbustos (a amostra é o canto do tile: no meio há detalhes, como a vitória-régia) ----
+    const lake = await ev(cp, () => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(9); __game.freezeVets = true;
+      const lv = __game.builtOf("cat")[9], deep = (c, r) => lv.kinds[r][c] === "#" && c > 1 && r > 1 && c < lv.cols - 2 && r < lv.rows - 2 && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dc, dr]) => lv.kinds[r + dr][c + dc] === "#");
+      const big = [], small = [];
+      for (let r = 2; r < lv.rows - 2; r++) for (let c = 2; c < lv.cols - 2; c++) if (deep(c, r)) { const m = lv.mass[r * lv.cols + c]; if (m >= 200) big.push([c, r, m]); else if (m >= 20) small.push([c, r, m]); }
+      const sample = (list) => { const res = []; for (let i = 0; i < 14; i++) { const [c, r, m] = list[Math.floor((i + 0.5) * list.length / 14)]; __at(Math.min(lv.cols - 2, c + 3), r); __game.tick(0.001); __game.drawNow(); res.push({ rgb: __rgb(c * 32 + 4, r * 32 + 4, 1), m }); } return res; };
+      const biggest = Math.max(...Array.from(lv.mass)), sizes = [...new Set(Array.from(lv.mass).filter((m) => m > 0))].sort((a, b) => b - a);
+      return { big: sample(big), small: sample(small), biggest, sizes, nBig: big.length, nSmall: small.length };
+    });
+    ok(lake.nBig > 50 && lake.biggest >= 200, `a Fase 9 tem um lago grande no meio (a maior mancha de paredes tem ${lake.biggest} tiles; manchas: ${lake.sizes.slice(0, 6).join(", ")}...)`);
+    ok(lake.big.every((s) => s.rgb[2] > s.rgb[1] + 8 && s.rgb[2] > s.rgb[0] + 40), `os tiles do interior do lago (mancha grande) são TODOS água (${lake.big.slice(0, 3).map((s) => s.rgb.map(Math.round).join("/")).join(" ")}...)`);
+    ok(lake.nSmall > 20 && lake.small.every((s) => s.rgb[1] > s.rgb[2] && s.rgb[1] > s.rgb[0]), `o interior das manchas pequenas de parede são TODOS arbustos (${lake.small.slice(0, 3).map((s) => s.rgb.map(Math.round).join("/")).join(" ")}...)`);
+    await cp.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: desenho e ambientes (noite das Fases 18 e 19: halo em volta do gatinho, nunca 100% escuro; reduzir movimento; pausa)", async () => {
+    const cp = await catDrawPage();
+    const night = await ev(cp, () => {
+      const out = {};
+      for (const id of [18, 19, 3]) {
+        __game.setAnimal("cat"); __game.autoStart = true; __game.start(id); __game.freezeVets = true;
+        const lv = __game.builtOf("cat")[id], opens = []; for (let r = 6; r < lv.rows - 6; r++) for (let c = 8; c < lv.cols - 8; c++) { let ok = true; for (let dr = -2; dr <= 2 && ok; dr++) for (let dc = -2; dc <= 2; dc++) if (lv.kinds[r + dr][c + dc] === "#") { ok = false; break; } if (ok) opens.push([c, r]); }
+        const [c, r] = opens[Math.floor(opens.length / 2)] || lv.spawnTile; __at(c, r); __game.tick(0.01); __game.drawNow();
+        const [px, py, k] = __catPx(), dark = { darkness: __game.darkness, state: __game.state, near: __lum(px, py, 30, 55), mid: __lum(px, py, 3.2 * 32 * k, 3.6 * 32 * k), far: __lum(px, py, 7.5 * 32 * k, 9 * 32 * k), hash: __hash() };
+        document.getElementById("btn-pause").click(); __game.drawNow();
+        const lit = { state: __game.state, near: __lum(px, py, 30, 55), mid: __lum(px, py, 3.2 * 32 * k, 3.6 * 32 * k), far: __lum(px, py, 7.5 * 32 * k, 9 * 32 * k), hash: __hash() };
+        document.getElementById("btn-resume").click();
+        out[id] = { dark, lit, halo: lv.night ? lv.night.halo : 0, k };
+      }
+      return out;
+    });
+    for (const id of [18, 19]) {
+      const n = night[id], rn = n.dark.near / n.lit.near, rm = n.dark.mid / n.lit.mid, rf = n.dark.far / n.lit.far;
+      ok(n.dark.state === "playing" && n.lit.state === "paused" && n.dark.darkness === 0.75 && n.halo === 5, `Fase ${id}: noite com escuridão 0,75 e halo de 5 tiles (jogando x pausado)`);
+      ok(rn > 0.95 && rf < 0.5 && rf > 0.15 && n.dark.far > 4 && rn > rm && rm > rf, `Fase ${id}: perto do gatinho o campo está claro (${(rn * 100).toFixed(0)}% do normal), a 3,4 tiles ${(rm * 100).toFixed(0)}% e longe ${(rf * 100).toFixed(0)}%: escuro, mas nunca 100% (luminância ${n.dark.far.toFixed(1)} de ${n.lit.far.toFixed(1)})`);
+      ok(n.dark.hash !== n.lit.hash, `Fase ${id}: em pausa o escuro some (o quadro muda)`);
+    }
+    ok(night[3].dark.darkness === 0 && night[3].dark.hash === night[3].lit.hash, "numa fase de dia (Fase 3) o quadro jogando e pausado é idêntico: não há escuro nenhum");
+    // ---- reduzir movimento: o halo não pulsa e nada balança; sem ele, o quadro muda com o tempo ----
+    const calmP = await catDrawPage({ reducedMotion: "reduce" });
+    const quiet = async (pg) => ev(pg, () => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(18); __game.freezeVets = true; __game.tick(0.01); __game.drawNow(); const a = __hash();
+      for (let i = 0; i < 40; i++) { __game.tick(1 / 60); __game.player.moving = false; } __game.drawNow(); const b = __hash(), t = __game.time;
+      for (let i = 0; i < 37; i++) { __game.tick(1 / 60); __game.player.moving = false; } __game.drawNow();
+      return { a, b, c: __hash(), t };
+    });
+    const qc = await quiet(calmP), qn = await quiet(cp);
+    ok(qc.a === qc.b && qc.b === qc.c && qc.t > 0.6, `com "reduzir movimento" o quadro é o MESMO em qualquer instante (noite, gatinho, cães, ratinhos, novelos, água): hash ${qc.a} depois de ${qc.t.toFixed(1)} s`);
+    ok(qn.a !== qn.b, "sem \"reduzir movimento\" o quadro muda com o tempo (o halo pulsa, o gatinho respira, a água brilha)");
+    await calmP.context().close(); await cp.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: desenho e ambientes (efeitos, skins, lugares do gatinho e as 20 fases sem erro de JavaScript)", async () => {
+    const cp = await catDrawPage();
+    const errs0 = errs.length;
+    // ---- efeitos curtos: splash, wetdrop, shake, dust, hiss, sparkle ----
+    const fxr = await ev(cp, () => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(3); __game.freezeVets = true; __game.noCatch = true;
+      const lv = __game.builtOf("cat")[3], kinds = (r) => new Set(__game.catFx.map((f) => f.kind)), w = []; for (let r = 1; r < lv.rows - 1; r++) for (let c = 2; c < lv.cols - 1; c++) if (lv.kinds[r][c] === "~" && lv.kinds[r][c - 1] === ".") w.push([c, r]);
+      const out = { kinds: [] };
+      __at(w[0][0] - 1, w[0][1]); __game.tick(0.01); __t.press("d", true); for (let i = 0; i < 20 && __game.wet <= 0; i++) __game.tick(1 / 60); out.splash = kinds().has("splash"); out.wet = __game.wet;
+      for (let i = 0; i < 40; i++) __game.tick(1 / 60); __t.press("d", false); out.drop = kinds().has("wetdrop"); __game.drawNow();
+      __game.player.moving = false; __at(1, 1); for (let i = 0; i < 6.3 * 60 + 5; i++) { __game.tick(1 / 60); if (__game.catFx.some((f) => f.kind === "shake")) break; } out.shake = kinds().has("shake") && __game.wet === 0;
+      __game.catFx.length; for (let i = 0; i < 60; i++) __game.tick(1 / 60); out.gone = __game.catFx.length;
+      __at(2, 2); __game.tick(0.01); __game.stamina = 1; __t.press("Shift", true); __t.press("d", true); for (let i = 0; i < 10; i++) __game.tick(1 / 60); __t.press("d", false); __t.press("Shift", false); out.dust = kinds().has("dust") && __game.catFx.find((f) => f.kind === "dust") !== undefined;
+      const y = __game.items.find((i) => i.bone && i.kind === "scare"); __game.catFx.length = 0; __game.player.x = y.x - 4; __game.player.y = y.y - 4; __game.tick(0.01); out.hiss = kinds().has("hiss") && __game.power > 0; out.sparkle = kinds().has("sparkle");
+      const m = __game.items.find((i) => !i.bone && !i.taken); __game.player.x = m.x - 4; __game.player.y = m.y - 4; __game.tick(0.01); out.sparkleMouse = m.taken && __game.catFx.some((f) => f.kind === "sparkle" && Math.abs(f.x - (m.x + 8)) < 1);
+      __game.drawNow();
+      return out;
+    });
+    ok(fxr.splash && fxr.wet > 5, "entrar na poça solta o splash e molha o pelo (6 s)");
+    ok(fxr.drop, "andando com o pelo molhado caem gotinhas (wetdrop)");
+    ok(fxr.shake, "ao secar o gatinho sacode o pelo (shake)");
+    ok(fxr.gone === 0, "os efeitos curtos acabam sozinhos (a lista esvazia)");
+    ok(fxr.dust, "a arrancada levanta poeira (dust)");
+    ok(fxr.hiss && fxr.sparkle && fxr.sparkleMouse, "pegar um novelo comum eriça o pelo (hiss, poder ligado) e dá brilho (sparkle); pegar um ratinho também brilha, no lugar dele");
+    // no Cachorrinho nenhum efeito do Gatinho nasce
+    const dogfx = await ev(cp, () => { __game.setAnimal("dog"); __resetCnt(); __game.autoStart = true; __game.start(2); __game.freezeVets = true; const it = __game.items[0]; __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); const taken = it.taken; for (let i = 0; i < 20; i++) __game.tick(1 / 60); return { taken, n: __game.catFx.length, cnt: { ...__cnt } }; });
+    ok(dogfx.taken && dogfx.n === 0 && !Object.keys(dogfx.cnt).some((k) => k.startsWith("art.")), "no Cachorrinho pegar uma ração não solta efeito do Gatinho");
+    // ---- skins (só visual): o desenho muda, o corpo (hitbox) não ----
+    const sk = await ev(cp, () => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(3); __game.freezeVets = true; __game.tick(0.01); const out = {};
+      const [px, py, k] = __catPx(); __game.player.moving = false;
+      for (const s of ["", "preto", "branco", "laranja"]) { __game.catSkin = s; __game.drawNow(); out[s || "padrao"] = { rgb: __rgb(__game.player.x + 12, __game.player.y + 12, 6).map(Math.round).join("/"), hash: __hash(), w: __game.player.w, h: __game.player.h }; }
+      __game.catSkin = ""; return out;
+    });
+    ok(new Set(Object.values(sk).map((s) => s.hash)).size === 4 && Object.values(sk).every((s) => s.w === 24 && s.h === 24), `a skin muda só o desenho (4 quadros diferentes) e nunca o tamanho de contato (24×24): ${Object.entries(sk).map(([n, s]) => n + " " + s.rgb).join(" · ")}`);
+    // ---- a salvo, molhado, arrancada e eriçado desenham de outro jeito (o quadro muda) ----
+    const st = await ev(cp, () => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(3); __game.freezeVets = true; __game.tick(0.01); __game.player.moving = false; const lv = __game.builtOf("cat")[3];
+      const hs = {}; __game.drawNow(); hs.normal = __hash(); __game.wet = 5; __game.drawNow(); hs.wet = __hash(); __game.wet = 0;
+      const t = []; for (let r = 0; r < lv.rows; r++) for (let c = 0; c < lv.cols; c++) if (lv.kinds[r][c] === "T") t.push([c, r]);
+      const w = __game.player.x, h = __game.player.y; __at(t[0][0], t[0][1]); __game.tick(0.001); hs.safe = __game.safe; __game.drawNow(); hs.high = __hash(); __game.player.x = w; __game.player.y = h; __game.tick(0.001);
+      return hs;
+    });
+    ok(st.safe && st.normal !== st.wet && st.normal !== st.high, "molhado e em cima de um lugar alto (a salvo) o quadro é outro (o desenho do gatinho muda)");
+    // ---- as 20 fases: jogar um pouco de cada uma (andar, arrancar, molhar, subir, novelo) desenhando todo quadro, sem nenhum erro de JavaScript ----
+    const all = [];
+    for (let id = 1; id <= 20; id++) {
+      all.push(await ev(cp, (id) => {
+        __game.setAnimal("cat"); __game.setRand(window.__mul ? __mul(77 + id) : null); __game.autoStart = true; __game.start(id); __game.noCatch = true; __game.freezeVets = false; __game.catsThaw = true;
+        const lv = __game.builtOf("cat")[id], tiles = (ch) => { const o = []; for (let r = 0; r < lv.rows; r++) for (let c = 0; c < lv.cols; c++) if (lv.kinds[r][c] === ch) o.push([c, r]); return o; };
+        let frames = 0, bad = null; const step = (n, dt = 1 / 30) => { for (let i = 0; i < n; i++) { __game.tick(dt); try { __game.drawNow(); frames++; } catch (e) { bad = bad || String(e && e.message); } } };
+        __t.press("d", true); step(30); __t.press("d", false); __t.press("s", true); __t.press("Shift", true); step(30); __t.press("s", false); __t.press("Shift", false);
+        for (const ch of ["~", "T", "X"]) { const t = tiles(ch); if (t.length) { __at(...t[Math.floor(t.length / 2)]); step(8); } }
+        const y = __game.items.find((i) => i.bone && !i.taken); if (y) { __game.player.x = y.x - 4; __game.player.y = y.y - 4; step(10); }
+        const m = __game.items.find((i) => !i.bone && !i.taken); if (m) { __game.player.x = m.x - 4; __game.player.y = m.y - 4; step(10); }
+        const v = __game.vets[0]; if (v) { for (const mode of ["chase", "flee", "search", "patrol"]) { v.mode = mode; step(3); } }
+        __game.freezeVets = true; __game.catsThaw = false;
+        return { id, frames, bad, cat: __game.catDraw };
+      }, id));
+    }
+    ok(all.every((a) => a.cat && a.frames > 60 && !a.bad), `as 20 fases do Gatinho desenham ${all.reduce((n, a) => n + a.frames, 0)} quadros (andando, arrancando, molhado, em lugar alto, com novelo e com cães em todos os modos) sem erro ${all.filter((a) => a.bad).map((a) => a.id + ": " + a.bad).join("; ")}`);
+    ok(errs.length === errs0, `nenhum erro de JavaScript no console durante o desenho das 20 fases (${errs.length - errs0} novos)`);
+    await cp.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: desenho e ambientes (telas: título da aba, cartão do Gatinho, prévia da lojinha, README; desempenho)", async () => {
+    const cp = await catDrawPage();
+    ok(await cp.title() === "Jogo do cachorrinho", "o título da aba no Cachorrinho continua \"Jogo do cachorrinho\"");
+    await ev(cp, () => __game.setAnimal("cat"));
+    ok(await cp.title() === "Jogo do gatinho", "escolhendo o Gatinho o título da aba é \"Jogo do gatinho\"");
+    await ev(cp, () => __game.start(1)); ok(await cp.title() === "Jogo do gatinho", "e continua durante a partida do Gatinho");
+    await cp.reload(); await cp.evaluate(PAGE_HELPERS); await cp.evaluate(CAT_DRAW_PAGE);
+    ok(await ev(cp, () => __game.animal) === "cat" && await cp.title() === "Jogo do gatinho", "ao reabrir o jogo, quem escolheu o Gatinho continua com o título \"Jogo do gatinho\"");
+    await ev(cp, () => { __game.setAnimal("dog"); }); ok(await cp.title() === "Jogo do cachorrinho", "voltando ao Cachorrinho (no menu) o título volta ao de sempre");
+    // cartão do Gatinho: desenhado (canvas com pixels); o do Cachorrinho continua só com o emoji
+    await cp.goto(URL); await cp.evaluate(PAGE_HELPERS);
+    await ev(cp, () => { localStorage.clear(); Records.createStore(localStorage).setPlayer("Totó"); });
+    await cp.reload(); await cp.click("#btn-animal");
+    const card = await ev(cp, () => {
+      const q = (id) => document.querySelector(`#animal-${id} .animal-emoji`), cv = q("cat").querySelector("canvas"), px = () => { const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++; return n; };
+      return { catCanvas: !!cv, catPx: cv ? px() : 0, catText: q("cat").textContent, dogCanvas: !!q("dog").querySelector("canvas"), hidden: q("cat").getAttribute("aria-hidden"), birdCanvas: !!q("bird").querySelector("canvas"), box: cv && [cv.getBoundingClientRect().width, cv.getBoundingClientRect().height] };
+    });
+    ok(card.catCanvas && card.catPx > 800 && card.catText === "🐱" && card.hidden === "true" && !card.dogCanvas && !card.birdCanvas, `o cartão do Gatinho mostra o gatinho desenhado (${card.catPx} pixels; o emoji continua no elemento, escondido) e os outros cartões ficam só com o emoji`);
+    // prévia da lojinha: no Gatinho desenha o gatinho (não o cachorrinho)
+    const shop = await ev(cp, () => { const out = {}; for (const a of ["dog", "cat"]) { __game.setAnimal(a); document.getElementById("btn-animals-back").click(); document.getElementById("btn-shop").click(); const cvs = [...document.querySelectorAll("#shop-list .shop-card canvas")]; out[a] = cvs.length ? Array.from(cvs[0].getContext("2d").getImageData(0, 0, cvs[0].width, cvs[0].height).data).reduce((h, v, i) => (i % 7 ? h : (h * 31 + v) >>> 0), 7) : 0; document.getElementById("btn-shop-back") && document.getElementById("btn-shop-back").click(); } return out; });
+    ok(shop.dog && shop.cat && shop.dog !== shop.cat, `a prévia da lojinha no Gatinho é o gatinho (a do Cachorrinho continua o cachorrinho): ${shop.dog} x ${shop.cat}`);
+    await cp.context().close();
+
+    // ---- README ----
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    const sec = (readme.split("### Desenhos do Gatinho (0.18.0)")[1] || "").split(/\n## /)[0];
+    ok(/integrad/i.test(sec) && /drawCatTiles/.test(sec) && /g\.mass/.test(sec) && /noite/i.test(sec) && /shoot-game\.js/.test(sec) && /ab-dog\.js/.test(sec), "o README diz que os desenhos do Gatinho estão integrados ao jogo (ambientes, noite, efeitos) e como ver e testar (shoot-game.js, ab-dog.js)");
+
+    // ---- desempenho: tempo de um quadro da Fase 20 do Gatinho: desenhar + terminar de pintar o canvas (getImageData força a descarga; sem ela só se medem os comandos, não a pintura) ----
+    const pf = await catDrawPage({ viewport: { width: 1000, height: 700 } });
+    const timeIt = (id) => ev(pf, (id) => {
+      __game.setAnimal("cat"); __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.tick(0.01);
+      const lv = __game.builtOf("cat")[id], [c, r] = lv.spawnTile; __at(c, r); __game.tick(0.01);
+      const cx = document.getElementById("game").getContext("2d");
+      for (let i = 0; i < 40; i++) { __game.drawNow(); cx.getImageData(0, 0, 1, 1); }
+      const t = [], d = []; for (let i = 0; i < 200; i++) { __game.tick(1 / 60); const a = performance.now(); __game.drawNow(); const m = performance.now(); cx.getImageData(0, 0, 1, 1); t.push(performance.now() - a); d.push(m - a); }
+      t.sort((x, y) => x - y); d.sort((x, y) => x - y); return { med: t[100], p90: t[180], draw: d[100] };
+    }, id);
+    for (const [id, limit] of [[20, 12], [18, 16]]) {
+      const tries = [];
+      for (let attempt = 0; attempt < 3; attempt++) { tries.push(await timeIt(id)); if (tries[tries.length - 1].med <= limit) break; }
+      const best = tries.reduce((b, t) => (t.med < b.med ? t : b));
+      console.log(`   (desempenho) Fase ${id} do Gatinho${id === 18 ? " (noite, com o halo)" : ""}: mediana do tempo de um quadro (desenhar + pintar) ${best.med.toFixed(2)} ms, p90 ${best.p90.toFixed(2)} ms; só os comandos de desenho ${best.draw.toFixed(2)} ms (tentativas: ${tries.map((t) => t.med.toFixed(1)).join(", ")}; limite ${limit} ms)`);
+      ok(best.med <= limit, `a mediana do tempo de um quadro da Fase ${id} do Gatinho${id === 18 ? " (noite)" : ""} é ${best.med.toFixed(2)} ms (limite: ${limit} ms)`);
+    }
+    // o quadro é o MESMO sem o atalho de não desenhar o chão sob as paredes (20 fases, 6 posições cada)
+    const eq = await ev(pf, () => {
+      const res = [], hash = () => { const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, u = new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2); let h = 2166136261 >>> 0; for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0; return h; };
+      for (let id = 1; id <= 20; id++) {
+        __game.setAnimal("cat"); __game.autoStart = true; __game.start(id); __game.freezeVets = true; __game.tick(0.01);
+        const lv = __game.builtOf("cat")[id]; let diff = 0;
+        for (const [fc, fr] of [[0.1, 0.1], [0.5, 0.5], [0.9, 0.2], [0.3, 0.8], [0.8, 0.9], [0.02, 0.5]]) {
+          __game.player.x = Math.floor(lv.cols * fc) * 32 + 4; __game.player.y = Math.floor(lv.rows * fr) * 32 + 4; __game.tick(0.0001);
+          __game.catFloorAll = false; __game.drawNow(); const a = hash(); __game.catFloorAll = true; __game.drawNow(); if (a !== hash()) diff++;
+        }
+        res.push(diff);
+      }
+      __game.catFloorAll = false; return res;
+    });
+    ok(eq.every((d) => d === 0), `não desenhar o chão por baixo das paredes não muda UM pixel em nenhuma das 20 fases (6 posições cada; diferenças: ${eq.join("")})`);
+    await pf.context().close();
+  });
+
+//E2B1-NEXT
 //E2A-NEXT
   console.log("erros JS:", errs);
   if (errs.length) failed++;

@@ -116,7 +116,7 @@
     sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow" },
     skins: null,
     // textos fixos do index.html (null = o que está lá, que é o do Cachorrinho)
-    ui: { howto: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null },
+    ui: { howto: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null, docTitle: null }, // (docTitle: o título da aba do navegador)
   };
 
   // ---------------------------------------------------------------------------------------------------------------------------------
@@ -248,6 +248,7 @@
       regHint: `Pode ser o nome de um gatinho! Até 16 letras ou números.`,
       canvasLabel: "Área do jogo: um gatinho coleta ratinhos e novelos e foge dos cães. Pegar um novelo dá poder por alguns segundos: os cães ficam afugentados e fogem do gatinho, e, ao encostar neles, você ganha pontos. Novelos de cores diferentes dão escudo, gelo, turbo ou ímã. Segurar Shift, Espaço ou o botão Correr dá uma arrancada enquanto houver fôlego; poças molham o pelo e deixam o gatinho lento; os lugares altos deixam o gatinho a salvo dos cães; os obstáculos baixos só o gatinho pula",
       padLabel: "Controle direcional: arraste o dedo para mover o gatinho",
+      docTitle: "Jogo do gatinho",
     },
   };
 

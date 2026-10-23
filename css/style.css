@@ -209,6 +209,8 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .animal-card.current { border-color: var(--green); box-shadow: 0 0 0 2px rgba(61, 220, 132, .35); }
 .animal-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 8px; font-size: 22px; }
 .animal-emoji { font-size: 1.5em; line-height: 1; }
+.animal-emoji.with-art { font-size: 0; line-height: 0; } /* (0.18.0) o Gatinho aparece desenhado (canvas); o emoji fica no elemento, sem aparecer */
+.animal-art { display: block; width: 52px; height: 44px; background: none; }
 .animal-blurb { font-size: 15px; font-weight: 500; line-height: 1.3; color: #d6dcea; }
 .animal-status { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--gold); }
 .animal-status.soon-tag { color: #d6dcea; text-transform: uppercase; letter-spacing: .08em; } /* (auditoria) "Em breve" com contraste de verdade */

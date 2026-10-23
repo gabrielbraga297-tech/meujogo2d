@@ -1377,6 +1377,27 @@
   const blockWarn = (d, bt) => { const left = d.every - (bt % d.every); return left <= d.warn ? 1 - left / d.warn : 0; };
   const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: d.w, h: d.h, kind: d.kind }; };
 
+  // (0.18.0, E2b-1) Tamanho (em tiles) da mancha de paredes (`#` ligadas pelos lados) de cada tile, sem contar o anel de fora do mapa (o anel e os tiles que não são parede valem 0).
+  // O ambiente do Gatinho usa isto (g.mass) para decidir que uma mancha enorme de `#` é um lago (Fase 9) e não um arbusto. Só o Gatinho precisa (o Cachorrinho não chama).
+  function wallMasses(map, rows, cols) {
+    const mass = new Int16Array(rows * cols), seen = new Uint8Array(rows * cols);
+    for (let r = 1; r < rows - 1; r++) for (let c = 1; c < cols - 1; c++) {
+      if (map[r][c] !== "#" || seen[r * cols + c]) continue;
+      const q = [r * cols + c]; seen[q[0]] = 1;
+      for (let i = 0; i < q.length; i++) {
+        const cc = q[i] % cols, rr = (q[i] - cc) / cols;
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nc = cc + dc, nr = rr + dr;
+          if (nc < 1 || nr < 1 || nc >= cols - 1 || nr >= rows - 1 || map[nr][nc] !== "#" || seen[nr * cols + nc]) continue;
+          seen[nr * cols + nc] = 1; q.push(nr * cols + nc);
+        }
+      }
+      const n = Math.min(q.length, 32767);
+      for (const k of q) mass[k] = n;
+    }
+    return mass;
+  }
+
   // Converte um mapa em dados prontos para jogar (e para conferir jogos salvos), sem mexer no estado atual.
   function buildLevel(def) {
     const { map } = def;
@@ -1486,6 +1507,7 @@
       high: cat ? map.map((row) => [...row].map((ch) => ch === "T")) : null, puddle: cat ? map.map((row) => [...row].map((ch) => ch === "~")) : null, // os lugares altos e as poças, tile a tile
       floorFree: cat ? map.map((row) => [...row].map((ch) => ch !== "#")) : walk, avoidTiles: waterTiles.length ? trackTiles.concat(waterTiles) : trackTiles, postTiles: cat ? vetSpawns.concat(catSpawns) : vetSpawns, // chão para o desenho, tiles sem itens e postos (os itens ficam longe deles)
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
+      ...(cat ? { kinds: map.slice(), mass: wallMasses(map, rows, cols) } : {}), // (Gatinho, desenho: o caractere do mapa em cada tile e o tamanho da mancha de parede)
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
       exitRect: { x: x1 * TILE, y: y1 * TILE, w: (x2 - x1 + 1) * TILE, h: (y2 - y1 + 1) * TILE },
@@ -1629,6 +1651,9 @@
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
   // Estado das mecânicas do Gatinho (0.18.0; só mudam nas fases que ligam `sprint`, `water`, `refuge` e `night`): fôlego (0 a 1), s ofegante, s de pelo molhado, arrancada em andamento, a salvo num lugar alto, escuridão (0 a 1) e o botão "Correr" do toque
   let stamina = 1, winded = 0, wet = 0, sprintOn = false, safe = false, darkness = 0, runTouch = false;
+  // Desenho do Gatinho (0.18.0, E2b-1): `catDraw` = a partida é do Gatinho e o js/cat-art.js está carregado (aí o gatinho, os cães, os ratinhos, os novelos, os camundongos, os postos e os efeitos são desenhados com CatArt;
+  // no Cachorrinho NADA disto roda). `catFx` = efeitos curtos em andamento (splash, shake, dust, hiss, sparkle, wetdrop); o resto são temporizadores de quando soltar um efeito.
+  let catDraw = false, catFx = [], dustT = 0, dropT = 0, inPuddle = false, catFloorAll = false, catSkin = ""; // (catSkin: a skin do gatinho; só os testes e as capturas a mudam; E2b-2: a loja a liga à skin em uso)
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
@@ -1683,6 +1708,7 @@
   // Começa uma fase do zero: rações novas, tempo zerado. `o.lives` = vidas iniciais; `o.retries` = novas tentativas já usadas.
   function reset(id = levelId, o = {}) {
     gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.18.0: o bichinho da partida vem ANTES das fases: elas, o ambiente e o texto são os dele)
+    catDraw = gameAnimal === "cat" && typeof CatArt !== "undefined"; catFx = []; dustT = 0; dropT = 0; inPuddle = false;
     levelId = id; lv = builtOf(gameAnimal)[id]; theme = Themes.of(id, gameAnimal); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
     applyGameUi(gameAnimal);
     document.body.classList.toggle("sprint-on", !!lv.sprint); // (o botão "Correr" do toque só aparece nas fases do Gatinho)
@@ -1809,16 +1835,20 @@
   function updateSprint(dt, moving) {
     const S = lv.sprint, free = fx.turbo > 0;
     if (winded > 0) winded = Math.max(0, winded - dt);
+    const was = sprintOn;
     sprintOn = sprintHeld() && moving && wet <= 0 && winded <= 0 && (stamina > 0 || free);
     if (sprintOn) {
-      if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; /* E2b: som do gatinho ofegante (se houver) */ } }
+      if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; /* E2b-2: som do gatinho ofegante (se houver) */ } }
+      if (catDraw && (!was || (dustT -= dt) <= 0)) { dustT = 0.17; addCatFx("dust", player.x + player.w / 2, player.y + player.h / 2, player.facing); } // poeirinha da arrancada (ao começar e a cada ~0,17 s)
     } else stamina = Math.min(1, stamina + S.regen * dt);
   }
   // Pelo molhado: o centro do gatinho numa poça (`~`) define `wet` = lv.water.wet s (renova enquanto ele estiver nela); depois de sair seca devagar. Molhado: ×0,65 de velocidade e sem arrancada. Os cães não se molham.
   function updateWater(dt) {
-    const [c, r] = dogTileNow();
-    if (lv.puddle && lv.puddle[r] && lv.puddle[r][c]) wet = lv.water.wet;
-    else if (wet > 0 && (wet -= dt) <= 0) { wet = 0; /* E2b: o gatinho sacode o pelo ao secar (som "shake" e CatArt.drawFx "shake") */ }
+    const [c, r] = dogTileNow(), inP = !!(lv.puddle && lv.puddle[r] && lv.puddle[r][c]), px = player.x + player.w / 2, py = player.y + player.h / 2;
+    if (inP) { wet = lv.water.wet; if (!inPuddle) addCatFx("splash", px, py); } // pisou na poça: splash (E2b-2: som da água)
+    else if (wet > 0 && (wet -= dt) <= 0) { wet = 0; addCatFx("shake", px, py); /* E2b-2: som "shake" */ } // secou: sacode o pelo
+    inPuddle = inP;
+    if (wet > 0 && catDraw && player.moving && (dropT -= dt) <= 0) { dropT = 0.45; addCatFx("wetdrop", px, py + 4); } // pelo molhado pinga por onde anda
   }
   // Lugar alto: com o centro do gatinho num tile `T` ele fica A SALVO (nenhum cão nem rastreador o pega); ao descer, não há proteção nenhuma.
   const onHighNow = () => { const [c, r] = dogTileNow(); return !!(lv.high && lv.high[r] && lv.high[r][c]); };
@@ -1849,25 +1879,6 @@
     if (v.cat) { v.seen = null; v.pounce = 0; }
     return true;
   }
-  function drawLevelExtras(c0, c1, r0, r1, rect, g) {
-    // E2b: trocar estas formas simples pelos desenhos do ambiente (CatThemes: th.crate / th.high / th.water) e da noite. Por enquanto o jogo já mostra onde ficam os obstáculos, os lugares altos e as poças.
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
-      const x = c * TILE, y = r * TILE;
-      if (lv.puddle && lv.puddle[r][c]) {
-        ctx.fillStyle = "rgba(70,140,210,.62)"; rect(x, y, TILE, TILE);
-        ctx.strokeStyle = "rgba(220,240,255,.7)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x + 11, y + 12, 6, 2.5, 0, 0, Math.PI * 2); ctx.ellipse(x + 22, y + 22, 5, 2, 0, 0, Math.PI * 2); ctx.stroke();
-      } else if (lv.high && lv.high[r][c]) {
-        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(x + 17, y + 26, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#6b4a2b"; rect(x + 12, y + 14, 8, 14);
-        ctx.fillStyle = "#3f8f4a"; ctx.beginPath(); ctx.arc(x + 16, y + 12, 13, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#58b062"; ctx.beginPath(); ctx.arc(x + 12, y + 9, 6, 0, Math.PI * 2); ctx.fill();
-      } else if (lv.crate[r][c]) {
-        g.x = x; g.y = y; g.c = c; g.r = r; g.free = false; g.border = false;
-        theme.crate(g);
-      }
-    }
-  }
-
   // ---------- Cachorro ----------
   const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1) * catSpeedFactor(); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade (Gatinho: ×1,35 na arrancada, ×0,65 molhado, ×0,85 sobre um X)
   function moveAxis(dx, dy) {
@@ -2285,7 +2296,7 @@
       Object.assign(c, { cx: c.sx, cy: c.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 2.5, modeT: 0, chaseAge: 0, think: c.cfg.thinkEvery, seen: null, pounce: 0, pounceCd: 0 });
     }
     invuln = invulnNow();
-    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; // (Gatinho: renasce com fôlego cheio e pelo seco)
+    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; inPuddle = false; // (Gatinho: renasce com fôlego cheio e pelo seco)
     return inPlace;
   }
 
@@ -2312,6 +2323,7 @@
     for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
     for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
     toast(P().say.powerOn(bonePowerNow(), cats.length > 0), 2.6); pickupToastUntil = time + 2.6;
+    addCatFx("hiss", player.x + player.w / 2, player.y + player.h / 2); // (Gatinho) o pelo se eriça: explosãozinha de linhas
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -2375,7 +2387,7 @@
       }
       if (overlap(player, { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R })) { // pegou!
         b.taken = true; b.vx = 0; b.vy = 0;
-        sound.play("pick"); puffs.push({ x: b.x, y: b.y, t: 0.4 });
+        sound.play("pick"); puffs.push({ x: b.x, y: b.y, t: 0.4 }); addCatFx("sparkle", b.x, b.y);
         if (time >= pickupToastUntil) toast(P().say.ballGot(Records.BALL_POINTS, ballsGot(), balls.length), 1.4);
         score = runningScore(); saveNow();
       }
@@ -2393,6 +2405,7 @@
   }
   function takeItem(it) { // pega um item (o cachorrinho encostou nele ou o ímã o trouxe)
     it.taken = true;
+    addCatFx("sparkle", it.x + 8, it.y + 8); // (Gatinho) brilhinho ao pegar um ratinho ou um novelo
     const kind = it.kind || "scare";
     if (it.bone) {
       bonesGot++; sound.play(P().sfx.bone);
@@ -2485,6 +2498,7 @@
     if (power > 0 && (power -= dt) <= 0) endPower();
     if (lv.minPoints && power <= 0 && allCollected() && !exitOpen() && !ballsCanOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
+    if (catFx.length) stepCatFx(dt);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
     const px = player.x + player.w / 2, py = player.y + player.h / 2, reach = lv.catMode && onLowNow() ? LOW_REACH : 22, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < reach; // (Gatinho: sobre um X os cães o alcançam do tile ao lado)
@@ -2813,6 +2827,12 @@
       b.type = "button"; b.id = `animal-${g.id}`; b.dataset.animal = g.id;
       const head = el("span", "animal-head"), emoji = el("span", "animal-emoji", g.emoji);
       emoji.setAttribute("aria-hidden", "true");
+      if (g.id === "cat" && g.ready && typeof CatArt !== "undefined") { // (0.18.0, E2b-1) o Gatinho aparece desenhado como no jogo (o emoji continua no elemento, escondido, para quem lê o texto)
+        const cv = document.createElement("canvas"); cv.width = 104; cv.height = 88; cv.className = "animal-art";
+        const c2 = cv.getContext("2d"); c2.scale(2.4, 2.4);
+        try { CatArt.drawCat(c2, { x: 48 / 2.4 - 12, y: 41 / 2.4 - 12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true }); } catch { /* sem desenho: fica o emoji */ }
+        emoji.classList.add("with-art"); emoji.append(cv);
+      }
       head.append(emoji, el("strong", null, g.name));
       if (isCur) head.append(el("span", "animal-now", "Escolhido"));
       let status;
@@ -2833,9 +2853,14 @@
   function openAnimals() { renderAnimals(); showScreen("animals"); }
 
   // ---------- Lojinha de skins (0.15.9): petiscos (1 por fase completada = 1 petscoin) por skins do cachorrinho ----------
-  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin
+  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin (no Gatinho, o gatinho adulto: E2b-2 troca a lista de skins pelas do gato)
     const c2 = canvas.getContext("2d"), keep = ctx;
     c2.clearRect(0, 0, canvas.width, canvas.height);
+    if (syncAnimal() === "cat" && typeof CatArt !== "undefined") {
+      c2.save(); c2.scale(3.4, 3.4);
+      try { CatArt.drawCat(c2, { x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true, calm: true }); } finally { c2.restore(); }
+      return;
+    }
     ctx = c2; c2.save(); c2.scale(3.4, 3.4);
     try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
   }
@@ -3056,13 +3081,14 @@
   // As do jogo (placar, descrição da tela e do controle) valem para o bichinho da PARTIDA e são aplicadas em reset(); as do menu (Como jogar, ajuda da lojinha...) para o ESCOLHIDO e são aplicadas em renderMenu().
   const UI_TARGETS = { howto: ["howto-steps", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"] };
   const UI_MENU = ["howto", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel"];
-  const UI_ORIG = {};
+  const UI_ORIG = {}, TITLE_ORIG = document.title; // (0.18.0, E2b-1: o título da aba também é do bichinho: "Jogo do cachorrinho" / "Jogo do gatinho")
   for (const [k, [id, how]] of Object.entries(UI_TARGETS)) UI_ORIG[k] = how === "html" ? $(id).innerHTML : $(id).getAttribute(how);
   const uiShown = { menu: "", game: "" };
   function applyUi(part, keys, animalId) {
     if (uiShown[part] === animalId) return;
     uiShown[part] = animalId;
     const p = profileOf(animalId);
+    document.title = p.ui.docTitle ?? TITLE_ORIG;
     for (const k of keys) {
       const [id, how] = UI_TARGETS[k], v = p.ui[k] ?? UI_ORIG[k], e = $(id);
       if (how === "html") { if (e.innerHTML !== v) e.innerHTML = v; } else if (e.getAttribute(how) !== v) e.setAttribute(how, v);
@@ -3661,6 +3687,85 @@
     ctx.globalAlpha = 1;
   }
 
+  // ---------- Desenho do Gatinho (0.18.0, E2b-1): CatThemes (os 20 ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos, efeitos) ----------
+  // Tudo daqui só roda quando `catDraw` (a partida é do Gatinho); o Cachorrinho desenha exatamente como sempre.
+  function drawExit(rect) { // a saída (verde aberta, vermelha fechada) com a palavra SAÍDA; igual para os dois bichinhos
+    ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
+    rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
+    ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
+    if (exitRect.h > exitRect.w) { ctx.save(); ctx.translate(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } // (a saída do Gatinho pode ser vertical, na borda esquerda ou direita)
+    else ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
+  }
+  // O que o ambiente do Gatinho recebe além do que o do Cachorrinho recebe (contrato de js/cat-themes.js): g.kind(c, r) = o caractere do mapa no tile ("#" fora do mapa), g.time = o relógio do jogo (0 com "reduzir movimento"), g.mass(c, r) = tamanho da mancha de parede.
+  const catKind = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS ? "#" : lv.kinds[r][c]);
+  const catMass = (c, r) => (c < 1 || r < 1 || c >= COLS - 1 || r >= ROWS - 1 ? 0 : lv.mass[r * COLS + c]);
+  function drawCatTiles(c0, c1, r0, r1, rect, g) {
+    g.kind = catKind; g.mass = catMass; g.time = calm ? 0 : time;
+    const border = (c, r) => c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1, kinds = lv.kinds;
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // 1º o chão em todos os tiles (menos sob as paredes, que o cobrem por inteiro)
+      if (!catFloorAll && kinds[r][c] === "#") continue; // (a parede cobre o tile inteiro: o chão por baixo dela não aparece, então não gasta tempo; `catFloorAll` desliga isto nos testes e o quadro sai IDÊNTICO nas 20 fases)
+      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c]; g.border = border(c, r);
+      theme.floor(g);
+    }
+    drawExit(rect);
+    for (let r = r0; r <= r1; r++) { // 2º por cima: parede (#), obstáculo baixo (X), lugar alto (T) e poça (~)
+      const row = kinds[r];
+      for (let c = c0; c <= c1; c++) {
+        const ch = row[c];
+        if (ch !== "#" && ch !== "X" && ch !== "T" && ch !== "~") continue;
+        g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = ch !== "#"; g.border = border(c, r);
+        if (ch === "#") theme.wall(g); else if (ch === "X") theme.crate(g); else if (ch === "T") (theme.high || theme.crate)(g);
+        else if (theme.water) theme.water(g); else { ctx.fillStyle = "rgba(70,140,210,.62)"; rect(g.x, g.y, TILE, TILE); } // (sem o ambiente do Gatinho, uma poça simples)
+      }
+    }
+  }
+  const CAT_FX_LEN = { splash: 0.75, shake: 0.7, dust: 0.45, hiss: 0.55, sparkle: 0.6, wetdrop: 0.8 }; // duração (s) de cada efeito curto
+  function addCatFx(kind, x, y, facing) { // solta um efeito curto (só no Gatinho; no máximo 24 ao mesmo tempo)
+    if (!catDraw) return;
+    if (catFx.length >= 24) catFx.shift();
+    catFx.push({ kind, x, y, age: 0, len: CAT_FX_LEN[kind] || 0.6, facing });
+  }
+  function stepCatFx(dt) { for (const f of catFx) f.age += dt; catFx = catFx.filter((f) => f.age < f.len); }
+  function drawCatFx() { for (const f of catFx) CatArt.drawFx(ctx, f.kind, f.x, f.y, f.age / f.len, { calm, facing: f.facing }); }
+  const catSize = () => (levelId <= 3 ? "small" : levelId <= 12 ? "medium" : "large"); // tamanho dos cães por fase (F1–F3 pequenos, F4–F12 médios, F13–F20 grandes)
+  function drawCatFoe(v, kind) { // cão de guarda (`vets`) ou rastreador (`cats`)
+    const mode = v.mode === "patrol" && !v.leg && v.idle > 0 ? "idle" : v.mode, frozen = fx.ice > 0, dir = v.dir || 1;
+    CatArt.drawDog(ctx, { x: v.cx, y: v.cy, dir, mode, kind, size: catSize(), frozen, slow: !!v.slow, idx: v.idx }, { time, calm });
+    if (v.mode === "chase" && !frozen) { // o "!" vermelho de sempre
+      ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("!", v.cx, v.cy - 25 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
+    }
+  }
+  function drawCatPlayer() { // o gatinho: cresce como o cachorrinho, afina com a arrancada, escurece molhado, fica maior a salvo e eriça o pelo com o poder do novelo
+    // E2b-2: skin do gato em uso (por ora a padrão: `catSkin` só muda nos testes e nas capturas)
+    CatArt.drawCat(ctx, player, { gr: dogGrowth(), skin: catSkin, time, calm, wet: lv.water ? clamp(wet / lv.water.wet, 0, 1) : 0, sprint: sprintOn, safe, hiss: power > 0 });
+  }
+  // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
+  // Barato: o halo é uma imagem pequena (um gradiente radial pintado uma vez, só com o desenho do degradê) esticada sobre o quadrado em volta do gatinho, e o resto do campo é um retângulo liso por quadro (quatro faixas): o gradiente do tamanho da tela inteira custava mais.
+  let nightImg = null;
+  function nightTexture() {
+    if (nightImg) return nightImg;
+    const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+    const c = cv.getContext("2d"), g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(6,10,32,0)"); g.addColorStop(0.42, "rgba(6,10,32,0)"); g.addColorStop(0.72, "rgba(6,10,32,0.45)"); g.addColorStop(1, "rgba(6,10,32,1)"); // (a opacidade de cada ponto, de 0 a 1, vezes o escuro da fase)
+    c.fillStyle = g; c.fillRect(0, 0, 128, 128);
+    return (nightImg = cv);
+  }
+  function drawNight(sx, camX, camY) {
+    const R = lv.night.halo * TILE * sx * (calm ? 1 : 1 + 0.025 * Math.sin(time * 2)), cx = Math.round((player.x + player.w / 2 - camX) * sx), cy = Math.round((player.y + player.h / 2 - camY) * sx), W = canvas.width, H = canvas.height;
+    const x0 = Math.round(cx - R), y0 = Math.round(cy - R), x1 = Math.round(cx + R), y1 = Math.round(cy + R);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = Math.min(0.9, darkness); ctx.fillStyle = "rgb(6,10,32)";
+    if (y0 > 0) ctx.fillRect(0, 0, W, Math.min(H, y0));            // faixas lisas: em cima, embaixo, à esquerda e à direita do quadrado do halo
+    if (y1 < H) ctx.fillRect(0, Math.max(0, y1), W, H - Math.max(0, y1));
+    const ya = Math.max(0, y0), yb = Math.min(H, y1);
+    if (x0 > 0 && yb > ya) ctx.fillRect(0, ya, Math.min(W, x0), yb - ya);
+    if (x1 < W && yb > ya) ctx.fillRect(Math.max(0, x1), ya, W - Math.max(0, x1), yb - ya);
+    ctx.drawImage(nightTexture(), x0, y0, x1 - x0, y1 - y0);        // o halo
+    ctx.globalAlpha = 1;
+    ctx.setTransform(sx, 0, 0, sx, -camX * sx, -camY * sx);
+  }
+
   function draw() {
     if (state === "menu" || !solids) return;
     const sx = view.k * view.zoom;
@@ -3680,33 +3785,41 @@
     const c0 = Math.max(0, Math.floor(camX / TILE)), c1 = Math.min(COLS - 1, Math.floor((camX + vw) / TILE)), r0 = Math.max(0, Math.floor(camY / TILE)), r1 = Math.min(ROWS - 1, Math.floor((camY + vh) / TILE));
     // o ambiente da fase (js/themes.js) desenha o chão, as paredes e as "caixas"; as paredes vizinhas se juntam num bloco só
     const g = themeG; g.ctx = ctx; g.rect = rect; g.solid = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
-    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
-      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c];
-      theme.floor(g);
+    if (catDraw && lv.kinds) drawCatTiles(c0, c1, r0, r1, rect, g); // (Gatinho: os ambientes de js/cat-themes*.js: chão em todos os tiles e por cima #, X, T e ~)
+    else {
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
+        g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c];
+        theme.floor(g);
+      }
+      drawExit(rect);
     }
-    ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
-    rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
-    if (exitRect.h > exitRect.w) { ctx.save(); ctx.translate(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } // (a saída do Gatinho pode ser vertical, na borda esquerda ou direita)
-    else ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
-    if (lv.catMode) drawLevelExtras(c0, c1, r0, r1, rect, g);
     drawBlocks();
     for (const s of solids) {
       if (s.x + s.w < camX || s.x > camX + vw || s.y + s.h < camY || s.y > camY + vh) continue; // fora da tela
       if (s.kind === "M") drawMovingBlock(s);
       else if (s.kind === "W") drawMovingWall(s);
       else if (s.van) drawVan(s);
+      else if (catDraw && lv.kinds) continue; // (Gatinho: as paredes já foram desenhadas junto com os outros tiles)
       else { // parede ("#") ou caixa ("X") no estilo do ambiente
         const c = s.x / TILE, r = s.y / TILE;
         g.x = s.x; g.y = s.y; g.c = c; g.r = r; g.free = false; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1;
         if (s.kind === "#") theme.wall(g); else theme.crate(g);
       }
     }
-    for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
-    for (const b of balls) if (!b.taken) drawBall(b);
-    for (const v of vets) drawVet(v);
-    for (const c of cats) drawCat(c);
-    if (fx.ice > 0) for (const e of everyone()) drawIce(e); // congelados pelo osso de gelo
+    if (catDraw) { // Gatinho: postos dos cães (casinha / almofada), ratinhos, novelos, camundongos ágeis e os cães com CatArt
+      for (const v of vets) CatArt.drawPost(ctx, v.sx, v.sy, { kind: "guard" });
+      for (const c of cats) CatArt.drawPost(ctx, c.sx, c.sy, { kind: "tracker" });
+      for (let i = 0; i < items.length; i++) { const it = items[i]; if (it.taken) continue; if (it.bone) CatArt.drawYarn(ctx, it, { time, calm }); else CatArt.drawMouse(ctx, { x: it.x, y: it.y, variant: i % 3 }, { time, calm }); }
+      for (const b of balls) if (!b.taken) CatArt.drawAgileMouse(ctx, b, { time, calm, r: BALL_R });
+      for (const v of vets) drawCatFoe(v, "guard");
+      for (const c of cats) drawCatFoe(c, "tracker");
+    } else {
+      for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
+      for (const b of balls) if (!b.taken) drawBall(b);
+      for (const v of vets) drawVet(v);
+      for (const c of cats) drawCat(c);
+      if (fx.ice > 0) for (const e of everyone()) drawIce(e); // congelados pelo osso de gelo
+    }
     for (const f of puffs) { // carteiro derrotado: nuvem que cresce e some
       ctx.fillStyle = `rgba(255,255,255,${(0.8 * (1 - f.t / 0.8)).toFixed(2)})`;
       for (const [dx, dy] of [[-8, -4], [8, -4], [0, 6], [0, -10]]) { ctx.beginPath(); ctx.arc(f.x + dx * (0.6 + f.t * 1.5), f.y + dy * (0.6 + f.t * 1.5), 5 + f.t * 8, 0, Math.PI * 2); ctx.fill(); }
@@ -3716,7 +3829,13 @@
       const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
-    if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) drawDog(player); // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível; com "reduzir movimento" não pisca)
+    const blink = started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0; // pisca enquanto está protegido (com o relógio parado, antes do primeiro passo, ele fica sempre visível; com "reduzir movimento" não pisca)
+    if (catDraw) {
+      if (blink) ctx.globalAlpha = 0.3; // (o gatinho fica meio transparente no "apagado" do piscar, em vez de sumir)
+      drawCatPlayer(); ctx.globalAlpha = 1;
+      if (catFx.length) drawCatFx();
+      if (lv.night && darkness > 0 && state === "playing") drawNight(sx, camX, camY); // a noite fica por cima do mundo, mas abaixo dos "!" e das setas
+    } else if (!blink) drawDog(player);
     drawChaseArrows(camX, camY, vw, vh);
     drawGuideArrows();
   }
@@ -4147,6 +4266,8 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get stamina() { return stamina; }, set stamina(v) { stamina = clamp(Number(v) || 0, 0, 1); }, get winded() { return winded; }, set winded(v) { winded = Math.max(0, Number(v) || 0); },
     get wet() { return wet; }, set wet(v) { wet = Math.max(0, Number(v) || 0); }, get sprinting() { return sprintOn; }, get safe() { return safe; }, get darkness() { return darkness; },
     catDefFrom(c) { return catDefFrom(c); }, buildLevel(def) { return buildLevel(def); }, // (só para testes: a conversão e a montagem de uma fase)
+    // (0.18.0, E2b-1) desenho do Gatinho (só para testes): `drawNow()` desenha um quadro agora (o mesmo draw() do laço, sem andar o jogo), `catDraw` = esta partida desenha com CatArt/CatThemes, `catFx` = os efeitos curtos em andamento
+    drawNow() { draw(); }, get catDraw() { return catDraw; }, get catFloorAll() { return catFloorAll; }, set catFloorAll(v) { catFloorAll = !!v; }, get catSkin() { return catSkin; }, set catSkin(v) { catSkin = typeof v === "string" ? v : ""; }, get catFx() { return catFx.map((f) => ({ kind: f.kind, x: f.x, y: f.y, age: f.age })); },
     defineCatLevels(list) {
       const defs = catGameFrom(list), g = gameOf("cat");
       if (!defs) return false;

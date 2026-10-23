@@ -115,7 +115,7 @@ const strict = (target, allowed, what) => new Proxy(target, {
   get(t, p) { if (typeof p === "symbol") return undefined; if (!allowed.has(p)) throw new Error(`${what}: leitura de "${String(p)}" não permitida`); const v = Reflect.get(t, p, t); return typeof v === "function" ? v.bind(t) : v; },
   set(t, p, v) { if (!allowed.has(p)) throw new Error(`${what}: escrita em "${String(p)}" não permitida`); return Reflect.set(t, p, v, t); },
 });
-const G_ALLOWED = new Set(["ctx", "rect", "x", "y", "c", "r", "h", "solid", "kind", "border", "time"]);
+const G_ALLOWED = new Set(["ctx", "rect", "x", "y", "c", "r", "h", "solid", "kind", "border", "time", "mass"]); // (mass: opcional, só o jogo o passa)
 
 // o terreno de teste é uma função pura da posição (como no jogo): `mode` escolhe o desenho do terreno em volta do tile
 function kindFn(mode) {
@@ -125,11 +125,12 @@ function kindFn(mode) {
   return (c, r) => { const v = CT.hash(c * 3 + 1, r * 5 + 2, 99); return v < 0.4 ? "#" : v < 0.5 ? "X" : v < 0.58 ? "T" : v < 0.7 ? "~" : "."; };
 }
 // opts: { c, r, border, mode, kind (função de terreno), time, noKind (sem g.kind), raster }
-function drawTile(th, what, { c, r, border = false, mode = "random", kind, time, noKind = false, raster = false }) {
+function drawTile(th, what, { c, r, border = false, mode = "random", kind, time, noKind = false, raster = false, mass }) {
   const rs = raster ? new Raster() : null, ctx = new FakeCtx(rs); ctx.ox = c * T; ctx.oy = r * T;
   const sp = strict(ctx, CTX_ALLOWED, "ctx"), kf = kind || kindFn(mode);
   const target = { ctx: sp, rect: (x, y, w, h) => sp.fillRect(x, y, w, h), x: c * T, y: r * T, c, r, border, solid: (cc, rr) => kf(cc, rr) === "#", h: (k) => CT.hash(c, r, k) };
   if (!noKind) target.kind = kf;
+  if (mass) target.mass = mass;
   if (time !== undefined) target.time = time;
   th[what](strict(target, G_ALLOWED, "g"));
   return ctx;
@@ -352,6 +353,21 @@ test("Telhados e muros: a borda do mapa é céu escuro; Parque e lago: o lago é
   }
   console.log(`     (em 800 tiles de parede sólida do parque: ${lakes} de lago e ${hedges} de arbusto)`);
   assert.ok(lakes > 100 && hedges > 100, "o parque precisa ter lago e arbusto");
+});
+test("Fase 9 com g.mass (como no jogo): a mancha enorme de paredes é um lago inteiro e as pequenas são arbustos, sem retalhos", () => {
+  const all = () => "#", big = () => 247, small = () => 12;
+  let lakes = 0, hedges = 0;
+  for (let c = 0; c < 20; c++) for (let r = 0; r < 12; r++) {
+    const a = paint(9, "wall", { c: 10 + c, r: 10 + r, kind: all, mass: big, raster: true }).raster.average();
+    if (a[2] > a[1] + 25 && a[2] > a[0] + 60) lakes++;
+    const b = paint(9, "wall", { c: 10 + c, r: 10 + r, kind: all, mass: small, raster: true }).raster.average();
+    if (b[1] > b[2] && b[1] > b[0]) hedges++;
+  }
+  assert.strictEqual(lakes, 240, "toda parede da mancha grande é água");
+  assert.strictEqual(hedges, 240, "toda parede da mancha pequena é arbusto");
+  // o anel de fora do mapa nunca é lago, mesmo ligado a uma mancha grande (g.mass vale 0 nele no jogo)
+  const ring = paint(9, "wall", { c: 0, r: 5, border: true, kind: all, mass: () => 0, raster: true }).raster.average();
+  assert.ok(ring[1] > ring[2], "o anel é arbusto");
 });
 test("os ambientes só tocam no que o contrato permite: leituras de g.free, g.night ou ctx.save são recusadas pelo contexto falso", () => {
   assert.throws(() => drawTile({ floor(g) { g.ctx.save(); } }, "floor", { c: 1, r: 1 }), /não permitida/);
