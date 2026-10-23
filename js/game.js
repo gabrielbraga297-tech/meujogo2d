@@ -3440,25 +3440,53 @@
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
   }
 
+  // ---------- Skins dos objetos do Cachorrinho (0.19.0, frente D): cada desenho lê `lookOf(categoria)` (js/skins-dog.js documenta os campos) e, sem o campo, desenha o visual de sempre (pixel a pixel) ----------
+  const RAINBOW = ["#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5"]; // as 5 cores do arco-íris (as mesmas da coleira da skin Arco-íris do cachorrinho)
+  function starPath(x, y, ro, ri) { // contorno de uma estrela de 5 pontas centrada em (x, y), ponta para cima (só o caminho: quem chama pinta)
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? ri : ro; if (i) ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); else ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+    ctx.closePath();
+  }
   function drawBall(b) { // bolinha: sombra, bola colorida com uma faixa branca e um brilho; gira enquanto rola
+    const k = lookOf("ball");
     const roll = Math.hypot(b.vx, b.vy) > 8, spin = roll ? time * 14 * Math.sign(b.vx + b.vy || 1) : 0;
     ellipse(b.x, b.y + BALL_R - 1, BALL_R, 3, "rgba(0,0,0,.28)");
     ctx.save(); ctx.translate(b.x, b.y);
     ctx.fillStyle = BALL_COLORS[b.hue % BALL_COLORS.length]; ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.3;
     ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.rotate(spin); ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, BALL_R - 2, 0.3, 1.9); ctx.stroke();
+    ctx.rotate(spin);
+    if (k.pattern) ballPattern(k);
+    else { ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, BALL_R - 2, 0.3, 1.9); ctx.stroke(); }
     ctx.restore();
     ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(b.x - 2.2, b.y - 2.4, 1.6, 0, Math.PI * 2); ctx.fill();
   }
+  function ballPattern(k) { // (skin) o desenho da bolinha, já girado e centrado nela: listras, bolinhas, estrela ou faixas de arco-íris; sempre dentro do círculo
+    const mark = k.mark || "#fff";
+    if (k.pattern === "stripes") { ctx.strokeStyle = mark; ctx.lineWidth = 1.8; ctx.beginPath(); for (const [y, hw] of [[-4.2, 6.2], [0, 7], [4.2, 6.2]]) { ctx.moveTo(-hw, y); ctx.lineTo(hw, y); } ctx.stroke(); }
+    else if (k.pattern === "dots") { ctx.fillStyle = mark; ctx.beginPath(); for (const [x, y] of [[-3.6, -2.4], [3.2, -3.4], [0.4, 3.4], [-4.2, 3.2], [4.4, 2.2]]) { ctx.moveTo(x + 1.5, y); ctx.arc(x, y, 1.5, 0, Math.PI * 2); } ctx.fill(); }
+    else if (k.pattern === "star") { starPath(0, 0.4, 5.6, 2.4); ctx.fillStyle = mark; ctx.fill(); }
+    else if (k.pattern === "rainbow") { // faixas de arco-íris (no lugar da cor da bolinha)
+      ctx.save(); ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.clip();
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; ctx.fillRect(-BALL_R, -BALL_R + (i * 2 * BALL_R) / 5, 2 * BALL_R, (2 * BALL_R) / 5 + 0.3); }
+      ctx.restore();
+      ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(0, 0, BALL_R, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   function drawKibble(it) { // tigela de ração
+    const k = lookOf("ration");
     const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 5, 10, 4, "rgba(0,0,0,.25)");
-    for (const [dx, dy] of [[-5, 0], [0, -2], [5, 0], [-2, 1], [3, 1], [0, 2]]) ellipse(cx + dx, cy + dy, 3.2, 2.6, "#8b5a2b");
-    ellipse(cx - 1, cy - 3, 2.6, 2.2, "#a8703a");
-    ctx.fillStyle = "#e5533d"; ctx.beginPath();
+    const kb = k.kibble || "#8b5a2b";
+    for (const [dx, dy] of [[-5, 0], [0, -2], [5, 0], [-2, 1], [3, 1], [0, 2]]) ellipse(cx + dx, cy + dy, 3.2, 2.6, kb);
+    ellipse(cx - 1, cy - 3, 2.6, 2.2, k.kibbleHi || "#a8703a");
+    ctx.fillStyle = k.bowl || "#e5533d"; ctx.beginPath();
     ctx.moveTo(cx - 10, cy + 1); ctx.lineTo(cx + 10, cy + 1); ctx.lineTo(cx + 7, cy + 8); ctx.lineTo(cx - 7, cy + 8); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.fillRect(cx - 8, cy + 3, 16, 1.5);
+    ctx.fillStyle = k.band || "#fff"; ctx.fillRect(cx - 8, cy + 3, 16, 1.5);
+    if (k.deco) {
+      ctx.fillStyle = k.mark || "#fff";
+      if (k.deco === "dots") { ctx.beginPath(); for (const dx of [-5.5, -1.8, 1.8, 5.5]) { ctx.moveTo(cx + dx + 1, cy + 6.2); ctx.arc(cx + dx, cy + 6.2, 1, 0, Math.PI * 2); } ctx.fill(); }
+      else if (k.deco === "sparkle") { for (const [dx, dy, r] of [[-8, -6, 2.4], [8, -4, 1.8], [1, -9, 1.5]]) { ctx.beginPath(); ctx.moveTo(cx + dx, cy + dy - r); ctx.lineTo(cx + dx + r * 0.35, cy + dy - r * 0.35); ctx.lineTo(cx + dx + r, cy + dy); ctx.lineTo(cx + dx + r * 0.35, cy + dy + r * 0.35); ctx.lineTo(cx + dx, cy + dy + r); ctx.lineTo(cx + dx - r * 0.35, cy + dy + r * 0.35); ctx.lineTo(cx + dx - r, cy + dy); ctx.lineTo(cx + dx - r * 0.35, cy + dy - r * 0.35); ctx.closePath(); ctx.fill(); } }
+    }
   }
 
   const BONE_LOOK = { // cores de cada tipo de osso (0.15.7)
@@ -3469,16 +3497,27 @@
     magnet: { fill: "#d8b4ff", stroke: "#8a4fd1", glow: "rgba(190,130,255,.38)" },
   };
   function drawBone(it) { // osso: vale 150 pontos (50 + 100 de bônus)
+    const k = lookOf("bone"), kind = it.kind || "scare", plain = kind === "scare"; // (skin: o osso COMUM muda de cor; os ossos de tipo novo guardam a cor e o brilho do efeito deles, para ninguém confundir, e só recebem o desenho da skin em tom sobre tom)
     const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
     ellipse(cx, cy + 7, 11, 3.5, "rgba(0,0,0,.25)");
-    const look = BONE_LOOK[it.kind || "scare"];
+    const look = BONE_LOOK[kind];
     if (look.glow) ellipse(cx, cy, 14, 14, look.glow); // os ossos de tipo novo brilham na cor do efeito
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.45);
-    ctx.fillStyle = look.fill; ctx.strokeStyle = look.stroke; ctx.lineWidth = 1.4;
+    ctx.fillStyle = (plain && k.fill) || look.fill; ctx.strokeStyle = (plain && k.stroke) || look.stroke; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.rect(-8, -2.4, 16, 4.8); ctx.fill(); ctx.stroke();
     for (const [x, y] of [[-8.5, -3], [-8.5, 3], [8.5, -3], [8.5, 3]]) { ctx.beginPath(); ctx.arc(x, y, 3.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     ctx.fillRect(-8, -2, 16, 4); // esconde o contorno entre a haste e as pontas
+    if (k.pattern) bonePattern(k, plain, look);
     ctx.restore();
+  }
+  function bonePattern(k, plain, look) { // (skin) o desenho do osso, já girado e centrado nele: listras, bolinhas, faixas de arco-íris ou estrelinhas. Nos ossos de tipo novo vale a cor do contorno do efeito (tom sobre tom)
+    const mark = plain ? k.mark || "#fff" : look.stroke;
+    if (k.pattern === "stripes") { ctx.fillStyle = mark; for (const x of [-4.8, -0.9, 3] ) ctx.fillRect(x, -2, 1.9, 4); }
+    else if (k.pattern === "dots") { ctx.fillStyle = mark; ctx.beginPath(); for (const [x, y, r] of [[-8.5, -3, 1.3], [-8.5, 3, 1.3], [8.5, -3, 1.3], [8.5, 3, 1.3], [-2.5, 0, 1.2], [2.5, 0, 1.2]]) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); } ctx.fill(); }
+    else if (k.pattern === "bands") {
+      if (plain) { for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; ctx.fillRect(-8 + i * 3.2, -2, 3.3, 4); } for (const [x, c] of [[-8.5, RAINBOW[0]], [8.5, RAINBOW[4]]]) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + 3, -3); ctx.arc(x, -3, 3, 0, Math.PI * 2); ctx.moveTo(x + 3, 3); ctx.arc(x, 3, 3, 0, Math.PI * 2); ctx.fill(); } }
+      else { ctx.fillStyle = mark; ctx.fillRect(-4.8, -2, 3.2, 4); ctx.fillRect(1.6, -2, 3.2, 4); }
+    } else if (k.pattern === "stars") { ctx.fillStyle = mark; for (const x of [-4.8, 0, 4.8]) { starPath(x, 0.1, 2.3, 1); ctx.fill(); } }
   }
 
   function drawBlocks() { // trilhos (todo o caminho que cada bloco ou parede percorre, de ponta a ponta) e os blocos que se movem
@@ -3496,24 +3535,56 @@
 
   // Parede que se move (Fase 5): pedra como as paredes, com faixas amarelas nas pontas para avisar que ela anda.
   function drawMovingWall(s) {
-    const m = theme.mover.wall; // [corpo, topo, borda] no estilo do ambiente (portão de madeira, grade de ferro, aço...)
+    const k = lookOf("block"), m = k.wall || theme.mover.wall; // [corpo, topo, borda] no estilo do ambiente (portão de madeira, grade de ferro, aço...); a skin troca por cores próprias
     ctx.fillStyle = m[0]; ctx.fillRect(s.x, s.y, s.w, s.h);
     ctx.fillStyle = m[1]; ctx.fillRect(s.x, s.y, s.w, 4);
-    ctx.fillStyle = "#f2c230";
     const vertical = s.h >= s.w, n = Math.round((vertical ? s.h : s.w) / TILE);
+    if (k.deco) blockDeco(k, s.x, s.y, s.w, s.h, n, vertical, true);
+    ctx.fillStyle = k.warn || "#f2c230";
     for (let i = 0; i < n; i++) {
       const x = s.x + (vertical ? 0 : i * TILE), y = s.y + (vertical ? i * TILE : 0);
-      ctx.fillRect(x + 3, y + 3, 5, 5); ctx.fillRect(x + TILE - 8, y + TILE - 8, 5, 5);
+      if (k.round) { ctx.beginPath(); ctx.arc(x + 5.5, y + 5.5, 2.7, 0, Math.PI * 2); ctx.arc(x + TILE - 5.5, y + TILE - 5.5, 2.7, 0, Math.PI * 2); ctx.fill(); } // (pinos redondos, como de peças de montar)
+      else { ctx.fillRect(x + 3, y + 3, 5, 5); ctx.fillRect(x + TILE - 8, y + TILE - 8, 5, 5); }
     }
     ctx.strokeStyle = m[2]; ctx.lineWidth = 2; ctx.strokeRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
   }
   function drawMovingBlock(s) {
-    const m = theme.mover.door; // [corpo, miolo, borda]
+    const k = lookOf("block"), m = k.door || theme.mover.door; // [corpo, miolo, borda]
     ctx.fillStyle = m[0]; ctx.fillRect(s.x + 1, s.y + 1, s.w - 2, s.h - 2);
     ctx.fillStyle = m[1]; ctx.fillRect(s.x + 4, s.y + 4, s.w - 8, s.h - 8);
-    ctx.fillStyle = "#f2c230"; // faixas amarelas de aviso nos cantos
-    for (const [dx, dy] of [[4, 4], [s.w - 12, 4], [4, s.h - 12], [s.w - 12, s.h - 12]]) ctx.fillRect(s.x + dx, s.y + dy, 8, 8);
+    if (k.deco) blockDeco(k, s.x, s.y, s.w, s.h, 1, false, false);
+    ctx.fillStyle = k.warn || "#f2c230"; // faixas amarelas de aviso nos cantos
+    for (const [dx, dy] of [[4, 4], [s.w - 12, 4], [4, s.h - 12], [s.w - 12, s.h - 12]]) {
+      if (k.round) { ctx.beginPath(); ctx.arc(s.x + dx + 4, s.y + dy + 4, 4, 0, Math.PI * 2); ctx.fill(); }
+      else ctx.fillRect(s.x + dx, s.y + dy, 8, 8);
+    }
     ctx.strokeStyle = m[2]; ctx.lineWidth = 2; ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
+  }
+  function blockDeco(k, x, y, w, h, n, vertical, wall) { // (skin) o desenho do corpo do bloco ou da parede: veios de madeira, brilhos de gelo ou buracos de queijo; fica dentro do corpo e abaixo dos avisos
+    const mark = k.mark || "rgba(0,0,0,.18)";
+    if (k.deco === "grain") { // veios de madeira: linhas na direção do comprimento e um nó por peça
+      ctx.strokeStyle = mark; ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const tx = x + (vertical ? 0 : i * TILE), ty = y + (vertical ? i * TILE : 0);
+        if (wall && vertical) { for (const o of [10, 16, 22]) { ctx.moveTo(tx + o, ty + 6); ctx.lineTo(tx + o, ty + TILE - 2); } }
+        else { for (const o of [11, 16, 21]) { ctx.moveTo(tx + 6, ty + o); ctx.lineTo(tx + TILE - 6, ty + o); } }
+      }
+      ctx.stroke();
+    } else if (k.deco === "glint") { // brilhos de gelo: dois riscos claros na diagonal por peça
+      ctx.strokeStyle = mark; ctx.lineWidth = 1.6; ctx.lineCap = "round"; ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const tx = x + (vertical ? 0 : i * TILE), ty = y + (vertical ? i * TILE : 0);
+        ctx.moveTo(tx + 13, ty + 15); ctx.lineTo(tx + 19, ty + 9); ctx.moveTo(tx + 17, ty + 21); ctx.lineTo(tx + 24, ty + 14);
+      }
+      ctx.stroke(); ctx.lineCap = "butt";
+    } else if (k.deco === "holes") { // buracos de queijo
+      ctx.fillStyle = mark; ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const tx = x + (vertical ? 0 : i * TILE), ty = y + (vertical ? i * TILE : 0);
+        for (const [dx, dy, r] of [[12, 14, 3.2], [21, 20, 2.4], [20, 11, 1.6]]) { ctx.moveTo(tx + dx + r, ty + dy); ctx.arc(tx + dx, ty + dy, r, 0, Math.PI * 2); }
+      }
+      ctx.fill();
+    }
   }
 
   // O cachorrinho cresce (0.15.0): começa filhote na Fase 1 e vai ficando adulto conforme passa de fase e ganha reforços (só o desenho; o tamanho de contato é sempre o mesmo).
@@ -3596,18 +3667,20 @@
 
   // Carteiro (os agentes enquanto dura o poder do osso): uniforme azul, boné com distintivo amarelo, bolsa de correspondência e uma carta.
   function drawPostman(v) {
+    const lk = lookOf("postman");
     if (v.slow) ctx.globalAlpha = 0.55; // carteiro já pego neste poder (não rende mais pontos): fica esmaecido
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0));
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
-    ctx.fillStyle = "#1e3a6e"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);   // calça
-    ctx.fillStyle = "#3f7fd6"; ctx.fillRect(x - 10, y - 7, 20, 15);                                  // camisa
-    ctx.fillStyle = "#336bb8"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10); // braços
-    ctx.fillStyle = "#8a5a2b"; ctx.fillRect(x - 10, y - 7, 4, 15); ctx.fillRect(x - 10, y + 3, 17, 5); // alça e bolsa
+    ctx.fillStyle = lk.pants || "#1e3a6e"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);   // calça
+    ctx.fillStyle = lk.shirt || "#3f7fd6"; ctx.fillRect(x - 10, y - 7, 20, 15);                                  // camisa
+    if (lk.deco) postmanDeco(lk, x, y);
+    ctx.fillStyle = lk.sleeves || "#336bb8"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10); // braços
+    ctx.fillStyle = lk.bag || "#8a5a2b"; ctx.fillRect(x - 10, y - 7, 4, 15); ctx.fillRect(x - 10, y + 3, 17, 5); // alça e bolsa
     ctx.fillStyle = "#fff"; ctx.fillRect(x + 7, y - 1, 7, 5); ctx.strokeStyle = "#c33"; ctx.lineWidth = 1; ctx.strokeRect(x + 7.5, y - 0.5, 6, 4); // carta
     ellipse(x, y - 12, 6, 6, "#f0c8a0");                                                              // cabeça
-    ctx.fillStyle = "#1e3a6e"; ctx.beginPath(); ctx.arc(x, y - 13, 6.6, Math.PI, 0); ctx.fill();       // boné
+    ctx.fillStyle = lk.cap || "#1e3a6e"; ctx.beginPath(); ctx.arc(x, y - 13, 6.6, Math.PI, 0); ctx.fill();       // boné
     ctx.fillRect(x - 8, y - 13.5, 16, 2.5);
-    ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18, 3, 3);                                     // distintivo
+    ctx.fillStyle = lk.badge || "#f2c230"; ctx.fillRect(x - 1.5, y - 18, 3, 3);                                     // distintivo
     ellipse(x - 2.2 + v.dir, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + v.dir, y - 11, 1, 1, "#222");
     if (v.mode === "flee" && !(v.hitCool > 0)) { // fugindo: gotas de suor escorrendo
       const t1 = calm ? 0.3 : (time * 2.5 + v.cx * 0.01) % 1, t2 = calm ? 0.7 : (t1 + 0.5) % 1;
@@ -3619,37 +3692,56 @@
     }
     ctx.globalAlpha = 1;
   }
+  function postmanDeco(k, x, y) { // (skin) o desenho da camisa do carteiro (caixa de 20 × 15 px a partir de x - 10, y - 7): listras ou estrelinhas; a alça e a bolsa são desenhadas por cima
+    ctx.fillStyle = k.mark || "#fff";
+    if (k.deco === "stripes") { for (const dy of [-4.5, -0.5, 3.5]) ctx.fillRect(x - 10, y + dy, 20, 2); }
+    else if (k.deco === "stars") { for (const [dx, dy, r] of [[-2, -3.8, 2.8], [4, -3.6, 2.4], [1, 0.6, 2.2]]) { starPath(x + dx, y + dy, r, r * 0.45); ctx.fill(); } }
+  }
   // Agente da carrocinha: uniforme verde-oliva, colete laranja refletivo, boné com distintivo e um puçá (rede) numa vara comprida.
   function drawVan(s) { // van da carrocinha vista de cima: teto claro, cabine escura na frente, grade da jaula atrás e giroflex vermelho
-    const x = s.x, y = s.y, left = s.x / TILE < (COLS >> 1); // a frente da van aponta para o centro do pátio
+    const k = lookOf("van"), x = s.x, y = s.y, left = s.x / TILE < (COLS >> 1); // a frente da van aponta para o centro do pátio
     ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.fillRect(x + 3, y + 5, 28, 26);
-    ctx.fillStyle = "#d9dee8"; ctx.fillRect(x + 2, y + 3, 28, 26);        // carroceria
-    ctx.fillStyle = "#aab3c4"; ctx.fillRect(x + 2, y + 26, 28, 3);        // beiral
-    ctx.fillStyle = "#2b3550"; ctx.fillRect(left ? x + 20 : x + 3, y + 6, 8, 20); // cabine/para-brisa
-    ctx.strokeStyle = "#5a6478"; ctx.lineWidth = 1.5; ctx.beginPath();     // grade da jaula
+    ctx.fillStyle = k.body || "#d9dee8"; ctx.fillRect(x + 2, y + 3, 28, 26);        // carroceria
+    ctx.fillStyle = k.eave || "#aab3c4"; ctx.fillRect(x + 2, y + 26, 28, 3);        // beiral
+    ctx.fillStyle = k.cab || "#2b3550"; ctx.fillRect(left ? x + 20 : x + 3, y + 6, 8, 20); // cabine/para-brisa
+    ctx.strokeStyle = k.bars || "#5a6478"; ctx.lineWidth = 1.5; ctx.beginPath();     // grade da jaula
     for (let i = 0; i < 4; i++) { const gx = (left ? x + 6 : x + 14) + i * 3.5; ctx.moveTo(gx, y + 7); ctx.lineTo(gx, y + 25); }
     ctx.stroke();
-    ctx.fillStyle = "#e23d3d"; ctx.fillRect(x + 14, y + 4, 4, 3);          // giroflex
-    ctx.fillStyle = "#ff8a1f"; ctx.fillRect(x + 4, y + 27, 24, 1.5);       // faixa laranja
+    ctx.fillStyle = k.light || "#e23d3d"; ctx.fillRect(x + 14, y + 4, 4, 3);          // giroflex
+    if (k.stripe === "rainbow") { for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; ctx.fillRect(x + 4 + i * 4.8, y + 27, 4.9, 1.5); } } // faixa de arco-íris
+    else { ctx.fillStyle = k.stripe || "#ff8a1f"; ctx.fillRect(x + 4, y + 27, 24, 1.5); }       // faixa laranja
+    if (k.deco) vanDeco(k, x, y);
+  }
+  function vanDeco(k, x, y) { // (skin) enfeites na faixa de cima do teto da van (entre a beira e a grade), dos dois lados do giroflex: bolinhas ou corações
+    ctx.fillStyle = k.mark || "#fff";
+    if (k.deco === "dots") { ctx.beginPath(); for (const dx of [6, 10, 22, 26]) { ctx.moveTo(x + dx + 1.2, y + 5); ctx.arc(x + dx, y + 5, 1.2, 0, Math.PI * 2); } ctx.fill(); }
+    else if (k.deco === "hearts") {
+      ctx.beginPath();
+      for (const dx of [6, 10, 22, 26]) { const hx = x + dx, hy = y + 4.6; ctx.moveTo(hx, hy + 2.2); ctx.bezierCurveTo(hx - 3.4, hy - 0.2, hx - 1.9, hy - 2.5, hx, hy - 0.9); ctx.bezierCurveTo(hx + 1.9, hy - 2.5, hx + 3.4, hy - 0.2, hx, hy + 2.2); }
+      ctx.fill();
+    }
   }
   function drawVet(v) {
     if (power > 0) { drawPostman(v); return; }
+    const k = lookOf("agent");
     const x = v.cx, y = v.cy + (calm ? 0 : Math.sin(time * 6 + v.cx) * (v.leg ? 1 : 0)), d = v.dir || 1, chase = v.mode === "chase";
     ellipse(x, y + 12, 11, 4, "rgba(0,0,0,.25)");
     const px = x + d * (chase ? 16 : 12), py = y - (chase ? 11 : 17); // o puçá aponta para a frente quando persegue
-    ctx.strokeStyle = "#8a6a3a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + d * 8, y + 5); ctx.lineTo(px, py + 3); ctx.stroke(); // vara
-    ctx.strokeStyle = "#ececec"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(px, py - 1, 5.5, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); // aro da rede
+    ctx.strokeStyle = k.pole || "#8a6a3a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + d * 8, y + 5); ctx.lineTo(px, py + 3); ctx.stroke(); // vara
+    ctx.strokeStyle = k.ring || "#ececec"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(px, py - 1, 5.5, 4.5, 0, 0, Math.PI * 2); ctx.stroke(); // aro da rede
     ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px - 5, py - 1); ctx.lineTo(px + 5, py - 1); ctx.moveTo(px, py - 5.5); ctx.lineTo(px, py + 3.5); ctx.stroke(); // malha
-    ctx.fillStyle = "#3d4a2a"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);       // calça
-    ctx.fillStyle = "#1f1f1f"; ctx.fillRect(x - 6.5, y + 11, 6, 2.5); ctx.fillRect(x + 0.5, y + 11, 6, 2.5); // botas
-    ctx.fillStyle = "#506a3e"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10);     // mangas
-    ctx.fillStyle = "#ff8a1f"; ctx.fillRect(x - 9, y - 7, 18, 15);                                        // colete laranja
-    ctx.fillStyle = "#f4f4f4"; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 3, 18, 2);      // faixas refletivas
+    ctx.fillStyle = k.pants || "#3d4a2a"; ctx.fillRect(x - 6, y + 4, 5, 9); ctx.fillRect(x + 1, y + 4, 5, 9);       // calça
+    ctx.fillStyle = k.boots || "#1f1f1f"; ctx.fillRect(x - 6.5, y + 11, 6, 2.5); ctx.fillRect(x + 0.5, y + 11, 6, 2.5); // botas
+    ctx.fillStyle = k.sleeves || "#506a3e"; ctx.fillRect(x - 12, y - 6, 3, 10); ctx.fillRect(x + 9, y - 6, 3, 10);     // mangas
+    ctx.fillStyle = k.vest || "#ff8a1f"; ctx.fillRect(x - 9, y - 7, 18, 15);                                        // colete laranja
+    if (k.stripes === "rainbow") { for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; ctx.fillRect(x - 9, y - 7 + i * 3, 18, 3.1); } } // colete de arco-íris
+    else { ctx.fillStyle = k.stripes || "#f4f4f4"; ctx.fillRect(x - 9, y - 3, 18, 2); ctx.fillRect(x - 9, y + 3, 18, 2); }      // faixas refletivas
     ellipse(x, y - 12, 6, 6, "#f0c8a0");                                                                  // cabeça
-    ctx.fillStyle = "#33432a"; ctx.beginPath(); ctx.arc(x, y - 13, 6.5, Math.PI, 0); ctx.fill();          // boné
+    ctx.fillStyle = k.cap || "#33432a"; ctx.beginPath(); ctx.arc(x, y - 13, 6.5, Math.PI, 0); ctx.fill();          // boné
     ctx.fillRect(x - 7 + (d > 0 ? 0 : -3), y - 13.5, 14 + 3, 2.2);                                       // aba
-    ctx.fillStyle = "#f2c230"; ctx.fillRect(x - 1.5, y - 18.5, 3, 3);                                     // distintivo
+    ctx.fillStyle = k.badge || "#f2c230"; ctx.fillRect(x - 1.5, y - 18.5, 3, 3);                                     // distintivo
     ellipse(x - 2.2 + d, y - 11, 1, 1, "#222"); ellipse(x + 2.2 + d, y - 11, 1, 1, "#222");
+    if (k.tie) { ctx.fillStyle = k.tie; ctx.beginPath(); ctx.moveTo(x, y - 5.2); ctx.lineTo(x - 4.6, y - 7.6); ctx.lineTo(x - 4.6, y - 2.8); ctx.closePath(); ctx.moveTo(x, y - 5.2); ctx.lineTo(x + 4.6, y - 7.6); ctx.lineTo(x + 4.6, y - 2.8); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.arc(x, y - 5.2, 1.5, 0, Math.PI * 2); ctx.fill(); } // gravata-borboleta (skin)
     if (chase && fx.ice <= 0) { // (congelado, não persegue: sem o "!")
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("!", x, y - 24 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
@@ -3684,11 +3776,13 @@
     { fur: "#3a3b45", dark: "#1c1d24", light: "#666878", eye: "#ffd24a" },
     { fur: "#efe9df", dark: "#d79b5a", light: "#ffffff", eye: "#6bb7ff" },
   ];
+  const NO_TILES = []; // (o gato do mostruário da lojinha não pisa em caixas: sem "pulo")
   function drawCat(c) {
+    const lk = lookOf("foecat");
     if (c.slow) ctx.globalAlpha = 0.55; // gato já assustado neste poder (não rende mais pontos): fica esmaecido, como o carteiro
-    const coat = CAT_COATS[c.look % CAT_COATS.length], flee = c.mode === "flee", chase = c.mode === "chase", d = c.dir || 1, pounce = c.pounce > 0, walking = !!c.leg;
+    const coat = (lk.coats || CAT_COATS)[c.look % CAT_COATS.length], flee = c.mode === "flee", chase = c.mode === "chase", d = c.dir || 1, pounce = c.pounce > 0, walking = !!c.leg;
     let lift = 0; // pulo: sobe até 11 px quando está sobre uma caixa "X" e desce ao se afastar dela
-    for (const t of [tileOf(c.cx, c.cy), c.leg]) if (t && lv.crate[t[1]] && lv.crate[t[1]][t[0]]) { const [x0, y0] = centerOf(t[0], t[1]); lift = Math.max(lift, 11 * (1 - Math.min(1, Math.hypot(c.cx - x0, c.cy - y0) / TILE))); }
+    for (const t of c.show ? NO_TILES : [tileOf(c.cx, c.cy), c.leg]) if (t && lv.crate[t[1]] && lv.crate[t[1]][t[0]]) { const [x0, y0] = centerOf(t[0], t[1]); lift = Math.max(lift, 11 * (1 - Math.min(1, Math.hypot(c.cx - x0, c.cy - y0) / TILE))); }
     const bob = calm || !walking ? 0 : Math.sin(time * 14 + c.cx * 0.1) * 1.2, leg = walking && !calm ? Math.sin(time * 16 + c.cx * 0.1) * 3 : 0;
     ellipse(c.cx, c.cy + 12, 10 - lift * 0.3, 3.5 - lift * 0.1, "rgba(0,0,0,.25)");
     ctx.save(); ctx.translate(c.cx, c.cy + 2 - lift + bob); ctx.scale(d, 1); // desenhado olhando para a direita; d = -1 espelha
@@ -3716,6 +3810,7 @@
     ctx.fillStyle = "#111"; if (flee) ellipse(hx + 2.4, hy - 1.6, 1.2, 1.2, "#111"); else ctx.fillRect(hx + 2.1, hy - 1.6 - er * 0.9, 0.9, er * 1.8); // pupila (redonda ao fugir, fenda no resto)
     ctx.strokeStyle = coat.light === "#ffffff" ? "#cfcfcf" : "#f2f2f2"; ctx.lineWidth = 0.6; // bigodes
     for (const k of [-1, 0, 1]) { ctx.beginPath(); ctx.moveTo(hx + 4.2, hy + 1.5 + k * 1.2); ctx.lineTo(hx + 10, hy + 0.5 + k * 2.6); ctx.stroke(); }
+    if (lk.acc) catAccessory(lk, hx, hy, long, low);
     ctx.restore();
     if (chase && fx.ice <= 0) { // (congelado, não persegue: sem o "!")
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
@@ -3732,14 +3827,76 @@
     ctx.globalAlpha = 1;
   }
 
+  function catAccessory(k, hx, hy, long, low) { // (skin) enfeites do gato inimigo, no sistema do gato (olhando para a direita): coleira com guizo, laço na orelha ou chapéu de festa
+    if (k.acc === "bell") { // coleira com guizo no pescoço
+      ctx.fillStyle = k.collar || "#e5533d"; ctx.fillRect(6.4 * long, -3 + low * 0.5 + 3.4, 3.4, 5); ctx.fillStyle = k.bell || "#f2c230"; ctx.beginPath(); ctx.arc(8.1 * long, 7.3 + low * 0.5, 2, 0, Math.PI * 2); ctx.fill();
+    } else if (k.acc === "bow") { // laço entre as orelhas
+      const bx = hx - 1.6, by = hy - 7.4; ctx.fillStyle = k.collar || "#ff6fa5";
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 4.2, by - 2.4); ctx.lineTo(bx - 4.2, by + 2.4); ctx.closePath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 4.2, by - 2.4); ctx.lineTo(bx + 4.2, by + 2.4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k.bell || "#d93b80"; ctx.beginPath(); ctx.arc(bx, by, 1.5, 0, Math.PI * 2); ctx.fill();
+    } else if (k.acc === "party") { // chapéu de festa (cone listrado com pompom)
+      const bx = hx - 0.4, by = hy - 8.6;
+      ctx.fillStyle = k.collar || "#7b4fd0"; ctx.beginPath(); ctx.moveTo(bx - 3.8, by + 1.2); ctx.lineTo(bx + 0.6, by - 8); ctx.lineTo(bx + 4.6, by + 1.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = k.bell || "#ffd23f"; ctx.beginPath(); ctx.moveTo(bx - 2.2, by - 1.6); ctx.lineTo(bx + 3.2, by - 1.6); ctx.lineTo(bx + 4, by + 0.2); ctx.lineTo(bx - 3, by + 0.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(bx + 0.6, by - 8, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // ---------- Mostruários da lojinha para os objetos do Cachorrinho (0.19.0, frente D): PREVIEW[categoria](c2, skin, w, h) desenha a skin no canvas c2 (w × h), centrada, com o relógio parado (sem balanço) e sem o poder do osso ----------
+  function stage(slot, k, c2, w, h, scale, fn) { // roda `fn` (desenha com o centro do canvas em (0, 0), `scale` px por pixel do jogo) com a skin `k` da categoria `slot` em uso
+    c2.clearRect(0, 0, w, h);
+    const t0 = time, p0 = power, th0 = theme;
+    time = 0; power = 0; theme = Themes.of(3, "dog"); // (o ambiente da Fase 3 dá as cores de sempre dos blocos e dos trilhos)
+    try { withLook(slot, k, c2, () => { c2.save(); c2.translate(w / 2, h / 2); c2.scale(scale, scale); try { fn(); } finally { c2.restore(); } }); } finally { time = t0; power = p0; theme = th0; }
+  }
+  PREVIEW.agent = (c2, k, w, h) => stage("agent", k, c2, w, h, 3.6, () => drawVet({ cx: -3, cy: 3, dir: 1, mode: "patrol", leg: 0 }));
+  PREVIEW.postman = (c2, k, w, h) => stage("postman", k, c2, w, h, 3.8, () => drawPostman({ cx: -1.5, cy: 3, dir: 1, mode: "patrol", leg: 0, slow: false, hitCool: 0 }));
+  PREVIEW.ration = (c2, k, w, h) => stage("ration", k, c2, w, h, 6.4, () => { c2.translate(-8, -9); drawKibble({ x: 0, y: 0 }); });
+  PREVIEW.bone = (c2, k, w, h) => stage("bone", k, c2, w, h, 5.4, () => {
+    c2.save(); c2.translate(0, -7); c2.translate(-8, -8); drawBone({ x: 0, y: 0 }); c2.restore(); // o osso comum, grande
+    for (const [i, kind] of ["gold", "ice", "magnet"].entries()) { c2.save(); c2.translate((i - 1) * 13, 16); c2.scale(0.42, 0.42); c2.translate(-8, -8); drawBone({ x: 0, y: 0, kind }); c2.restore(); } // e três ossos de tipo novo, pequenos (a skin vale em tom sobre tom: a cor do efeito não muda)
+  });
+  PREVIEW.ball = (c2, k, w, h) => stage("ball", k, c2, w, h, 3.3, () => { for (let i = 0; i < 3; i++) drawBall({ x: (i - 1) * 21, y: 0, vx: 0, vy: 0, hue: i }); });
+  PREVIEW.block = (c2, k, w, h) => stage("block", k, c2, w, h, 1.9, () => {
+    const rail = (x1, y1, x2, y2) => { c2.lineCap = "butt"; c2.strokeStyle = theme.rail[0]; c2.lineWidth = 16; c2.beginPath(); c2.moveTo(x1, y1); c2.lineTo(x2, y2); c2.stroke(); c2.strokeStyle = theme.rail[1]; c2.lineWidth = 8; c2.beginPath(); c2.moveTo(x1, y1); c2.lineTo(x2, y2); c2.stroke(); };
+    rail(-48, -22, 48, -22); drawMovingWall({ x: -16, y: -38, w: 64, h: 32 }); // um pedaço de parede (2 tiles) num trilho
+    rail(-48, 22, 48, 22); drawMovingBlock({ x: -40, y: 6, w: 32, h: 32 }); // e um bloco no outro trilho
+  });
+  PREVIEW.van = (c2, k, w, h) => stage("van", k, c2, w, h, 3.6, () => drawVan({ x: -16.5, y: -17, w: 32, h: 32, van: true }));
+  PREVIEW.foecat = (c2, k, w, h) => stage("foecat", k, c2, w, h, 2.7, () => {
+    drawCat({ cx: -23, cy: 2, dir: 1, look: 0, mode: "patrol", idx: 0, hitCool: 0, pounce: 0, slow: false, leg: 0, show: true });
+    drawCat({ cx: 23, cy: 2, dir: -1, look: 2, mode: "patrol", idx: 0, hitCool: 0, pounce: 0, slow: false, leg: 0, show: true });
+  });
+  const exitPreview = (slot) => (c2, k, w, h) => stage(slot, k, c2, w, h, 2, () => drawExitAt((x, y, rw, rh) => c2.fillRect(x, y, rw, rh), { x: -48, y: -32, w: 96, h: 64 }, true, lookOf(slot))); // a saída aberta (as duas categorias, "exit" e "catexit", desenham com a mesma função e os mesmos campos)
+  PREVIEW.exit = exitPreview("exit"); PREVIEW.catexit = exitPreview("catexit");
+
   // ---------- Desenho do Gatinho (0.18.0): CatThemes (os 20 ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos, efeitos) ----------
   // Tudo daqui só roda quando `catDraw` (a partida é do Gatinho); o Cachorrinho desenha exatamente como sempre.
-  function drawExit(rect) { // a saída (verde aberta, vermelha fechada) com a palavra SAÍDA; igual para os dois bichinhos
-    ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
-    rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
-    ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
-    if (exitRect.h > exitRect.w) { ctx.save(); ctx.translate(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } // (a saída do Gatinho pode ser vertical, na borda esquerda ou direita)
-    else ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
+  function drawExit(rect) { drawExitAt(rect, exitRect, exitOpen(), lookOf(catDraw ? "catexit" : "exit")); } // (skin: "exit" no Cachorrinho, "catexit" no Gatinho: a mesma função e os mesmos campos visuais)
+  function drawExitAt(rect, ex, open, k) { // a saída `ex` ({x, y, w, h}) aberta ou fechada, com a skin `k`
+    ctx.fillStyle = open ? k.open || "#3ddc84" : k.closed || "#7a4b4b";
+    rect(ex.x, ex.y, ex.w, ex.h);
+    if (k.deco) exitDeco(rect, ex, open, k);
+    ctx.fillStyle = open ? k.inkOpen || "#06210f" : k.inkClosed || "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
+    if (ex.h > ex.w) { ctx.save(); ctx.translate(ex.x + ex.w / 2, ex.y + ex.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } // (a saída do Gatinho pode ser vertical, na borda esquerda ou direita)
+    else ctx.fillText("SAÍDA", ex.x + ex.w / 2, ex.y + ex.h / 2 + 5);
+  }
+  function exitDeco(rect, ex, open, k) { // (skin) o enfeite da saída, dentro dela e abaixo da palavra SAÍDA; fechada, o enfeite fica mais apagado (a saída continua verde aberta, vermelha fechada)
+    const wide = ex.w >= ex.h, len = wide ? ex.w : ex.h, thick = wide ? ex.h : ex.w; // comprimento e espessura (a saída vertical vale a mesma regra, de lado)
+    const R = (a, b, l, t) => (wide ? rect(ex.x + a, ex.y + b, l, t) : rect(ex.x + b, ex.y + a, t, l)); // retângulo em (a ao longo, b através) da saída
+    const prev = ctx.globalAlpha; if (!open) ctx.globalAlpha = prev * 0.55;
+    if (k.deco === "stripes") { ctx.fillStyle = k.mark || "rgba(255,255,255,.28)"; for (let a = 6; a < len - 4; a += 12) R(a, 0, 6, thick); } // listras de toldo
+    else if (k.deco === "rainbow") { // faixas de arco-íris nas duas bordas compridas
+      const bw = Math.min(3, thick / 14);
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; R(0, i * bw, len, bw + 0.2); R(0, thick - (i + 1) * bw, len, bw + 0.2); }
+    } else if (k.deco === "stars") { // estrelinhas espalhadas
+      ctx.fillStyle = k.mark || "#ffe066";
+      for (let a = 10; a < len - 6; a += 20) for (const b of [thick * 0.22, thick * 0.78]) { const sx = wide ? ex.x + a : ex.x + b, sy = wide ? ex.y + b : ex.y + a; starPath(sx, sy, 4.2, 1.8); ctx.fill(); }
+    } else if (k.deco === "frame") { // moldura dourada com cantos brilhantes
+      ctx.strokeStyle = k.mark || "#d4a017"; ctx.lineWidth = 3; ctx.strokeRect(ex.x + 1.5, ex.y + 1.5, ex.w - 3, ex.h - 3);
+      ctx.fillStyle = k.mark || "#d4a017"; ctx.beginPath(); for (const [dx, dy] of [[4, 4], [ex.w - 4, 4], [4, ex.h - 4], [ex.w - 4, ex.h - 4]]) { ctx.moveTo(ex.x + dx + 3.4, ex.y + dy); ctx.arc(ex.x + dx, ex.y + dy, 3.4, 0, Math.PI * 2); } ctx.fill();
+    }
+    ctx.globalAlpha = prev;
   }
   // O que o ambiente do Gatinho recebe além do que o do Cachorrinho recebe (contrato de js/cat-themes.js): g.kind(c, r) = o caractere do mapa no tile ("#" fora do mapa), g.time = o relógio do jogo (0 com "reduzir movimento"), g.mass(c, r) = tamanho da mancha de parede.
   const catKind = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS ? "#" : lv.kinds[r][c]);
@@ -4325,6 +4482,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     catDefFrom(c) { return catDefFrom(c); }, buildLevel(def) { return buildLevel(def); }, // (só para testes: a conversão e a montagem de uma fase)
     // (0.18.0) desenho do Gatinho (só para testes): `drawNow()` desenha um quadro agora (o mesmo draw() do laço, sem andar o jogo), `catDraw` = esta partida desenha com CatArt/CatThemes, `catFx` = os efeitos curtos em andamento
     drawNow() { draw(); }, get catDraw() { return catDraw; }, get catFloorAll() { return catFloorAll; }, set catFloorAll(v) { catFloorAll = !!v; }, get catSkin() { return catSkin; }, set catSkin(v) { catSkin = typeof v === "string" ? v : ""; }, look(slot) { return lookOf(slot); }, setLook(slot, id) { if (id) looks[slot] = Skins.get(slot, id); else delete looks[slot]; }, get catFx() { return catFx.map((f) => ({ kind: f.kind, x: f.x, y: f.y, age: f.age })); },
+    skinPreview(slot, canvas, id) { const f = PREVIEW[slot]; if (!f) return false; f(canvas.getContext("2d"), Skins.get(slot, id || ""), canvas.width, canvas.height); return true; }, // (0.19.0, só para testes e capturas) desenha o mostruário da lojinha de uma skin de qualquer categoria
     defineCatLevels(list) {
       const defs = catGameFrom(list), g = gameOf("cat");
       if (!defs) return false;
