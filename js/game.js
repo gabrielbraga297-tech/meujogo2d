@@ -2751,7 +2751,8 @@
     });
     if (sv.bs) balls.forEach((b, i) => { b.x = sv.bs[i][0]; b.y = sv.bs[i][1]; b.taken = sv.bs[i][2] === 1; b.vx = 0; b.vy = 0; });
     power = sv.pw; postmen = sv.pk; fx = { shield: sv.fx[0], ice: sv.fx[1], turbo: sv.fx[2], magnet: sv.fx[3] }; score = runningScore();
-    if (lv.sprint || lv.water) { stamina = sv.sta ?? 1; wet = sv.wet ?? 0; winded = sv.wnd ?? 0; safe = lv.refuge ? onHighNow() : false; } // (Gatinho)
+    if (lv.sprint || lv.water) { stamina = sv.sta ?? 1; wet = sv.wet ?? 0; winded = sv.wnd ?? 0; safe = lv.refuge ? onHighNow() : false; inPuddle = !!(lv.puddle && lv.puddle[dogTileNow()[1]] && lv.puddle[dogTileNow()[1]][dogTileNow()[0]]); } // (Gatinho) (jogo carregado não toca nada: quem foi salvo dentro de uma poça já "estava" nela)
+    onLow = lv.catMode ? onLowNow() : false;
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
       if (all.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }

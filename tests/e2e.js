@@ -9718,6 +9718,411 @@ const PAGE_HELPERS = () => {
     await pf.context().close();
   });
 
+  // =====================================================================
+  // 0.18.0 (Gatinho, E2b-2): SONS do Gatinho ligados ao jogo (pelo perfil) e SKINS/LOJINHA do Gatinho (carteira única, skins por bichinho).
+  // Os sons são provados com um ESPIÃO em `sound.play` (nome@atraso), porque o gancho `sound.events` guarda o nome mas não o atraso.
+  // =====================================================================
+  const { DOG_SOUNDS } = require("./ab-sounds.js");
+  const DOG_SOUNDS_0170 = JSON.parse(fs.readFileSync(path.join(__dirname, "ab-sounds-0170.json"), "utf8")); // o que o Cachorrinho tocava antes dos sons do Gatinho (commit ad58681)
+  const CAT_SPY = () => { // espião: __heard() devolve (e esvazia) os pedidos de som desde a última chamada, como "nome" ou "nome@atraso"
+    if (!window.__sp) {
+      window.__sp = [];
+      const play = __game.sound.play;
+      __game.sound.play = function (n, o) { __sp.push(n + (o && o.delay ? "@" + o.delay : "")); return play.apply(this, arguments); };
+      window.__heard = () => __sp.splice(0);
+      window.__take = (it) => { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); };
+      window.__clear = () => { __game.items.forEach((it) => { it.life = false; it.taken = true; }); __game.balls.forEach((b) => { b.taken = true; }); }; // tira do caminho todos os ratinhos, novelos e camundongos (o teste não quer pegar nada sem querer)
+    }
+    __sp.length = 0;
+  };
+  const CAT_NAMES = /^(cmeow[123]|purr|hiss|squeak|yarn|woof|growl|yowl|splash|shake|jump|dash|pant)/;
+  const catSpy = async (cp, id = 1, o = {}) => { await catArena(cp, id, o); await cp.evaluate(CAT_SPY); };
+
+  await section("0.18.0 · Gatinho: sons e skins (sons: pegar ratinho, camundongo e novelos; completar a fase; vida extra e reforço)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catSpy(cp, 1);
+    // ---- ratinho: guincho, no lugar do som da ração ----
+    const a1 = await ev(cp, () => { __heard(); __take(__game.items.find((i) => !i.bone)); return __heard(); });
+    ok(JSON.stringify(a1) === '["squeak"]', `pegar um ratinho toca só o guincho (${a1.join()}), não o som da ração`);
+    // ---- camundongo ágil = ratinho raro: guincho e, 0,15 s depois, ronronar ----
+    const a2 = await ev(cp, () => { __heard(); const b = __game.balls[0]; __game.player.x = b.x - 12; __game.player.y = b.y - 12; __game.tick(0.01); return [b.taken, __heard()]; });
+    ok(a2[0] && JSON.stringify(a2[1]) === '["squeak","purr@0.15"]', `pegar um camundongo ágil toca o guincho e o ronronar 0,15 s depois (${a2[1].join()}), não o "pick"`);
+    // ---- novelo comum: yarn e, 0,3 s depois, o chiado do pelo eriçado; renovar o poder não chia de novo ----
+    const a3 = await ev(cp, () => {
+      __heard(); const y = __game.items.find((i) => i.bone && i.kind === "scare"); __take(y); const first = __heard(), power = __game.power;
+      y.taken = false; __take(y); const again = __heard(); // o poder já está ligado: recomeça a contagem, sem chiar de novo
+      return { first, again, power };
+    });
+    ok(JSON.stringify(a3.first) === '["yarn","hiss@0.3"]' && a3.power > 0, `pegar o novelo comum toca o yarn e, 0,3 s depois, o chiado (${a3.first.join()})`);
+    ok(JSON.stringify(a3.again) === '["yarn"]', `com o poder ainda ligado, outro novelo comum só toca o yarn (${a3.again.join()})`);
+    const a4 = await ev(cp, () => { __heard(); __take(__game.items.find((i) => i.bone && i.kind === "turbo")); return __heard(); });
+    ok(JSON.stringify(a4) === '["yarn"]', `os novelos de outras cores (turbo) tocam só o yarn, sem chiado (${a4.join()})`);
+    await ev(cp, () => { __game.start(2); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __heard(); });
+    const a5 = await ev(cp, () => {
+      const out = {};
+      for (const kind of ["gold", "ice", "magnet"]) { __heard(); __take(__game.items.find((i) => i.bone && i.kind === kind)); out[kind] = __heard().join(); }
+      return out;
+    });
+    ok(a5.gold === "yarn" && a5.ice === "yarn" && a5.magnet === "yarn", `novelos de ouro, gelo e ímã: só o yarn (${JSON.stringify(a5)})`);
+    // ---- vida extra escondida: o "life" de hoje, depois do guincho / do novelo ----
+    const a6 = await ev(cp, () => {
+      __game.start(1, { lives: 2 }); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __heard();
+      const r = __game.items.find((i) => !i.bone); r.life = true; __take(r); const ration = __heard();
+      const y = __game.items.find((i) => i.bone && i.kind === "scare"); y.life = true; __take(y);
+      return { ration, bone: __heard() };
+    });
+    ok(JSON.stringify(a6.ration) === '["squeak","life@0.15"]' && JSON.stringify(a6.bone) === '["yarn","hiss@0.3","life@0.8"]', `a vida extra continua tocando o som de hoje (${a6.ration.join()} | ${a6.bone.join()})`);
+    // ---- completar a fase: levelup e, depois, o miado do estágio (0,9 s) e o ronronar (1,7 s); filhote, jovem e adulto ----
+    await ev(cp, () => { __game.catLevels(); __game.setAnimal("cat"); });
+    const stages = [[1, "cmeow1", "filhote"], [6, "cmeow2", "jovem"], [11, "cmeow3", "adulto"]];
+    for (const [lvl, meow, stage] of stages) {
+      await ev(cp, (lvl) => { __game.start(lvl); __game.freezeVets = true; __game.noCatch = true; __game.items.forEach((it) => { it.life = false; }); __heard(); }, lvl);
+      await finishNow(cp, 10);
+      const h = await ev(cp, () => __heard()), tail = h.slice(-3);
+      ok(await ev(cp, () => __game.state) === "won" && JSON.stringify(tail) === JSON.stringify(["levelup", meow + "@0.9", "purr@1.7"]), `Fase ${lvl} (${stage}): completar a fase toca levelup, ${meow} 0,9 s depois e o ronronar 1,7 s depois (${tail.join()})`);
+      ok(!h.some((n) => /^bark|^meow$|^pick$/.test(n)), `Fase ${lvl}: nenhum latido nem miado de gato inimigo (${[...new Set(h)].join()})`);
+    }
+    // ---- escolher o reforço: o "pick" de sempre ----
+    await cp.click("#btn-next");
+    await ev(cp, () => __heard());
+    await cp.click('#reinforce-list button[data-id="shield"]');
+    ok(JSON.stringify(await ev(cp, () => __heard())) === '["pick"]', "escolher um reforço toca o mesmo toque curto de sempre (pick)");
+    // ---- fim de jogo ----
+    const a7 = await ev(cp, () => { __game.start(3, { lives: 1 }); __game.freezeVets = true; __game.noCatch = false; for (const v of __game.vets) v.cool = 99; __heard(); const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01); return [__game.state, __heard()]; });
+    ok(a7[0] === "lost" && JSON.stringify(a7[1]) === '["capture","yowl@0.1","gameover@0.5"]', `ser pego na última vida: captura, miado de susto 0,1 s depois e o fim de jogo de hoje (${a7[1].join()})`);
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: sons e skins (sons: cães, rastreadores, ser pego e afugentar; ações do gatinho)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catSpy(cp, 1, { freeze: false, noCatch: true });
+    // ---- o cão de guarda nota o gatinho ("!" liga): woof, no máximo 1 a cada 2,5 s por cão e 1 a cada 0,4 s no total ----
+    const wf = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = false; __game.noCatch = true; __game.setRand(() => 0); __heard();
+      const [v0, v1] = __game.vets, c = __game.cats[0];
+      Object.assign(c, { cool: 999, cx: 22 * 32 + 16, cy: 16 * 32 + 16 });
+      const spot = [[14 * 32 + 16, 3 * 32 + 16], [14 * 32 + 16, 12 * 32 + 16]];
+      const put = (v, i) => Object.assign(v, { cx: spot[i][0], cy: spot[i][1], mode: "patrol", cool: 0, think: 0, route: [], goal: null, idle: 0, leg: null });
+      const woofs = () => __heard().filter((n) => n === "woof").length, wait = (s) => { for (let i = 0; i < Math.round(s / 0.05); i++) { __game.tick(0.05); c.cool = 999; } };
+      const out = {};
+      v1.cool = 999; __at(10, 3);
+      put(v0, 0); __game.tick(0.05); out.first = [v0.mode, woofs()];
+      wait(1); put(v0, 0); __game.tick(0.05); out.sameDog1s = [v0.mode, woofs()];            // o mesmo cão, 1 s depois: chase de novo, mas calado
+      wait(1.6); put(v0, 0); __game.tick(0.05); out.sameDog27s = [v0.mode, woofs()];          // passados 2,5 s: late de novo
+      // dois cães notam no mesmo instante: só um late (0,4 s entre quaisquer cães); o outro late quando puder
+      wait(2.7); __at(14, 8); v1.cool = 0; put(v0, 0); put(v1, 1); __game.tick(0.05); out.both = [v0.mode, v1.mode, woofs()];
+      wait(0.5); put(v1, 1); __game.tick(0.05); out.second = [v1.mode, woofs()];            // 0,5 s depois o outro cão (que ainda não tinha latido) late
+      wait(2.7); put(v0, 0); __game.tick(0.05); const w0 = woofs(); wait(0.15); put(v1, 1); __game.tick(0.05); out.close = [w0, v1.mode, woofs()]; // 0,15 s depois: calado (global 0,4 s)
+      wait(0.5); put(v1, 1); __game.tick(0.05); out.later = woofs();
+      __seed();
+      return out;
+    });
+    ok(wf.first[0] === "chase" && wf.first[1] === 1, "o cão de guarda que nota o gatinho (o \"!\" liga) late uma vez (woof)");
+    ok(wf.sameDog1s[0] === "chase" && wf.sameDog1s[1] === 0, "o mesmo cão, 1 s depois, volta a notar o gatinho mas não late de novo (mínimo de 2,5 s por cão)");
+    ok(wf.sameDog27s[1] === 1, "passados mais de 2,5 s o mesmo cão late de novo");
+    ok(wf.both[0] === "chase" && wf.both[1] === "chase" && wf.both[2] === 1, `dois cães notam o gatinho no mesmo instante: só um late (${wf.both[2]})`);
+    ok(wf.second[1] === 1, "0,5 s depois o outro cão, que ainda não tinha latido, late");
+    ok(wf.close[0] === 1 && wf.close[1] === "chase" && wf.close[2] === 0 && wf.later === 1, `se o outro cão nota 0,15 s depois, fica calado (global de 0,4 s); depois de 0,5 s ele late (${JSON.stringify(wf.close)} e ${wf.later})`);
+    // ---- o rastreador começa a perseguir: growl, no máx. 1 a cada 3 s e só se estiver a até 8 tiles ----
+    const gr = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = false; __game.noCatch = true; __heard();
+      const c = __game.cats[0], hear = c.cfg.hear; c.cfg.hear = 99; // (ouve de qualquer lugar: assim ele persegue mesmo longe, e o que decide o rosnado é só a distância)
+      for (const v of __game.vets) v.cool = 999;
+      const home = [20 * 32 + 16, 8 * 32 + 16], out = {};
+      const notice = (tile) => { __at(...tile); Object.assign(c, { cx: home[0], cy: home[1], mode: "patrol", cool: 0, think: 0, route: [], goal: null, idle: 0, leg: null, seen: null }); __game.tick(0.05); const g = __heard().filter((n) => n === "growl").length; return [c.mode, g]; };
+      const wait = (s) => { for (let i = 0; i < Math.round(s / 0.05); i++) { __game.tick(0.05); for (const v of __game.vets) v.cool = 999; } };
+      out.far18 = notice([2, 9]);       // 18 tiles: persegue (ouve), mas longe demais
+      out.far9 = notice([11, 8]);       // 9 tiles
+      out.edge8 = notice([12, 8]);      // 8 tiles: dentro
+      wait(1); out.again1s = notice([12, 8]);  // 1 s depois: calado
+      wait(2.2); out.again32s = notice([12, 8]); // mais de 3 s depois do rosnado
+      c.cfg.hear = hear; __seed();
+      return out;
+    });
+    ok(gr.far18[0] === "chase" && gr.far18[1] === 0 && gr.far9[0] === "chase" && gr.far9[1] === 0, `o rastreador longe (18 e 9 tiles) persegue mas não rosna (${JSON.stringify([gr.far18, gr.far9])})`);
+    ok(gr.edge8[0] === "chase" && gr.edge8[1] === 1, "a 8 tiles ele rosna (growl); os rastreadores longe não gastaram o intervalo");
+    ok(gr.again1s[1] === 0 && gr.again32s[1] === 1, `no máximo um rosnado a cada 3 s (1 s depois: ${gr.again1s[1]}; 3,2 s depois: ${gr.again32s[1]})`);
+    // ---- ser pego: capture, o miado de susto 0,1 s depois e, depois, o som de perder a vida; o rastreador também ----
+    const cap = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = true; __game.noCatch = false; for (const c of __game.cats) c.cool = 999; __heard();
+      const out = {}, v = __game.vets[0], t = __game.cats[0];
+      __at(10, 15); v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01); out.dog = [__game.lives, __heard()];
+      for (let i = 0; i < 80 && __game.invuln > 0; i++) __game.tick(0.05);
+      __at(12, 15); t.cx = __game.player.x + 12; t.cy = __game.player.y + 12; __game.tick(0.01); out.trk = [__game.lives, __heard()];
+      return out;
+    });
+    ok(cap.dog[0] === 2 && JSON.stringify(cap.dog[1]) === '["capture","yowl@0.1","lifelost@0.5"]', `um cão pega o gatinho: capture, yowl 0,1 s depois e lifelost 0,5 s depois (${cap.dog[1].join()})`);
+    ok(cap.trk[0] === 1 && JSON.stringify(cap.trk[1]) === '["capture","yowl@0.1","lifelost@0.5"]', `o rastreador pega o gatinho: o mesmo (${cap.trk[1].join()})`);
+    // esmagado por bloco não toca a captura nem o susto: não há blocos no Gatinho; o "lifelost" de hoje fica
+    // ---- afugentar o cão (+100): o som de hoje do carteiro ----
+    const bt = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false; __heard();
+      __take(__game.items.find((i) => i.bone && i.kind === "scare")); __heard();
+      const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01);
+      return [__game.postmen, __heard()];
+    });
+    ok(bt[0] === 1 && JSON.stringify(bt[1]) === '["postman"]', `tocar num cão afugentado (+100) toca o som de hoje (postman): ${bt[1].join()}`);
+    // ---- a poça: splash ao entrar (cada entrada), shake ao secar (uma vez) ----
+    const wat = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = true; __game.noCatch = true; __heard();
+      const out = {};
+      __at(10, 9); __game.tick(0.01); out.before = __heard();
+      __at(11, 9); __game.tick(0.01); out.enter = __heard();
+      for (let i = 0; i < 10; i++) __game.tick(0.05); out.stay = __heard();
+      __at(12, 10); __game.tick(0.01); out.pool2 = __heard();                  // de uma poça para outra (as duas ligadas): continua dentro, sem novo splash
+      __at(2, 2); let t = 0, shakes = [];
+      for (let i = 0; i < 150; i++) { __game.tick(0.05); t += 0.05; const h = __heard(); if (h.includes("shake")) shakes.push(+t.toFixed(2)); if (h.some((n) => n !== "shake")) out.other = h; }
+      out.shakes = shakes;
+      __at(3, 14); __game.tick(0.01); out.second = __heard();                  // outra poça: splash de novo
+      return out;
+    });
+    ok(wat.before.length === 0 && JSON.stringify(wat.enter) === '["splash"]', `pisar na poça toca o splash uma vez (${wat.enter.join()}); antes de entrar, nada (${wat.before.join() || "—"})`);
+    ok(wat.stay.length === 0 && wat.pool2.length === 0, "parado na poça (ou passando para a poça do lado) não toca de novo");
+    ok(wat.shakes.length === 1 && wat.shakes[0] >= 5.9 && wat.shakes[0] <= 6.2 && !wat.other, `ao secar (6 s depois de sair) toca o shake uma vez (${wat.shakes.join()} s)`);
+    ok(JSON.stringify(wat.second) === '["splash"]', "outra poça: splash de novo");
+    // ---- o pulo: ao começar a atravessar um X, no máximo 1 a cada 0,4 s ----
+    const jp = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = true; __game.noCatch = true; __heard();
+      const out = {};
+      __at(7, 8); __game.tick(0.01); __heard(); __at(8, 8); __game.tick(0.01); out.enter = __heard();
+      __at(8, 9); __game.tick(0.01); out.along = __heard();                      // andar de um X para o X do lado: continua sobre o muro, sem novo pulo
+      __at(7, 8); __game.tick(0.01); __at(8, 8); __game.tick(0.01); out.fast = __heard(); // 0,03 s depois: dentro dos 0,4 s
+      for (let i = 0; i < 12; i++) __game.tick(0.05);
+      __at(7, 8); __game.tick(0.01); __at(8, 8); __game.tick(0.01); out.later = __heard();
+      for (let i = 0; i < 12; i++) __game.tick(0.05);
+      __at(6, 8); __t.hold("d", 90); out.cross = __heard();                     // atravessar o muro andando: um pulo
+      __game.start(1); __game.freezeVets = true; __at(2, 2); __t.hold("d", 30); out.floor = __heard(); // andando no chão, nenhum pulo
+      return out;
+    });
+    ok(JSON.stringify(jp.enter) === '["jump"]' && jp.along.length === 0, `começar a atravessar um X toca o jump; seguir sobre o muro não toca de novo (${jp.enter.join()} | ${jp.along.join() || "—"})`);
+    ok(jp.fast.length === 0 && JSON.stringify(jp.later) === '["jump"]', `dois pulos a menos de 0,4 s: só o primeiro toca; 0,6 s depois toca de novo (${jp.fast.join() || "—"} | ${jp.later.join()})`);
+    ok(JSON.stringify(jp.cross) === '["jump"]' && jp.floor.length === 0, `atravessar o muro andando toca um jump; andar no chão, nenhum (${jp.cross.join()} | ${jp.floor.join() || "—"})`);
+    // ---- a arrancada: dash ao começar (no máximo 1 a cada 0,6 s) e pant quando o fôlego acaba ----
+    const dh = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = true; __game.noCatch = true; __at(2, 2); __heard();
+      const out = {};
+      __run(30, ["d"], { stay: true }); out.walk = __heard();                    // andar sem Shift: nada
+      __run(30, ["Shift", "d"], { stay: true }); out.start = __heard();           // 0,5 s de arrancada
+      __run(3, ["d"], { stay: true }); __run(30, ["Shift", "d"], { stay: true }); out.again = __heard(); // soltou 0,05 s e apertou de novo (menos de 0,6 s): calado
+      __run(42, ["d"], { stay: true }); __run(10, ["Shift", "d"], { stay: true }); out.later = __heard(); // 0,7 s sem arrancada: dash de novo
+      return out;
+    });
+    ok(dh.walk.length === 0 && JSON.stringify(dh.start) === '["dash"]', `a arrancada toca o dash ao começar; andar sem arrancada não toca nada (${dh.start.join()})`);
+    ok(dh.again.length === 0 && JSON.stringify(dh.later) === '["dash"]', `soltar e apertar de novo em menos de 0,6 s não repete o dash; passado esse tempo, toca (${dh.again.join() || "—"} | ${dh.later.join()})`);
+    const pn = await ev(cp, () => {
+      __game.start(1); __clear(); __game.freezeVets = true; __game.noCatch = true; __at(2, 2); __game.stamina = 0.06; __heard();
+      const out = {}, names = (l) => l.filter((n) => n === "pant").length;
+      __run(60, ["Shift", "d"], { stay: true }); const a = __heard(); out.first = [names(a), __game.winded > 0 || __game.stamina < 1];
+      __run(180, ["Shift", "d"], { stay: true }); out.later = names(__heard());
+      return out;
+    });
+    ok(pn.first[0] === 1, `quando o fôlego acaba o gatinho fica ofegante e toca o pant uma vez (${pn.first[0]})`);
+    ok(pn.later === 1, `durante o ofegante (1,5 s) não toca de novo; só quando o fôlego acaba outra vez (mais ${pn.later} pant em 3 s)`);
+    // a arrancada com o novelo turbo não gasta fôlego: nada de pant
+    const tb = await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = true; __take(__game.items.find((i) => i.bone && i.kind === "turbo")); __at(2, 2); __heard(); __run(240, ["Shift", "d"], { stay: true }); return __heard().filter((n) => n === "pant").length; });
+    ok(tb === 0, "com o novelo turbo a arrancada não cansa e não toca o pant");
+    // ---- jogo carregado, pausa e menu não tocam nada: quem foi salvo dentro de uma poça (ou sobre um X) continua lá sem splash nem jump ----
+    await ev(cp, () => { __game.start(1); __clear(); __game.items[0].life = true; /* (a arena tem 1 vida extra escondida: o jogo salvo precisa dela) */ __game.freezeVets = true; __game.noCatch = true; __at(11, 9); __game.tick(0.05); __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); __heard(); });
+    await cp.click("#btn-continue");
+    const rs = await ev(cp, () => { for (let i = 0; i < 6; i++) __game.tick(0.05); return { wet: __game.wet, heard: __heard() }; });
+    ok(rs.wet > 0 && rs.heard.length === 0, `Continuar jogo com o gatinho numa poça não toca nada (pausa, menu e jogo carregado ficam mudos; molhado ${rs.wet.toFixed(1)} s, sons: ${rs.heard.join() || "—"})`);
+    await ev(cp, () => { __game.start(1); __clear(); __game.items[0].life = true; __game.freezeVets = true; __game.noCatch = true; __at(8, 8); __game.tick(0.05); __game.save(); document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); __heard(); });
+    await cp.click("#btn-continue");
+    const rx = await ev(cp, () => { for (let i = 0; i < 6; i++) __game.tick(0.05); return __heard(); });
+    ok(rx.length === 0, `Continuar jogo com o gatinho sobre um obstáculo baixo (X) também não toca o pulo (${rx.join() || "—"})`);
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: sons e skins (sons: o botão de som, o Cachorrinho não ganha som novo)", async () => {
+    // ---- som ligado/desligado: o jogo do Gatinho pede os sons e respeita o botão (tecla M) ----
+    const mp = await newPage({ realCat: true });
+    await catSpy(mp, 1);
+    await mp.mouse.click(5, 5); // o gesto do jogador libera o áudio
+    await ev(mp, () => { __game.sound.reset(); __take(__game.items.find((i) => !i.bone)); });
+    ok(JSON.stringify(await ev(mp, () => __game.sounds.map((e) => [e.name, e.played]))) === '[["squeak",true]]', "som ligado: o guincho do ratinho toca de verdade (depois de um gesto do jogador)");
+    await mp.keyboard.press("m");
+    await ev(mp, () => { __game.sound.reset(); __take(__game.items.find((i) => !i.bone && !i.taken)); });
+    ok(JSON.stringify(await ev(mp, () => __game.sounds.map((e) => [e.name, e.played]))) === '[["squeak",false]]' && await ev(mp, () => __game.sound.isMuted()), "mudo (tecla M): o jogo ainda pede o guincho, mas ele não toca");
+    await mp.keyboard.press("m");
+    // uma rajada de sons ao mesmo tempo (completar a fase com tudo) não derruba nada: o teto de 8 vozes é do motor de sons
+    const burst = await ev(mp, () => { __game.sound.reset(); for (let i = 0; i < 30; i++) { __game.sound.play("squeak"); __game.sound.play("purr"); __game.sound.play("hiss"); __game.sound.play("cmeow3", { delay: 0.9 }); } return __game.sounds.length; });
+    ok(burst > 0 && (await ev(mp, () => __game.sound.isMuted())) === false, "uma rajada de pedidos de som não gera erro (o teto de 8 vozes e os 60 ms entre sons iguais são do js/sound.js)");
+    await mp.context().close();
+    // ---- o Cachorrinho toca exatamente os mesmos sons de antes, em cenas fixas (A/B contra o código de antes dos sons do Gatinho) ----
+    const dp = await newPage();
+    await dp.goto(URL); // (a página crua, como o tests/ab-sounds.js a abre para tirar a referência: sem os ajudantes dos testes, que mudam o sorteio das peças)
+    const now = await ev(dp, DOG_SOUNDS);
+    const same = Object.keys(DOG_SOUNDS_0170.scenes).every((k) => JSON.stringify(now.scenes[k]) === JSON.stringify(DOG_SOUNDS_0170.scenes[k]));
+    ok(same && Object.keys(now.scenes).length === Object.keys(DOG_SOUNDS_0170.scenes).length, `Cachorrinho A/B: ${Object.keys(DOG_SOUNDS_0170.scenes).length} cenas fixas (rações, ossos de todos os tipos, bolinhas, carteiros, gatos, "!" dos agentes, captura, fim de jogo e os 3 latidos) tocam exatamente os mesmos sons e atrasos de antes (${now.log.length} pedidos)`);
+    ok(now.log.every((n) => !CAT_NAMES.test(n)) && now.log.some((n) => n === "meow") && now.log.includes("bark1@0.9") && now.log.includes("bark2@0.9") && now.log.includes("bark3@0.9"), "e nenhum som do Gatinho (guincho, yarn, woof, growl, yowl, purr...) toca no Cachorrinho; os miados do gato inimigo e os latidos continuam");
+    ok(JSON.stringify(now.scenes["os agentes notam o cachorrinho (o '!')"]) === "[]", "os agentes da carrocinha que notam o cachorrinho (\"!\") continuam sem som");
+    await dp.context().close();
+  });
+
+  // =====================================================================
+  const CAT_SKIN_SPEC = [["", "Rajado", 0], ["preto", "Preto", 10], ["branco", "Branco", 12], ["cinza", "Cinza", 14], ["laranja", "Laranja", 16], ["siames", "Siamês", 20], ["vanturco", "Van Turco", 22], ["tricolor", "Tricolor", 25], ["smoking", "Smoking", 28], ["pirata", "Pirata", 30], ["astronauta", "Astronauta", 40], ["supergato", "Super-gato", 50]];
+  const catWallet = (pg, name = "Totó") => pg.evaluate((n) => Records.createStore(localStorage).wallet(n, "cat"), name);
+  const catCardBtn = (id) => `#shop-list .shop-card:nth-child(${CAT_SKIN_SPEC.findIndex((s) => s[0] === id) + 1}) button`;
+  await section("0.18.0 · Gatinho: sons e skins (a lojinha do Gatinho: 12 skins, prévia, comprar, usar, textos e acessibilidade)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    await ev(cp, () => { Records.createStore(localStorage).addTreats("Totó", 12); __game.setAnimal("cat"); });
+    await cp.click("#btn-shop");
+    ok(await cp.textContent("#shop-title") === "Lojinha de skins do gatinho" && await cp.getAttribute("#shop", "aria-labelledby") === "shop-title" && await cp.getByRole("heading", { name: "Lojinha de skins do gatinho" }).isVisible(), "no Gatinho o título da lojinha cita o gatinho (e a tela continua rotulada para leitor de tela)");
+    ok(/skins para o gatinho/.test(await cp.textContent("#shop-help")) && /10 petscoin/.test(await cp.textContent("#shop-help")), "a ajuda da lojinha fala das skins do gatinho e do mínimo de 10 petscoin");
+    ok(await cp.textContent("#shop-balance") === BAL(12), `o saldo é o da carteira única: "${await cp.textContent("#shop-balance")}"`);
+    let cards = await shopCards(cp);
+    ok(cards.length === 12 && cards.map((c) => c.name).join() === CAT_SKIN_SPEC.map((s) => s[1]).join(), `a lojinha mostra as 12 skins do gato, na ordem do catálogo (${cards.map((c) => c.name).join(", ")})`);
+    ok(cards.every((c, i) => i === 0 ? c.btn === "Em uso" && c.disabled && c.equipped : c.btn === `Comprar (${CAT_SKIN_SPEC[i][2]} petscoin)`), `cada skin tem o botão Comprar com o preço do catálogo (de 10 a 50) e a padrão aparece Em uso`);
+    ok(cards.every((c, i) => i === 0 || (c.disabled === (CAT_SKIN_SPEC[i][2] > 12) && (!c.disabled || c.title === (CAT_SKIN_SPEC[i][2] - 12 === 1 ? "Falta 1 petscoin" : `Faltam ${CAT_SKIN_SPEC[i][2] - 12} petscoin`)))), "com 12 petscoin só dá para comprar as de até 12; as outras ficam desligadas e dizem quantos petscoin faltam");
+    ok(/pelo preto como a noite · 10 petscoin/.test(cards[1].sub) && /capa vermelha de super-herói · 50 petscoin/.test(cards[11].sub) && /o gatinho de sempre/.test(cards[0].sub) && !/ · \d+ petscoin/.test(cards[0].sub), `cada cartão traz a frase e o preço da skin (${cards[1].sub} | ${cards[11].sub})`);
+    ok(cards.every((c) => c.role === "img" && c.cw === 216 && c.ch === 156) && cards[1].label === "Prévia da skin Preto do gatinho" && cards[5].label === "Prévia da skin Siamês do gatinho", `as prévias têm descrição para leitor de tela ("${cards[1].label}")`);
+    const labelled = await cp.$$eval("#shop-list .shop-card button", (bs) => bs.every((b) => { const ids = (b.getAttribute("aria-labelledby") || "").split(" "); return ids.length === 2 && ids[0] === b.id && document.getElementById(ids[1]) && document.getElementById(ids[1]).tagName === "STRONG"; }));
+    ok(labelled, "cada botão tem o nome da skin na descrição (\"Comprar (12 petscoin) Branco\"), senão os 12 botões seriam iguais para o leitor de tela");
+    // ---- as prévias desenham o gatinho (de cima, adulto, parado) com a skin de cada cartão ----
+    const pv = await cp.$$eval("#shop-list canvas", (cs) => cs.map((c) => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let h = 2166136261 >>> 0, n = 0; for (let i = 0; i < d.length; i += 4) { if (d[i + 3] > 0) n++; h = Math.imul(h ^ ((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]), 16777619) >>> 0; } return { n, h }; }));
+    ok(pv.every((p) => p.n > 800) && new Set(pv.map((p) => p.h)).size === 12, `as 12 prévias desenham o gatinho (de ${Math.min(...pv.map((p) => p.n))} a ${Math.max(...pv.map((p) => p.n))} pixels) e são todas diferentes`);
+    // ---- comprar: 10 petscoin, Preto; sobra 2; já fica em uso ----
+    await cp.click(catCardBtn("preto"));
+    ok(await cp.textContent("#shop-msg") === "Você comprou a skin Preto para o gatinho e já está usando! Sobraram 2 petscoin." && await cp.textContent("#shop-balance") === BAL(2), `comprar a Preto: "${await cp.textContent("#shop-msg")}"`);
+    ok(JSON.stringify(await catWallet(cp)) === '{"treats":2,"owned":["preto"],"equipped":"preto"}' && JSON.stringify(await walletOf(cp)) === '{"treats":2,"owned":[],"equipped":""}', "a carteira guarda a Preto no Gatinho (com o saldo único) e a carteira do Cachorrinho não ganha skin nenhuma");
+    ok(await ev(cp, () => Records.createStore(localStorage).equippedSkin("Totó", "cat")) === "preto" && await ev(cp, () => __game.catSkin) === "preto" && await ev(cp, () => __game.skin) === "", "o jogo lê a skin em uso do gato da carteira (preto) e a do Cachorrinho continua a padrão");
+    cards = await shopCards(cp);
+    ok(cards[1].btn === "Em uso" && cards[1].disabled && cards[1].equipped && cards[0].btn === "Usar" && !cards[0].equipped, "depois da compra a Preto fica Em uso e a Rajado passa a mostrar Usar");
+    ok(await ev(cp, () => document.activeElement.id) === "shop-name-1", "o foco não se perde ao comprar: fica no cartão da skin comprada");
+    // ---- usar a que já é sua ----
+    await cp.click(catCardBtn(""));
+    ok(await cp.textContent("#shop-msg") === "Skin do gatinho em uso: Rajado." && await ev(cp, () => __game.catSkin) === "" && (await catWallet(cp)).equipped === "", `usar a Rajado: "${await cp.textContent("#shop-msg")}" (a Preto continua sendo do gatinho)`);
+    ok((await catWallet(cp)).owned.join() === "preto", "usar a padrão não tira a skin comprada");
+    // ---- sem saldo, a compra é recusada (clique atrasado) e nada é gasto ----
+    const late = await cp.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(3) button"));
+    await ev(cp, () => { const st = Records.createStore(localStorage); st.addTreats("Totó", 0 + 1); });
+    await late.evaluate((b) => { b.disabled = false; b.click(); });
+    ok(await cp.textContent("#shop-msg") === "Faltam petscoin para esta skin." && (await catWallet(cp)).treats === 3, "um clique em Comprar sem saldo é recusado com o aviso de sempre (nada é gasto)");
+    // ---- o Cachorrinho tem a lojinha dele, com 9 skins, e continua igual ----
+    await cp.keyboard.press("Escape");
+    await ev(cp, () => { __game.setAnimal("dog"); });
+    await cp.click("#btn-shop");
+    cards = await shopCards(cp);
+    ok(await cp.textContent("#shop-title") === "Lojinha de skins" && cards.map((c) => c.name).join() === "Caramelo,Cinza-prata,Dálmata,Chocolate,Dourado,Arco-íris,Pirata,Astronauta,Super-cão" && cards[1].label === "Prévia da skin Cinza-prata", "voltando ao Cachorrinho a lojinha é a de sempre (título, 9 skins, prévia)");
+    ok(cards[0].btn === "Em uso" && cards[6].btn === "Comprar (30 petscoin)" && cards[6].disabled, "e as skins do Cachorrinho não aparecem como compradas por causa da Preto do gato (mesmo id Pirata, outro bichinho)");
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: sons e skins (skins separadas por bichinho: ids repetidos, duas abas, recarregar, sem nome)", async () => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, realCat: true });
+    const A = await ctx.newPage(); watch(A); const B = await ctx.newPage(); watch(B);
+    await fresh(A, { name: "Totó" });
+    await ev(A, () => { Records.createStore(localStorage).addTreats("Totó", 200); });
+    // ids repetidos entre os bichinhos: Cinza, Pirata e Astronauta existem nos dois catálogos; comprar um não compra o outro
+    await ev(A, () => { __game.setAnimal("cat"); });
+    await A.click("#btn-shop");
+    await A.click(catCardBtn("pirata"));
+    ok(JSON.stringify(await catWallet(A)) === '{"treats":170,"owned":["pirata"],"equipped":"pirata"}', "comprar a Pirata do gato (30): 170 petscoin; Pirata em uso no Gatinho");
+    await A.keyboard.press("Escape"); await ev(A, () => { __game.setAnimal("dog"); }); await A.click("#btn-shop");
+    ok(await A.textContent("#shop-balance") === BAL(170) && (await shopCards(A))[6].btn === "Comprar (30 petscoin)" && (await walletOf(A)).equipped === "", "no Cachorrinho o saldo é o mesmo (170), mas a Pirata dele continua à venda e nada está em uso");
+    await A.click("#shop-list .shop-card:nth-child(7) button");
+    const both = await ev(A, () => { const s = Records.createStore(localStorage); return { dog: s.wallet("Totó"), cat: s.wallet("Totó", "cat"), raw: JSON.parse(localStorage.getItem("cachorrinho.v1")).wallet.toto }; });
+    ok(both.dog.owned.join() === "pirata" && both.dog.equipped === "pirata" && both.cat.owned.join() === "pirata" && both.cat.equipped === "pirata" && both.dog.treats === 140 && both.cat.treats === 140, `as duas Pirata são skins diferentes e o saldo é um só (140): ${JSON.stringify(both.raw)}`);
+    ok(JSON.stringify(both.raw) === '{"t":140,"own":["cat:pirata","pirata"],"eq":"pirata","eqa":{"cat":"pirata"}}', "no armazenamento a do gato tem o prefixo cat: e a skin em uso do gato fica em eqa");
+    // ---- jogar: o gatinho usa a skin do gato; o cachorrinho, a do cachorro ----
+    await A.keyboard.press("Escape");
+    await ev(A, () => { __game.setAnimal("cat"); __game.autoStart = true; __game.start(3); __game.freezeVets = true; __game.tick(0.01); });
+    ok(await ev(A, () => __game.catSkin) === "pirata" && await ev(A, () => __game.skin) === "pirata", "jogando o Gatinho valem a skin do gato (pirata) e, no Cachorrinho, a do cachorro (pirata): cada bichinho lê a sua");
+    await ev(A, () => { Records.createStore(localStorage).equipSkin("Totó", "", "cat"); __game.start(3); });
+    ok(await ev(A, () => __game.catSkin) === "" && await ev(A, () => __game.skin) === "pirata", "trocar só a skin do gato não mexe na do cachorro");
+    // ---- recarregar: a skin em uso do gato volta ----
+    await ev(A, () => { Records.createStore(localStorage).equipSkin("Totó", "pirata", "cat"); });
+    await A.reload(); await A.evaluate(PAGE_HELPERS);
+    ok(await ev(A, () => __game.animal) === "cat" && await ev(A, () => __game.catSkin) === "pirata", "recarregando a página o Gatinho continua escolhido e com a skin em uso (pirata)");
+    // ---- duas abas: a B compra uma skin do gato; a A (com a tela velha da lojinha aberta) vê e não compra de novo ----
+    await B.goto(URL); await B.evaluate(PAGE_HELPERS);
+    await A.click("#btn-shop"); await B.click("#btn-shop");
+    ok(await A.textContent("#shop-title") === "Lojinha de skins do gatinho" && await B.textContent("#shop-title") === "Lojinha de skins do gatinho", "as duas abas abrem a lojinha do Gatinho (a escolha do bichinho é do jogador)");
+    const oldA = await A.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(3) button")); // "Comprar (12 petscoin)" da Branco, na A
+    await B.click(catCardBtn("branco"));
+    ok(JSON.stringify(await catWallet(B)) === '{"treats":128,"owned":["pirata","branco"],"equipped":"branco"}', "a aba B compra a Branco (12): 128 petscoin");
+    await A.waitForFunction((t) => document.getElementById("shop-balance").textContent === t, BAL(128), { timeout: 3000 }).catch(() => {});
+    ok(await A.textContent("#shop-balance") === BAL(128) && (await shopCards(A))[2].btn === "Em uso", "a aba A se atualiza sozinha: 128 petscoin e a Branco do gato aparece como em uso");
+    await oldA.evaluate((b) => b.click());
+    ok(JSON.stringify(await catWallet(A)) === '{"treats":128,"owned":["pirata","branco"],"equipped":"branco"}' && /Você já tem esta skin\./.test(await A.textContent("#shop-msg")), "o clique atrasado da A em Comprar não compra nem cobra de novo (continua 128 petscoin e uma só Branco) e avisa que já tem");
+    await ctx.close();
+    // ---- sem nome de usuário: a lojinha do Gatinho mostra as skins e não deixa comprar ----
+    const np = await newPage({ realCat: true });
+    await np.goto(URL); await np.evaluate(() => localStorage.clear()); await np.reload(); await np.evaluate(PAGE_HELPERS);
+    await ev(np, () => { __game.setAnimal("cat"); });
+    await np.click("#btn-shop");
+    const nc = await shopCards(np);
+    ok(nc.length === 12 && nc[0].btn === "Padrão" && nc.slice(1).every((c, i) => c.btn === `${CAT_SKIN_SPEC[i + 1][2]} petscoin` && c.disabled) && /Escolha um nome de usuário/.test(await np.textContent("#shop-balance")), "sem nome de usuário a lojinha do Gatinho mostra as 12 skins com os preços, desligadas, e pede para escolher um nome");
+    await np.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: sons e skins (skins só visuais: velocidade, colisão, fôlego e pontos iguais com qualquer skin; o desenho muda)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1, { freeze: true, noCatch: false });
+    // ---- simulação A/B: a mesma jogada (andar, arrancar, pular o muro de X, molhar, pegar ratinho, novelo e camundongo, ser alcançado por um cão) com cada uma das 12 skins ----
+    const run = (skin) => ev(cp, (skin) => {
+      __seed(4242);
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false; __game.catSkin = skin;
+      const out = { steps: [] }, snap = (k) => out.steps.push([k, Math.round(__game.player.x * 100) / 100, Math.round(__game.player.y * 100) / 100, __game.dogSpeed, Math.round(__game.stamina * 1000) / 1000, Math.round(__game.wet * 100) / 100, __game.score, __game.lives, __game.player.w, __game.player.h]);
+      __at(2, 9); __run(40, ["d"]); snap("andar");
+      __at(2, 2); __run(90, ["Shift", "d"]); snap("arrancada");
+      __at(6, 8); __run(90, ["d"]); snap("muro de X");
+      __at(10, 9); __run(30, ["d"]); snap("poça"); __run(30, ["d"]); snap("molhado");
+      __game.freezeVets = true; __at(10, 15); const v = __game.vets[0], dogAt = (d) => { v.cx = __game.player.x + 12 + d; v.cy = __game.player.y + 12; __game.tick(0.01); };
+      dogAt(21); snap("cão a 21 px");                                              // (ainda sem poder de novelo: o cão tira a vida)
+      for (let i = 0; i < 100 && __game.invuln > 0; i++) __game.tick(0.05);
+      __at(10, 15); dogAt(23); snap("cão a 23 px");
+      for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); } snap("itens");
+      for (const b of __game.balls) { __game.player.x = b.x - 12; __game.player.y = b.y - 12; __game.tick(0.01); } snap("camundongos");
+      out.final = [__game.score, __game.lives, __game.livesLost, __game.collected, __game.bonesGot, __game.time];
+      __game.catSkin = ""; __seed();
+      return out;
+    }, skin);
+    const results = [];
+    for (const [id] of CAT_SKIN_SPEC) results.push([id, await run(id)]);
+    const base = JSON.stringify(results[0][1]), diff = results.filter(([, r]) => JSON.stringify(r) !== base).map(([id]) => id || "padrão");
+    ok(diff.length === 0 && results[0][1].steps.length === 9, `as 12 skins do gato dão o MESMO resultado na mesma jogada: velocidade, fôlego, molhado, pontos, vidas, tempo e o corpo de 24×24 (diferentes: ${diff.join(", ") || "nenhuma"})`);
+    const r0 = results[0][1];
+    ok(r0.steps[0][3] === 252 && Math.abs(r0.steps[1][3] - 252 * 1.35) < 1e-6 && r0.steps.every((s) => s[8] === 24 && s[9] === 24), "e os números são os de sempre (252 px/s, ×1,35 na arrancada, corpo 24×24) com qualquer skin");
+    const L = (k) => r0.steps.find((s) => s[0] === k)[7];
+    ok(L("molhado") === 3 && L("cão a 21 px") === 2 && L("cão a 23 px") === 2 && L("camundongos") === 2, `o cão a 21 px tira uma vida e a 23 px não: o alcance do contato também é igual (22 px) com qualquer skin (vidas ${["molhado", "cão a 21 px", "cão a 23 px"].map(L).join(" → ")})`);
+    // ---- o desenho muda: 12 quadros diferentes, sem mexer no corpo ----
+    const px = await ev(cp, () => {
+      __game.start(1); __game.autoStart = true; __game.freezeVets = true; __game.tick(0.01); __game.player.moving = false; const out = [];
+      const hash = () => { const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, u = new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2); let h = 2166136261 >>> 0; for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0; return h.toString(16); };
+      for (const s of ["", "preto", "branco", "cinza", "laranja", "siames", "vanturco", "tricolor", "smoking", "pirata", "astronauta", "supergato"]) { __game.catSkin = s; __game.drawNow(); out.push(hash()); }
+      __game.catSkin = ""; return out;
+    });
+    ok(new Set(px).size === 12, `no jogo as 12 skins desenham 12 quadros diferentes (${new Set(px).size} diferentes)`);
+    // ---- uma skin guardada que não existe no catálogo conta como a padrão (dado adulterado) ----
+    const bad = await ev(cp, () => {
+      const st = Records.createStore(localStorage); st.addTreats("Totó", 50);
+      const raw = JSON.parse(localStorage.getItem("cachorrinho.v1")); raw.wallet.toto.own = ["cat:fantasma", "cat:", "cat:preto"]; raw.wallet.toto.eqa = { cat: "fantasma" }; localStorage.setItem("cachorrinho.v1", JSON.stringify(raw));
+      __game.start(1); const unknown = __game.catSkin;
+      raw.wallet.toto.eqa = { cat: "preto" }; localStorage.setItem("cachorrinho.v1", JSON.stringify(raw)); __game.start(1); const known = __game.catSkin;
+      raw.wallet.toto = { t: 5, own: "x", eq: 7, eqa: 9 }; localStorage.setItem("cachorrinho.v1", JSON.stringify(raw)); __game.start(1); const junk = __game.catSkin;
+      return { unknown, known, junk };
+    });
+    ok(bad.unknown === "" && bad.known === "preto" && bad.junk === "", `dados adulterados: skin desconhecida ou lixo no lugar da carteira dá a padrão e não derruba o jogo (${JSON.stringify(bad)})`);
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: sons e skins (README, docs/LOJINHA.md e perfil: o contrato de sons e a lojinha por bichinho)", async () => {
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), loja = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8");
+    const sec = readme.slice(readme.indexOf("### Sons do Gatinho (0.18.0)"), readme.indexOf("## Vidas"));
+    ok(/Integrado ao jogo \(0\.18\.0, E2b-2\)/.test(sec) && /sfx/.test(sec) && /ab-sounds\.js/.test(sec) && /2,5 s/.test(sec) && /0,4 s/.test(sec) && /8 tiles/.test(sec) && /0,6 s/.test(sec), "o README diz que os sons do Gatinho estão ligados ao jogo (pelo perfil, os intervalos, o teste A/B do Cachorrinho)");
+    ok(/Atualização 4/.test(loja) && /por bichinho/.test(loja) && /cat:/.test(loja) && /12 skins/.test(loja) && /eqa/.test(loja), "docs/LOJINHA.md explica a carteira única com skins por bichinho (prefixo cat:, 12 skins do gato) e que a Atualização 4 amplia a loja");
+    const lj = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins (0.15.9)"), readme.indexOf("## Os gatos (0.15.5"));
+    ok(/Gatinho/.test(lj) && /12 skins/.test(lj) && /Atualização 4/.test(lj) && /cat:/.test(lj), "a seção da lojinha do README fala das skins do Gatinho e da Atualização 4");
+    ok(/shopTitle|Lojinha de skins do gatinho/.test(readme) && /Gatinho: sons e skins/.test(readme), "o README cita o título da lojinha do Gatinho e a seção de testes nova");
+  });
+
 //E2B1-NEXT
 //E2A-NEXT
   console.log("erros JS:", errs);
