@@ -124,6 +124,17 @@
     const c = me ? store.equippedSkin(me, "cat") : "";
     catSkin = skinsOf("cat").some((k) => k.id === c) ? c : ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
   };
+  // ---------- Lojinha única (0.19.0): a skin em uso de cada categoria (catálogo em js/skins.js). `looks[categoria]` = a skin (objeto) em uso; sem ela vale a padrão da categoria.
+  // Os desenhos leem `lookOf("ration").campo` e desenham o visual de sempre quando o campo não existe; skins só mudam o visual. `PREVIEW[categoria] = (c2, skin, w, h)` desenha o mostruário da lojinha (use withLook). ----------
+  const looks = Object.create(null);
+  const lookOf = (slot) => looks[slot] || Skins.get(slot, "");
+  const PREVIEW = Object.create(null);
+  function withLook(slot, k, c2, fn) { // roda `fn` com a skin `k` (objeto ou id) da categoria em uso e, se vier, no contexto `c2`; restaura tudo depois
+    const keep = ctx, was = looks[slot];
+    looks[slot] = typeof k === "string" ? Skins.get(slot, k) : k;
+    if (c2) ctx = c2;
+    try { return fn(); } finally { ctx = keep; if (was) looks[slot] = was; else delete looks[slot]; }
+  }
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, passos que olha ao fugir (o intervalo entre os avisos sonoros do 2º inimigo é do perfil: sfx.alert2Every)
@@ -4313,7 +4324,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get wet() { return wet; }, set wet(v) { wet = Math.max(0, Number(v) || 0); }, get sprinting() { return sprintOn; }, get safe() { return safe; }, get darkness() { return darkness; },
     catDefFrom(c) { return catDefFrom(c); }, buildLevel(def) { return buildLevel(def); }, // (só para testes: a conversão e a montagem de uma fase)
     // (0.18.0) desenho do Gatinho (só para testes): `drawNow()` desenha um quadro agora (o mesmo draw() do laço, sem andar o jogo), `catDraw` = esta partida desenha com CatArt/CatThemes, `catFx` = os efeitos curtos em andamento
-    drawNow() { draw(); }, get catDraw() { return catDraw; }, get catFloorAll() { return catFloorAll; }, set catFloorAll(v) { catFloorAll = !!v; }, get catSkin() { return catSkin; }, set catSkin(v) { catSkin = typeof v === "string" ? v : ""; }, get catFx() { return catFx.map((f) => ({ kind: f.kind, x: f.x, y: f.y, age: f.age })); },
+    drawNow() { draw(); }, get catDraw() { return catDraw; }, get catFloorAll() { return catFloorAll; }, set catFloorAll(v) { catFloorAll = !!v; }, get catSkin() { return catSkin; }, set catSkin(v) { catSkin = typeof v === "string" ? v : ""; }, look(slot) { return lookOf(slot); }, setLook(slot, id) { if (id) looks[slot] = Skins.get(slot, id); else delete looks[slot]; }, get catFx() { return catFx.map((f) => ({ kind: f.kind, x: f.x, y: f.y, age: f.age })); },
     defineCatLevels(list) {
       const defs = catGameFrom(list), g = gameOf("cat");
       if (!defs) return false;

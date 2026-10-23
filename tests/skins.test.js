@@ -79,6 +79,15 @@ test("register guarda as skins congeladas, list põe a padrão primeiro e get ca
   assert.deepStrictEqual(Skins.list("nao-existe"), []);
 });
 
+test("register aceita o nome e a frase da skin padrão da categoria", () => {
+  assert.throws(() => Skins.register("bone", [], { name: 3 }), /padrão inválida/);
+  assert.strictEqual(Skins.list("bone")[0].name, "Padrão"); // (a tentativa com erro não registrou nada)
+  Skins.register("bone", [k("dourado")], { name: "Osso comum", text: "o osso de sempre" });
+  assert.strictEqual(Skins.list("bone")[0].name, "Osso comum");
+  assert.strictEqual(Skins.get("bone", "").text, "o osso de sempre");
+  assert.strictEqual(Skins.get("bone", "").price, 0);
+});
+
 test("ownKey: o Cachorrinho mantém o id puro; as outras categorias levam o prefixo", () => {
   assert.strictEqual(Skins.ownKey("dog", "cinza"), "cinza");
   assert.strictEqual(Skins.ownKey("cat", "cinza"), "cat:cinza");

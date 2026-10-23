@@ -48,6 +48,7 @@
   const slotOf = Object.create(null);
   for (const s of SLOTS) slotOf[s.id] = Object.freeze(s);
   const items = Object.create(null); // slot -> lista de skins (sem a padrão)
+  const bases = Object.create(null); // slot -> a skin padrão (id "", preço 0), com o nome e a frase da categoria
   const isId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
   const DEFAULT_TEXT = "o visual de sempre (grátis)";
 
@@ -55,7 +56,8 @@
   const slotsOf = (game) => SLOTS.filter((s) => s.game === game);
 
   // registra as skins (sem a padrão) de uma categoria; erra alto se algo estiver fora do contrato (os testes dependem disso)
-  function register(slotId, list) {
+  // `base` (opcional): o nome e a frase da skin padrão da categoria, p. ex. { name: "Caramelo", text: "o cachorrinho de sempre (grátis)" }; sem ele ela se chama "Padrão"
+  function register(slotId, list, base) {
     const s = slotOf[slotId];
     if (!s) throw new Error(`categoria desconhecida: ${slotId}`);
     if (!Array.isArray(list)) throw new Error(`${slotId}: a lista de skins precisa ser um array`);
@@ -72,11 +74,13 @@
       if (k.from !== undefined && (!Number.isInteger(k.from) || k.from < s.from || k.from > 20)) throw new Error(`${slotId}/${k.id}: "from" precisa ser inteiro entre ${s.from} e 20`);
       return Object.freeze({ ...k });
     });
+    if (base !== undefined && (!base || typeof base !== "object" || (base.name !== undefined && typeof base.name !== "string") || (base.text !== undefined && typeof base.text !== "string"))) throw new Error(`${slotId}: skin padrão inválida`);
     items[slotId] = Object.freeze(out);
+    bases[slotId] = Object.freeze({ ...(base || {}), id: "", name: (base && base.name) || "Padrão", text: (base && base.text) || DEFAULT_TEXT, price: 0 });
     return items[slotId];
   }
 
-  const defaultSkin = (slotId) => Object.freeze({ id: "", name: "Padrão", text: DEFAULT_TEXT, price: 0 });
+  const defaultSkin = (slotId) => bases[slotId] || Object.freeze({ id: "", name: "Padrão", text: DEFAULT_TEXT, price: 0 });
   // todas as skins da categoria, a padrão primeiro; [] se a categoria não existe
   const list = (slotId) => (slotOf[slotId] ? [defaultSkin(slotId), ...(items[slotId] || [])] : []);
   // a skin da categoria pelo id ("" ou desconhecido = a padrão)
