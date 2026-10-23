@@ -289,6 +289,7 @@ body.touch[data-state="playing"] #touch { display: flex; }
 body.touch.sprint-on #btn-run { display: block; }
 .rotate-tip { display: none; margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 @media (orientation: portrait) and (max-width: 600px) { .rotate-tip { display: block; } }
+body.touch.sprint-on .rotate-tip { padding-right: 90px; } /* o botão Correr (76 px, a 14 px da borda, fixo no canto de baixo) não cobre o fim da dica */
 
 /* Celular deitado: o controle fica nas laterais, sem roubar altura do jogo */
 @media (orientation: landscape) and (max-height: 520px) {

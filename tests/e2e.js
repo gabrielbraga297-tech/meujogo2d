@@ -10267,6 +10267,25 @@ const PAGE_HELPERS = () => {
     }
   });
 
+  // O botão Correr (fixo no canto de baixo à direita) não pode cobrir o fim da dica "gire o aparelho..." (auditoria 3).
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (o botão Correr não cobre a dica de girar o aparelho)", async () => {
+    for (const [w, h] of [[320, 568], [360, 640], [375, 667], [390, 780]]) {
+      const pg = await newPage({ realCat: true, viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+      await fresh(pg, { name: "Totó", query: "?touch=1" });
+      const r = await ev(pg, () => {
+        const tip = document.querySelector(".rotate-tip"), run = document.getElementById("btn-run");
+        const hits = () => { const rr = run.getBoundingClientRect(), rg = document.createRange(); rg.selectNodeContents(tip); return [...rg.getClientRects()].filter((q) => q.width > 0).some((q) => !(q.right <= rr.left || rr.right <= q.left || q.bottom <= rr.top || rr.bottom <= q.top)); };
+        __game.autoStart = true; __game.setAnimal("cat"); __game.start(9);
+        const cat = { shown: getComputedStyle(tip).display !== "none", runShown: getComputedStyle(run).display !== "none", hit: hits(), pad: getComputedStyle(tip).paddingRight };
+        __game.setAnimal("dog"); __game.start(1);
+        return { cat, dogPad: getComputedStyle(tip).paddingRight, dogRun: getComputedStyle(run).display };
+      });
+      ok(r.cat.shown && r.cat.runShown && !r.cat.hit, `${w}×${h}: com o botão Correr na tela, nenhuma linha da dica de girar o aparelho fica embaixo dele (recuo da dica: ${r.cat.pad})`);
+      ok(r.dogPad === "0px" && r.dogRun === "none", `${w}×${h}: no Cachorrinho a dica continua sem recuo (${r.dogPad}) e o botão Correr não aparece`);
+      await pg.context().close();
+    }
+  });
+
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));
