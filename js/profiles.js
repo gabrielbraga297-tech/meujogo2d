@@ -114,24 +114,24 @@
       powerOff: "Poder do osso: desligado",
     },
     // sons (js/sound.js): o que toca em cada momento (o latido de filhote, jovem ou adulto ao completar a fase; o miado do gato que nota o cachorrinho)
-    // (0.18.0, E2b-2) os campos do segundo bloco são momentos que só o Gatinho tem som: aqui ficam vazios ("" = nenhum som) e o Cachorrinho toca EXATAMENTE os sons de sempre.
+    // (0.18.0) os campos do segundo bloco são momentos que só o Gatinho tem som: aqui ficam vazios ("" = nenhum som) e o Cachorrinho toca EXATAMENTE os sons de sempre.
     //  ball/ballMore = pegar a bolinha (o 2º som vem 0,15 s depois); alert = o "!" do agente liga; alert2Every/alert2Near = s entre os avisos do 2º inimigo e a que distância (tiles; 0 = qualquer) ele é ouvido;
     //  hurt = som extra de ser pego (0,1 s depois da captura); winMore = som extra ao completar a fase (1,7 s depois da fanfarra); splash/shake/jump/dash/pant = ações do gatinho.
     sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
       ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" },
     skins: null,
-    // textos da lojinha de skins (0.18.0, E2b-2); `ui.shopTitle` troca o título da tela
+    // textos da lojinha de skins (0.18.0); `ui.shopTitle` troca o título da tela
     shop: {
       preview: (name) => `Prévia da skin ${name}`,
       inUse: (name) => `Skin em uso: ${name}.`,
       bought: (name, left) => `Você comprou a skin ${name} e já está usando! ${left === 0 ? "Não sobrou nenhum petscoin." : left === 1 ? "Sobrou 1 petscoin." : `Sobraram ${left} petscoin.`}`,
     },
     // textos fixos do index.html (null = o que está lá, que é o do Cachorrinho)
-    ui: { howto: null, shopTitle: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null, docTitle: null }, // (docTitle: o título da aba do navegador)
+    ui: { howto: null, shopTitle: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null, pauseHelp: null, docTitle: null }, // (docTitle: o título da aba do navegador; pauseHelp: a ajuda de teclas e controle da tela de pausa)
   };
 
   // ---------------------------------------------------------------------------------------------------------------------------------
-  // Gatinho (0.18.0, etapa 1): substantivos e frases simples; as etapas seguintes refinam os textos
+  // Gatinho (0.18.0): substantivos, frases, placar, sons, textos fixos e lojinha do gato (o perfil `dog` acima traz os textos de sempre)
   // ---------------------------------------------------------------------------------------------------------------------------------
   const cat = {
     id: "cat",
@@ -212,7 +212,7 @@
       powerOn: (s) => `Poder do novelo: ${s} segundos`,
       powerOff: "Poder do novelo: desligado",
     },
-    // Sons do Gatinho (0.18.0, E2b-2): o contrato é o do README ("Sons do Gatinho"). O miado da fase da vida (`win`) vem 0,9 s depois da fanfarra e o ronronar (`winMore`) 1,7 s; o ratinho é o `squeak`;
+    // Sons do Gatinho (0.18.0): o contrato é o do README ("Sons do Gatinho"). O miado da fase da vida (`win`) vem 0,9 s depois da fanfarra e o ronronar (`winMore`) 1,7 s; o ratinho é o `squeak`;
     // o camundongo ágil é um ratinho raro (`squeak` + `purr` 0,15 s depois); o novelo é o `yarn` e o comum, que eriça o pelo, solta o `hiss` 0,3 s depois (`transform`); o cão de guarda que nota o gatinho late (`alert`: `woof`);
     // o rastreador rosna (`alert2`: `growl`, no máximo a cada 3 s e só a até 8 tiles); ser pego é `capture` e, 0,1 s depois, o miado de susto (`hurt`: `yowl`); afugentar um cão é o som de hoje do carteiro (`beat`).
     sfx: { ration: "squeak", bone: "yarn", capture: "capture", transform: "hiss", beat: "postman", win: { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" }, alert2: "growl",
@@ -228,8 +228,8 @@
       shopTitle: "Lojinha de skins do gatinho",
       howto: [
         `<li><strong>Objetivo:</strong> ajude o gatinho a pegar todos os ratinhos (e os <strong>novelos</strong>, nas fases em que eles aparecem) e depois chegar à <strong>SAÍDA</strong>. A saída abre quando você pegar tudo; nas fases com <strong>pontos mínimos</strong> (o placar mostra <strong>PONTOS n / meta</strong>), ela abre assim que a sua pontuação na fase chega a essa meta (e, a partir da Fase 11, também a <strong>missão</strong> da fase precisa estar cumprida).</li>`,
-        `<li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio, os cães e os blocos ficam parados.</li>`,
-        `<li><strong>Cuidado com os cães!</strong> Os cães patrulham a rua atrás de gatinhos. Quando aparecer um <span class="red">!</span> vermelho em cima de um cão, ele fica bem mais rápido e vai atrás do gatinho. Se ele encostar no gatinho, você perde 1 vida e o gatinho volta ao início da fase; o tempo continua contando. Os ratinhos que ainda não foram pegos <strong>mudam de lugar</strong>, e eles também ficam em lugares novos a cada jogo. A partir da Fase 11 aparecem também os <strong>cães rastreadores</strong>: eles ouvem o gatinho de longe e seguem o rastro, mas, como os outros cães, <strong>não pulam</strong> os obstáculos baixos nem sobem nos lugares altos.</li>`,
+        `<li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio e os cães ficam parados.</li>`,
+        `<li><strong>Cuidado com os cães!</strong> Os cães patrulham a rua atrás de gatinhos. Quando aparecer um <span class="red">!</span> vermelho em cima de um cão, ele fica bem mais rápido e vai atrás do gatinho. Se ele encostar no gatinho, você perde 1 vida e o gatinho volta ao início da fase (da Fase 9 em diante ele renasce onde caiu); o tempo continua contando. Os ratinhos que ainda não foram pegos <strong>mudam de lugar</strong>, e eles também ficam em lugares novos a cada jogo. A partir da Fase 11 aparecem também os <strong>cães rastreadores</strong>: eles ouvem o gatinho de longe e seguem o rastro, mas, como os outros cães, <strong>não pulam</strong> os obstáculos baixos nem sobem nos lugares altos.</li>`,
         `<li><strong>Correr (arrancada):</strong> segure <kbd>Shift</kbd> ou <kbd>Espaço</kbd> (no controle, <strong>A</strong>, <strong>RB</strong> ou <strong>RT</strong>; no celular, o botão <strong>Correr</strong>) para o gatinho dar uma <strong>arrancada</strong>: ele fica 35% mais rápido enquanto está andando e tem <strong>fôlego</strong>. O fôlego (a barra <strong>FÔLEGO</strong> no placar) dura cerca de 2,5 s de arrancada e volta em cerca de 5 s sem correr; quando acaba, o gatinho fica <strong>ofegante</strong> por um instante e só anda normal. O <strong>novelo turbo</strong> deixa o gatinho correr sem cansar por alguns segundos.</li>`,
         `<li><strong>Poças e pelo molhado:</strong> pisar numa <strong>poça</strong> (água azul no chão) molha o pelo: o gatinho fica <strong>mais lento</strong> (65% da velocidade) e <strong>não consegue dar arrancada</strong> até secar, uns 6 s depois de sair da poça. O placar mostra <strong>MOLHADO</strong> e quanto falta. Os cães não se molham.</li>`,
         `<li><strong>Pular e subir:</strong> os <strong>obstáculos baixos</strong> (vasos, caixotes, cercas baixas) o gatinho <strong>pula</strong> (um pouco mais devagar sobre eles), mas os cães não passam: é um atalho só dele. Nos <strong>lugares altos</strong> (árvores, prateleiras, muros) o gatinho fica <strong>A SALVO</strong> enquanto o centro dele estiver em cima: nenhum cão o pega. Os cães esperam embaixo por até 4 s e desistem. Lá em cima não há limite de tempo, mas o relógio e o bônus de tempo continuam correndo, e, quando o gatinho desce, a proteção acaba.</li>`,
@@ -240,6 +240,7 @@
         `<li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins para o gatinho (a partir de 10 petscoin): cores, bandana de pirata, capacete de astronauta, capa de super-gato...</li>`,
         `<li><strong>Bichinhos:</strong> no menu, toque em <strong>Bichinho</strong> para escolher com quem jogar. <strong>Cada bichinho tem as suas próprias 20 fases</strong>, com pontos, recordes, ranking, progresso e jogo salvo só dele: jogar um não mexe nos outros. <strong>Dentro de um bichinho a fase seguinte só abre quando você conclui a anterior</strong>. A <strong>lojinha de skins</strong>, os <strong>petscoin</strong>, o nome de usuário e a conta são de todos os bichinhos.</li>`,
         `<li><strong>Reforços:</strong> ao vencer uma fase você escolhe <strong>1 reforço</strong> entre <strong>3 opções sorteadas</strong> (de um conjunto de 6: patas ágeis, novelo poderoso, vida extra, coração maior, pelo grosso ou cães lentos; a partir da Fase 11 entram mais 3: passos de veludo, bigodes atentos e chamado de petisco). Ele fica com você nas fases seguintes; a próxima fase só começa depois da escolha. Começar uma fase pelo menu ou jogá-la de novo começa sem reforços.</li>`,
+        `<li><strong>Crescer:</strong> na Fase 1 o gatinho é um <strong>filhote</strong> (menor, de cabeça grande e coleira rosa). A cada fase vencida e a cada reforço escolhido ele cresce: vira um gato <strong>jovem</strong> (coleira roxa) e, por fim, um gato <strong>adulto</strong> (coleira verde-água). Mudam o desenho e o miado ao completar a fase (agudo no filhote, grave no adulto). É só o desenho e o som: o tamanho de contato e as regras são os mesmos. Na pausa o jogo diz em que fase de crescimento ele está.</li>`,
         `<li><strong>Vidas:</strong> você começa com 3, mostradas por corações vermelhos <span class="red">♥ ♥ ♥</span>, e pode ter de 1 a 5 (até 8 com o reforço <em>Coração maior</em>); <strong>a partir da Fase 11 o máximo sobe até 10</strong>. Alguns itens escondem uma <strong>vida extra</strong> (você só descobre ao pegar o item): cada uma dá +1 vida, até o máximo. As vidas que sobram <strong>passam para a fase seguinte</strong>.</li>`,
         `<li><strong>Sem vidas?</strong> Você tem até <strong>3 novas tentativas</strong> da fase em que está: ela recomeça do zero, com 3 vidas. Cada nova tentativa custa <strong>100 pontos</strong>.</li>`,
         `<li><strong>Pontuação:</strong> cada ratinho vale 100 pontos, cada novelo vale 150, cada cão afugentado com o poder do novelo vale mais 100, cada camundongo vale 50 e, nas Fases 11 a 20, cumprir a missão da fase dá um bônus. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam. Para melhorar o recorde de uma fase, use <strong>Jogar fases anteriores</strong> no menu.</li>`,
@@ -258,6 +259,7 @@
       regHint: `Pode ser o nome de um gatinho! Até 16 letras ou números.`,
       canvasLabel: "Área do jogo: um gatinho coleta ratinhos e novelos e foge dos cães. Pegar um novelo dá poder por alguns segundos: os cães ficam afugentados e fogem do gatinho, e, ao encostar neles, você ganha pontos. Novelos de cores diferentes dão escudo, gelo, turbo ou ímã. Segurar Shift, Espaço ou o botão Correr dá uma arrancada enquanto houver fôlego; poças molham o pelo e deixam o gatinho lento; os lugares altos deixam o gatinho a salvo dos cães; os obstáculos baixos só o gatinho pula",
       padLabel: "Controle direcional: arraste o dedo para mover o gatinho",
+      pauseHelp: `Teclado: setas ou WASD movem · Shift ou Espaço (segurar) dão a arrancada · Esc ou P pausa · Ctrl+S salva · M liga e desliga o som.<br>Controle: analógico ou direcional movem · A, RB ou RT (segurar) dão a arrancada · Start pausa · Y salva · A escolhe · B volta.<br>Toque: arraste o controle redondo para mover · segure o botão Correr para a arrancada.`,
       docTitle: "Jogo do gatinho",
     },
   };

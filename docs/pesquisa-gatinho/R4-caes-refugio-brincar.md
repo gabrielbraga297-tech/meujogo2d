@@ -1,7 +1,7 @@
 # R4 — Gato diante de CÃES, REFÚGIO EM LUGARES ALTOS/ESCONDERIJOS, BRINCAR, novelo/fio, caixas, GPS
 
 > **AVISO IMPORTANTE (leia primeiro).** Nesta sessão o WebFetch falhou em todos os hosts (getaddrinfo ENOTFOUND) e o curl foi recusado pelo proxy (403). O coordenador confirmou que a rede bloqueia os sites acadêmicos. **NENHUM artigo abaixo foi aberto.** Tudo vem de resumos produzidos pelo WebSearch (texto de busca, às vezes com trecho do resumo do artigo), que pode conter erros de transcrição. Portanto:
-> - Todo item está **NÃO ABERTO / não verificado**. Nada é "verificado: sim".
+> - Todo item está **NÃO ABERTO / não verificado**. Nada está marcado como verificado.
 > - Os números abaixo são **PISTAS** para conferir quando houver rede. Não devem ir para o README nem para o jogo antes da conferência.
 > - Onde o autor, o DOI ou o volume não apareceu, está escrito "não confirmado". Não preenchi nada por palpite.
 > - Datas: janela exigida = OUT/2021 a OUT/2026.

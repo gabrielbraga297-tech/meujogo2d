@@ -35,7 +35,7 @@
   // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
   const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 60;
   const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
-  // (0.18.0, E2b-2) a carteira é ÚNICA, mas as skins são POR BICHINHO: as do Cachorrinho ficam com o id puro ("cinza", como sempre) e as dos outros ficam com o prefixo do bichinho ("cat:cinza"),
+  // (0.18.0) a carteira é ÚNICA, mas as skins são POR BICHINHO: as do Cachorrinho ficam com o id puro ("cinza", como sempre) e as dos outros ficam com o prefixo do bichinho ("cat:cinza"),
   // para não colidirem (o Gatinho tem Cinza, Pirata e Astronauta como o Cachorrinho). Uma skin guardada é, então, "id" (Cachorrinho) ou "bichinho:id" (os outros; nunca "dog:id").
   const ownKey = (animal, id) => (animal === "dog" ? id : `${animal}:${id}`);
   const isOwnKey = (key) => { if (isSkinId(key)) return true; const m = typeof key === "string" && /^([a-z]{2,12}):([a-z0-9-]{1,24})$/.exec(key); return !!m && m[1] !== "dog"; };

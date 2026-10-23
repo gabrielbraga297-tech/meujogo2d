@@ -317,7 +317,7 @@ const buffersOf = (ctx) => ctx.nodes.filter((n) => n.kind === "buffer");
 // duty (ciclo de trabalho) de uma onda de pulso criada por createPeriodicWave, lido dos coeficientes da série de Fourier
 const dutyOf = (w) => Math.atan2(w.im[1], w.re[1]) / Math.PI;
 
-// Os números dos sons novos são ESCOLHAS DE DESIGN INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS (a rede estava bloqueada para artigos): os
+// Os números dos sons novos são ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte (a rede estava bloqueada para artigos): os
 // testes abaixo conferem que o som escrito em sound.js cumpre o desenho pedido, não que o desenho copie um artigo.
 test("Gatinho: os 15 sons novos existem, tocam e cada um conta como UMA voz (8 ao mesmo tempo, o 9º é recusado)", () => {
   const { s } = ready();
@@ -560,16 +560,16 @@ test("pant: respiração de ~0,35 s em DUAS ondas de ruído passa-banda, a segun
 // ----- contrato com o README -----
 test("README: a subseção \"Sons do Gatinho (0.18.0)\" lista os 15 sons, diz quando tocar cada um e avisa que os números ainda não foram verificados", () => {
   const rp = path.join(__dirname, "../README.md");
-  if (!fs.existsSync(rp)) return; // (a pasta de trabalho pode não ter o README)
+  assert.ok(fs.existsSync(rp), "README.md não encontrado: o contrato dos sons não pôde ser conferido (um teste que não confere nada não conta como passou)");
   const readme = fs.readFileSync(rp, "utf8"), i = readme.indexOf("### Sons do Gatinho (0.18.0)");
   assert.ok(i >= 0, "subseção não encontrada");
   const rest = readme.slice(i + 10), j = rest.search(/\n##+ /), sec = j < 0 ? rest : rest.slice(0, j);
   for (const n of NEW_NAMES) assert.ok(sec.includes("`" + n + "`"), "README sem o som " + n);
-  assert.ok(sec.includes("escolha de design inspirada em literatura, ainda não verificada"), "frase de honestidade");
+  assert.ok(sec.includes("escolha de design, não verificada em fonte") && sec.includes("pista de literatura, não verificada"), "frase de honestidade");
   assert.ok(/Quando tocar/i.test(sec));
   assert.ok(!/\bet al\b|doi\.org|\(\s*(19|20)\d\d\s*\)/.test(sec), "nenhum artigo citado como fonte verificada (sem et al., doi nem ano entre parênteses)");
   const src = fs.readFileSync(SOUND_PATH, "utf8");
-  assert.ok(/INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS/.test(src), "aviso também no código");
+  assert.ok(/ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte/.test(src), "aviso também no código");
 });
 
 test("render: nome inexistente devolve 0 e não cria nó; sem contexto ou destino lança TypeError", () => {

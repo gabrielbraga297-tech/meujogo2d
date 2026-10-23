@@ -1,4 +1,4 @@
-// A/B de SONS do CACHORRINHO (0.18.0, E2b-2): prova que o Cachorrinho toca exatamente os mesmos sons (nomes e atrasos) entre duas versões do código.
+// A/B de SONS do CACHORRINHO (0.18.0): prova que o Cachorrinho toca exatamente os mesmos sons (nomes e atrasos) entre duas versões do código.
 // Joga cenas fixas com a mesma semente (Math.random e `setRand` trocados por um gerador fixo): pegar rações, ossos de todos os tipos e bolinhas, ganhar de carteiros e de gatos, o "!" dos agentes, o miado do gato que nota o cachorrinho,
 // ser pego, perder todas as vidas e completar a fase (latido). Devolve a lista de pedidos de som: "nome" ou "nome@atraso".
 // Uso:  node tests/ab-sounds.js <pasta-do-código>   (CHROMIUM_PATH e NODE_PATH como nos outros testes; use `flock` no trinco do navegador). O tests/e2e.js compara com DOG_SOUNDS_0170,

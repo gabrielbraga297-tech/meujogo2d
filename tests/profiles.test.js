@@ -111,7 +111,7 @@ test("Cachorrinho: placar (RAÇÕES, OSSOS, BOLINHAS, PODER), sons e textos fixo
   assert.strictEqual(h.powerOn(25), "Poder do osso: 25 segundos");
   assert.strictEqual(h.powerOff, "Poder do osso: desligado");
   assert.deepStrictEqual(dog.sfx, { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
-    ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" }); // (0.18.0, E2b-2: os sons de sempre; os campos novos do Gatinho ficam vazios = nenhum som novo no Cachorrinho)
+    ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" }); // (0.18.0: os sons de sempre; os campos novos do Gatinho ficam vazios = nenhum som novo no Cachorrinho)
   for (const k of ["ballMore", "alert", "hurt", "winMore", "splash", "shake", "jump", "dash", "pant"]) assert.strictEqual(dog.sfx[k], "", "o Cachorrinho não toca som novo: sfx." + k);
   assert.strictEqual(dog.ui.shopTitle, null);
   assert.strictEqual(dog.shop.preview("Dálmata"), "Prévia da skin Dálmata");
@@ -139,7 +139,7 @@ test("Gatinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins
   for (const k of Object.keys(a)) if (k in b && !NULLABLE(k)) assert.strictEqual(b[k], a[k], `tipo diferente em ${k}: ${a[k]} × ${b[k]}`);
   // tudo o que o Cachorrinho tem como texto fixo (ui.*), o Gatinho também tem (e como texto, não null)
   for (const k of Object.keys(dog.ui)) assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
-  // (0.18.0, E2b-2) as skins do Gatinho vêm de CatArt.SKINS (12 skins), não do catálogo do Cachorrinho: o perfil não troca nome nem frase
+  // (0.18.0) as skins do Gatinho vêm de CatArt.SKINS (12 skins), não do catálogo do Cachorrinho: o perfil não troca nome nem frase
   assert.strictEqual(cat.skins, null);
   assert.strictEqual(cat.ui.shopTitle, "Lojinha de skins do gatinho");
   // os reforços têm os mesmos ids e todos têm nome e texto
@@ -156,9 +156,9 @@ test("Gatinho: substantivos do gato (ratinho, novelo, cão, cão afugentado) e s
   assert.deepStrictEqual(cat.hud, { ...cat.hud, prey: "RATINHOS", power: "NOVELOS", balls: "CAMUNDONGOS", powerBadge: "PODER" });
   assert.strictEqual(cat.say.ballGot(50, 1, 3), "Camundongo! +50 pontos (1/3)");
   assert.strictEqual(cat.say.winBalls(50), " + camundongos: 50");
-  assert.strictEqual(cat.say.foes(5, 2, true), "5 cães e 2 rastreadores"); // (0.18.0, E2a: os `R` do mapa são os cães rastreadores)
+  assert.strictEqual(cat.say.foes(5, 2, true), "5 cães e 2 rastreadores"); // (0.18.0: os `R` do mapa são os cães rastreadores)
   assert.strictEqual(cat.say.foes(6, 1, false), "6 cães e 1 rastreador");
-  // (E2b-2) os sons do Gatinho, pelo contrato do README ("Sons do Gatinho")
+  // os sons do Gatinho, pelo contrato do README ("Sons do Gatinho")
   assert.deepStrictEqual(cat.sfx, { ration: "squeak", bone: "yarn", capture: "capture", transform: "hiss", beat: "postman", win: { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" }, alert2: "growl",
     ball: "squeak", ballMore: "purr", alert: "woof", alert2Every: 3, alert2Near: 8, hurt: "yowl", winMore: "purr", splash: "splash", shake: "shake", jump: "jump", dash: "dash", pant: "pant" });
   assert.strictEqual(cat.sfx.alert2, "growl", "o rastreador do Gatinho rosna (não mia) ao começar a perseguir");
@@ -204,15 +204,35 @@ test("Gatinho: as frases do Gatinho são diferentes das do Cachorrinho (só as n
 test("Gatinho: os textos fixos (Como jogar etc.) têm o mesmo roteiro do Cachorrinho e falam do gato", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const steps = (cat.ui.howto.match(/<li><strong>([^<]+)<\/strong>/g) || []).map((x) => x.replace(/<[^>]+>/g, ""));
-  for (const h of ["Objetivo:", "Mover:", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Camundongos ágeis (a partir da Fase 2):", "Correr (arrancada):", "Poças e pelo molhado:", "Pular e subir:", "Reforços:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Gatinho: " + h);
+  for (const h of ["Objetivo:", "Mover:", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Camundongos ágeis (a partir da Fase 2):", "Correr (arrancada):", "Poças e pelo molhado:", "Pular e subir:", "Reforços:", "Crescer:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Gatinho: " + h);
   assert.ok(/gatinho/.test(cat.ui.howto) && /ratinho/.test(cat.ui.howto) && /novelo/.test(cat.ui.howto) && !/cachorr|carroc|carteiro/i.test(cat.ui.howto));
   assert.ok(/gatinho/.test(cat.ui.shopHelp) && /gatinho/.test(cat.ui.nameTip) && /gatinho/.test(cat.ui.canvasLabel) && /gatinho/.test(cat.ui.padLabel));
   assert.ok(html.includes('id="howto-steps"') && html.includes('id="scores-help"') && html.includes('id="name-tip"') && html.includes('id="name-step1"') && html.includes('id="reg-hint"'), "o index.html tem os ids dos textos que o perfil troca");
   assert.ok(/ratinho/.test(cat.ui.scoresHelp) && /novelo/.test(cat.ui.scoresHelp) && /50 por camundongo/.test(cat.ui.scoresHelp));
-  // (0.18.0, E2a) o Como jogar do Gatinho explica as mecânicas novas: arrancada (Shift, Espaço, A/RB/RT, botão Correr), fôlego, poça, obstáculo baixo, lugar alto e rastreadores
+  // (0.18.0) o Como jogar do Gatinho explica as mecânicas novas: arrancada (Shift, Espaço, A/RB/RT, botão Correr), fôlego, poça, obstáculo baixo, lugar alto e rastreadores
   const how = cat.ui.howto.replace(/<[^>]+>/g, "");
   for (const re of [/Shift/, /Espaço/, /\bA\b.*\bRB\b.*\bRT\b/, /botão Correr/, /FÔLEGO/, /ofegante/, /sem cansar/, /poça/, /MOLHADO/, /65%/, /obstáculos baixos/, /pula/, /lugares altos/, /A SALVO/, /4 s/, /rastreadores/, /camundongos ágeis/]) assert.ok(re.test(how), "falta no Como jogar do Gatinho: " + re);
   assert.ok(!/bolinha/i.test(how) && !/bolinha/i.test(cat.ui.canvasLabel + cat.ui.scoresHelp), "o Gatinho não fala de bolinhas (são camundongos)");
+  // (0.18.0, auditoria) o Crescer (filhote, jovem, adulto), o renascer no lugar da queda (Fases 9 a 20) e nenhuma menção a blocos (as fases do gato não têm blocos que se movem)
+  for (const re of [/Crescer:/, /filhote/, /jovem/, /adulto/, /miado/, /pausa o jogo diz em que fase de crescimento/, /da Fase 9 em diante ele renasce onde caiu/]) assert.ok(re.test(how), "falta no Como jogar do Gatinho: " + re);
+  assert.ok(!/blocos?\b/i.test(how), "o Como jogar do Gatinho não fala de blocos (as fases do gato não têm blocos que se movem)");
+});
+
+test("Gatinho: a ajuda da pausa (ui.pauseHelp) e a dica do FÔLEGO falam de Shift, Espaço, A/RB/RT e do botão Correr; a do Cachorrinho continua a do index.html", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  assert.ok(html.includes('id="pause-help"'), "o index.html tem o id pause-help (o texto que o perfil troca)");
+  for (const re of [/Shift/, /Espaço/, /A, RB ou RT/, /botão Correr/, /Esc ou P/, /Ctrl\+S/, /Start/]) assert.ok(re.test(cat.ui.pauseHelp), "falta na ajuda da pausa do Gatinho: " + re);
+  const pause = html.match(/<p id="pause-help"[^>]*>([\s\S]*?)<\/p>/)[1];
+  assert.ok(/Teclado: setas ou WASD movem/.test(pause) && !/Shift|Correr/.test(pause), "o texto do index.html (o do Cachorrinho) não fala de arrancada");
+  assert.strictEqual(dog.ui.pauseHelp, null);
+  const title = html.match(/id="hud-stamina"[^>]*title="([^"]*)"/)[1];
+  for (const re of [/Shift/, /Espaço/, /botão Correr/, /A, RB ou RT/]) assert.ok(re.test(title), "falta na dica do FÔLEGO: " + re);
+});
+
+test("Como jogar do Cachorrinho (index.html): diz que o Cachorrinho e o Gatinho já estão prontos (e não mais que só o Cachorrinho está pronto)", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+  assert.ok(html.includes("O <strong>Cachorrinho</strong> e o <strong>Gatinho</strong> já estão prontos (o Passarinho chega em breve)."));
+  assert.ok(!/Por enquanto só o <strong>Cachorrinho<\/strong> está pronto/.test(html) && !/Gatinho e o Passarinho chegam em breve/.test(html), "a frase antiga (falsa desde a 0.18.0) voltou");
 });
 
 // ---------- ambientes por bichinho ----------

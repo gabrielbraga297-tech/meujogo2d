@@ -443,12 +443,6 @@
   }
   const DS = { pal: null, kind: 0, mode: "patrol", stretch: 1, wag: 0, l1: 0, l2: 0, l3: 0, l4: 0, headA: 0, bob: 0, blink: false, flap: 0, t: 0, calm: false, frozen: false };
 
-  function dogLeg(c, hx, top, sw, w, col, ground) {
-    const fx = hx + sw, fy = ground - (sw > 0 ? sw * 0.35 : 0);
-    c.lineCap = "round"; c.beginPath(); c.moveTo(hx, top); c.lineTo(fx, fy);
-    c.strokeStyle = LINE; c.lineWidth = w + 1.5; c.stroke(); c.strokeStyle = col; c.lineWidth = w; c.stroke();
-  }
-
   function dogSide(c, D) {
     const P = D.pal, guard = D.kind === 0, mode = D.mode, flee = mode === "flee", chase = mode === "chase", search = mode === "search";
     const st = D.stretch, wg = D.wag;

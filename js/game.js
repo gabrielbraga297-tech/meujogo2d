@@ -114,10 +114,10 @@
     { id: "super", name: "Super-cão", price: 50, text: "capa vermelha de super-herói", collar: "#c1272d", acc: "cape" },
   ];
   const skinById = (id) => SKINS.find((k) => k.id === id) || SKINS[0];
-  // O catálogo de skins de cada bichinho (0.18.0, E2b-2): o do Cachorrinho é o SKINS acima; o do Gatinho são as 12 de CatArt.SKINS (js/cat-art.js: id, name, text, price). A carteira é única, mas as skins compradas e em uso são POR BICHINHO (js/records.js).
+  // O catálogo de skins de cada bichinho (0.18.0): o do Cachorrinho é o SKINS acima; o do Gatinho são as 12 de CatArt.SKINS (js/cat-art.js: id, name, text, price). A carteira é única, mas as skins compradas e em uso são POR BICHINHO (js/records.js).
   const skinsOf = (animalId) => (animalId === "cat" && typeof CatArt !== "undefined" ? CatArt.SKINS : SKINS);
   let skinId = ""; // a skin em uso do jogador atual (0.15.9)
-  let catSkin = ""; // a skin em uso do jogador atual no Gatinho (0.18.0, E2b-2): lida da carteira; os testes e as capturas podem trocá-la com `__game.catSkin` (vale até a próxima leitura)
+  let catSkin = ""; // a skin em uso do jogador atual no Gatinho (0.18.0): lida da carteira; os testes e as capturas podem trocá-la com `__game.catSkin` (vale até a próxima leitura)
   const refreshSkin = () => {
     const me = store.player(), w = me ? store.wallet(me) : null;
     skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : "";
@@ -127,12 +127,12 @@
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, passos que olha ao fugir (o intervalo entre os avisos sonoros do 2º inimigo é do perfil: sfx.alert2Every)
-  // ---------- Gatinho (0.18.0): mecânicas das fases do gato. ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases que ligam os campos `sprint`, `water`, `refuge` e `night` (todas as 20 do Gatinho; nenhuma do Cachorrinho) ----------
+  // ---------- Gatinho (0.18.0): mecânicas das fases do gato. ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases que ligam os campos `sprint` (as 20 do Gatinho), `water` (só os mapas com `~`), `refuge` (só os mapas com `T`) e `night` (só as Fases 18 e 19); nenhuma fase do Cachorrinho liga nenhum ----------
   const CAT_SPRINT = 1.35, SPRINT_DRAIN = 0.4, SPRINT_REGEN = 0.2, WINDED_TIME = 1.5; // arrancada: × velocidade; fôlego (0 a 1) gasto por s (2,5 s de tanque cheio) e recuperado por s (5 s); s "ofegante" (sem arrancada) quando o fôlego acaba
   const WET_TIME = 6, WET_SLOW = 0.65, JUMP_SLOW = 0.85; // pelo molhado: s depois de sair da poça (renova enquanto está nela) e × velocidade (sem arrancada); × velocidade sobre um obstáculo baixo (X), o "pulo suave"
   const REFUGE_WAIT = 4, LOW_REACH = 34;                 // lugar alto (T): s que o cão espera ao pé dele antes de desistir; alcance (px) dos cães sobre um X (o gatinho não fica a salvo no meio de um obstáculo baixo)
   const NIGHT_DARK = 0.75, NIGHT_HALO = 5;               // fases noturnas: quanto escurece (0 a 1) e o raio da luz em volta do gatinho (tiles); o halo é desenhado em CatArt/draw (veja README, Desenhos do Gatinho)
-  // Sons (0.18.0, E2b-2): quais sons tocam em cada momento é do perfil do bichinho (P().sfx: o Cachorrinho toca os de sempre, o Gatinho os do README "Sons do Gatinho"); aqui ficam só os atrasos (s) e os intervalos mínimos.
+  // Sons (0.18.0): quais sons tocam em cada momento é do perfil do bichinho (P().sfx: o Cachorrinho toca os de sempre, o Gatinho os do README "Sons do Gatinho"); aqui ficam só os atrasos (s) e os intervalos mínimos.
   const SFX_WIN = 0.9, SFX_WIN_MORE = 1.7, SFX_BALL_MORE = 0.15, SFX_HURT = 0.1, SFX_TRANSFORM = 0.3; // atrasos: o miado/latido depois da fanfarra, o ronronar, o 2º som do camundongo, o miado de susto depois da captura, o chiado depois do novelo
   const SFX_WOOF_DOG = 2.5, SFX_WOOF_ALL = 0.4, SFX_JUMP_EVERY = 0.4, SFX_DASH_EVERY = 0.6; // intervalos mínimos (s): latido de cada cão, latido de qualquer cão, pulo, arrancada
   const CAT_REV = 1;                                     // revisão dos mapas do Gatinho (js/cat-levels.js): jogos salvos de outra revisão são descartados com aviso
@@ -1345,15 +1345,15 @@
     },
   ];
   const LEVEL_IDS = LEVELS.map((l) => l.id); // (as fases do Cachorrinho; o ranking compartilhado em stand by, js/board.js, é só dele)
-  // (0.18.0) As 20 fases do GATINHO: por enquanto uma CÓPIA das do Cachorrinho (mesmos mapas, números e textos), marcada `placeholder: true`, só para o encanamento por bichinho (builtOf, jogo salvo, ranking,
-  // textos do perfil) poder ser testado. Os mapas de verdade do gato substituem esta lista (cada fase com o seu `map`, `vets`... e sem `placeholder`); nada mais precisa mudar.
+  // (0.18.0) CAT_LEVELS: uma CÓPIA das 20 fases do Cachorrinho (mesmos mapas, números e textos), marcada `placeholder: true`. É só o RESERVA do Gatinho: o jogo de verdade usa as fases de js/cat-levels.js (catGameFrom, mais abaixo)
+  // e só cai nesta cópia se esse arquivo faltar ou alguma fase for inválida (o Gatinho fica então `ready: false`, "Em breve"); `enableTestAnimal` também a usa nos testes do encanamento por bichinho (builtOf, jogo salvo, ranking, textos do perfil).
   const CAT_LEVELS = LEVELS.map((l) => ({ ...l, placeholder: true }));
 
-  // (0.18.0, E2a) ADAPTADOR dos mapas do Gatinho (js/cat-levels.js = window.CatLevels) para a definição que a buildLevel aceita.
+  // (0.18.0) ADAPTADOR dos mapas do Gatinho (js/cat-levels.js = window.CatLevels) para a definição que a buildLevel aceita.
   // De cada fase do gato (c) vêm o que é DELE: id, título, mapa, quantos ratinhos/novelos/camundongos, tipos de novelo, vidas extras, nota e a velocidade do gatinho (catSpeed = dogSpeed do motor).
   // Da fase do CACHORRINHO que ela imita (c.like) vêm as REGRAS e a DIFICULDADE: a configuração dos cães (a do agente `vets[0]` repetida pelo número de `V` do mapa), o alcance do "!", pontos por vida perdida,
   // pontos mínimos, poder do novelo, máximo de vidas, missão e bônus, degrau do bônus de tempo, esmagar, facilitação do toque, renascer no lugar e a configuração dos gatos inimigos (aqui: dos RASTREADORES, `R` do mapa).
-  // O mapa tem 3 símbolos a mais: `T` lugar alto, `~` poça e `R` posto de um rastreador (a célula vira chão e a posição vai para `cats`). As mecânicas do gato (`sprint`, `water`, `refuge`, `night`) ligam aqui.
+  // O mapa tem 3 símbolos a mais: `T` lugar alto, `~` poça e `R` posto de um rastreador (a célula vira chão e a posição vai para `cats`). As mecânicas do gato ligam aqui: a arrancada (`sprint`) nas 20 fases, a poça (`water`) só se o mapa tem `~`, o lugar alto (`refuge`) só se tem `T` e a noite (`night`) só nas Fases 18 e 19.
   const NIGHT_LEVELS = [18, 19];
   function catDefFrom(c) {
     const like = c && LEVELS.find((l) => l.id === c.like);
@@ -1388,7 +1388,7 @@
   const blockWarn = (d, bt) => { const left = d.every - (bt % d.every); return left <= d.warn ? 1 - left / d.warn : 0; };
   const blockRectAt = (d, bt) => { const f = blockFraction(d, bt); return { x: d.ax + (d.bx - d.ax) * f, y: d.ay + (d.by - d.ay) * f, w: d.w, h: d.h, kind: d.kind }; };
 
-  // (0.18.0, E2b-1) Tamanho (em tiles) da mancha de paredes (`#` ligadas pelos lados) de cada tile, sem contar o anel de fora do mapa (o anel e os tiles que não são parede valem 0).
+  // (0.18.0) Tamanho (em tiles) da mancha de paredes (`#` ligadas pelos lados) de cada tile, sem contar o anel de fora do mapa (o anel e os tiles que não são parede valem 0).
   // O ambiente do Gatinho usa isto (g.mass) para decidir que uma mancha enorme de `#` é um lago (Fase 9) e não um arbusto. Só o Gatinho precisa (o Cachorrinho não chama).
   function wallMasses(map, rows, cols) {
     const mass = new Int16Array(rows * cols), seen = new Uint8Array(rows * cols);
@@ -1498,8 +1498,8 @@
     //  - `sprint`: arrancada com fôlego do Gatinho  -> updateSprint (update()) e a barra FÔLEGO do placar (updateHud)
     //  - `water`: poças (`~`) que molham o pelo e deixam o gato lento -> updateWater (update()) e o placar
     //  - `refuge`: lugares altos (`T`) onde o gatinho fica a salvo -> update() (ninguém o pega) e updateVet/updateCat (o cão espera ao pé e desiste)
-    //  - `night`: fase noturna: `darkness` no estado (o desenho que escurece é da etapa de desenhos)
-    // (0.18.0, E2a) As mecânicas do Gatinho: `true` = os números de sempre (constantes CAT_*, SPRINT_*, WET_*, REFUGE_*, NIGHT_*), ou um objeto que troca alguns deles. Desligadas (null) em todas as fases do Cachorrinho.
+    //  - `night`: fase noturna: `darkness` no estado (o desenho que escurece, com o halo em volta do gatinho, está no draw(); veja o README, "Desenhos do Gatinho")
+    // (0.18.0) As mecânicas do Gatinho: `true` = os números de sempre (constantes CAT_*, SPRINT_*, WET_*, REFUGE_*, NIGHT_*), ou um objeto que troca alguns deles. Desligadas (null) em todas as fases do Cachorrinho.
     const okNum = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi, objOf = (v) => (v && typeof v === "object" ? v : {});
     const sprint = def.sprint ? { factor: CAT_SPRINT, drain: SPRINT_DRAIN, regen: SPRINT_REGEN, winded: WINDED_TIME, ...objOf(def.sprint) } : null;
     const water = def.water ? { wet: WET_TIME, slow: WET_SLOW, ...objOf(def.water) } : null;
@@ -1542,7 +1542,7 @@
   // Pontos, recordes, ranking, progresso e jogo salvo são INDEPENDENTES por bichinho (store.game(id): js/records.js) e jogar um nunca mexe nos dados de outro.
   // Qualquer bichinho pronto pode ser escolhido a qualquer momento, sem exigir nada dos outros; DENTRO de um bichinho a fase N só abre quando a N−1 foi concluída.
   // A carteira de petscoin, a lojinha, as contas e os jogadores são ÚNICOS (de todos os bichinhos). `levels` = a lista de fases do bichinho (o menu e a lista de fases usam ela);
-  // `ready` = dá para jogar. Hoje só o Cachorrinho está pronto; o Gatinho já tem o encanamento e as fases de teste (cópia das do Cachorrinho: `placeholder`) mas fica `ready: false` até os mapas dele chegarem; o Passarinho vem depois.
+  // `ready` = dá para jogar. O Cachorrinho e o Gatinho (com js/cat-levels.js carregado) estão prontos; sem esse arquivo o Gatinho cai nas fases de reserva (CAT_LEVELS, `placeholder`) e fica `ready: false`; o Passarinho ainda não tem fases.
   // (0.18.0) Cada jogo também tem: `rev` (revisão dos MAPAS dele: jogos salvos de outra revisão são descartados com aviso) e `built` (as fases montadas por buildLevel, id -> fase, montadas na primeira vez que alguém pede e
   // refeitas se `levels` for trocada). TUDO o que depende das fases de uma partida passa por builtOf(bichinho)/levelsOf(bichinho): o da partida em andamento (`gameAnimal`) ou o escolhido no menu (syncAnimal()).
   // O texto de cada bichinho (substantivos, avisos, placar) vem do perfil dele: js/profiles.js (`P()` mais abaixo).
@@ -1556,8 +1556,8 @@
     } });
     return g;
   }
-  // (0.18.0, E2a) O Gatinho: se js/cat-levels.js (window.CatLevels) foi carregado, as 20 fases dele são as convertidas por catDefFrom (revisão própria CAT_REV, `placeholder: false`) e ele está PRONTO;
-  // sem esse arquivo (ou se alguma fase for inválida) ele segue com CAT_LEVELS (a cópia de teste das fases do Cachorrinho, `placeholder`), desligado (`ready: false`, "Em breve"), como na etapa 1.
+  // (0.18.0) O Gatinho: se js/cat-levels.js (window.CatLevels) foi carregado, as 20 fases dele são as convertidas por catDefFrom (revisão própria CAT_REV, `placeholder: false`) e ele está PRONTO;
+  // sem esse arquivo (ou se alguma fase for inválida) ele cai em CAT_LEVELS (a cópia de reserva das fases do Cachorrinho, `placeholder`), desligado (`ready: false`, "Em breve").
   const CAT_BLURB_SOON = "Ágil e curioso: vai ter as suas próprias 20 fases.", CAT_BLURB = "Ratinhos, novelos, cães e lugares altos: 20 fases de aventura.";
   function catGameFrom(list) { // as fases do Gatinho a partir de uma lista no formato de js/cat-levels.js; null se a lista não serve (a falha vai para o console, e os testes a pegam)
     try {
@@ -1624,7 +1624,7 @@
   let catOverride = null;      // usado apenas em testes: posições dos gatos no lugar das da fase
   let catsThaw = false;        // usado apenas em testes: com `freezeVets` ligado, os gatos continuam andando (assim os testes congelam só os agentes)
   let meowAt = -99;            // quando foi o último aviso sonoro do 2º inimigo (o miado do gato; no Gatinho, o rosnado do rastreador): um só a cada sfx.alert2Every s, mesmo com vários
-  let woofAt = -99, jumpAt = -99, dashAt = -99, onLow = false; // (Gatinho, E2b-2) quando foi o último latido de qualquer cão, o último pulo e a última arrancada (s da fase) e se o gatinho está sobre um X
+  let woofAt = -99, jumpAt = -99, dashAt = -99, onLow = false; // (Gatinho) quando foi o último latido de qualquer cão, o último pulo e a última arrancada (s da fase) e se o gatinho está sobre um X
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let theme = Themes.of(1, DEFAULT_ANIMAL); // o ambiente (lugar) da fase atual: js/themes.js (Themes.of(fase, bichinho))
   const themeG = { ctx: null, rect: null, x: 0, y: 0, c: 0, r: 0, free: false, border: false, solid: null, h: (k) => Themes.hash(themeG.c, themeG.r, k) }; // o que cada função de desenho do ambiente recebe
@@ -1665,7 +1665,7 @@
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
   // Estado das mecânicas do Gatinho (0.18.0; só mudam nas fases que ligam `sprint`, `water`, `refuge` e `night`): fôlego (0 a 1), s ofegante, s de pelo molhado, arrancada em andamento, a salvo num lugar alto, escuridão (0 a 1) e o botão "Correr" do toque
   let stamina = 1, winded = 0, wet = 0, sprintOn = false, safe = false, darkness = 0, runTouch = false;
-  // Desenho do Gatinho (0.18.0, E2b-1): `catDraw` = a partida é do Gatinho e o js/cat-art.js está carregado (aí o gatinho, os cães, os ratinhos, os novelos, os camundongos, os postos e os efeitos são desenhados com CatArt;
+  // Desenho do Gatinho (0.18.0): `catDraw` = a partida é do Gatinho e o js/cat-art.js está carregado (aí o gatinho, os cães, os ratinhos, os novelos, os camundongos, os postos e os efeitos são desenhados com CatArt;
   // no Cachorrinho NADA disto roda). `catFx` = efeitos curtos em andamento (splash, shake, dust, hiss, sparkle, wetdrop); o resto são temporizadores de quando soltar um efeito.
   let catDraw = false, catFx = [], dustT = 0, dropT = 0, inPuddle = false, catFloorAll = false;
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
@@ -1840,7 +1840,7 @@
     refreshBlockTiles();
   }
 
-  // ---------- Mecânicas do Gatinho (0.18.0, E2a): arrancada com fôlego, pelo molhado e lugar alto ----------
+  // ---------- Mecânicas do Gatinho (0.18.0): arrancada com fôlego, pelo molhado e lugar alto ----------
   // Só rodam nas fases que ligam `lv.sprint`, `lv.water` e `lv.refuge` (as 20 do Gatinho); nas fases do Cachorrinho nada disto é chamado.
   // Arrancada: segurar Shift ou Espaço (teclado), A, RB ou RT (controle) ou o botão "Correr" (toque) deixa o gatinho ×1,35 mais rápido enquanto ele se move e tem fôlego; gasta 0,4/s (2,5 s de tanque cheio);
   // sem arrancada o fôlego volta a 0,2/s (5 s). Quando acaba, o gatinho fica ofegante por 1,5 s (sem arrancada). Molhado = sem arrancada. Com o novelo turbo (fx.turbo) a arrancada não gasta fôlego.
@@ -1869,16 +1869,19 @@
   const onHighNow = () => { const [c, r] = dogTileNow(); return !!(lv.high && lv.high[r] && lv.high[r][c]); };
   const onLowNow = () => { const [c, r] = dogTileNow(); return !!(lv.catMode && lv.crate[r] && lv.crate[r][c]); }; // sobre um obstáculo baixo (X): o "pulo suave"
   const catSpeedFactor = () => (lv.catMode || lv.sprint ? (sprintOn && lv.sprint ? lv.sprint.factor : 1) * (wet > 0 && lv.water ? lv.water.slow : 1) * (onLowNow() ? JUMP_SLOW : 1) : 1);
-  // Onde o cão (ou rastreador) espera: o tile alcançável (pelo chão `grid` dele) mais perto do lugar alto onde o gatinho está. Nunca por cima do T (fora do chão dos cães).
+  // Onde o cão (ou rastreador) espera: o tile alcançável (pelo chão `grid` dele) mais perto de onde o gatinho está, sem nunca pisar no tile dele (T e X ficam fora do chão dos cães).
+  // Em cima de um T (a salvo) é o "pé" do lugar alto, pelo tile (e fica guardado até o gatinho mudar de tile). Em cima de um X (sem proteção) é o tile andável cujo centro está mais perto do gatinho
+  // DE VERDADE (em pixels, sem guardar: o gatinho pode estar em qualquer ponto do X), para o cão chegar ao lado dele e encostar (LOW_REACH) em vez de ficar parado sem caminho.
   function refugeFoot(v, from, grid) {
-    const [pc, pr] = dogTileNow(), key = pr * COLS + pc;
-    if (v.foot && v.footKey === key) return v.foot; // (o pé do lugar alto só muda quando o gatinho muda de tile: não refaz a busca a cada quadro)
+    const [pc, pr] = dogTileNow(), key = pr * COLS + pc, low = !safe, px = player.x + player.w / 2, py = player.y + player.h / 2;
+    if (!low && v.foot && v.footKey === key) return v.foot; // (o pé do lugar alto só muda quando o gatinho muda de tile: não refaz a busca a cada quadro)
     const g = bfs(from, false, null, grid);
     let best = null;
     for (const [c, r] of g.q) {
-      const d = Math.hypot(c - pc, r - pr), steps = g.dist.get(g.key(c, r));
+      const d = low ? Math.hypot(c * TILE + TILE / 2 - px, r * TILE + TILE / 2 - py) : Math.hypot(c - pc, r - pr), steps = g.dist.get(g.key(c, r));
       if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) < 1e-9 && steps < best.steps)) best = { c, r, d, steps };
     }
+    if (low) return best ? [best.c, best.r] : null;
     v.footKey = key; v.foot = best ? [best.c, best.r] : null;
     return v.foot;
   }
@@ -2063,7 +2066,7 @@
           if (!v.leg) { v.idle = 0.25; return; } // sem para onde fugir: espera um instante
         } else if (v.mode === "chase") {
           // vai atrás do cachorro por um caminho que não passa pelo tile dos outros agentes (se houver outro caminho): eles se espalham em vez de andar em fila
-          const from = tileOf(v.cx, v.cy), dogTile = safe ? refugeFoot(v, from, walk) || dogTileNow() : tileOf(player.x + player.w / 2, player.y + player.h / 2); // (Gatinho a salvo: o alvo é o pé do lugar alto)
+          const from = tileOf(v.cx, v.cy), dogTile = safe || dogOffFloor() ? refugeFoot(v, from, walk) || dogTileNow() : tileOf(player.x + player.w / 2, player.y + player.h / 2); // (Gatinho a salvo: o alvo é o pé do lugar alto; sobre um X, o tile andável mais perto dele: o X não protege)
           const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
           let p = [];
           if (from[0] !== dogTile[0] || from[1] !== dogTile[1]) { // (já no tile do cachorrinho, por exemplo enquanto ele está protegido: não há caminho a buscar, e a busca não se repete 3 vezes por quadro)
@@ -2147,6 +2150,7 @@
     return catMap;
   }
   const dogTileNow = () => tileOf(player.x + player.w / 2, player.y + player.h / 2);
+  const dogOffFloor = () => { if (!lv.catMode) return false; const [c, r] = dogTileNow(); return !walk[r][c]; }; // (Gatinho) com o centro num tile que os cães não pisam (X ou T): ninguém acha caminho até ele, então vão ao tile andável mais perto
   // O tile para onde o gato corre ao perseguir: onde o cachorrinho vai estar (ou, para o gato de número ímpar, o caminho dele até a saída).
   function catTarget(c) {
     const cw = lv.catWalk, dogT = dogTileNow(), g = catDistances(), [cc, cr] = tileOf(c.cx, c.cy);
@@ -2226,11 +2230,11 @@
           c.leg = fleeStep(c);
           if (!c.leg) { c.idle = 0.2; return; }
         } else if (c.mode === "chase") {
-          const goal = safe ? refugeFoot(c, from, cw) || dogTileNow() : catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
+          const off = dogOffFloor(), goal = safe || off ? refugeFoot(c, from, cw) || dogTileNow() : catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
           const dogT = dogTileNow(), atGoal = from[0] === goal[0] && from[1] === goal[1], atDog = from[0] === dogT[0] && from[1] === dogT[1];
           let p = [];
           if (!atGoal) { p = pathTo(bfs(from, false, taken, cw), goal); if (!p.length) p = pathTo(bfs(from, false, null, cw), goal); }
-          if (!p.length && !atDog && !safe) p = pathTo(bfs(from, false, null, cw), dogT); // já está no tile do alvo: vai direto ao cachorrinho (se já está no tile dele, não há caminho a buscar)
+          if (!p.length && !atDog && !safe && !off) p = pathTo(bfs(from, false, null, cw), dogT); // (nunca busca caminho até um tile fora do chão deles, como o X) já está no tile do alvo: vai direto ao cachorrinho (se já está no tile dele, não há caminho a buscar)
           c.leg = p[0] || null;
         } else {
           if (c.idle > 0) { if (!idled) c.idle -= dt; return; }
@@ -2851,7 +2855,7 @@
       b.type = "button"; b.id = `animal-${g.id}`; b.dataset.animal = g.id;
       const head = el("span", "animal-head"), emoji = el("span", "animal-emoji", g.emoji);
       emoji.setAttribute("aria-hidden", "true");
-      if (g.id === "cat" && g.ready && typeof CatArt !== "undefined") { // (0.18.0, E2b-1) o Gatinho aparece desenhado como no jogo (o emoji continua no elemento, escondido, para quem lê o texto)
+      if (g.id === "cat" && g.ready && typeof CatArt !== "undefined") { // (0.18.0) o Gatinho aparece desenhado como no jogo (o emoji continua no elemento, escondido, para quem lê o texto)
         const cv = document.createElement("canvas"); cv.width = 104; cv.height = 88; cv.className = "animal-art";
         const c2 = cv.getContext("2d"); c2.scale(2.4, 2.4);
         try { CatArt.drawCat(c2, { x: 48 / 2.4 - 12, y: 41 / 2.4 - 12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true }); } catch { /* sem desenho: fica o emoji */ }
@@ -3102,9 +3106,9 @@
   // ---------- (0.18.0) Textos fixos da página que mudam com o bichinho (perfil: ui e hud) ----------
   // O index.html traz o texto do Cachorrinho. Cada alvo abaixo é [id do elemento, "html" ou o atributo]; o perfil troca o conteúdo com `ui.<chave>` (null = fica o que veio no index.html, guardado em UI_ORIG).
   // As do jogo (placar, descrição da tela e do controle) valem para o bichinho da PARTIDA e são aplicadas em reset(); as do menu (Como jogar, ajuda da lojinha...) para o ESCOLHIDO e são aplicadas em renderMenu().
-  const UI_TARGETS = { howto: ["howto-steps", "html"], shopTitle: ["shop-title", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"] };
-  const UI_MENU = ["howto", "shopTitle", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel"];
-  const UI_ORIG = {}, TITLE_ORIG = document.title; // (0.18.0, E2b-1: o título da aba também é do bichinho: "Jogo do cachorrinho" / "Jogo do gatinho")
+  const UI_TARGETS = { howto: ["howto-steps", "html"], shopTitle: ["shop-title", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"], pauseHelp: ["pause-help", "html"] };
+  const UI_MENU = ["howto", "shopTitle", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel", "pauseHelp"];
+  const UI_ORIG = {}, TITLE_ORIG = document.title; // (0.18.0: o título da aba também é do bichinho: "Jogo do cachorrinho" / "Jogo do gatinho")
   for (const [k, [id, how]] of Object.entries(UI_TARGETS)) UI_ORIG[k] = how === "html" ? $(id).innerHTML : $(id).getAttribute(how);
   const uiShown = { menu: "", game: "" };
   function applyUi(part, keys, animalId) {
@@ -3710,7 +3714,7 @@
     ctx.globalAlpha = 1;
   }
 
-  // ---------- Desenho do Gatinho (0.18.0, E2b-1): CatThemes (os 20 ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos, efeitos) ----------
+  // ---------- Desenho do Gatinho (0.18.0): CatThemes (os 20 ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos, efeitos) ----------
   // Tudo daqui só roda quando `catDraw` (a partida é do Gatinho); o Cachorrinho desenha exatamente como sempre.
   function drawExit(rect) { // a saída (verde aberta, vermelha fechada) com a palavra SAÍDA; igual para os dois bichinhos
     ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
@@ -4145,12 +4149,15 @@
 
   // ---------- Entrada: toque (celular/tablet) ----------
   const pad = $("pad"), knob = $("pad-knob");
-  let padPointer = null;
-  function clearTouch() {
+  let padPointer = null, runPointer = null; // o dedo que segura o controle direcional e o que segura o botão Correr (cada um tem o seu)
+  function releasePad() { // soltou o dedo do controle direcional (o botão Correr, se estiver apertado por outro dedo, continua)
     padPointer = null;
     touch.left = touch.right = touch.up = touch.down = false;
     knob.style.transform = "";
-    runTouch = false; $("btn-run").classList.remove("on"); // (Gatinho: soltou o botão Correr)
+  }
+  function clearTouch() { // solta tudo (pausa, trocar de janela, sair da partida): os dois dedos de antes não valem mais, e o próximo toque começa do zero
+    releasePad();
+    runPointer = null; runTouch = false; $("btn-run").classList.remove("on"); // (Gatinho: soltou o botão Correr)
   }
   function padMove(e) {
     const r = pad.getBoundingClientRect(), R = r.width / 2;
@@ -4168,10 +4175,10 @@
     padMove(e); e.preventDefault();
   });
   pad.addEventListener("pointermove", (e) => { if (e.pointerId === padPointer) padMove(e); });
-  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) pad.addEventListener(ev, (e) => { if (e.pointerId === padPointer) clearTouch(); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) pad.addEventListener(ev, (e) => { if (e.pointerId === padPointer) releasePad(); });
   pad.addEventListener("contextmenu", (e) => e.preventDefault());
   // Botão "Correr" (Gatinho, 0.18.0): enquanto o dedo estiver nele vale a arrancada; funciona junto com o controle direcional (outro dedo)
-  { const run = $("btn-run"); let runPointer = null;
+  { const run = $("btn-run");
     const setRun = (on) => { runTouch = on; run.classList.toggle("on", on); };
     run.addEventListener("pointerdown", (e) => { if (runPointer !== null) return; runPointer = e.pointerId; try { run.setPointerCapture(e.pointerId); } catch { /* ponteiro sintético */ } setRun(true); e.preventDefault(); });
     for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) run.addEventListener(ev, (e) => { if (e.pointerId === runPointer) { runPointer = null; setRun(false); } });
@@ -4284,12 +4291,12 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
       if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
       return true;
     },
-    // (0.18.0, E2a) Gatinho: o estado das mecânicas (fôlego 0 a 1, s ofegante, s molhado, arrancada em andamento, a salvo num lugar alto, escuridão 0 a 1) e ganchos de teste.
+    // (0.18.0) Gatinho: o estado das mecânicas (fôlego 0 a 1, s ofegante, s molhado, arrancada em andamento, a salvo num lugar alto, escuridão 0 a 1) e ganchos de teste.
     // `catDefFrom(c)` = a conversão de uma fase de js/cat-levels.js; `defineCatLevels(lista)` = troca as 20 fases do Gatinho por uma lista nesse formato (false se não servir); `catLevels()` volta às de js/cat-levels.js (se houver).
     get stamina() { return stamina; }, set stamina(v) { stamina = clamp(Number(v) || 0, 0, 1); }, get winded() { return winded; }, set winded(v) { winded = Math.max(0, Number(v) || 0); },
     get wet() { return wet; }, set wet(v) { wet = Math.max(0, Number(v) || 0); }, get sprinting() { return sprintOn; }, get safe() { return safe; }, get darkness() { return darkness; },
     catDefFrom(c) { return catDefFrom(c); }, buildLevel(def) { return buildLevel(def); }, // (só para testes: a conversão e a montagem de uma fase)
-    // (0.18.0, E2b-1) desenho do Gatinho (só para testes): `drawNow()` desenha um quadro agora (o mesmo draw() do laço, sem andar o jogo), `catDraw` = esta partida desenha com CatArt/CatThemes, `catFx` = os efeitos curtos em andamento
+    // (0.18.0) desenho do Gatinho (só para testes): `drawNow()` desenha um quadro agora (o mesmo draw() do laço, sem andar o jogo), `catDraw` = esta partida desenha com CatArt/CatThemes, `catFx` = os efeitos curtos em andamento
     drawNow() { draw(); }, get catDraw() { return catDraw; }, get catFloorAll() { return catFloorAll; }, set catFloorAll(v) { catFloorAll = !!v; }, get catSkin() { return catSkin; }, set catSkin(v) { catSkin = typeof v === "string" ? v : ""; }, get catFx() { return catFx.map((f) => ({ kind: f.kind, x: f.x, y: f.y, age: f.age })); },
     defineCatLevels(list) {
       const defs = catGameFrom(list), g = gameOf("cat");

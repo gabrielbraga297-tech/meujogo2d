@@ -305,8 +305,8 @@
     },
 
     // ================= Sons do Gatinho (0.18.0) =================
-    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS (a rede do ambiente
-    // estava bloqueada para artigos: nenhum valor foi conferido em fonte aberta). São sons genéricos da ESPÉCIE; nada muda por raça ou skin, só pela
+    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte (a rede do ambiente estava bloqueada para artigos:
+    // nenhum valor foi conferido; só há uma pista de literatura sobre bioacústica, não aberta, em docs/pesquisa-gatinho/R2-sons.md). São sons genéricos da ESPÉCIE; nada muda por raça ou skin, só pela
     // fase da vida (cmeow1 filhote -> cmeow2 jovem -> cmeow3 adulto, como bark1/2/3 do cachorrinho).
 
     // Miado do filhote (ao completar a fase e ao chamar): agudo e curto. F0 inicial 1400 Hz, sobe um pouco (1500) e cai até 950 Hz em ~0,34 s, passa-baixa que
@@ -333,7 +333,7 @@
       s.tone({ at: 0.19, dur: 0.55, f: 540, f2: 300, type: "sawtooth", lp: 2400, lp2: 600, q: 4, vib: [16, 9], gain: 0.4, a: 0.025, r: 0.2, sus: 0.45 });
     },
 
-    // Ronronar (vencer a fase; pegar um ratinho raro), ~1,5 s. As pregas vibram a ~25-30 Hz, que o alto-falante não reproduz: então um TREM DE PULSOS de
+    // Ronronar (vencer a fase; pegar um ratinho raro), ~1,5 s. (Escolha de design / precaução; não verificado:) os pulsos imitam uma vibração grave que o alto-falante não reproduz: então um TREM DE PULSOS de
     // 26 Hz (ciclo 33%, cai 70% entre os pulsos) multiplica portadoras graves de dente de serra com ressonância em ~1 kHz (156 Hz = 6 x 26 na inspiração,
     // que fica travada na fase dos pulsos; 130 Hz = 5 x 26 na expiração, que desce até 122 Hz), uma segunda harmônica triangular (para o celular) e um
     // sopro grave de ruído. Inspiração mais fraca (0 a 0,78 s), expiração mais forte (começa em 16/26 s, no mesmo ponto do ciclo de pulsos).

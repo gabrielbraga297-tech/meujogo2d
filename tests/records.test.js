@@ -891,7 +891,7 @@ test("DEFAULT_ANIMAL (0.18.0): js/records.js exporta o bichinho padrão e é o q
   assert.strictEqual((fs.readFileSync(path.join(__dirname, "../js/records.js"), "utf8").match(/const DEFAULT_ANIMAL = "dog"/g) || []).length, 1, "só records.js define a constante");
 });
 
-// ---------- skins POR BICHINHO na carteira única (0.18.0, E2b-2) ----------
+// ---------- skins POR BICHINHO na carteira única (0.18.0) ----------
 test("skins por bichinho: o Gatinho compra e usa com o mesmo saldo, o preço mínimo e ids que não colidem com os do Cachorrinho", () => {
   const mem = memStorage(), st = R.createStore(mem);
   st.setPlayer("Totó"); st.addTreats("Totó", 100);

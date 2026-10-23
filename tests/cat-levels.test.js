@@ -248,9 +248,9 @@ test("cada fase tem um desenho próprio: o desenho (paredes) de uma fase nunca �
 });
 
 test("determinismo: o gerador (python3 tools/catmaze/gen_cat.py --all --json), rodado duas vezes, dá os mesmos 20 mapas de js/cat-levels.js", () => {
-  const run = () => spawnSync("python3", [path.join(ROOT, "tools/catmaze/gen_cat.py"), "--all", "--json"], { encoding: "utf8", maxBuffer: 1 << 26, timeout: 280000 });
+  const run = () => spawnSync("python3", [path.join(ROOT, "tools/catmaze/gen_cat.py"), "--all", "--json"], { encoding: "utf8", maxBuffer: 1 << 26, timeout: 280000, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" } }); // (sem gravar __pycache__ dentro de tools/catmaze)
   const r1 = run();
-  if (r1.error || r1.status === null) return "python3 não está disponível: teste pulado";
+  if (r1.error || r1.status === null) assert.fail("python3 não está disponível (ou demorou demais): o determinismo do gerador NÃO foi conferido. Este teste precisa de python3 (instale-o e rode de novo); sem ele não conta como passou.");
   assert.strictEqual(r1.status, 0, "o gerador falhou: " + (r1.stderr || "").slice(0, 300));
   const r2 = run();
   assert.strictEqual(r1.stdout, r2.stdout, "duas execuções deram mapas diferentes");

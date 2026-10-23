@@ -4,7 +4,7 @@
 
 **O que aconteceu:** em 22 e 23/10/2026 a rede do ambiente de desenvolvimento **bloqueou todos os sites de artigos** (PubMed Central, Europe PMC, doi.org, Nature, MDPI, PLOS, Frontiers, ScienceDirect, Springer, Crossref, OpenAlex, arXiv, bioRxiv, PeerJ...). Só a busca na web funcionou, e ela devolve **resumos gerados**, não o texto dos artigos. Por isso **nenhum artigo foi aberto e nada aqui está verificado**. Os cinco arquivos abaixo são **pistas** (autor, ano, periódico e o achado que o resumo da busca diz, com "NÃO ABERTO"), mais as **lacunas** (o que não tem fonte recente) e os **descartados** (artigos fora da janela de anos ou que não são revisados por pares). Números e DOIs podem ter erro de transcrição; os marcados "inferido" são deduções.
 
-**Consequência no jogo:** todo traço do Gatinho (arrancada com fôlego, pelo molhado, lugares altos, sons, ambientes) é uma **escolha de design inspirada em literatura, ainda não verificada**. O README diz isso em "Biologia por trás".
+**Consequência no jogo:** todo traço do Gatinho (arrancada com fôlego, pelo molhado, lugares altos, sons, ambientes) é uma **escolha de design**; alguns têm uma **pista de literatura, não verificada**, e só onde a tabela "Biologia por trás do Gatinho" do README indica (a arrancada e o pelo molhado não têm nem pista: lacuna). O README diz isso em "Biologia por trás".
 
 | Arquivo | Tema |
 |---|---|

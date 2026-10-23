@@ -14,7 +14,7 @@ Pedido do dono: o **Gatinho** vira jogável, com o **seu próprio jogo de 20 fas
 - **Sons novos:** miado de filhote, jovem e adulto, ronronar, chiado, guincho, latido e rosnado do cão, miado de susto e sons de pulo, poça, sacudir o pelo, arrancada e fôlego.
 - **Motor por bichinho:** perfil de textos (`js/profiles.js`), fases e mapas por bichinho, ambientes e desenhos por bichinho; quem escolhe um bichinho sem nome e depois digita o nome joga o bichinho escolhido.
 - **O Cachorrinho não mudou:** as 20 fases, regras, textos, sons e desenhos continuam idênticos (provado com testes lado a lado de pixels e de jogo, e com a suíte completa).
-- **Biologia:** a rede do ambiente bloqueou os sites de artigos científicos e **nenhum artigo foi aberto**; todo traço do Gatinho é **escolha de design inspirada em literatura, ainda não verificada**; as pistas e a lista do que abrir primeiro estão em `docs/pesquisa-gatinho/` e no README ("Biologia por trás do Gatinho").
+- **Biologia:** a rede do ambiente bloqueou os sites de artigos científicos e **nenhum artigo foi aberto**; todo traço do Gatinho é **escolha de design**, com uma pista de literatura, não verificada, só onde a tabela do README indica (a arrancada e o pelo molhado não têm nem pista); as pistas e a lista do que abrir primeiro estão em `docs/pesquisa-gatinho/` e no README ("Biologia por trás do Gatinho").
 
 ## 0.17.0 — 22/10/2026
 **Atualização 2 · Escolha do bichinho.**

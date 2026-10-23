@@ -1,8 +1,8 @@
-# Atualização 3 · 0.18.0 · Gatinho — DESENHO (versão do coordenador, 23/10/2026)
+# Atualização 3 · 0.18.0 · Gatinho — DESENHO (23/10/2026)
 
 ## Princípios
 - Mesmo motor e mesmo "padrão" do jogo do cachorrinho (rampa de dificuldade, pontos mínimos, vidas, missões simples, poderes, brinquedos), com ECOLOGIA e CORPO de gato doméstico GENÉRICO (nada de raça; skins só visual).
-- SEM fonte verificada (rede acadêmica bloqueada): todo traço abaixo é "escolha de design inspirada em literatura (pistas em cat-research/, não verificadas)". Só vira "Biologia por trás" citada depois que um artigo for ABERTO e conferido.
+- SEM fonte verificada (rede acadêmica bloqueada): todo traço abaixo é **escolha de design**; só onde a tabela "Biologia por trás do Gatinho" do README indica há uma **pista de literatura, não verificada** (em `docs/pesquisa-gatinho/`); a arrancada e o pelo molhado não têm nem pista. Só vira "Biologia por trás" citada depois que um artigo for ABERTO e conferido.
 - Os números do cachorrinho NÃO mudam (as 20 fases dele são sagradas).
 
 ## Mapeamento de papéis (perfil "cat")
@@ -17,7 +17,7 @@
 | caixas X (só o gato inimigo pula) | obstáculos baixos X (vaso, caixote, cerca baixa): o GATINHO pula, os cães não |
 | — | T = lugar alto (árvore, prateleira, muro, telhado de caixote): gatinho a salvo em cima; cães esperam embaixo e desistem |
 | — | ~ = poça/água: pelo molhado (mais pesado e lento ~6 s; sacode o pelo ao secar) |
-| — | arrancada com fôlego (Shift/Espaço/botão de toque): ×1,35 por ~2,5 s; recarrega devagar parado ou andando; fôlego vazio = "ofegante" |
+| — | arrancada com fôlego (Shift ou Espaço; A, RB ou RT no controle; botão Correr no toque): ×1,35 por ~2,5 s; recarrega devagar parado ou andando; fôlego vazio = "ofegante" |
 | van da carrocinha (casinha dos agentes) | casinha de cachorro / tapete (posto dos cães) |
 | filhote → jovem → adulto (tamanho, latidos) | filhote → jovem → adulto (tamanho; miado cmeow1/2/3) |
 | reforços (9) | mesmos efeitos, nomes do gato (Patas ágeis, Novelo poderoso, Vida extra, Coração maior, Pelo grosso, Cães lentos, Passos de veludo, Bigodes atentos, Chamado de petisco) |
@@ -25,8 +25,8 @@
 ## Legenda dos mapas (ASCII, igual ao do cachorrinho + 3 símbolos)
 `#` parede · `.` chão · `P` início do gatinho · `V` posto de um cão de guarda · `R` posto de um cão rastreador (F11+) · `E` saída (3 tiles) · `X` obstáculo baixo (gatinho pula) · `T` lugar alto · `~` poça. Ratinhos, novelos e camundongos são sorteados em chão livre (placeItems) como as rações; poças e `T` NUNCA ficam em cima do início, da saída ou de postos.
 
-## As 20 fases (proposta; M ajusta tamanhos/contagens com o gerador e eu confiro)
-Velocidade do gatinho: 252 px/s × `catSpeed` (filhote 0,8 na F1, 0,9 na F3, depois ~1); arrancada ×1,35. Cães de guarda: mesmos números dos agentes do cachorrinho por fase. Rastreadores: mesmos números dos gatos inimigos. Pontos: ratinho 100, novelo 150, camundongo 50, cão afugentado 100, mínimos e bônus de missão IGUAIS à tabela do cachorrinho.
+## As 20 fases (tamanhos e contagens conferidos por `node tests/cat-levels.test.js`)
+Velocidade do gatinho: 252 px/s × `catSpeed` (0,8 na F1, 0,9 na F3, depois 1); arrancada ×1,35. Cães de guarda: mesmos números dos agentes do cachorrinho por fase. Rastreadores: mesmos números dos gatos inimigos. Pontos: ratinho 100, novelo 150, camundongo 50, cão afugentado 100, mínimos e bônus de missão IGUAIS à tabela do cachorrinho.
 | F | Ambiente (ecologia) | Mapa | Cães | Rastr. | Ratinhos | Novelos | Camund. | T | ~ | Condição | Novidade da fase |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | Sala de estar (casa) | 25×18 | 1 | — | 5 | — | — | 0 | 0 | pegar tudo | andar, pegar ratinhos, fugir do cão da casa (filhote) |
@@ -51,14 +51,14 @@ Velocidade do gatinho: 252 px/s × `catSpeed` (filhote 0,8 na F1, 0,9 na F3, dep
 | 20 | A casa grande (final) | 63×47 | 8 | 7 | 62 | 8 | 5 | 6 | 6 | 4000 + missão | tudo junto; volta ao lar |
 Vidas máx., perda por vida e bônus de missão: iguais aos do cachorrinho (5…10; 50/200/250/300/325…400; +200…+650).
 
-## Mecânicas novas (E2) — parâmetros iniciais (a calibrar com bots)
-- Arrancada: ×1,35 de velocidade; fôlego 2,5 s; recarrega em 5 s parado/andando devagar; vazio = só anda normal até 1,5 s de recuperação. Novelo laranja = fôlego infinito por 8 s.
-- Pelo molhado: pisar em `~` = molhado por 6 s: ×0,65 de velocidade, sem arrancada; sacode (som `shake`) e seca. Cães NÃO se molham (cães não são o foco).
-- Lugar alto (T): ao entrar o gatinho fica a salvo (não pode ser pego); cães em perseguição vão até o pé do T e esperam até 4 s; depois voltam à patrulha. Sem limite de tempo em cima, mas o relógio corre (bônus de tempo cai).
-- Obstáculo baixo (X): só o gatinho atravessa (pulo suave, som `jump`).
-- Camundongo ágil: foge/dispara a 3 tiles (como as bolinhas) e congela.
-- Noite (F18, F19): escurece com halo em volta do gatinho (visual + visão reduzida do jogador, não dos cães).
+## Mecânicas novas — parâmetros finais (as constantes de `js/game.js` e a seção "Mecânicas do Gatinho" do README)
+- Arrancada: ×1,35 de velocidade (`CAT_SPRINT`) enquanto o gatinho se move e tem fôlego; o fôlego gasta 0,4/s (2,5 s de tanque cheio) e, sem arrancada, volta a 0,2/s (5 s), parado ou andando; vazio = ofegante por 1,5 s (`WINDED_TIME`), só anda normal. O novelo turbo (laranja) deixa a arrancada sem gasto de fôlego pelos 8 s do efeito (`TURBO_TIME`; +4 s por nível do reforço Novelo poderoso).
+- Pelo molhado: pisar em `~` = molhado por 6 s (`WET_TIME`, renova enquanto está na poça): ×0,65 de velocidade (`WET_SLOW`), sem arrancada; sacode (som `shake`) e seca. Cães NÃO se molham.
+- Lugar alto (T): o centro do gatinho num T = a salvo (ninguém o pega); cães em perseguição vão até o pé do T e esperam até 4 s (`REFUGE_WAIT`); depois voltam à patrulha e só voltam a perseguir quando o gatinho desce. Sem limite de tempo em cima, mas o relógio corre (o bônus de tempo cai).
+- Obstáculo baixo (X): só o gatinho atravessa (pulo suave: ×0,85 de velocidade sobre ele, `JUMP_SLOW`; som `jump`). O X NÃO protege: um cão (ou rastreador) em perseguição vai ao tile andável mais perto de onde o gatinho está e o alcança do tile ao lado (34 px, `LOW_REACH`).
+- Camundongo ágil: dispara quando o gatinho chega a 3 tiles (como as bolinhas), rola, quica nas paredes, nos X e nos T e vai parando; vale 50 pontos.
+- Noite (F18, F19): escurece 75% (`NIGHT_DARK`) com um halo de 5 tiles (`NIGHT_HALO`) em volta do gatinho (só o desenho: a visão dos cães não muda).
 
 ## Skins do gato (só visual; nomes podem ser de raça; sem atributos nem sons próprios)
 Rajado, Preto, Branco, Cinza, Laranja, Siamês (pontas escuras), Van Turco (cauda e orelhas coloridas), Tricolor (carey), Smoking (preto com peito branco), Pirata, Astronauta, Super-gato.
-(Liberação/loja: ver Atualização 4 — nesta atualização a loja já mostra as do bichinho escolhido, ver E3.)
+(Loja: a lojinha mostra as skins do bichinho escolhido e a Atualização 4 a amplia; veja `docs/LOJINHA.md`.)

@@ -105,7 +105,7 @@ const PAGE_HELPERS = () => {
 
 (async () => {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-  // (0.18.0, E2a) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
+  // (0.18.0) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
   const rawNewContext = browser.newContext.bind(browser);
@@ -8554,7 +8554,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  // 0.18.0 (Gatinho, etapa 1): perfis por bichinho. O Cachorrinho continua dizendo o de sempre; o Gatinho de teste (enableTestAnimal) usa as fases e as palavras do perfil dele.
+  // 0.18.0 (Gatinho): perfis por bichinho. O Cachorrinho continua dizendo o de sempre; o Gatinho de teste (enableTestAnimal) usa as fases e as palavras do perfil dele.
   // =====================================================================
   await section("0.18.0: perfis por bichinho (registro, fases por bichinho e ganchos)", async () => {
     await fresh(page, { done: [1] });
@@ -8577,7 +8577,7 @@ const PAGE_HELPERS = () => {
     ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,1,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
     // ---- o perfil de cada bichinho (a tabela completa está em tests/profiles.test.js) ----
     const pr = await ev(page, () => ({ dog: __game.profile.id, bird: __game.profileOf("bird").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === CatThemes.of(7) && Themes.of(7, "cat") !== Themes.of(7), themeBird: Themes.of(7, "bird") === Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) }));
-    ok(pr.dog === "dog" && pr.bird === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeBird && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); sem perfil próprio o Passarinho usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0, E2b-1) e os do Passarinho os do Cachorrinho");
+    ok(pr.dog === "dog" && pr.bird === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeBird && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); sem perfil próprio o Passarinho usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0) e os do Passarinho os do Cachorrinho");
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     ok(/## Perfis por bichinho \(0\.18\.0\)/.test(readme) && /js\/profiles\.js/.test(readme) && /builtOf\(bichinho\)/.test(readme) && /Como o Passarinho entra/.test(readme) && /`sprint`/.test(readme) && /`water`/.test(readme) && /`refuge`/.test(readme) && /Themes\.of\(fase, bichinho\)/.test(readme) && /DEFAULT_ANIMAL/.test(readme), "o README tem a seção Perfis por bichinho (0.18.0): fases por bichinho, perfil de textos, ganchos, como o Passarinho entra e a pendência do bichinho sem nome");
     ok(!/const DEFAULT_ANIMAL = "dog"/.test(src) && /const DEFAULT_ANIMAL = Records\.DEFAULT_ANIMAL;/.test(src) && !/const BUILT\b/.test(src), "js/game.js usa o DEFAULT_ANIMAL de js/records.js e não tem mais o BUILT do Cachorrinho");
@@ -8757,7 +8757,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  // 0.18.0 (Gatinho, E2a): as MECÂNICAS do Gatinho no motor. Estas seções abrem as páginas com os mapas de verdade (`realCat: true`: js/cat-levels.js carregado) e,
+  // 0.18.0 (Gatinho): as MECÂNICAS do Gatinho no motor. Estas seções abrem as páginas com os mapas de verdade (`realCat: true`: js/cat-levels.js carregado) e,
   // onde é preciso controlar tudo, trocam as fases do Gatinho por uma ARENA de teste (25×18, com P, 2 V, 1 R, muro de X, T e poças) com `__game.defineCatLevels`.
   // =====================================================================
   const CAT_ARENA = (() => {
@@ -8775,7 +8775,7 @@ const PAGE_HELPERS = () => {
     { id: 2, title: "Fase 2", place: "Arena de teste", note: "arena com um novelo de cada tipo", map: CAT_ARENA, like: 3, rations: 8, bones: 4, boneMix: ["scare", "gold", "ice", "magnet"], balls: 1, extraLives: [1, 1], catSpeed: 1, special: { T: 2, water: 2 } },
   ];
   // ajudantes que rodam dentro da página
-  // (0.18.0, E2b-2) SEMENTE: o sorteio dos itens, das vidas, dos cães e dos camundongos (que usa Math.random à parte) vem de geradores com semente: as arenas ficam determinísticas (antes, itens sorteados
+  // (0.18.0) SEMENTE: o sorteio dos itens, das vidas, dos cães e dos camundongos (que usa Math.random à parte) vem de geradores com semente: as arenas ficam determinísticas (antes, itens sorteados
   // no caminho de um teste faziam as seções X, T e rastreador falharem de vez em quando). `CAT_SEED=n` no ambiente troca a semente (para conferir que os testes não dependem de uma semente de sorte).
   const CAT_SEED = +process.env.CAT_SEED || 12345;
   const CAT_PAGE = (seed = 12345) => {
@@ -9282,7 +9282,7 @@ const PAGE_HELPERS = () => {
       __game.setAnimal("dog"); __game.start(18); out.dog18 = [__game.darkness, __game.builtOf("dog")[18].night];
       return out;
     });
-    ok(night.n18[0] === 0.75 && night.n18[1] === 5 && night.n19 === 0.75 && night.n17 === 0 && night.n1 === 0 && night.dog18[0] === 0 && night.dog18[1] === null, `a noite (escuridão 0,75 e luz de 5 tiles) só nas Fases 18 e 19 do Gatinho; o desenho é do E2b (${JSON.stringify(night)})`);
+    ok(night.n18[0] === 0.75 && night.n18[1] === 5 && night.n19 === 0.75 && night.n17 === 0 && night.n1 === 0 && night.dog18[0] === 0 && night.dog18[1] === null, `a noite (escuridão 0,75 e luz de 5 tiles) só nas Fases 18 e 19 do Gatinho (${JSON.stringify(night)}); o desenho da noite tem a sua própria seção`);
     await cp.context().close();
   });
 
@@ -9404,13 +9404,14 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  // 0.18.0 (Gatinho, E2b-1): o JOGO DO GATINHO COM A CARA DELE. No modo Gatinho o jogo desenha com CatThemes (ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos e efeitos);
+  // 0.18.0 (Gatinho): o JOGO DO GATINHO COM A CARA DELE. No modo Gatinho o jogo desenha com CatThemes (ambientes) e CatArt (gatinho, cães, ratinhos, novelos, camundongos, postos e efeitos);
   // o Cachorrinho desenha exatamente como antes (A/B de pixels com referências do código anterior). Estas seções abrem as páginas com os mapas de verdade (`realCat: true`).
   // =====================================================================
   const { DOG_START, DOG_HASH } = require("./ab-dog.js");
   const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "c113ca15" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700) do código de 40e8f96, ANTES do desenho do Gatinho
   // ajudantes que rodam dentro da página: espiões nas funções de CatArt e CatThemes (contam as chamadas) e leituras do canvas
   const CAT_DRAW_PAGE = () => {
+    window.__mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; // gerador com semente (o mesmo de CAT_PAGE): os sorteios das seções de desenho também são sempre os mesmos
     const counts = {}; window.__cnt = counts;
     const wrap = (obj, name, key) => { const f = obj[name]; obj[name] = function (...a) { counts[key] = (counts[key] || 0) + 1; return f.apply(this, a); }; };
     for (const n of ["drawCat", "drawDog", "drawMouse", "drawAgileMouse", "drawYarn", "drawPost", "drawFx"]) wrap(CatArt, n, "art." + n);
@@ -9638,7 +9639,7 @@ const PAGE_HELPERS = () => {
     const all = [];
     for (let id = 1; id <= 20; id++) {
       all.push(await ev(cp, (id) => {
-        __game.setAnimal("cat"); __game.setRand(window.__mul ? __mul(77 + id) : null); __game.autoStart = true; __game.start(id); __game.noCatch = true; __game.freezeVets = false; __game.catsThaw = true;
+        __game.setAnimal("cat"); __game.setRand(__mul(77 + id)); __game.autoStart = true; __game.start(id); __game.noCatch = true; __game.freezeVets = false; __game.catsThaw = true;
         const lv = __game.builtOf("cat")[id], tiles = (ch) => { const o = []; for (let r = 0; r < lv.rows; r++) for (let c = 0; c < lv.cols; c++) if (lv.kinds[r][c] === ch) o.push([c, r]); return o; };
         let frames = 0, bad = null; const step = (n, dt = 1 / 30) => { for (let i = 0; i < n; i++) { __game.tick(dt); try { __game.drawNow(); frames++; } catch (e) { bad = bad || String(e && e.message); } } };
         __t.press("d", true); step(30); __t.press("d", false); __t.press("s", true); __t.press("Shift", true); step(30); __t.press("s", false); __t.press("Shift", false);
@@ -9719,7 +9720,7 @@ const PAGE_HELPERS = () => {
   });
 
   // =====================================================================
-  // 0.18.0 (Gatinho, E2b-2): SONS do Gatinho ligados ao jogo (pelo perfil) e SKINS/LOJINHA do Gatinho (carteira única, skins por bichinho).
+  // 0.18.0 (Gatinho): SONS do Gatinho ligados ao jogo (pelo perfil) e SKINS/LOJINHA do Gatinho (carteira única, skins por bichinho).
   // Os sons são provados com um ESPIÃO em `sound.play` (nome@atraso), porque o gancho `sound.events` guarda o nome mas não o atraso.
   // =====================================================================
   const { DOG_SOUNDS } = require("./ab-sounds.js");
@@ -10116,13 +10117,34 @@ const PAGE_HELPERS = () => {
   await section("0.18.0 · Gatinho: sons e skins (README, docs/LOJINHA.md e perfil: o contrato de sons e a lojinha por bichinho)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), loja = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8");
     const sec = readme.slice(readme.indexOf("### Sons do Gatinho (0.18.0)"), readme.indexOf("## Vidas"));
-    ok(/Integrado ao jogo \(0\.18\.0, E2b-2\)/.test(sec) && /sfx/.test(sec) && /ab-sounds\.js/.test(sec) && /2,5 s/.test(sec) && /0,4 s/.test(sec) && /8 tiles/.test(sec) && /0,6 s/.test(sec), "o README diz que os sons do Gatinho estão ligados ao jogo (pelo perfil, os intervalos, o teste A/B do Cachorrinho)");
+    ok(/Integrado ao jogo \(0\.18\.0\)/.test(sec) && /sfx/.test(sec) && /ab-sounds\.js/.test(sec) && /2,5 s/.test(sec) && /0,4 s/.test(sec) && /8 tiles/.test(sec) && /0,6 s/.test(sec), "o README diz que os sons do Gatinho estão ligados ao jogo (pelo perfil, os intervalos, o teste A/B do Cachorrinho)");
     const CatArt = require(path.join(root, "js/cat-art.js")), catRows = loja.split("## Skins por bichinho")[1].split("\n## ")[0].split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin do gato");
     ok(JSON.stringify(catRows.map((r) => [r[0], /grátis/.test(r[1]) ? 0 : Number(r[1])])) === JSON.stringify(CatArt.SKINS.map((k) => [k.name, k.price])), `a tabela de docs/LOJINHA.md lista as 12 skins do gato com os nomes e preços de CatArt.SKINS (${catRows.map((r) => `${r[0]} ${r[1]}`).join(", ")})`);
     ok(/Atualização 4/.test(loja) && /por bichinho/.test(loja) && /cat:/.test(loja) && /12 skins/.test(loja) && /eqa/.test(loja), "docs/LOJINHA.md explica a carteira única com skins por bichinho (prefixo cat:, 12 skins do gato) e que a Atualização 4 amplia a loja");
     const lj = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins (0.15.9)"), readme.indexOf("## Os gatos (0.15.5"));
     ok(/Gatinho/.test(lj) && /12 skins/.test(lj) && /Atualização 4/.test(lj) && /cat:/.test(lj), "a seção da lojinha do README fala das skins do Gatinho e da Atualização 4");
     ok(/shopTitle|Lojinha de skins do gatinho/.test(readme) && /Gatinho: sons e skins/.test(readme), "o README cita o título da lojinha do Gatinho e a seção de testes nova");
+  });
+
+  await section("0.18.0 · Gatinho: correções da auditoria (textos: Como jogar do Cachorrinho, ajuda da pausa e dica do FÔLEGO do Gatinho)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    const dogHow = await ev(cp, () => document.getElementById("howto-steps").textContent);
+    ok(/O Cachorrinho e o Gatinho já estão prontos \(o Passarinho chega em breve\)\./.test(dogHow) && !/Por enquanto só o Cachorrinho está pronto/.test(dogHow) && !/Gatinho e o Passarinho chegam em breve/.test(dogHow), "o Como jogar do Cachorrinho (na página) diz que o Cachorrinho e o Gatinho já estão prontos e só o Passarinho chega em breve");
+    await ev(cp, () => { __game.setAnimal("cat"); });
+    await cp.click("#btn-howto");
+    const how = await cp.textContent("#howto-steps");
+    ok(/Crescer:/.test(how) && /filhote/.test(how) && /jovem/.test(how) && /adulto/.test(how) && /da Fase 9 em diante ele renasce onde caiu/.test(how) && !/blocos/.test(how), "o Como jogar do Gatinho (na página) tem o Crescer (filhote, jovem, adulto), diz que da Fase 9 em diante ele renasce onde caiu e não fala de blocos");
+    await cp.keyboard.press("Escape");
+    const pauseDog = await ev(cp, () => { __game.setAnimal("dog"); __game.start(1); return document.getElementById("pause-help").innerHTML; });
+    ok(/^Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl\+S salva · M liga e desliga o som\.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta\.$/.test(pauseDog), `a ajuda da pausa do Cachorrinho é a de sempre ("${pauseDog.replace(/<br>/g, " / ")}")`);
+    const pauseCat = await ev(cp, () => { __game.setAnimal("cat"); __game.start(1); return document.getElementById("pause-help").textContent; });
+    ok(/Shift ou Espaço \(segurar\) dão a arrancada/.test(pauseCat) && /A, RB ou RT \(segurar\) dão a arrancada/.test(pauseCat) && /botão Correr/.test(pauseCat) && /Esc ou P pausa/.test(pauseCat), `a pausa do Gatinho cita Shift, Espaço, A/RB/RT do controle e o botão Correr ("${pauseCat}")`);
+    const back = await ev(cp, () => { __game.setAnimal("dog"); __game.start(1); return document.getElementById("pause-help").innerHTML; });
+    ok(back === pauseDog, "voltando ao Cachorrinho a ajuda da pausa volta a ser a dele");
+    const title = await ev(cp, () => document.getElementById("hud-stamina").title);
+    ok(/Shift, Espaço, o botão Correr ou, no controle, A, RB ou RT/.test(title), `a dica do FÔLEGO cita Shift, Espaço, o botão Correr e A, RB ou RT ("${title}")`);
+    await cp.context().close();
   });
 
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
@@ -10165,8 +10187,151 @@ const PAGE_HELPERS = () => {
     await cp.context().close();
   });
 
-//E2B1-NEXT
-//E2A-NEXT
+  // =====================================================================
+  // 0.18.0 · Gatinho: correções da auditoria. O obstáculo baixo (X) não é abrigo: cães e rastreadores em perseguição vão ao tile andável mais perto do gatinho e o alcançam; só o lugar alto (T) protege.
+  await section("0.18.0 · Gatinho: correções da auditoria (X não é abrigo: o guarda e o rastreador chegam ao lado do gatinho parado em cima do X e tiram vida; sobre o T continua a salvo)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    // um agente em perseguição, o gatinho parado em (cx, cy) (px do centro); devolve até quando o agente chega e se tirou vida (`who`: "vet" = cão de guarda, "cat" = rastreador)
+    const chaseOn = (who, at, from) => ev(cp, ([who, at, from]) => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false; __seed();
+      const all = [...__game.vets, ...__game.cats], me = who === "vet" ? __game.vets[0] : __game.cats[0];
+      for (const a of all) { a.cool = 999; a.cx = 22 * 32 + 16; a.cy = (a === me ? 3 : 15 + (a.cat ? 1 : 0)) * 32 + 16; a.leg = null; a.route = []; }
+      all.filter((a) => a !== me).forEach((a, i) => { a.cx = 22 * 32 + 16; a.cy = (14 + i) * 32 + 16; });
+      me.cx = from[0] * 32 + 16; me.cy = from[1] * 32 + 16; me.mode = "chase"; me.modeT = 30; me.chaseAge = 0; me.cool = 0; me.idle = 0; me.leg = null; me.route = [];
+      __game.player.x = at[0] - 12; __game.player.y = at[1] - 12; // o centro do gatinho em (at[0], at[1]) px
+      const onX = __game.builtOf("cat")[1].crate[Math.floor(at[1] / 32)][Math.floor(at[0] / 32)];
+      let minD = 1e9, lostAt = null, t0 = __game.time, stoppedFar = 0, maxStoppedFar = 0, lastX = me.cx, lastY = me.cy;
+      for (let i = 0; i < 20 * 6; i++) {
+        const d0 = Math.hypot(me.cx - at[0], me.cy - at[1]);
+        __game.tick(0.05); __game.player.moving = false;
+        if (__game.lives < 3) { lostAt = __game.time - t0; minD = Math.min(minD, d0); break; }
+        const d = Math.hypot(me.cx - at[0], me.cy - at[1]); minD = Math.min(minD, d);
+        if (me.mode === "chase" && Math.abs(me.cx - lastX) + Math.abs(me.cy - lastY) < 1e-6 && d > 40) maxStoppedFar = Math.max(maxStoppedFar, (stoppedFar += 0.05)); else stoppedFar = 0;
+        lastX = me.cx; lastY = me.cy;
+      }
+      return { onX: !!onX, minD, lostAt, maxStoppedFar, lives: __game.lives, state: __game.state };
+    }, [who, at, from]);
+    const centerX = [8 * 32 + 16, 8 * 32 + 16], eastPart = [8 * 32 + 16 + 14, 8 * 32 + 16], westPart = [8 * 32 + 16 - 14, 8 * 32 + 16];
+    for (const [who, nome] of [["vet", "o cão de guarda"], ["cat", "o rastreador"]]) {
+      const a = await chaseOn(who, centerX, [10, 3]);
+      ok(a.onX && a.lostAt !== null && a.lostAt <= 3 && a.minD <= 40 && a.lives === 2, `${nome} em perseguição chega ao lado do gatinho parado no meio de um X (${a.minD.toFixed(1)} px) e tira 1 vida em ${a.lostAt && a.lostAt.toFixed(2)} s (o X não protege)`);
+      const b = await chaseOn(who, westPart, [10, 3]), c = await chaseOn(who, eastPart, [10, 3]);
+      ok(b.lostAt !== null && b.lostAt <= 3.5 && b.minD <= 40 && c.lostAt !== null && c.lostAt <= 3.5 && c.minD <= 40, `${nome} vai ao lado do X em que o gatinho está de verdade, parado na parte oeste (${b.minD.toFixed(1)} px, ${b.lostAt && b.lostAt.toFixed(2)} s) ou leste (${c.minD.toFixed(1)} px, ${c.lostAt && c.lostAt.toFixed(2)} s): ele não escolhe o lado errado nem fica parado`);
+    }
+    // sem vida perdida (noCatch): o cão chega ao lado e FICA lá (não congela longe)
+    const stay = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = true; __seed();
+      const v = __game.vets[0], o = __game.vets[1], t = __game.cats[0];
+      o.cool = 999; t.cool = 999; o.cx = 22 * 32 + 16; o.cy = 15 * 32 + 16; t.cx = 22 * 32 + 16; t.cy = 16 * 32 + 16;
+      v.cx = 14 * 32 + 16; v.cy = 3 * 32 + 16; v.mode = "chase"; v.modeT = 60; v.chaseAge = 0; v.cool = 0; v.idle = 0; v.leg = null; v.route = [];
+      __at(8, 8);
+      let still = 0, maxStill = 0, lastX = v.cx, lastY = v.cy, minD = 1e9;
+      for (let i = 0; i < 20 * 5; i++) { // (5 s: o cão de guarda desiste de perseguir depois de `chaseMax` s, 6 s nesta fase)
+        __game.tick(0.05); __game.player.moving = false; const d = Math.hypot(v.cx - (__game.player.x + 12), v.cy - (__game.player.y + 12)); minD = Math.min(minD, d);
+        if (v.mode === "chase" && Math.abs(v.cx - lastX) + Math.abs(v.cy - lastY) < 1e-6 && d > 40) maxStill = Math.max(maxStill, (still += 0.05)); else still = 0;
+        lastX = v.cx; lastY = v.cy;
+      }
+      __game.noCatch = false;
+      return { minD, maxStill, mode: v.mode, d: Math.hypot(v.cx - (__game.player.x + 12), v.cy - (__game.player.y + 12)) };
+    });
+    ok(stay.minD <= 40 && stay.maxStill <= 0.1 && stay.mode === "chase" && stay.d <= 40, `com a perda de vida desligada, o cão chega ao lado do X e continua perseguindo ali (${stay.d.toFixed(1)} px; nunca parado a mais de 40 px: ${stay.maxStill.toFixed(2)} s)`);
+    // regressão: sobre o T o gatinho continua a salvo; cão e rastreador esperam ao pé dele até 4 s e desistem
+    for (const [who, nome] of [["vet", "o cão"], ["cat", "o rastreador"]]) {
+      const t = await ev(cp, (who) => {
+        __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false; __seed();
+        const all = [...__game.vets, ...__game.cats], me = who === "vet" ? __game.vets[0] : __game.cats[0];
+        all.forEach((a, i) => { a.cool = 999; a.cx = 22 * 32 + 16; a.cy = (13 + i) * 32 + 16; a.leg = null; a.route = []; });
+        me.cx = 10 * 32 + 16; me.cy = 3 * 32 + 16; me.mode = "chase"; me.modeT = 30; me.chaseAge = 0; me.cool = 0; me.idle = 0;
+        __at(5, 3); const t0 = __game.time; let giveUp = null, minD = 1e9;
+        for (let i = 0; i < 20 * 6; i++) { __game.tick(0.05); __game.player.moving = false; minD = Math.min(minD, Math.hypot(me.cx - (__game.player.x + 12), me.cy - (__game.player.y + 12))); if (giveUp === null && me.mode !== "chase") giveUp = __game.time - t0; }
+        return { giveUp, minD, lives: __game.lives, safe: __game.safe };
+      }, who);
+      ok(t.safe && t.lives === 3 && t.giveUp >= 3.9 && t.giveUp <= 4.2 && t.minD >= 22, `sobre o T ${nome} chega ao pé, não tira vida (${t.lives} vidas), espera e desiste em ${t.giveUp && t.giveUp.toFixed(2)} s (a 4 s): só o T protege`);
+    }
+    await cp.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: correções da auditoria (robô que alterna X e T nas Fases 3, 9, 13, 18 e 20: nenhum cão para em perseguição longe do gatinho)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    await cp.evaluate(CAT_PAGE, CAT_SEED);
+    const FASES = [3, 9, 13, 18, 20], res = [];
+    for (const fase of FASES) {
+      const r = await ev(cp, (fase) => {
+        __game.setAnimal("cat"); __game.freezeVets = false; __game.noCatch = true; __game.start(fase); __seed(fase);
+        __game.items.forEach((it) => { it.life = false; });
+        const lv = __game.builtOf("cat")[fase], all = () => [...__game.vets, ...__game.cats];
+        const reach = (c, r) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dc, dr]) => lv.walk[r + dr] && lv.walk[r + dr][c + dc]);
+        const xs = [], ts = [];
+        lv.crate.forEach((row, r) => row.forEach((x, c) => { if (x && reach(c, r)) xs.push([c, r]); }));
+        lv.high.forEach((row, r) => row.forEach((x, c) => { if (x) ts.push([c, r]); }));
+        // o par T–X mais próximo: o gatinho alterna entre os dois sem sair do lugar
+        let best = null;
+        for (const t of ts) for (const x of xs) { const d = Math.abs(t[0] - x[0]) + Math.abs(t[1] - x[1]); if (!best || d < best.d) best = { d, t, x }; }
+        const spot = (c, r) => { __game.player.x = c * 32 + 4; __game.player.y = r * 32 + 4; };
+        const st = new Map(all().map((a) => [a, { x: a.cx, y: a.cy, still: 0, max: 0, maxAny: 0 }]));
+        const force = () => all().forEach((a) => { a.mode = "chase"; a.modeT = 30; a.chaseAge = 0; a.cool = 0; a.idle = 0; a.gaveUp = false; a.leg = null; a.route = []; });
+        let onXsec = 0, arrived = 0, phases = 0, onXphasesNoOne = 0, approached = false;
+        const plan = [["X", 30, true]]; // primeiro 30 s sobre o X (nos mapas grandes os cães vêm de longe; a perseguição é renovada a cada 5 s), depois 60 s alternando: 6 s sobre o X, 4 s sobre o T
+        for (let k = 0; k < 6; k++) plan.push(["X", 6, false], ["T", 4, false]);
+        for (const [kind, len, approach] of plan) {
+          if (kind === "X") { spot(...best.x); force(); if (!approach) phases++; } else spot(...best.t);
+          let someone = false;
+          for (let i = 0; i < len * 20; i++) {
+            __game.tick(0.05); __game.player.moving = false;
+            if (approach && i % 100 === 99) force();
+            if (kind !== "X") { for (const a of all()) { const s = st.get(a); s.x = a.cx; s.y = a.cy; s.still = 0; s.stillAny = 0; } continue; }
+            if (!approach) onXsec += 0.05;
+            const px = __game.player.x + 12, py = __game.player.y + 12;
+            for (const a of all()) {
+              const s = st.get(a), d = Math.hypot(a.cx - px, a.cy - py), moved = Math.abs(a.cx - s.x) + Math.abs(a.cy - s.y) > 1e-6;
+              // esperando a vez: outro agente em perseguição já está logo à frente dele (`hold`/`wait` do próprio agente ou colado nele); com a perda de vida desligada o primeiro nunca sai da frente
+              const queued = a.hold > 0 || a.wait > 0 || all().some((o) => o !== a && Math.hypot(o.cx - a.cx, o.cy - a.cy) < 48);
+              if (a.mode === "chase" && !moved && d > 40 && !queued) { s.still += 0.05; s.max = Math.max(s.max, s.still); } else s.still = 0;
+              if (a.mode === "chase" && !moved && d > 40) { s.maxAny = Math.max(s.maxAny, (s.stillAny = (s.stillAny || 0) + 0.05)); } else s.stillAny = 0;
+              s.x = a.cx; s.y = a.cy;
+              if (d <= 40) someone = true;
+            }
+          }
+          if (kind === "X") { if (approach) approached = someone; else if (someone) arrived++; else onXphasesNoOne++; }
+        }
+        return { fase, xs: xs.length, pair: best, agents: all().length, phases, approached, arrived, noOne: onXphasesNoOne, maxStuck: Math.max(...[...st.values()].map((s) => s.max)), maxStuckAny: Math.max(...[...st.values()].map((s) => s.maxAny)), onXsec: +onXsec.toFixed(1), lives: __game.lives, state: __game.state };
+      }, fase);
+      res.push(r);
+    }
+    console.log("     robô X/T:", JSON.stringify(res.map((r) => ({ fase: r.fase, par: r.pair && [r.pair.t, r.pair.x], agentes: r.agents, fasesNoX: r.phases, chegaram: r.arrived, ninguem: r.noOne, paradoLongeMax: +r.maxStuck.toFixed(2), paradoLongeComFila: +r.maxStuckAny.toFixed(2) }))));
+    ok(res.every((r) => r.pair && r.phases === 6 && r.onXsec >= 35.9), `o robô achou um T e um X ao lado (com chão para os cães) nas 5 fases e, depois de 30 s de chegada, alternou por 60 s de relógio (6 vezes sobre o X em cada)`);
+    ok(res.every((r) => r.approached && r.noOne === 0), `a cada vez sobre o X (na chegada e nas 6 voltas) pelo menos um cão ou rastreador chegou a até 40 px do gatinho (${res.map((r) => `F${r.fase}: ${r.arrived}/${r.phases}`).join(", ")})`);
+    ok(res.every((r) => r.maxStuck <= 2), `nenhum cão ou rastreador ficou parado em perseguição a mais de 40 px do gatinho por mais de 2 s com o gatinho sobre o X (${res.map((r) => `F${r.fase}: ${r.maxStuck.toFixed(2)} s`).join(", ")})`);
+    await cp.context().close();
+  });
+
+  await section("0.18.0 · Gatinho: correções da auditoria (botão Correr: o dedo que estava nele ao pausar não prende o próximo toque; soltar o controle não solta o Correr)", async () => {
+    const tp = await newPage({ realCat: true, viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+    await catArena(tp, 1, { query: "?touch=1" });
+    const r = await ev(tp, () => {
+      const b = document.getElementById("btn-run"), pad = document.getElementById("pad"), fire = (el, type, id) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", bubbles: true, cancelable: true, clientX: 60, clientY: 60 }));
+      const run = (n) => __run(n, ["d"], { stay: true }).some((x) => x.sprinting);
+      const out = {};
+      __at(2, 2); __game.stamina = 1; __game.winded = 0;
+      fire(b, "pointerdown", 1); out.hold = run(10);
+      __t.press("Escape", true); __t.press("Escape", false); out.paused = __game.state; // Esc: pausa (o dedo 1 ainda "está" em cima do botão)
+      __t.press("Escape", true); __t.press("Escape", false); out.resumed = __game.state;
+      out.afterPause = run(10); // o botão foi solto pela pausa
+      fire(b, "pointerdown", 2); out.second = run(10); out.on = b.classList.contains("on");
+      fire(b, "pointerup", 2); out.released = run(10);
+      // com os dois dedos: o do controle direcional sai e o do Correr continua valendo
+      fire(pad, "pointerdown", 5); fire(b, "pointerdown", 6); fire(pad, "pointerup", 5); out.padUp = run(10) ? "corre" : "parou";
+      fire(b, "pointerup", 6); out.runUp = run(10);
+      return out;
+    });
+    ok(r.hold === true && r.paused === "paused" && r.resumed === "playing" && r.afterPause === false, `a pausa (Esc) solta o botão Correr (${JSON.stringify([r.hold, r.paused, r.resumed, r.afterPause])})`);
+    ok(r.second === true && r.on === true && r.released === false, `depois de pausar e voltar, o próximo toque no Correr (outro dedo) funciona e a arrancada liga (sprinting: ${r.second}); soltar o desliga`);
+    ok(r.padUp === "corre" && r.runUp === false, `soltar o dedo do controle direcional não solta o botão Correr (${r.padUp}); soltar o do Correr desliga a arrancada (${r.runUp})`);
+    await tp.context().close();
+  });
+
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
