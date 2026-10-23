@@ -8664,7 +8664,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-resume");
     await ev(page, () => { __game.sound.reset(); });
     await finishNow(page, 10);
-    ok(/^Ratinhos: 700 \+ novelos: 300 \+ cães afugentados: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Gatinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
+    ok(/^Ratinhos: 700 \+ novelos: 300 \+ cães: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Gatinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
     const catSounds = await ev(page, () => __game.sounds.map((e) => e.name));
     ok(catSounds.includes("cmeow1") && catSounds.includes("purr") && !catSounds.some((n) => /^bark|^meow$/.test(n)), `Gatinho: completar a fase toca o miado de filhote e o ronronar, não o latido (${catSounds.join(", ")})`);
     ok(await ev(page, () => { const c = Records.createStore(localStorage).game("cat"); return c.progress("Totó").completed.includes(2) && c.progress("Totó").unlocked === 3 && c.personalBest("Totó", 2).p > 0; }), "Gatinho: a Fase 2 concluída vai para o jogo do Gatinho (libera a Fase 3 dele e guarda o recorde dele)");
@@ -10284,6 +10284,39 @@ const PAGE_HELPERS = () => {
       ok(r.dogPad === "0px" && r.dogRun === "none", `${w}×${h}: no Cachorrinho a dica continua sem recuo (${r.dogPad}) e o botão Correr não aparece`);
       await pg.context().close();
     }
+  });
+
+  // A tela de vitória do Gatinho tem frases mais longas que a do Cachorrinho e, em telas baixas, rolava e cortava o último botão (auditoria 3).
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (a tela de vitória do Gatinho cabe na tela com a soma mais longa; a do Cachorrinho não muda)", async () => {
+    const rows = [];
+    for (const [w, h, fases] of [[320, 568, [5, 14, 18]], [740, 390, [18]], [1000, 700, [9]]]) {
+      const pg = await newPage({ realCat: true, viewport: { width: w, height: h }, ...(w < 800 ? { hasTouch: true, isMobile: true } : {}) });
+      await fresh(pg, { name: "Totó", query: w < 800 ? "?touch=1" : "" });
+      for (const f of fases) {
+        const r = await ev(pg, ([f]) => {
+          __game.autoStart = true; __game.setAnimal("cat"); __game.start(f); __game.freezeVets = true; __game.noCatch = true;
+          for (let i = 0; i < 40; i++) __game.tick(0.05);
+          for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+          const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+          // a soma mais longa possível sem tentativas extras: tudo pego, cães afugentados, camundongos, bônus de tempo e da missão, vidas perdidas e o tempo
+          const s = __game.profile.say;
+          document.getElementById("win-breakdown").textContent = s.winPrey(5800) + s.winPower(1200) + s.winScared(true, 800) + s.winBalls(250) + " + bônus de tempo: 200 + missão: 650 − vidas perdidas: 650 · tempo: 12:34,5";
+          const ex = document.getElementById("win-extra"); ex.textContent = ex.textContent.replace(/Vidas restantes: \d+ · Vidas perdidas: \d+/, "Vidas restantes: 10 · Vidas perdidas: 12");
+          const win = document.getElementById("win"), btns = [...win.querySelectorAll("button")].filter((b) => b.offsetParent), last = Math.max(...btns.map((b) => b.getBoundingClientRect().bottom));
+          return { state: __game.state, over: win.scrollHeight - win.clientHeight, lastBtn: Math.round(last), h: win.clientHeight, gap: getComputedStyle(win.querySelector(".panel")).rowGap };
+        }, [f]);
+        rows.push(`${w}×${h} F${f}: sobra ${r.over} px`);
+        ok(r.state === "won" && r.over <= 2 && r.lastBtn <= r.h, `${w}×${h}, Fase ${f} do Gatinho: a vitória com a soma mais longa cabe na tela (sobra ${r.over} px; o último botão termina em ${r.lastBtn} de ${r.h})`);
+      }
+      // o Cachorrinho: o mesmo espaço entre as linhas de sempre
+      const d = await ev(pg, () => { __game.setAnimal("dog"); __game.start(5); __game.freezeVets = true; __game.noCatch = true; return getComputedStyle(document.querySelector("#win .panel")).rowGap + "|" + document.body.classList.contains("sprint-on"); });
+      ok(d.endsWith("|false") && !d.startsWith("3px"), `${w}×${h}: no Cachorrinho a tela de vitória não usa o espaço compacto do Gatinho (${d})`);
+      await pg.context().close();
+    }
+    const base = await ev(await (async () => { const pg = await newPage({ realCat: true }); await fresh(pg, { name: "Totó" }); return pg; })(), () => {
+      __game.setAnimal("cat"); const t = __game.profile.say.winScared(true, 800); __game.setAnimal("dog"); return [t, __game.profile.say.winScared(true, 800)];
+    });
+    ok(base[0] === " + cães: 800" && base[1] === " + carteiros e gatos: 800", `a frase da soma: Gatinho "${base[0]}", Cachorrinho "${base[1]}" (a do Cachorrinho não mudou)`);
   });
 
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {

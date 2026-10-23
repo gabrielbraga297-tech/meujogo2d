@@ -192,7 +192,7 @@
       pauseGrowth: (stage) => `Gatinho: ${stage}.`,
       winPrey: (pts) => `Ratinhos: ${pts}`,
       winPower: (pts) => ` + novelos: ${pts}`,
-      winScared: (hasFoe2, pts) => ` + cães afugentados: ${pts}`,
+      winScared: (hasFoe2, pts) => ` + cães: ${pts}`, // (curto: a linha da soma da vitória passava de 3 linhas e a tela rolava no celular; a frase de cima, "cães afugentados", é a do poder do novelo)
       winBalls: (pts) => ` + camundongos: ${pts}`,
     },
     lose: {

@@ -339,6 +339,8 @@ body.touch.sprint-on .rotate-tip { padding-right: 90px; } /* o botão Correr (76
   #win .big-time { font-size: 44px !important; }
   #win h1 { font-size: clamp(26px, 5vw, 36px); }
 }
+/* Gatinho (auditoria 3): a soma da vitória tem frases mais longas (ratinhos, novelos, camundongos) e, em telas baixas, a tela rolava e cortava o último botão: o espaço entre as linhas é menor (só no Gatinho: `sprint-on` fica no corpo enquanto a partida é dele) */
+@media (max-height: 760px) { body.sprint-on #win .panel { gap: 3px; } }
 /* Celular estreito em pé: telas um pouco mais compactas (menu com jogo salvo e vitória cabem melhor) */
 @media (max-width: 380px) and (min-height: 521px) {
   .panel { gap: 8px; }
