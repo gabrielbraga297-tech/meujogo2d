@@ -8633,7 +8633,7 @@ const PAGE_HELPERS = () => {
     await page.keyboard.press("Escape");
     await page.click("#btn-shop");
     const shopCat = { help: await page.textContent("#shop-help"), names: await page.$$eval("#shop-list .shop-card strong", (e) => e.map((x) => x.textContent)), subs: await page.$$eval("#shop-list .shop-card .sub", (e) => e.map((x) => x.textContent)) };
-    ok(/skins para o gatinho/.test(shopCat.help) && shopCat.names.join() === "Caramelo,Cinza-prata,Vaquinha,Chocolate,Dourado,Arco-íris,Pirata,Astronauta,Super-gato" && /o gatinho de sempre/.test(shopCat.subs[0]) && /capa vermelha de super-herói · 50 petscoin/.test(shopCat.subs[8]), `Gatinho: a lojinha diz skins para o gatinho, com os nomes do gato (${shopCat.names.join(", ")})`);
+    ok(/skins para o gatinho/.test(shopCat.help) && shopCat.names.join() === "Rajado,Preto,Branco,Cinza,Laranja,Siamês,Van Turco,Tricolor,Smoking,Pirata,Astronauta,Super-gato" && /o gatinho de sempre/.test(shopCat.subs[0]) && /capa vermelha de super-herói · 50 petscoin/.test(shopCat.subs[11]), `Gatinho: a lojinha diz skins para o gatinho, com as 12 skins do gato (${shopCat.names.join(", ")})`);
     await page.keyboard.press("Escape");
     await page.click("#btn-scores");
     ok(/100 por ratinho \+ 150 por novelo \+ 100 por cão afugentado/.test(await page.textContent("#scores-help")) && await page.textContent("#scores-title") === "Pontuações do Gatinho", "Gatinho: as Pontuações explicam os pontos com as palavras do gato");
@@ -8666,7 +8666,7 @@ const PAGE_HELPERS = () => {
     await finishNow(page, 10);
     ok(/^Ratinhos: 700 \+ novelos: 300 \+ cães afugentados: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Gatinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
     const catSounds = await ev(page, () => __game.sounds.map((e) => e.name));
-    ok(catSounds.includes("meow") && !catSounds.some((n) => /^bark/.test(n)), `Gatinho: completar a fase toca o miado, não o latido (${catSounds.join(", ")})`);
+    ok(catSounds.includes("cmeow1") && catSounds.includes("purr") && !catSounds.some((n) => /^bark|^meow$/.test(n)), `Gatinho: completar a fase toca o miado de filhote e o ronronar, não o latido (${catSounds.join(", ")})`);
     ok(await ev(page, () => { const c = Records.createStore(localStorage).game("cat"); return c.progress("Totó").completed.includes(2) && c.progress("Totó").unlocked === 3 && c.personalBest("Totó", 2).p > 0; }), "Gatinho: a Fase 2 concluída vai para o jogo do Gatinho (libera a Fase 3 dele e guarda o recorde dele)");
     await page.click("#btn-next");
     const opts = await page.$$eval("#reinforce-list strong", (e) => e.map((x) => x.textContent));
@@ -8775,7 +8775,11 @@ const PAGE_HELPERS = () => {
     { id: 2, title: "Fase 2", place: "Arena de teste", note: "arena com um novelo de cada tipo", map: CAT_ARENA, like: 3, rations: 8, bones: 4, boneMix: ["scare", "gold", "ice", "magnet"], balls: 1, extraLives: [1, 1], catSpeed: 1, special: { T: 2, water: 2 } },
   ];
   // ajudantes que rodam dentro da página
-  const CAT_PAGE = () => {
+  // (0.18.0, E2b-2) SEMENTE: o sorteio dos itens, das vidas, dos cães e dos camundongos (que usa Math.random à parte) vem de geradores com semente: as arenas ficam determinísticas (antes, itens sorteados
+  // no caminho de um teste faziam as seções X, T e rastreador falharem de vez em quando). `CAT_SEED=n` no ambiente troca a semente (para conferir que os testes não dependem de uma semente de sorte).
+  const CAT_SEED = +process.env.CAT_SEED || 12345;
+  const CAT_PAGE = (seed = 12345) => {
+    window.__seed = (n = seed) => { __game.setRand(__mul(n)); Math.random = __mul(n * 7919 + 13); };
     window.__at = (c, r) => { __game.player.x = c * 32 + 4; __game.player.y = r * 32 + 4; }; // o centro do gatinho no centro do tile (c, r)
     window.__tileOf = (o) => [Math.floor((o.x + 12) / 32), Math.floor((o.y + 12) / 32)];
     window.__mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -8792,11 +8796,12 @@ const PAGE_HELPERS = () => {
       for (const k of keys) __t.press(k, false);
       return out;
     };
+    __seed(seed);
   };
   // abre uma página do Gatinho (mapas de verdade) já com a arena de teste e a fase `id` em jogo
   async function catArena(pg, id = 1, { freeze = true, noCatch = false, query = "" } = {}) {
     await fresh(pg, { name: "Totó", query });
-    await pg.evaluate(CAT_PAGE);
+    await pg.evaluate(CAT_PAGE, CAT_SEED);
     await ev(pg, ([L, id, freeze, noCatch]) => { __game.defineCatLevels(L); __game.setAnimal("cat"); __game.freezeVets = freeze; __game.noCatch = noCatch; __game.start(id); __game.items.forEach((it) => { it.life = false; }); }, [catArenaLevels(), id, freeze, noCatch]);
   }
 
@@ -8891,7 +8896,7 @@ const PAGE_HELPERS = () => {
     ok(cross.endTile[0] >= 11 && cross.state === "playing", `o gatinho atravessa o muro de obstáculos baixos (de ${6} para a coluna ${cross.endTile[0]})`);
     ok(Math.abs(cross.onX - cross.base * 0.85) < 1e-6 && cross.off === cross.base && cross.base === 252, `sobre um X o gatinho anda a 85% (pulo suave: ${cross.onX.toFixed(1)} de ${cross.base} px/s); fora dele a velocidade é a normal`);
     const lowSound = await ev(cp, () => __game.sounds.map((e) => e.name).filter((n) => /jump|pulo/i.test(n)).length);
-    ok(lowSound === 0, "o pulo ainda não tem som (E2b)");
+    ok(lowSound >= 1, `o pulo agora tem som (${lowSound} pedido(s) de "jump" nesta travessia; a seção "sons e skins" confere um a um)`);
     // ---- T também se atravessa ----
     await ev(cp, () => { __at(4, 3); __t.hold("d", 60); });
     ok((await ev(cp, () => __tileOf(__game.player)))[0] >= 6, "o gatinho passa por cima do lugar alto (T) como pelo chão");
@@ -8935,7 +8940,7 @@ const PAGE_HELPERS = () => {
         if (seed <= 2) runs.push(JSON.stringify(__game.items.map((i) => [i.x, i.y, i.bone, i.kind])));
       }
       __game.setRand(__mul(2)); __game.start(1); const again = JSON.stringify(__game.items.map((i) => [i.x, i.y, i.bone, i.kind]));
-      __game.setRand(null);
+      __seed();
       return { bad, n: __game.items.length, nb: __game.balls.length, same: again === runs[1], diff: runs[0] !== runs[1] };
     });
     ok(items.bad.length === 0 && items.n === 8 && items.nb === 2, `em 60 sorteios (6 ratinhos, 2 novelos e 2 camundongos) nenhum item nasce em X, T, poça, saída, início ou posto de cão/rastreador (${JSON.stringify(items.bad.slice(0, 3))})`);
@@ -8952,7 +8957,7 @@ const PAGE_HELPERS = () => {
         for (const it of __game.items) { const c = (it.x - 8) / 32, r = (it.y - 8) / 32; if (!lv.walk[r][c] || lv.puddle[r][c]) bad.push([c, r]); }
         if (__game.state !== "playing") break;
       }
-      __game.setRand(null);
+      __seed();
       return { bad: bad.length, lost: __game.livesLost };
     });
     ok(reloc.lost >= 2 && reloc.bad === 0, `ao perder vidas os itens trocam de lugar sem cair em X, T nem poça (${reloc.lost} vidas perdidas)`);
@@ -9062,7 +9067,7 @@ const PAGE_HELPERS = () => {
     ok(await tp.isHidden("#btn-run") && !await ev(tp, () => document.body.classList.contains("sprint-on")), "jogando o Cachorrinho com toque o botão Correr não aparece");
     await tp.context().close();
     // ---- o Cachorrinho: Shift e Espaço não fazem nada ----
-    await fresh(cp, { name: "Totó" }); await cp.evaluate(CAT_PAGE);
+    await fresh(cp, { name: "Totó" }); await cp.evaluate(CAT_PAGE, CAT_SEED);
     const dogRun = await ev(cp, () => {
       __game.setAnimal("dog"); __game.freezeVets = true; __game.start(2); __at(2, 2);
       const a = __run(20, ["d"], { stay: true }), b = __run(20, ["Shift", "d"], { stay: true }), c = __run(20, [" ", "d"], { stay: true });
@@ -9165,7 +9170,7 @@ const PAGE_HELPERS = () => {
         __game.tick(0.05); __game.player.moving = false;
         list.forEach((e, k) => { if (e.mode === "chase") { run[k] += 0.05; maxRun[k] = Math.max(maxRun[k], run[k]); } else run[k] = 0; });
       }
-      __game.setRand(null);
+      __seed();
       return { max: Math.max(...maxRun), lives: __game.lives, state: __game.state, time: __game.time };
     });
     ok(long.max <= 4.2 && long.lives === 3 && long.state === "playing", `60 s em cima do T com 2 cães e 1 rastreador soltos: nenhum persegue por mais de 4 s seguidos (${long.max.toFixed(2)} s) e o gatinho não perde vida`);
@@ -9328,7 +9333,7 @@ const PAGE_HELPERS = () => {
   await section("0.18.0 · Gatinho: mecânicas (jogando as 20 fases de verdade: pegar tudo, chegar à saída e vencer; cães e rastreadores fora de X e T)", async () => {
     const cp = await newPage({ realCat: true });
     await fresh(cp, { name: "Totó" });
-    await cp.evaluate(CAT_PAGE);
+    await cp.evaluate(CAT_PAGE, CAT_SEED);
     await ev(cp, () => {
       // o robô: vai ao item mais perto (caminho mais curto sobre tudo o que não é parede), um depois do outro, e por fim à saída; anda com as teclas do jogo
       window.__bot = (id) => {

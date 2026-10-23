@@ -114,8 +114,16 @@
     { id: "super", name: "Super-cão", price: 50, text: "capa vermelha de super-herói", collar: "#c1272d", acc: "cape" },
   ];
   const skinById = (id) => SKINS.find((k) => k.id === id) || SKINS[0];
+  // O catálogo de skins de cada bichinho (0.18.0, E2b-2): o do Cachorrinho é o SKINS acima; o do Gatinho são as 12 de CatArt.SKINS (js/cat-art.js: id, name, text, price). A carteira é única, mas as skins compradas e em uso são POR BICHINHO (js/records.js).
+  const skinsOf = (animalId) => (animalId === "cat" && typeof CatArt !== "undefined" ? CatArt.SKINS : SKINS);
   let skinId = ""; // a skin em uso do jogador atual (0.15.9)
-  const refreshSkin = () => { const me = store.player(), w = me ? store.wallet(me) : null; skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : ""; };
+  let catSkin = ""; // a skin em uso do jogador atual no Gatinho (0.18.0, E2b-2): lida da carteira; os testes e as capturas podem trocá-la com `__game.catSkin` (vale até a próxima leitura)
+  const refreshSkin = () => {
+    const me = store.player(), w = me ? store.wallet(me) : null;
+    skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : "";
+    const c = me ? store.equippedSkin(me, "cat") : "";
+    catSkin = skinsOf("cat").some((k) => k.id === c) ? c : ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
+  };
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, passos que olha ao fugir (o intervalo entre os avisos sonoros do 2º inimigo é do perfil: sfx.alert2Every)
@@ -1659,7 +1667,7 @@
   let stamina = 1, winded = 0, wet = 0, sprintOn = false, safe = false, darkness = 0, runTouch = false;
   // Desenho do Gatinho (0.18.0, E2b-1): `catDraw` = a partida é do Gatinho e o js/cat-art.js está carregado (aí o gatinho, os cães, os ratinhos, os novelos, os camundongos, os postos e os efeitos são desenhados com CatArt;
   // no Cachorrinho NADA disto roda). `catFx` = efeitos curtos em andamento (splash, shake, dust, hiss, sparkle, wetdrop); o resto são temporizadores de quando soltar um efeito.
-  let catDraw = false, catFx = [], dustT = 0, dropT = 0, inPuddle = false, catFloorAll = false, catSkin = ""; // (catSkin: a skin do gatinho; só os testes e as capturas a mudam; E2b-2: a loja a liga à skin em uso)
+  let catDraw = false, catFx = [], dustT = 0, dropT = 0, inPuddle = false, catFloorAll = false;
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
@@ -2191,8 +2199,8 @@
         c.think = cfg.thinkEvery;
         if ((sees || heard) && !(safe && c.gaveUp)) { // notou o cachorrinho: persegue (e avisa com o som do perfil, no máximo uma vez a cada sfx.alert2Every s: o miado do gato; o rosnado do rastreador do Gatinho, só se ele está a até sfx.alert2Near tiles)
           c.mode = "chase"; c.modeT = cfg.chaseTime; c.chaseAge = 0; c.route = []; c.goal = null; c.idle = 0;
-          const sf = P().sfx;
-          if (time - meowAt >= sf.alert2Every) { meowAt = time; if (sf.alert2 && (!sf.alert2Near || Math.hypot(c.cx - px, c.cy - py) <= sf.alert2Near * TILE)) sfx(sf.alert2); }
+          const sf = P().sfx; // (o intervalo só conta quando o som toca: um rastreador longe, que não é ouvido, não cala o próximo que estiver perto)
+          if (sf.alert2 && time - meowAt >= sf.alert2Every && (!sf.alert2Near || Math.hypot(c.cx - px, c.cy - py) <= sf.alert2Near * TILE)) { meowAt = time; sfx(sf.alert2); }
         }
       }
       if (lv.refuge) refugeGiveUp(c, dt); // (Gatinho a salvo num lugar alto: o rastreador espera ao pé dele e desiste)
@@ -2882,30 +2890,29 @@
   let shopMsg = "";
   // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se o foco estava na lista
   function renderShop(refocus = -1) {
-    const me = store.player(), w = me ? store.wallet(me) : null, list = $("shop-list");
+    const me = store.player(), A = syncAnimal(), PA = profileOf(A), CATALOG = skinsOf(A), w = me ? store.wallet(me, A) : null, list = $("shop-list"); // (0.18.0) a lojinha mostra as skins do bichinho escolhido: o saldo é um só, mas o que se compra e se usa é por bichinho
     if (refocus < 0) { const a = document.activeElement; refocus = !a || !list.contains(a) ? -1 : a.id.startsWith("shop-name-") ? Number(a.id.slice(10)) : [...list.querySelectorAll("button")].indexOf(a); }
     $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} petscoin (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
     $("shop-msg").textContent = shopMsg;
     list.replaceChildren();
     let firstFocus = true;
-    const PA = profileOf(syncAnimal());
-    for (const [i, k0] of SKINS.entries()) {
-      const k = PA.skins && PA.skins[k0.id] ? { ...k0, ...PA.skins[k0.id] } : k0; // (0.18.0) o nome e a frase da skin vêm do perfil do bichinho escolhido; o preço e o desenho são do motor
-      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (SKINS.some((s) => s.id === w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
+    for (const [i, k0] of CATALOG.entries()) {
+      const k = PA.skins && PA.skins[k0.id] ? { ...k0, ...PA.skins[k0.id] } : k0; // (0.18.0) o perfil pode trocar o nome e a frase da skin; o preço e o desenho são do catálogo
+      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (CATALOG.some((s) => s.id === w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
       const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
-      cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `Prévia da skin ${k.name}`);
+      cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", PA.shop.preview(k.name));
       renderSkinPreview(cv, k.id);
       const b = el("button", owned ? "" : "primary-ish"); b.type = "button";
       if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
       else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
-      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id); refreshSkin(); shopMsg = `Skin em uso: ${k.name}.`; sound.play("pick"); renderShop(i); }); }
+      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id, A); refreshSkin(); shopMsg = PA.shop.inUse(k.name); sound.play("pick"); renderShop(i); }); }
       else {
         const missing = k.price - w.treats;
         b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
         if (missing > 0) b.title = missing === 1 ? "Falta 1 petscoin" : `Faltam ${missing} petscoin`;
         b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos)
-          const r = store.buySkin(me, k.id, k.price);
-          if (r.ok) { store.equipSkin(me, k.id); refreshSkin(); const n = r.wallet.treats; shopMsg = `Você comprou a skin ${k.name} e já está usando! ${n === 0 ? "Não sobrou nenhum petscoin." : n === 1 ? "Sobrou 1 petscoin." : `Sobraram ${n} petscoin.`}`; sound.play("levelup"); }
+          const r = store.buySkin(me, k.id, k.price, A);
+          if (r.ok) { store.equipSkin(me, k.id, A); refreshSkin(); shopMsg = PA.shop.bought(k.name, r.wallet.treats); sound.play("levelup"); }
           else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : "Não foi possível comprar esta skin.";
           renderShop(i);
         });
@@ -3094,8 +3101,8 @@
   // ---------- (0.18.0) Textos fixos da página que mudam com o bichinho (perfil: ui e hud) ----------
   // O index.html traz o texto do Cachorrinho. Cada alvo abaixo é [id do elemento, "html" ou o atributo]; o perfil troca o conteúdo com `ui.<chave>` (null = fica o que veio no index.html, guardado em UI_ORIG).
   // As do jogo (placar, descrição da tela e do controle) valem para o bichinho da PARTIDA e são aplicadas em reset(); as do menu (Como jogar, ajuda da lojinha...) para o ESCOLHIDO e são aplicadas em renderMenu().
-  const UI_TARGETS = { howto: ["howto-steps", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"] };
-  const UI_MENU = ["howto", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel"];
+  const UI_TARGETS = { howto: ["howto-steps", "html"], shopTitle: ["shop-title", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"] };
+  const UI_MENU = ["howto", "shopTitle", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel"];
   const UI_ORIG = {}, TITLE_ORIG = document.title; // (0.18.0, E2b-1: o título da aba também é do bichinho: "Jogo do cachorrinho" / "Jogo do gatinho")
   for (const [k, [id, how]] of Object.entries(UI_TARGETS)) UI_ORIG[k] = how === "html" ? $(id).innerHTML : $(id).getAttribute(how);
   const uiShown = { menu: "", game: "" };
@@ -3752,7 +3759,7 @@
     }
   }
   function drawCatPlayer() { // o gatinho: cresce como o cachorrinho, afina com a arrancada, escurece molhado, fica maior a salvo e eriça o pelo com o poder do novelo
-    // E2b-2: skin do gato em uso (por ora a padrão: `catSkin` só muda nos testes e nas capturas)
+    // a skin em uso do gatinho (a da carteira do jogador; só visual)
     CatArt.drawCat(ctx, player, { gr: dogGrowth(), skin: catSkin, time, calm, wet: lv.water ? clamp(wet / lv.water.wet, 0, 1) : 0, sprint: sprintOn, safe, hiss: power > 0 });
   }
   // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
@@ -4247,7 +4254,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   // gancho de depuração/testes
   window.__game = {
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
-    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get skin() { return skinId; }, get skins() { return SKINS.map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
+    get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get skin() { return skinId; }, get skins() { return SKINS.map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get catSkins() { return skinsOf("cat").map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
