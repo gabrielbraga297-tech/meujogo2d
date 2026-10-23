@@ -2548,7 +2548,11 @@
   function setState(s) {
     state = s;
     document.body.dataset.state = s;
-    if (s !== "playing") clearTouch();
+    if (s === "playing") fingersOnOpen.clear();
+    else {
+      if (s === "paused" || s === "won" || s === "lost") for (const id of [padPointer, runPointer]) if (id !== null) fingersOnOpen.add(id); // (havia um dedo apoiado no controle ou no Correr quando a tela abriu: veja `fingersOnOpen`)
+      clearTouch();
+    }
   }
 
   let screenSeq = 0; // muda a cada troca de tela: serve para ignorar respostas atrasadas (cadastro/entrada) de uma tela que o jogador já deixou
@@ -4150,6 +4154,12 @@
   // ---------- Entrada: toque (celular/tablet) ----------
   const pad = $("pad"), knob = $("pad-knob");
   let padPointer = null, runPointer = null; // o dedo que segura o controle direcional e o que segura o botão Correr (cada um tem o seu)
+  // Clique que atravessa: se a tela de pausa, vitória ou derrota abre com um dedo ainda apoiado no controle direcional ou no Correr, o navegador dispara um clique, quando o dedo levanta, no botão da tela que
+  // ficou embaixo dele (o "Voltar ao menu", por exemplo). `fingersOnOpen` guarda esses dedos; quando cada um levanta, os cliques de ponteiro nos botões são ignorados por CLICK_GUARD ms.
+  // Sem dedo apoiado nada muda (nem para o Cachorrinho): quem toca num botão logo depois de vencer continua sendo atendido na hora.
+  const CLICK_GUARD = 400, fingersOnOpen = new Set();
+  let clickGuardUntil = 0;
+  for (const t of ["pointerup", "pointercancel"]) window.addEventListener(t, (e) => { if (fingersOnOpen.delete(e.pointerId)) clickGuardUntil = performance.now() + CLICK_GUARD; }, true);
   function releasePad() { // soltou o dedo do controle direcional (o botão Correr, se estiver apertado por outro dedo, continua)
     padPointer = null;
     touch.left = touch.right = touch.up = touch.down = false;
@@ -4191,7 +4201,7 @@
   window.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") document.body.classList.add("touch"); }, { passive: true });
 
   // ---------- Botões e formulário ----------
-  const on = (id, fn) => $(id).addEventListener("click", fn);
+  const on = (id, fn) => $(id).addEventListener("click", (e) => { if ((e.detail > 0 || e.pointerId > 0) && performance.now() < clickGuardUntil) { e.preventDefault(); return; } fn(e); }); // (clique de ponteiro = dedo, mouse ou caneta: `pointerId` > 0, ou `detail` > 0; o clique do teclado e o de programa não têm nenhum dos dois e nunca são ignorados)
   function renderSound() { // o ícone do menu e o botão da pausa mostram se o som está ligado
     const off = sound.isMuted(), label = off ? "Som: desligado" : "Som: ligado";
     const icon = $("btn-sound"); icon.setAttribute("aria-pressed", off ? "false" : "true"); icon.setAttribute("aria-label", label); icon.title = `${label} (tecla M)`;

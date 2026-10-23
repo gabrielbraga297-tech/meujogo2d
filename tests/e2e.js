@@ -10147,6 +10147,78 @@ const PAGE_HELPERS = () => {
     await cp.context().close();
   });
 
+  // O dedo que estava no Correr (ou no controle direcional) quando a tela de vitória abriu não pode "apertar" o botão que ficou embaixo dele ao levantar (auditoria 3).
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (clique que atravessa: levantar o dedo do Correr ou do controle depois da vitória, da derrota ou da pausa)", async () => {
+    const underFinger = (tp, x, y) => ev(tp, ([x, y]) => { const e = document.elementFromPoint(x, y), b = e && e.closest("button"); return b ? b.id : null; }, [x, y]);
+    const centerOf = (tp, sel) => tp.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    const touch = (cdp, type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y, id: 1 }] });
+    const real = [];
+    // ---- Gatinho, dedo no Correr; vitória; o dedo levanta ----
+    for (const [w, h, animal, sel] of [[390, 780, "cat", "#btn-run"], [320, 568, "cat", "#btn-run"], [390, 780, "dog", "#pad"], [320, 568, "dog", "#pad"]]) {
+      const tp = await newPage({ realCat: true, viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+      await catArena(tp, 1, { query: "?touch=1" });
+      await ev(tp, (a) => { __game.setAnimal(a); __game.start(1); __game.items.forEach((it) => { it.life = false; }); }, animal);
+      const cdp = await tp.context().newCDPSession(tp), [x, y] = await centerOf(tp, sel);
+      await touch(cdp, "touchStart", x, y);
+      await finishNow(tp, 1);
+      const open = await ev(tp, () => [__game.state, document.body.dataset.screen]);
+      const under = await underFinger(tp, x, y);
+      await tp.waitForTimeout(80);
+      await touch(cdp, "touchEnd", x, y);
+      await tp.waitForTimeout(120);
+      const after = await ev(tp, () => [__game.state, document.body.dataset.screen]);
+      real.push(`${animal} ${w}×${h}: embaixo do dedo "${under}"`);
+      ok(open[0] === "won" && after[0] === "won" && after[1] === "win", `${animal === "cat" ? "Gatinho" : "Cachorrinho"} ${w}×${h}: vence com o dedo em ${sel}; ao levantar o dedo (embaixo dele: ${under || "nenhum botão"}) continua na tela de vitória (${after.join("/")})`);
+      // o mesmo, com o clique de ponteiro (detail 1) logo depois e outro bem depois
+      const g = await ev(tp, async () => {
+        const click = (id) => document.getElementById(id).dispatchEvent(new MouseEvent("click", { detail: 1, bubbles: true, cancelable: true }));
+        click("btn-win-menu"); const early = document.body.dataset.screen;
+        await new Promise((r) => setTimeout(r, 520));
+        click("btn-win-scores"); const late = document.body.dataset.screen;
+        return { early, late };
+      });
+      ok(g.early === "win" && g.late === "scores", `${animal === "cat" ? "Gatinho" : "Cachorrinho"} ${w}×${h}: um clique de ponteiro logo depois de o dedo levantar é ignorado (${g.early}) e outro 520 ms depois funciona (${g.late})`);
+      await tp.context().close();
+    }
+    console.log("     embaixo do dedo na tela de vitória:", real.join(" | "));
+    ok(real.some((r) => /^cat .*"btn-/.test(r)), "o teste é de verdade: nas telas do Gatinho há um botão da vitória exatamente embaixo do dedo que estava no Correr");
+    const tp = await newPage({ realCat: true, viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+    await catArena(tp, 1, { query: "?touch=1" });
+    // ---- sem dedo apoiado nada muda: o clique logo depois de vencer funciona na hora ----
+    const free = await ev(tp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true;
+      for (let i = 0; i < 20; i++) __game.tick(0.05);
+      for (const it of __game.items) { __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); }
+      const e = __game.exit; __game.player.x = e.x + 4; __game.player.y = e.y + 4; __game.tick(0.01);
+      const state = __game.state;
+      document.getElementById("btn-win-scores").dispatchEvent(new MouseEvent("click", { detail: 1, bubbles: true, cancelable: true }));
+      return { state, screen: document.body.dataset.screen };
+    });
+    ok(free.state === "won" && free.screen === "scores", `sem dedo apoiado, um clique de ponteiro logo depois da vitória funciona na hora (${free.screen})`);
+    // ---- a pausa com o dedo no Correr ----
+    await ev(tp, () => { __game.start(1); });
+    const cdp = await tp.context().newCDPSession(tp), [rx, ry] = await centerOf(tp, "#btn-run");
+    await touch(cdp, "touchStart", rx, ry);
+    await ev(tp, () => { __t.press("Escape", true); __t.press("Escape", false); });
+    await touch(cdp, "touchEnd", rx, ry);
+    await tp.waitForTimeout(60);
+    const ps = await ev(tp, async () => {
+      const click = (id) => document.getElementById(id).dispatchEvent(new MouseEvent("click", { detail: 1, bubbles: true, cancelable: true }));
+      const st0 = __game.state; click("btn-pause-menu"); const early = document.body.dataset.screen;
+      await new Promise((r) => setTimeout(r, 520));
+      click("btn-pause-menu"); return { st0, early, late: document.body.dataset.screen };
+    });
+    ok(ps.st0 === "paused" && ps.early === "pause" && ps.late === "menu", `pausar com o dedo no Correr: o clique logo depois de o dedo levantar não volta ao menu (${ps.early}); depois da janela funciona (${ps.late})`);
+    // ---- cliques do teclado (detail 0) nunca são ignorados ----
+    const kb = await ev(tp, () => {
+      __game.start(1); __game.freezeVets = true; __t.press("Escape", true); __t.press("Escape", false);
+      document.getElementById("btn-pause-menu").click();
+      return document.body.dataset.screen;
+    });
+    ok(kb === "menu", "o clique do teclado (ou de programa) na pausa funciona sempre");
+    await tp.context().close();
+  });
+
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));
