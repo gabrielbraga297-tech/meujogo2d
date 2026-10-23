@@ -9188,6 +9188,216 @@ const PAGE_HELPERS = () => {
     await cp.context().close();
   });
 
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (camundongos ágeis, novelos e seus poderes, rastreadores e noite)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    // ---- camundongos ágeis = as bolinhas do motor: disparam a 3 tiles, rolam, quicam; +50 ----
+    const m = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true;
+      __game.balls = [{ x: 14 * 32 + 16, y: 9 * 32 + 16, vx: 0, vy: 0, taken: false, hue: 0 }, { x: 20 * 32 + 16, y: 15 * 32 + 16, vx: 0, vy: 0, taken: false, hue: 1 }];
+      __at(12, 9); __game.tick(0.01); // 2 tiles de distância (dentro dos 3)
+      const kicked = [__game.balls[0].vx, __game.balls[0].vy]; // dispara para longe, no eixo do gatinho
+      __at(2, 2); for (let i = 0; i < 90; i++) __game.tick(1 / 60);
+      const stopped = Math.hypot(__game.balls[0].vx, __game.balls[0].vy) === 0, far = __game.balls[0].x;
+      const b = __game.balls[1], px = b.x - 12, py = b.y - 12; __game.player.x = px; __game.player.y = py; __game.tick(0.01);
+      return { kicked, stopped, far, taken: __game.balls[1].taken, score: __game.score, toast: document.getElementById("toast").textContent, lab: document.getElementById("hud-balls").parentNode.textContent, title: document.getElementById("hud-balls-item").title };
+    });
+    ok(m.kicked[0] > 150 && m.kicked[1] === 0 && m.stopped && m.far > 14 * 32 + 16, `o camundongo dispara quando o gatinho chega a 3 tiles, rola e para sozinho (vx=${Math.round(m.kicked[0])})`);
+    ok(m.taken && m.score === 50 && m.toast === "Camundongo! +50 pontos (1/2)", `pegar um camundongo vale 50 pontos e o aviso diz "${m.toast}"`);
+    ok(await hudIs(cp, "#hud-balls", "1/2") && /^CAMUNDONGOS/.test(m.lab) && /^Camundongos ágeis: cada um vale 50 pontos e dispara quando você chega perto$/.test(m.title), `o placar chama de CAMUNDONGOS ("${m.lab}") e a dica explica`);
+    // ---- novelos: o poder afugenta os cães e os rastreadores (+100 cada, uma vez por poder) ----
+    const pw = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      const bone = __game.items.find((i) => i.bone && i.kind === "scare");
+      __game.player.x = bone.x - 4; __game.player.y = bone.y - 4; __game.tick(0.01);
+      const out = { power: __game.power, modes: [...__game.vets, ...__game.cats].map((e) => e.mode), toast: document.getElementById("toast").textContent, score0: __game.score };
+      const v = __game.vets[0], t = __game.cats[0], touch = (e) => { e.cx = __game.player.x + 12; e.cy = __game.player.y + 12; __game.tick(0.01); };
+      touch(v); out.after1 = [__game.postmen, __game.score, document.getElementById("toast").textContent];
+      touch(v); out.again = [__game.postmen, __game.score]; // o mesmo cão no mesmo poder: não rende de novo
+      touch(t); out.trk = [__game.postmen, __game.score, v.slow, t.slow];
+      out.lives = __game.lives; __game.noCatch = true; // (os dois cães ficaram em cima do gatinho: depois do poder eles o pegariam)
+      for (let i = 0; i < 700; i++) __game.tick(0.05);
+      out.end = { power: __game.power, modes: [...__game.vets, ...__game.cats].map((e) => e.mode), toast: document.getElementById("toast").textContent };
+      return out;
+    });
+    ok(near(pw.power, 30, 0.1) && pw.modes.every((x) => x === "flee") && pw.modes.length === 3 && /^Poder do novelo por 30 s: os cães ficam afugentados e fogem!/.test(pw.toast) && pw.score0 === 150, `pegar um novelo comum (150 pontos) dá 30 s de poder: os 2 cães e o rastreador viram afugentados e fogem ("${pw.toast.slice(0, 50)}...")`);
+    ok(pw.after1[0] === 1 && pw.after1[1] === 250 && pw.after1[2] === "Você afugentou o cão! +100 pontos" && pw.again[0] === 1 && pw.again[1] === 250, "encostar num cão afugentado vale +100 uma vez só por poder");
+    ok(pw.trk[0] === 2 && pw.trk[1] === 350 && pw.trk[2] === true && pw.trk[3] === true && pw.lives === 3, "o rastreador afugentado também vale +100 e nenhum deles tira vida");
+    ok(pw.end.power === 0 && pw.end.modes.every((x) => x === "patrol") && /O poder acabou: os cães afugentados voltaram a perseguir você!/.test(pw.end.toast), "quando o poder acaba todos voltam a patrulhar e o aviso fala dos cães " + JSON.stringify(pw.end));
+    // ---- tipos de novelo: turbo (fôlego livre + ×1,4), ouro, gelo, ímã ----
+    const kinds = await ev(cp, () => {
+      const out = {}, take = (kind) => { const it = __game.items.find((i) => i.bone && i.kind === kind && !i.taken); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); return document.getElementById("toast").textContent; };
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true;
+      out.turboToast = take("turbo"); out.turbo = __game.fx.turbo;
+      __at(2, 2); __game.stamina = 1; const f = __run(60, ["Shift", "d"], { stay: true }); out.turboSta = f[59].stamina; out.turboSpeed = f[0].speed;
+      __game.start(2); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      out.goldToast = take("gold"); out.gold = __game.fx.shield; { const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01); out.goldLives = __game.lives; }
+      out.iceToast = take("ice"); out.ice = __game.fx.ice;
+      // ímã: uma ração a 3 tiles à vista vem sozinha
+      out.magnetToast = take("magnet"); out.magnet = __game.fx.magnet;
+      __game.fx = { shield: 0, ice: 0, turbo: 0, magnet: 12 }; __at(2, 9);
+      const r = __game.items.find((i) => !i.bone && !i.taken); r.x = 5 * 32 + 8; r.y = 9 * 32 + 8; __game.tick(0.01); out.pulled = r.taken;
+      return out;
+    });
+    ok(/^Novelo turbo: \+40% de velocidade e arrancada sem cansar por 8 s!$/.test(kinds.turboToast) && near(kinds.turbo, 8, 0.1) && kinds.turboSta === 1 && near(kinds.turboSpeed, 252 * 1.1 * 1.4 * 1.35, 1e-6), `o novelo turbo (laranja): "${kinds.turboToast}" e a arrancada não gasta fôlego`);
+    ok(/^Novelo de ouro: escudo dourado por 10 s: nada pega o gatinho!$/.test(kinds.goldToast) && near(kinds.gold, 10, 0.1) && kinds.goldLives === 3, "o novelo de ouro dá escudo: o cão encosta e não tira vida");
+    ok(/^Novelo de gelo: cães congelados por 6 s!$/.test(kinds.iceToast) && near(kinds.ice, 6, 0.1), `o novelo de gelo congela os cães por 6 s ("${kinds.iceToast}")`);
+    ok(/^Novelo ímã: os ratinhos vêm sozinhos por 12 s!$/.test(kinds.magnetToast) && near(kinds.magnet, 12, 0.1) && kinds.pulled, `o novelo ímã puxa os ratinhos que estão perto ("${kinds.magnetToast}")`);
+    // ---- o rastreador é a IA dos gatos inimigos, sem pular, sem miar ----
+    const tk = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = true; __game.catsThaw = true; __game.sound.reset();
+      const t = __game.cats[0], lv = __game.builtOf("cat")[1];
+      for (const v of __game.vets) { v.cool = 999; v.cx = 14 * 32 + 16; v.cy = 15 * 32 + 16; }
+      t.cx = 7 * 32 + 16; t.cy = 8 * 32 + 16; t.leg = null; t.route = []; t.cool = 0; t.mode = "patrol"; t.idle = 0;
+      __at(10, 8); let first = null, crossed = 0, arrive = null; const t0 = __game.time;
+      for (let i = 0; i < 600; i++) {
+        __game.tick(0.05); __game.player.moving = false;
+        const c = Math.floor(t.cx / 32), r = Math.floor(t.cy / 32);
+        if (c === 8 && r >= 5 && r <= 12) crossed++;
+        if (first === null && t.mode === "chase") first = __game.time - t0;
+        if (arrive === null && Math.hypot(t.cx - (__game.player.x + 12), t.cy - (__game.player.y + 12)) < 40) arrive = __game.time - t0;
+      }
+      return { first, crossed, arrive, cfg: { speed: t.cfg.speed, chase: t.cfg.chaseSpeed, hear: t.cfg.hear }, meows: __game.sounds.filter((e) => e.name === "meow").length, sameGrid: lv.catWalk === lv.walk };
+    });
+    ok(tk.first !== null && tk.crossed === 0 && tk.sameGrid && tk.arrive > 1.5, `o rastreador percebe o gatinho (ouve, mesmo atrás do muro) e vai atrás dele dando a volta, sem pular o X (chegou em ${tk.arrive && tk.arrive.toFixed(1)} s)`);
+    ok(tk.meows === 0, "o rastreador não mia ao notar o gatinho (o som dele é da etapa de sons)");
+    // ele pega o gatinho como os gatos de hoje
+    const catchTk = await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false; const t = __game.cats[0]; __at(12, 15); t.cx = __game.player.x + 12; t.cy = __game.player.y + 12; __game.tick(0.01); return [__game.lives, __game.livesLost]; });
+    ok(catchTk[0] === 2, "o contato com o rastreador tira 1 vida");
+    const ice = await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false; __game.catsThaw = true; const t = __game.cats[0]; __game.fx = { ice: 3 }; __at(2, 2); const x0 = t.cx; t.cx = 4 * 32 + 16; t.cy = 2 * 32 + 16; t.mode = "chase"; t.cool = 0; for (let i = 0; i < 30; i++) __game.tick(0.05); const frozen = [t.cx, t.cy]; t.cx = __game.player.x + 12; t.cy = __game.player.y + 12; __game.tick(0.01); return { frozen, lives: __game.lives }; });
+    ok(ice.frozen[0] === 4 * 32 + 16 && ice.lives === 3, "congelado pelo novelo de gelo o rastreador não anda nem machuca");
+    // ---- noite: Fases 18 e 19 ----
+    const night = await ev(cp, () => {
+      __game.catLevels(); const out = {};
+      __game.setAnimal("cat"); __game.start(18); out.n18 = [__game.darkness, __game.builtOf("cat")[18].night.halo];
+      __game.start(19); out.n19 = __game.darkness;
+      __game.start(17); out.n17 = __game.darkness; __game.start(1); out.n1 = __game.darkness;
+      __game.setAnimal("dog"); __game.start(18); out.dog18 = [__game.darkness, __game.builtOf("dog")[18].night];
+      return out;
+    });
+    ok(night.n18[0] === 0.75 && night.n18[1] === 5 && night.n19 === 0.75 && night.n17 === 0 && night.n1 === 0 && night.dog18[0] === 0 && night.dog18[1] === null, `a noite (escuridão 0,75 e luz de 5 tiles) só nas Fases 18 e 19 do Gatinho; o desenho é do E2b (${JSON.stringify(night)})`);
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (jogo salvo do Gatinho com fôlego e molhado; o do Cachorrinho não ganha campo nenhum)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    const snapOf = (animal) => ev(cp, (a) => Records.createStore(localStorage).game(a).loadGame("Totó").snap, animal);
+    await ev(cp, () => { __at(2, 2); __game.items[0].life = true; /* (a arena tem 1 vida extra escondida: o jogo salvo precisa dela) */ __game.stamina = 0.37; __game.wet = 3.2; __game.winded = 0.5; __game.save(); });
+    const s1 = await snapOf("cat");
+    ok(s1.sta === 0.37 && s1.wet === 3.2 && s1.wnd === 0.5 && s1.mz === 1 && s1.v === 4, `o jogo salvo do Gatinho guarda o fôlego, o molhado e o ofegante e a revisão própria dos mapas (sta ${s1.sta}, wet ${s1.wet}, wnd ${s1.wnd}, mz ${s1.mz})`);
+    // continuar restaura
+    await ev(cp, () => { __game.freezeVets = true; document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
+    await cp.click("#btn-continue");
+    const r1 = await ev(cp, () => ({ sta: __game.stamina, wet: __game.wet, wnd: __game.winded, state: __game.state }));
+    ok(r1.state === "playing" && near(r1.sta, 0.37, 0.05) && near(r1.wet, 3.2, 0.3) && near(r1.wnd, 0.5, 0.3), `Continuar jogo devolve o fôlego e o molhado (${JSON.stringify(r1)})`);
+    // jogo salvo antigo (sem os campos) carrega com os valores de sempre
+    await ev(cp, () => { document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); }); // (pausar salva de novo: o salvo antigo é fabricado depois de chegar ao menu)
+    const old = await ev(cp, () => {
+      const st = Records.createStore(localStorage), g = st.game("cat"), snap = JSON.parse(JSON.stringify(g.loadGame("Totó").snap));
+      delete snap.sta; delete snap.wet; delete snap.wnd; g.saveGame("Totó", snap);
+      return __game.parseSave(snap, "cat");
+    });
+    await cp.click("#btn-continue");
+    const r2 = await ev(cp, () => ({ sta: __game.stamina, wet: __game.wet, wnd: __game.winded }));
+    ok(old === true && r2.sta >= 0.99 && r2.wet === 0 && r2.wnd === 0, `um jogo salvo sem os campos novos carrega com fôlego cheio e pelo seco (${JSON.stringify(r2)})`);
+    // salvos adulterados
+    const bad = await ev(cp, () => {
+      const base = JSON.parse(JSON.stringify(Records.createStore(localStorage).game("cat").loadGame("Totó").snap)), out = {};
+      for (const [k, v] of [["sta", 2], ["sta", -0.1], ["sta", "x"], ["wet", 7], ["wet", -1], ["wnd", 2], ["wnd", -1]]) out[k + "=" + v] = __game.parseSave({ ...base, [k]: v }, "cat");
+      out.ok = __game.parseSave({ ...base, sta: 0, wet: 6, wnd: 1.5 }, "cat"); out.rev2 = __game.parseSave({ ...base, mz: 2 }, "cat");
+      return out;
+    });
+    ok(Object.entries(bad).every(([k, v]) => (k === "ok" ? v === true : v === false)), `salvos com fôlego, molhado ou ofegante fora dos limites (ou de outra revisão) são recusados; os limites exatos valem (${JSON.stringify(bad)})`);
+    // item nascido numa poça recusa o jogo salvo
+    const puddle = await ev(cp, () => { const base = JSON.parse(JSON.stringify(Records.createStore(localStorage).game("cat").loadGame("Totó").snap)); base.items[0][0] = 11; base.items[0][1] = 9; return __game.parseSave(base, "cat"); });
+    ok(puddle === false, "um jogo salvo com um ratinho dentro de uma poça é recusado");
+    // ---- o Cachorrinho: o jogo salvo não ganha nenhum campo novo ----
+    const dog = await ev(cp, () => { __game.setAnimal("dog"); __game.start(3); __game.freezeVets = true; __game.tick(1); __game.save(); return Records.createStore(localStorage).game("dog").loadGame("Totó").snap; });
+    ok(!("sta" in dog) && !("wet" in dog) && !("wnd" in dog) && dog.mz === 2 && dog.v === 4, `o jogo salvo do Cachorrinho não tem sta, wet nem wnd (chaves: ${Object.keys(dog).join(",")})`);
+    const dogSt = await ev(cp, () => ({ lv: __game.builtOf("dog")[3], keys: ["sprint", "water", "refuge", "night"].map((k) => __game.builtOf("dog")[3][k]) }).keys);
+    ok(dogSt.every((v) => v === null), "as fases do Cachorrinho têm sprint, water, refuge e night desligados");
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (jogando as 20 fases de verdade: pegar tudo, chegar à saída e vencer; cães e rastreadores fora de X e T)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    await cp.evaluate(CAT_PAGE);
+    await ev(cp, () => {
+      // o robô: vai ao item mais perto (caminho mais curto sobre tudo o que não é parede), um depois do outro, e por fim à saída; anda com as teclas do jogo
+      window.__bot = (id) => {
+        __game.setAnimal("cat"); __game.freezeVets = true; __game.noCatch = false; __game.setRand(__mul(100 + id)); __game.start(id);
+        const lv = __game.builtOf("cat")[id], C = lv.cols, R = lv.rows, free = (c, r) => c >= 0 && r >= 0 && c < C && r < R && !lv.bld[r][c];
+        const path = (from, goal) => {
+          const key = (c, r) => r * C + c, prev = new Map([[key(...from), null]]), q = [from];
+          for (let i = 0; i < q.length; i++) {
+            const [c, r] = q[i]; if (goal(c, r)) { const out = []; for (let cur = [c, r]; cur && prev.get(key(...cur)); cur = prev.get(key(...cur))) out.unshift(cur); return out; }
+            for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (free(nc, nr) && !prev.has(key(nc, nr))) { prev.set(key(nc, nr), [c, r]); q.push([nc, nr]); } }
+          }
+          return null;
+        };
+        const here = () => __tileOf(__game.player), steps = { items: 0, jumps: 0, wet: 0 };
+        let guard = 0;
+        while (__game.state === "playing" && guard++ < 200) {
+          const left = __game.items.filter((i) => !i.taken).map((i) => [(i.x - 8) / 32, (i.y - 8) / 32]);
+          if (!left.length) break;
+          const p = path(here(), (c, r) => left.some(([ic, ir]) => ic === c && ir === r));
+          if (!p) return { id, error: "item sem caminho" };
+          for (const [c, r] of p) { if (lv.crate[r][c]) steps.jumps++; if (lv.puddle[r][c]) steps.wet++; }
+          __t.walk(p); steps.items++;
+        }
+        const ex = new Set(lv.exitTiles.map(([c, r]) => c + "," + r));
+        let tries = 0;
+        while (__game.state === "playing" && tries++ < 5) { const p = path(here(), (c, r) => ex.has(c + "," + r)); if (!p) return { id, error: "saída sem caminho" }; __t.walk(p); }
+        const mins = lv.minPoints;
+        return { id, state: __game.state, collected: __game.collected, rations: lv.rations, bones: __game.bonesGot, nBones: lv.bones, time: __game.time, lives: __game.lives, items: __game.items.length, minPoints: mins, score: __game.score, steps, exit: [lv.exitRect.w, lv.exitRect.h], safeSeen: __game.safe };
+      };
+    });
+    const rows = [];
+    for (let id = 1; id <= 20; id++) {
+      const r = await ev(cp, (id) => __bot(id), id);
+      rows.push(r);
+      ok(!r.error && r.state === "won" && r.collected === r.rations && r.bones === r.nBones && r.lives >= 3, `Fase ${id} do Gatinho: ${r.error || `${r.collected}/${r.rations} ratinhos e ${r.bones}/${r.nBones} novelos pegos (robô: ${r.time.toFixed(0)} s de jogo), saída ${r.exit[0] / 32}×${r.exit[1] / 32} e vitória (${r.score} pontos${r.minPoints ? `, mínimo ${r.minPoints}` : ""}; atravessou ${r.steps.jumps} tiles de X/T e ${r.steps.wet} de poça)`}`);
+    }
+    ok(rows.reduce((n, r) => n + r.steps.jumps, 0) > 0 && rows.reduce((n, r) => n + r.steps.wet, 0) > 0, "o robô passou por cima de obstáculos baixos, lugares altos e poças nas fases de verdade");
+    // mundo vivo: nas 20 fases, 30 s de cães e rastreadores soltos (gatinho parado, sem ser pego): ninguém pisa em X ou T
+    const live = [];
+    for (let id = 1; id <= 20; id++) {
+      live.push(await ev(cp, (id) => {
+        __game.setAnimal("cat"); __game.setRand(__mul(500 + id)); __game.start(id); __game.freezeVets = false; __game.noCatch = true; __game.catsThaw = true;
+        const lv = __game.builtOf("cat")[id]; let bad = 0, n = 0;
+        for (let i = 0; i < 20 * 30; i++) {
+          __game.tick(0.05); __game.player.moving = false;
+          if (i === 400) { const [c, r] = lv.spawnTile; __game.player.x = (lv.exitTiles[0][0] + (lv.exitTiles[0][0] > c ? -2 : 2)) * 32 + 4; __game.player.y = (lv.exitTiles[0][1]) * 32 + 4; } // gatinho passeia: os cães vão atrás
+          for (const e of [...__game.vets, ...__game.cats]) { const c = Math.floor(e.cx / 32), r = Math.floor(e.cy / 32); n++; if (!lv.walk[r] || !lv.walk[r][c]) bad++; }
+        }
+        __game.catsThaw = false;
+        return { id, bad, n, enemies: __game.vets.length + __game.cats.length };
+      }, id));
+    }
+    ok(live.every((l) => l.bad === 0), `nas 20 fases, em 30 s de cães e rastreadores soltos (${live.reduce((n, l) => n + l.enemies, 0)} inimigos no total) nenhum pisou em X, T ou parede (${live.filter((l) => l.bad).map((l) => `F${l.id}:${l.bad}`).join(" ") || "0 em todas"})`);
+    console.log("   (resumo do robô)", rows.map((r) => `F${r.id}:${Math.round(r.time)}s`).join(" "));
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (README, tabela e o Cachorrinho sem nenhum campo novo)", async () => {
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    ok(/## Mecânicas do Gatinho \(0\.18\.0\)/.test(readme) && /escolha de design, sem fonte científica verificada/.test(readme), "o README tem a seção Mecânicas do Gatinho (0.18.0) e diz que são escolha de design, sem fonte científica verificada");
+    const sec = (readme.split("## Mecânicas do Gatinho (0.18.0)")[1] || "").split(/\n## /)[0];
+    for (const [re, what] of [[/×1,35|1,35/, "arrancada ×1,35"], [/2,5 s/, "2,5 s de fôlego"], [/0,2/, "recuperação 0,2/s"], [/1,5 s/, "ofegante 1,5 s"], [/65%|0,65/, "molhado ×0,65"], [/6 s/, "molhado 6 s"], [/4 s/, "espera 4 s"], [/85%|0,85/, "pulo 85%"], [/Shift/, "Shift"], [/Espaço/, "Espaço"], [/\bRB\b/, "RB"], [/Correr/, "botão Correr"], [/catDefFrom/, "adaptador"], [/js\/cat-levels\.js/, "arquivo dos mapas"], [/rastreador/, "rastreadores"], [/noite|darkness/, "noite"], [/`sta`|sta/, "jogo salvo"]]) ok(re.test(sec), `README (Mecânicas do Gatinho) cita ${what}`);
+    const src2 = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
+    ok(/const CAT_SPRINT = 1\.35, SPRINT_DRAIN = 0\.4, SPRINT_REGEN = 0\.2, WINDED_TIME = 1\.5;/.test(src2) && /const WET_TIME = 6, WET_SLOW = 0\.65, JUMP_SLOW = 0\.85;/.test(src2) && /const REFUGE_WAIT = 4,/.test(src2), "os parâmetros finais estão nas constantes do js/game.js (e no README)");
+    const idx = fs.readFileSync(path.join(root, "index.html"), "utf8");
+    ok(idx.indexOf('src="js/cat-levels.js"') > 0 && idx.indexOf('src="js/cat-levels.js"') < idx.indexOf('src="js/game.js"'), "o index.html carrega js/cat-levels.js antes do js/game.js");
+  });
+
 //E2A-NEXT
   console.log("erros JS:", errs);
   if (errs.length) failed++;
