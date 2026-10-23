@@ -16,9 +16,12 @@
   else root.Sound = api;
 })(typeof window !== "undefined" ? window : globalThis, function (root) {
   const KEY = "cachorrinho.som.v1";   // preferência guardada: {"m":0|1 (mudo),"v":volume 0..1}
-  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow"]);
+  const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow",
+    // 0.18.0 (Gatinho): miados por fase da vida, ronronar, chiado, guincho do ratinho, novelo, cão inimigo, susto e sons de ação
+    "cmeow1", "cmeow2", "cmeow3", "purr", "hiss", "squeak", "yarn", "woof", "growl", "yowl", "splash", "shake", "jump", "dash", "pant"]);
   // Duração máxima de cada som, em segundos (o som audível nunca passa disso).
-  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45 });
+  const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45,
+    cmeow1: 0.4, cmeow2: 0.5, cmeow3: 0.8, purr: 1.8, hiss: 0.55, squeak: 0.16, yarn: 0.45, woof: 0.4, growl: 0.6, yowl: 0.4, splash: 0.35, shake: 0.45, jump: 0.18, dash: 0.22, pant: 0.4 });
   const DEFAULT_VOLUME = 0.35;        // ganho mestre padrão (baixo e agradável)
   const MIN_GAP_MS = 60;              // o mesmo som não repete antes disso
   const MAX_VOICES = 8;               // no máximo 8 sons ao mesmo tempo
@@ -105,9 +108,26 @@
   function scene(ctx, out, t0) {
     const sc = { end: 0 };
 
+    // Barramento PULSADO (0.18.0, ronronar e rosnado): devolve um ganho ligado à saída que é multiplicado por um TREM DE PULSOS na taxa `rate` (Hz):
+    // vale 1 durante o pulso (ciclo de trabalho `duty`) e cai para 1 - `depth` entre os pulsos. Para usar, passe-o como `to` de tone/noise;
+    // todas as vozes que vão para o mesmo barramento pulsam juntas (mesma fase). o: { at, dur, rate, depth (0..0,7), duty (0..0,5) }
+    sc.pulsed = (o) => {
+      const t = t0 + o.at, duty = o.duty ?? 0.33, depth = clamp(o.depth ?? 0.7, 0, 0.7), amp = depth * (1 - duty);
+      const m = ctx.createGain(), l = ctx.createOscillator(), d = ctx.createGain();
+      m.gain.setValueAtTime(1 - amp, t);
+      setWave(ctx, l, "pulse", duty);
+      l.frequency.setValueAtTime(o.rate, t);
+      d.gain.setValueAtTime(amp, t);
+      l.connect(d); d.connect(m.gain);
+      l.start(t); l.stop(t + o.dur + 0.02);
+      m.connect(out);
+      return m;
+    };
+
     // Nota: oscilador -> (filtro passa-baixa) -> envelope -> (tremolo) -> saída.
     // o: { at, dur, f, f2 (glissando exponencial até f2), type ("sine"|"triangle"|"square"|"sawtooth"|"pulse"), duty, gain, a, r, sus,
-    //      lp/lp2/q (corte do passa-baixa, para onde varre e ressonância), vib: [Hz, profundidade em Hz], trem: [Hz, profundidade 0..1] }
+    //      lp/lp2/q (corte do passa-baixa, para onde varre e ressonância), vib: [Hz, profundidade em Hz], trem: [Hz, profundidade 0..1],
+    //      to (barramento pulsado de sc.pulsed, em vez da saída) }
     sc.tone = (o) => {
       const t = t0 + o.at, dur = o.dur, a = Math.min(o.a ?? 0.01, dur * 0.4), r = Math.min(o.r ?? 0.02, dur * 0.5);
       const osc = ctx.createOscillator();
@@ -132,12 +152,12 @@
         lfo(ctx, o.trem[0], o.trem[1] / 2, m.gain, t, dur);
         node.connect(m); node = m;
       }
-      node.connect(out);
+      node.connect(o.to || out);
       osc.start(t); osc.stop(t + dur + 0.02);
       sc.end = Math.max(sc.end, o.at + dur);
     };
 
-    // Ruído filtrado: o: { at, dur, type ("bandpass"|"lowpass"|"highpass"), f, f2 (varredura), q, gain, a, r, sus, off (onde começa no ruído, em s) }
+    // Ruído filtrado: o: { at, dur, type ("bandpass"|"lowpass"|"highpass"), f, f2 (varredura), q, gain, a, r, sus, off (onde começa no ruído, em s), lp (passa-baixa extra que limita a banda), loop (true: repete o buffer de 1 s), to (barramento pulsado) }
     sc.noise = (o) => {
       const t = t0 + o.at, dur = o.dur, a = Math.min(o.a ?? 0.01, dur * 0.4), r = Math.min(o.r ?? 0.02, dur * 0.5);
       const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
@@ -146,7 +166,15 @@
       f.frequency.setValueAtTime(o.f, t);
       if (o.f2 && o.f2 !== o.f) f.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
       envelope(g.gain, t, dur, o.gain ?? 0.5, a, r, o.sus ?? 0.05);
-      src.connect(f); f.connect(g); g.connect(out);
+      src.connect(f);
+      if (o.lp) { // passa-baixa suave depois do filtro (limita a banda do chiado)
+        const l = ctx.createBiquadFilter();
+        l.type = "lowpass"; l.Q.value = 0.7;
+        l.frequency.setValueAtTime(o.lp, t);
+        f.connect(l); l.connect(g);
+      } else f.connect(g);
+      g.connect(o.to || out);
+      if (o.loop) src.loop = true; // som mais longo que o buffer de 1 s (só o ronronar): o ruído se repete
       src.start(t, o.off ?? 0, dur + 0.02);
       sc.end = Math.max(sc.end, o.at + dur);
     };
@@ -275,10 +303,134 @@
       s.tone({ at: 0, dur: 0.18, f: hz("G6"), type: "sine", gain: 0.55, a: 0.01, r: 0.04, sus: 0.02 });
       s.tone({ at: 0, dur: 0.1, f: hz("G6") * 2, type: "sine", gain: 0.15, a: 0.01, r: 0.03, sus: 0.02 });
     },
+
+    // ================= Sons do Gatinho (0.18.0) =================
+    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS (a rede do ambiente
+    // estava bloqueada para artigos: nenhum valor foi conferido em fonte aberta). São sons genéricos da ESPÉCIE; nada muda por raça ou skin, só pela
+    // fase da vida (cmeow1 filhote -> cmeow2 jovem -> cmeow3 adulto, como bark1/2/3 do cachorrinho).
+
+    // Miado do filhote (ao completar a fase e ao chamar): agudo e curto. F0 inicial 1400 Hz, sobe um pouco (1500) e cai até 950 Hz em ~0,34 s, passa-baixa que
+    // abre e fecha ("i-au"), vibrato leve e um sopro de ruído agudo no começo.
+    cmeow1(s) {
+      s.tone({ at: 0, dur: 0.1, f: 1400, f2: 1500, type: "sawtooth", lp: 2200, lp2: 4800, q: 3, vib: [30, 22], gain: 0.3, a: 0.012, r: 0.02, sus: 0.9 });
+      s.tone({ at: 0, dur: 0.1, f: 2800, f2: 3000, type: "sine", gain: 0.07, a: 0.012, r: 0.02, sus: 0.9 });
+      s.tone({ at: 0.09, dur: 0.25, f: 1500, f2: 950, type: "sawtooth", lp: 4800, lp2: 1800, q: 3, vib: [30, 24], gain: 0.3, a: 0.015, r: 0.1, sus: 0.35 });
+      s.tone({ at: 0.09, dur: 0.25, f: 3000, f2: 1900, type: "sine", gain: 0.06, a: 0.015, r: 0.1, sus: 0.3 });
+      s.noise({ at: 0, dur: 0.12, type: "bandpass", f: 5200, q: 0.8, gain: 0.12, a: 0.015, r: 0.05, sus: 0.2, off: 0.25 });
+    },
+    // Miado do jovem: médio. F0 inicial 900 Hz, sobe a 1000 e cai até 700 Hz em ~0,41 s, mesmo desenho do filhote com o passa-baixa mais baixo.
+    cmeow2(s) {
+      s.tone({ at: 0, dur: 0.12, f: 900, f2: 1000, type: "sawtooth", lp: 1500, lp2: 3600, q: 3.5, vib: [22, 16], gain: 0.34, a: 0.015, r: 0.025, sus: 0.9 });
+      s.tone({ at: 0, dur: 0.12, f: 1800, f2: 2000, type: "sine", gain: 0.06, a: 0.015, r: 0.025, sus: 0.9 });
+      s.tone({ at: 0.11, dur: 0.3, f: 1000, f2: 700, type: "sawtooth", lp: 3600, lp2: 1100, q: 3.5, vib: [22, 16], gain: 0.34, a: 0.02, r: 0.12, sus: 0.4 });
+      s.tone({ at: 0.11, dur: 0.3, f: 2000, f2: 1400, type: "sine", gain: 0.05, a: 0.02, r: 0.12, sus: 0.3 });
+      s.noise({ at: 0, dur: 0.1, type: "bandpass", f: 3600, q: 0.8, gain: 0.07, a: 0.015, r: 0.04, sus: 0.2, off: 0.55 });
+    },
+    // Miado do adulto: grave e longo, contorno sobe-e-desce. F0 inicial 330 Hz, máximo 540 Hz (em 0,2 s) e cai até 300 Hz em ~0,74 s; o passa-baixa abre
+    // (700 -> 2400 Hz, "mi") e fecha (2400 -> 600 Hz, "au") como no `meow`, com vibrato no fim. Sem ruído.
+    cmeow3(s) {
+      s.tone({ at: 0, dur: 0.2, f: 330, f2: 540, type: "sawtooth", lp: 700, lp2: 2400, q: 4, gain: 0.4, a: 0.03, r: 0.03, sus: 0.9 });
+      s.tone({ at: 0.19, dur: 0.55, f: 540, f2: 300, type: "sawtooth", lp: 2400, lp2: 600, q: 4, vib: [16, 9], gain: 0.4, a: 0.025, r: 0.2, sus: 0.45 });
+    },
+
+    // Ronronar (vencer a fase; pegar um ratinho raro), ~1,5 s. As pregas vibram a ~25-30 Hz, que o alto-falante não reproduz: então um TREM DE PULSOS de
+    // 26 Hz (ciclo 33%, cai 70% entre os pulsos) multiplica portadoras graves de dente de serra com ressonância em ~1 kHz (156 Hz = 6 x 26 na inspiração,
+    // que fica travada na fase dos pulsos; 130 Hz = 5 x 26 na expiração, que desce até 122 Hz), uma segunda harmônica triangular (para o celular) e um
+    // sopro grave de ruído. Inspiração mais fraca (0 a 0,78 s), expiração mais forte (começa em 16/26 s, no mesmo ponto do ciclo de pulsos).
+    purr(s) {
+      const P = 1 / 26, bus = s.pulsed({ at: 0, dur: 1.5, rate: 26, depth: 0.7, duty: 0.33 });
+      s.tone({ at: 0, dur: 0.78, f: 156, type: "sawtooth", lp: 1000, q: 2.5, gain: 0.45, a: 0.3, r: 0.3, sus: 1, to: bus });
+      s.tone({ at: 0, dur: 0.78, f: 312, type: "triangle", lp: 1500, gain: 0.14, a: 0.3, r: 0.3, sus: 1, to: bus });
+      s.tone({ at: 16 * P, dur: 1.5 - 16 * P, f: 130, f2: 122, type: "sawtooth", lp: 900, q: 2.5, gain: 0.65, a: 0.3, r: 0.5, sus: 1, to: bus });
+      s.tone({ at: 16 * P, dur: 1.5 - 16 * P, f: 260, f2: 244, type: "triangle", lp: 1500, gain: 0.2, a: 0.3, r: 0.5, sus: 1, to: bus });
+      s.noise({ at: 0, dur: 1.5, type: "lowpass", f: 1100, q: 0.7, gain: 0.3, a: 0.4, r: 0.5, sus: 1, off: 0.2, loop: true, to: bus });
+    },
+
+    // Chiado (o poder do novelo "eriça" o gatinho e afugenta os cães), ~0,5 s: SÓ ruído de banda larga (nenhum oscilador, filtros de Q baixo): estalo seco
+    // no começo (passa-alta 3 kHz) e sopro que cai (passa-alta 2,2 kHz), os dois limitados a ~8-9 kHz por um passa-baixa suave.
+    hiss(s) {
+      s.noise({ at: 0, dur: 0.09, type: "highpass", f: 3000, lp: 9000, q: 0.7, gain: 0.7, a: 0.008, r: 0.03, sus: 0.3, off: 0.2 });
+      s.noise({ at: 0, dur: 0.5, type: "highpass", f: 2200, lp: 8000, q: 0.6, gain: 0.8, a: 0.012, r: 0.18, sus: 0.12, off: 0.45 });
+    },
+
+    // Guincho do ratinho (presa; tocado dezenas de vezes por fase, por isso curto e baixo), ~0,11 s: fundamental triangular de 3800 Hz caindo a 3300 Hz
+    // com vibrato rápido e harmônicos (2f senoidal e 3f), sem ruído.
+    squeak(s) {
+      s.tone({ at: 0, dur: 0.11, f: 3800, f2: 3300, type: "triangle", vib: [40, 80], gain: 0.5, a: 0.008, r: 0.03, sus: 0.35 });
+      s.tone({ at: 0, dur: 0.11, f: 7600, f2: 6600, type: "sine", vib: [40, 160], gain: 0.08, a: 0.008, r: 0.03, sus: 0.3 });
+      s.tone({ at: 0, dur: 0.09, f: 11400, f2: 9900, type: "sine", gain: 0.02, a: 0.008, r: 0.03, sus: 0.3 });
+    },
+
+    // Novelo (poder), ~0,42 s: "boing" de mola (senoide que sobe de 300 a 900 Hz e assenta caindo a 700 Hz, com vibrato) e farfalhar suave de papel
+    // (ruído agudo). Sem arpejo e sem onda quadrada: bem diferente do `bone`.
+    yarn(s) {
+      s.noise({ at: 0, dur: 0.07, type: "bandpass", f: 3200, f2: 5200, q: 0.9, gain: 0.2, a: 0.012, r: 0.03, sus: 0.2, off: 0.15 });
+      s.tone({ at: 0, dur: 0.17, f: 300, f2: 900, type: "sine", vib: [12, 45], gain: 0.55, a: 0.015, r: 0.02, sus: 0.9 });
+      s.tone({ at: 0, dur: 0.17, f: 600, f2: 1800, type: "triangle", vib: [12, 90], gain: 0.14, a: 0.015, r: 0.02, sus: 0.9 });
+      s.tone({ at: 0.16, dur: 0.26, f: 900, f2: 700, type: "sine", vib: [14, 40], gain: 0.5, a: 0.015, r: 0.12, sus: 0.25 });
+      s.tone({ at: 0.16, dur: 0.26, f: 1800, f2: 1400, type: "triangle", vib: [14, 80], gain: 0.1, a: 0.015, r: 0.12, sus: 0.25 });
+      s.noise({ at: 0.2, dur: 0.12, type: "bandpass", f: 4200, f2: 2800, q: 0.8, gain: 0.1, a: 0.02, r: 0.05, sus: 0.2, off: 0.5 });
+    },
+
+    // Latido curto do CÃO inimigo ao notar o gatinho, ~0,34 s: "UÓF" de dente de serra de 690 Hz caindo a 480 Hz com formante (passa-baixa 2600 -> 750 Hz),
+    // quadrada grave de peito e sopros de ruído (consoante no começo, "f" no fim). Genérico da espécie: não muda por raça nem por fase.
+    woof(s) {
+      s.noise({ at: 0, dur: 0.06, type: "bandpass", f: 1100, q: 0.8, gain: 0.3, a: 0.008, r: 0.025, sus: 0.1, off: 0.35 });
+      s.tone({ at: 0, dur: 0.3, f: 690, f2: 480, type: "sawtooth", lp: 2600, lp2: 750, q: 2.5, gain: 0.46, a: 0.012, r: 0.09, sus: 0.25 });
+      s.tone({ at: 0, dur: 0.3, f: 345, f2: 240, type: "square", lp: 600, gain: 0.12, a: 0.012, r: 0.09, sus: 0.25 });
+      s.noise({ at: 0.22, dur: 0.12, type: "bandpass", f: 3000, q: 0.7, gain: 0.1, a: 0.03, r: 0.05, sus: 0.3, off: 0.7 });
+    },
+    // Rosnado do cão inimigo, ~0,5 s: duas serras graves (118 -> 98 Hz e 141 -> 112 Hz) com modulação de amplitude de ~30 Hz (30 e 27 Hz, para ficar
+    // irregular) e ruído grave que pulsa a 30 Hz.
+    growl(s) {
+      const bus = s.pulsed({ at: 0, dur: 0.52, rate: 30, depth: 0.6, duty: 0.5 });
+      s.tone({ at: 0, dur: 0.52, f: 118, f2: 98, type: "sawtooth", lp: 1500, lp2: 800, q: 2, trem: [30, 0.85], gain: 0.5, a: 0.07, r: 0.15, sus: 0.8 });
+      s.tone({ at: 0, dur: 0.52, f: 141, f2: 112, type: "sawtooth", lp: 1400, lp2: 800, q: 1.5, trem: [27, 0.8], gain: 0.25, a: 0.08, r: 0.15, sus: 0.8 });
+      s.noise({ at: 0, dur: 0.5, type: "lowpass", f: 1800, f2: 900, q: 0.7, gain: 0.45, a: 0.06, r: 0.15, sus: 0.7, off: 0.3, to: bus });
+    },
+
+    // Miado de susto/dor (um cão pega o gatinho; toca junto do `capture`), ~0,36 s: agudo e caindo (1250 -> 560 Hz), duas serras levemente desafinadas
+    // (aspereza), vibrato e ruído áspero.
+    yowl(s) {
+      s.tone({ at: 0, dur: 0.36, f: 1250, f2: 560, type: "sawtooth", lp: 3800, lp2: 1500, q: 3, vib: [32, 55], gain: 0.34, a: 0.012, r: 0.08, sus: 0.35 });
+      s.tone({ at: 0, dur: 0.36, f: 1285, f2: 575, type: "sawtooth", lp: 3800, lp2: 1500, q: 3, vib: [37, 55], gain: 0.22, a: 0.012, r: 0.08, sus: 0.35 });
+      s.noise({ at: 0, dur: 0.3, type: "bandpass", f: 2600, f2: 1500, q: 1.1, gain: 0.2, a: 0.01, r: 0.08, sus: 0.3, off: 0.6 });
+    },
+
+    // ----- Sons de AÇÃO (discretos: se repetem muito) -----
+    // Pata na poça, ~0,3 s: "pá" de ruído, respingo que cai (passa-banda 2200 -> 1100 Hz) e uma bolha curta que sobe (420 -> 1200 Hz).
+    splash(s) {
+      s.noise({ at: 0, dur: 0.06, type: "lowpass", f: 3200, q: 0.8, gain: 0.35, a: 0.008, r: 0.03, sus: 0.2, off: 0.1 });
+      s.noise({ at: 0.03, dur: 0.26, type: "bandpass", f: 2200, f2: 1100, q: 0.9, gain: 0.25, a: 0.02, r: 0.12, sus: 0.15, off: 0.4 });
+      s.tone({ at: 0.07, dur: 0.1, f: 420, f2: 1200, type: "sine", gain: 0.2, a: 0.01, r: 0.04, sus: 0.3 });
+    },
+    // Sacudir o pelo molhado, ~0,41 s: 8 rajadas rápidas de ruído passa-banda (alternando 2200 e 2900 Hz), cada uma mais fraca que a anterior.
+    shake(s) {
+      for (let i = 0; i < 8; i++) {
+        s.noise({ at: i * 0.052, dur: 0.042, type: "bandpass", f: i % 2 ? 2900 : 2200, q: 1.3, gain: 0.75 * (1 - i * 0.07), a: 0.008, r: 0.02, sus: 0.2, off: 0.05 + i * 0.11 });
+      }
+    },
+    // Pulo suave, ~0,15 s: "tum" curtíssimo (seno 170 -> 85 Hz com um harmônico) e sopro que sobe (passa-banda 700 -> 1900 Hz).
+    jump(s) {
+      s.tone({ at: 0, dur: 0.07, f: 170, f2: 85, type: "sine", gain: 0.45, a: 0.01, r: 0.03, sus: 0.1 });
+      s.tone({ at: 0, dur: 0.05, f: 340, f2: 170, type: "triangle", gain: 0.12, a: 0.01, r: 0.02, sus: 0.1 });
+      s.noise({ at: 0.02, dur: 0.13, type: "bandpass", f: 700, f2: 1900, q: 0.9, gain: 0.2, a: 0.02, r: 0.06, sus: 0.3, off: 0.2 });
+    },
+    // Arrancada, ~0,2 s: sopro que sobe (passa-banda 600 -> 3600 Hz) com um corpo grave bem fraco (triangular 180 -> 420 Hz).
+    dash(s) {
+      s.noise({ at: 0, dur: 0.2, type: "bandpass", f: 600, f2: 3600, q: 1.2, gain: 0.3, a: 0.04, r: 0.07, sus: 0.7, off: 0.3 });
+      s.tone({ at: 0, dur: 0.16, f: 180, f2: 420, type: "triangle", lp: 1200, gain: 0.1, a: 0.03, r: 0.06, sus: 0.6 });
+    },
+    // Fôlego acabando, ~0,35 s: respiração em duas ondas de ruído passa-banda (a segunda um pouco mais grave e fraca).
+    pant(s) {
+      s.noise({ at: 0, dur: 0.16, type: "bandpass", f: 1500, f2: 1900, q: 0.9, gain: 0.3, a: 0.06, r: 0.06, sus: 1, off: 0.1 });
+      s.noise({ at: 0.18, dur: 0.17, type: "bandpass", f: 1700, f2: 1300, q: 0.9, gain: 0.25, a: 0.07, r: 0.07, sus: 1, off: 0.6 });
+    },
   };
 
   // Ajuste fino de volume de cada som (para todos soarem com força parecida).
-  const LEVEL = { ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2, bark1: 1.0, bark2: 1.0, bark3: 1.0, meow: 1.0 };
+  const LEVEL = Object.freeze({ ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2, bark1: 1.0, bark2: 1.0, bark3: 1.0, meow: 1.0,
+    cmeow1: 1.4, cmeow2: 1.25, cmeow3: 1.2, purr: 1.3, hiss: 0.9, squeak: 0.7, yarn: 0.7, woof: 1.3, growl: 1.3, yowl: 1.2, splash: 1.1, shake: 1.0, jump: 0.75, dash: 1.2, pant: 1.5 });
 
   // Agenda o som `name` em `destination` (um nó de um BaseAudioContext qualquer, real ou offline) a partir do instante `t0` (s).
   // Devolve a duração do som em segundos (0 se o nome não existe). Não depende de nenhum estado: pode ser chamada à vontade.
@@ -454,5 +606,5 @@
     return api;
   }
 
-  return { create, render, createOutput, NAMES, MAX_SECONDS, KEY, DEFAULT_VOLUME, MIN_GAP_MS, MAX_VOICES, MAX_EVENTS, hz };
+  return { create, render, createOutput, NAMES, MAX_SECONDS, LEVEL, KEY, DEFAULT_VOLUME, MIN_GAP_MS, MAX_VOICES, MAX_EVENTS, hz };
 });

@@ -115,9 +115,16 @@ function ready(extra = {}, fakeOpts = {}) {
 }
 
 // ---------- Contrato do módulo ----------
-test("Sound.NAMES tem os 14 eventos (os 10 pedidos + os 3 latidos por tamanho + o miau do gato) e MAX_SECONDS os limites de cada um", () => {
-  assert.deepStrictEqual([...Sound.NAMES], ["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow"]);
-  assert.deepStrictEqual({ ...Sound.MAX_SECONDS }, { ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45 });
+const OLD_NAMES = ["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow"];
+// 0.18.0 (Gatinho): miados por fase da vida, ronronar, chiado, guincho, novelo, cão inimigo (latido e rosnado), susto e 5 sons de ação
+const NEW_NAMES = ["cmeow1", "cmeow2", "cmeow3", "purr", "hiss", "squeak", "yarn", "woof", "growl", "yowl", "splash", "shake", "jump", "dash", "pant"];
+const ACTION_NAMES = ["splash", "shake", "jump", "dash", "pant"];
+test("Sound.NAMES tem os 14 eventos antigos (10 pedidos + 3 latidos por tamanho + o miau do gato) e os 15 do Gatinho (0.18.0), e MAX_SECONDS os limites de cada um", () => {
+  assert.deepStrictEqual([...Sound.NAMES], [...OLD_NAMES, ...NEW_NAMES], "os nomes antigos continuam na mesma ordem e os novos vêm depois");
+  assert.deepStrictEqual({ ...Sound.MAX_SECONDS }, { ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45,
+    cmeow1: 0.4, cmeow2: 0.5, cmeow3: 0.8, purr: 1.8, hiss: 0.55, squeak: 0.16, yarn: 0.45, woof: 0.4, growl: 0.6, yowl: 0.4, splash: 0.35, shake: 0.45, jump: 0.18, dash: 0.22, pant: 0.4 });
+  assert.deepStrictEqual(Object.keys(Sound.LEVEL), [...Sound.NAMES], "LEVEL tem o ajuste de volume de todos os sons, na mesma ordem");
+  assert.ok(Object.values(Sound.LEVEL).every((v) => Number.isFinite(v) && v > 0 && v <= 2), "ajustes entre 0 e 2");
   assert.strictEqual(Sound.DEFAULT_VOLUME, 0.35);
   assert.strictEqual(Sound.KEY, "cachorrinho.som.v1");
   assert.strictEqual(typeof Sound.create, "function");
@@ -247,6 +254,324 @@ test("unlock deixa pronto o buffer de ruído e a onda de pulso (o 1º som não e
   assert.strictEqual(fake.last().buffers.length, 1, "ruído já criado");
 });
 
+// ---------- Sons do Gatinho (0.18.0) ----------
+// Auxiliares: leem o que o som agendou no AudioContext falso (osciladores, ganhos, filtros) sem precisar tocar de verdade.
+function build(name) { const f = makeFake(), ctx = new f.Ctx(); const dur = Sound.render(name, ctx, ctx.destination, 0); return { ctx, dur }; }
+const isMod = (n) => n.out.some((d) => d.out && d.out.some((x) => x instanceof FakeParam)); // oscilador que mexe em outro parâmetro (vibrato, tremolo, trem de pulsos)
+function oscList(ctx) {
+  return ctx.nodes.filter((n) => n.kind === "osc").map((n) => {
+    const ev = n.frequency.events.filter((e) => e.type === "set" || e.type === "exp");
+    return { n, mod: isMod(n), t: n.starts[0][0], end: n.stops[0] - 0.02, f: ev[0].v, f2: ev[ev.length - 1].v, type: n.wave ? "pulse" : n.type };
+  });
+}
+const audioOscs = (ctx) => oscList(ctx).filter((o) => !o.mod);
+const modOscs = (ctx) => oscList(ctx).filter((o) => o.mod);
+const freqAt = (o, t) => (o.end > o.t ? o.f * Math.pow(o.f2 / o.f, Math.min(1, Math.max(0, (t - o.t) / (o.end - o.t)))) : o.f);
+// contorno da F0: a MENOR frequência entre as vozes tonais ativas a cada 5 ms (harmônicos são sempre mais agudos que a fundamental)
+function f0Contour(name) {
+  const { ctx, dur } = build(name), osc = audioOscs(ctx), pts = [];
+  for (let t = 0; t < dur - 0.004; t += 0.005) {
+    const act = osc.filter((o) => t >= o.t - 1e-9 && t < o.end);
+    if (act.length) pts.push([t, Math.min(...act.map((o) => freqAt(o, t)))]);
+  }
+  return pts;
+}
+// o ganho de envelope de cada voz (fonte): { peak, t0, t1 }, seguindo os fios da fonte até o primeiro ganho com rampa
+function envelopesOf(ctx) {
+  const out = [];
+  for (const src of sources(ctx)) {
+    if (isMod(src)) continue;
+    const seen = new Set(), queue = [src];
+    let env = null;
+    while (queue.length && !env) {
+      const nd = queue.shift();
+      if (!(nd instanceof FakeNode) || seen.has(nd)) continue;
+      seen.add(nd);
+      if (nd.kind === "gain" && nd.gain.events.some((e) => e.type === "lin" || e.type === "exp")) { env = nd; break; }
+      queue.push(...nd.out);
+    }
+    assert.ok(env, "voz sem envelope");
+    const ev = env.gain.events;
+    out.push({ peak: ev[1].v, t0: ev[0].t, t1: ev[ev.length - 1].t, kind: src.kind, src });
+  }
+  return out;
+}
+// GANHO AGREGADO de um som: o maior valor da soma dos ganhos de pico das vozes que soam ao mesmo tempo, vezes o ajuste de volume (LEVEL) do som.
+// É uma medida de projeto (não considera filtros): serve para comparar sons entre si; o volume de verdade é medido renderizando o áudio.
+function aggGain(name) {
+  const { ctx } = build(name), envs = envelopesOf(ctx);
+  let best = 0;
+  for (const e of envs) { const sum = envs.filter((x) => x.t0 <= e.t0 + 1e-9 && x.t1 > e.t0 + 1e-9).reduce((a, x) => a + x.peak, 0); best = Math.max(best, sum); }
+  return best * Sound.LEVEL[name];
+}
+// filtros ligados a uma fonte de ruído: { type, f, f2 (para onde varre), q }
+function filtersOf(buf) {
+  const out = []; let nd = buf.out[0];
+  while (nd && nd.kind === "biquad") {
+    const ev = nd.frequency.events.filter((e) => e.type === "set" || e.type === "exp");
+    out.push({ type: nd._type, f: ev[0].v, f2: ev[ev.length - 1].v, q: nd.Q.value }); nd = nd.out[0];
+  }
+  return out;
+}
+const buffersOf = (ctx) => ctx.nodes.filter((n) => n.kind === "buffer");
+// duty (ciclo de trabalho) de uma onda de pulso criada por createPeriodicWave, lido dos coeficientes da série de Fourier
+const dutyOf = (w) => Math.atan2(w.im[1], w.re[1]) / Math.PI;
+
+// Os números dos sons novos são ESCOLHAS DE DESIGN INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS (a rede estava bloqueada para artigos): os
+// testes abaixo conferem que o som escrito em sound.js cumpre o desenho pedido, não que o desenho copie um artigo.
+test("Gatinho: os 15 sons novos existem, tocam e cada um conta como UMA voz (8 ao mesmo tempo, o 9º é recusado)", () => {
+  const { s } = ready();
+  assert.strictEqual(NEW_NAMES.length, 15);
+  const res = NEW_NAMES.slice(0, 9).map((n) => s.play(n));
+  assert.deepStrictEqual(res, [true, true, true, true, true, true, true, true, false]);
+  assert.ok(NEW_NAMES.every((n) => Sound.NAMES.includes(n) && typeof Sound.MAX_SECONDS[n] === "number" && typeof Sound.LEVEL[n] === "number"));
+});
+test("Gatinho: pico de pior caso (soma dos ganhos de pico simultâneos x ajuste x volume padrão) abaixo de 1 em todos os sons, em especial purr e cmeow3", () => {
+  for (const n of Sound.NAMES) {
+    const worst = aggGain(n) * Sound.DEFAULT_VOLUME;
+    assert.ok(worst < 1, `${n}: pior caso ${worst.toFixed(2)}`);
+  }
+  assert.ok(aggGain("purr") * Sound.DEFAULT_VOLUME < 0.9 && aggGain("cmeow3") * Sound.DEFAULT_VOLUME < 0.9, "purr e cmeow3 com folga");
+});
+test("Gatinho: o ruído tem 1 s de buffer; só o ronronar (1,5 s) usa laço (nenhum som antigo mudou) e os outros sons novos cabem no buffer sem cortar", () => {
+  for (const n of Sound.NAMES) {
+    const { ctx } = build(n);
+    for (const b of buffersOf(ctx)) {
+      const [, off, dur] = b.starts[0];
+      if (n === "purr") assert.strictEqual(b.loop, true, "purr: ruído em laço (dura mais que o buffer)");
+      else assert.ok(!b.loop, n + ": sem laço");
+      if (NEW_NAMES.includes(n) && n !== "purr") assert.ok(off + dur <= 1 + 1e-9, `${n}: ruído de ${off.toFixed(2)} a ${(off + dur).toFixed(2)} s passa do buffer de 1 s`);
+    }
+  }
+});
+test("Gatinho: tudo sintetizado, sem arquivo de áudio, biblioteca nem rede (nenhum decodeAudioData, mp3/wav/ogg, fetch, <audio>)", () => {
+  const src = fs.readFileSync(SOUND_PATH, "utf8");
+  assert.ok(!/decodeAudioData|\.(mp3|wav|ogg|m4a)\b|fetch\(|XMLHttpRequest|new Audio\(|<audio|\brequire\(/.test(src));
+});
+
+// ----- miados por fase da vida -----
+test("miados por fase da vida: cmeow1 (filhote) > cmeow2 (jovem) > cmeow3 (adulto) na F0 inicial e na máxima; mais longo quanto maior o gato", () => {
+  const info = {};
+  for (const n of ["cmeow1", "cmeow2", "cmeow3"]) {
+    const pts = f0Contour(n), fs_ = pts.map((p) => p[1]), max = Math.max(...fs_);
+    info[n] = { init: pts[0][1], max, tmax: pts[fs_.indexOf(max)][0], final: pts[pts.length - 1][1], dur: build(n).dur };
+  }
+  const { cmeow1: a, cmeow2: b, cmeow3: c } = info;
+  assert.ok(a.init > b.init && b.init > c.init, `F0 inicial ${a.init.toFixed(0)} > ${b.init.toFixed(0)} > ${c.init.toFixed(0)} Hz`);
+  assert.ok(a.max > b.max && b.max > c.max, "F0 máxima na mesma ordem");
+  assert.ok(a.dur < b.dur && b.dur < c.dur, `duração ${a.dur.toFixed(2)} < ${b.dur.toFixed(2)} < ${c.dur.toFixed(2)} s`);
+  assert.ok(a.init >= 1300 && a.init <= 1500, "filhote: F0 inicial de 1,3 a 1,5 kHz");
+  assert.ok(b.init >= 800 && b.init <= 1000, "jovem: F0 inicial de 0,8 a 1,0 kHz");
+  assert.ok(c.max >= 400 && c.max <= 600, "adulto: F0 máxima de 0,4 a 0,6 kHz");
+  assert.ok(a.dur >= 0.25 && a.dur <= 0.4 && b.dur >= 0.35 && b.dur <= 0.5 && c.dur >= 0.6 && c.dur <= 0.8, "durações: filhote 0,25-0,4 s, jovem ~0,4 s, adulto 0,6-0,8 s");
+  assert.ok(a.final < a.init * 0.8 && b.final < b.init * 0.85, "filhote e jovem terminam mais graves do que começam (caindo)");
+  assert.ok(c.max > c.init * 1.3 && c.max > c.final * 1.3 && c.tmax > 0.1 && c.tmax < c.dur - 0.2, `adulto: contorno sobe-e-desce (começa em ${c.init.toFixed(0)}, máximo ${c.max.toFixed(0)} Hz em ${c.tmax.toFixed(2)} s, termina em ${c.final.toFixed(0)})`);
+});
+test("miados: dente de serra com passa-baixa que ABRE e FECHA (formantes de \"miau\") em todas as fases; sopro de ruído leve no filhote", () => {
+  for (const n of ["cmeow1", "cmeow2", "cmeow3"]) {
+    const { ctx } = build(n);
+    assert.ok(audioOscs(ctx).some((o) => o.type === "sawtooth"), n + ": dente de serra");
+    const lp = ctx.nodes.filter((x) => x.kind === "biquad" && x._type === "lowpass").map((x) => x.frequency.events.filter((e) => e.type === "set" || e.type === "exp"));
+    assert.ok(lp.some((ev) => ev.length > 1 && ev[1].v > ev[0].v * 1.5), n + ": o filtro abre");
+    assert.ok(lp.some((ev) => ev.length > 1 && ev[1].v < ev[0].v * 0.6), n + ": o filtro fecha");
+  }
+  const k = build("cmeow1").ctx;
+  assert.ok(buffersOf(k).length >= 1, "filhote com sopro");
+  const sopro = filtersOf(buffersOf(k)[0])[0];
+  assert.ok(sopro.f >= 4000, "sopro agudo");
+  assert.strictEqual(buffersOf(build("cmeow3").ctx).length, 0, "adulto sem ruído");
+});
+
+// ----- ronronar -----
+test("purr: trem de pulsos de 20 a 35 Hz (ciclo < 50%) modulando portadoras graves de 90 a 180 Hz, inspiração mais fraca que a expiração, 1,2 a 1,8 s", () => {
+  const { ctx, dur } = build("purr");
+  assert.ok(dur >= 1.2 && dur <= 1.8, `duração ${dur}`);
+  const mods = modOscs(ctx);
+  assert.strictEqual(mods.length, 1, "um único trem de pulsos compartilhado (todas as vozes pulsam juntas)");
+  const m = mods[0];
+  assert.ok(m.f >= 20 && m.f <= 35 && m.f === m.f2, `taxa de modulação ${m.f} Hz`);
+  assert.strictEqual(m.type, "pulse");
+  const duty = dutyOf(m.n.wave);
+  assert.ok(duty > 0.2 && duty < 0.5, `ciclo dos pulsos ${duty.toFixed(2)}`);
+  // ganho do barramento: 1 durante o pulso e cai para ~0,3 entre os pulsos (ainda audível, mas bem pulsado)
+  const depthGain = m.n.out[0], bus = depthGain.out[0].owner;
+  const amp = depthGain.gain.events[0].v, base = bus.gain.events[0].v;
+  const high = base + amp, low = base - (amp * duty) / (1 - duty);
+  assert.ok(Math.abs(high - 1) < 1e-9 && low > 0.2 && low < 0.5, `ganho entre pulsos ${low.toFixed(2)} e durante ${high.toFixed(2)}`);
+  // portadoras
+  const carriers = audioOscs(ctx).filter((o) => o.type === "sawtooth");
+  assert.ok(carriers.length >= 2 && carriers.every((c) => c.f >= 90 && c.f <= 180 && c.f2 >= 90), "portadoras graves de dente de serra entre 90 e 180 Hz");
+  assert.ok(carriers.every((c) => (c.t * m.f) % 1 < 1e-9 || (c.t * m.f) % 1 > 1 - 1e-9), "cada portadora entra no começo de um pulso (travada na fase)");
+  assert.ok(audioOscs(ctx).every((o) => o.n.starts[0][0] >= 0), "nada no passado");
+  // todas as vozes passam pelo barramento pulsado
+  for (const e of envelopesOf(ctx)) {
+    let node = e.src, hit = false; const seen = new Set(), q = [node];
+    while (q.length && !hit) { const nd = q.shift(); if (!(nd instanceof FakeNode) || seen.has(nd)) continue; seen.add(nd); if (nd === bus) hit = true; q.push(...nd.out); }
+    assert.ok(hit, "voz do ronronar fora do trem de pulsos");
+  }
+  // respiração: a portadora que começa em 0 (inspiração) é mais fraca que a que começa depois (expiração)
+  const env = envelopesOf(ctx).filter((e) => e.kind === "osc" && e.src.type !== "triangle" && !e.src.wave && e.src._type === "sawtooth");
+  const insp = env.find((e) => e.t0 === 0), expi = env.find((e) => e.t0 > 0.4);
+  assert.ok(insp && expi && expi.peak > insp.peak * 1.25, "expiração mais forte que a inspiração");
+  assert.ok(expi.t0 > insp.t0 && expi.t0 < insp.t1 && expi.t1 > insp.t1, "a expiração começa antes da inspiração acabar (sem buraco) e termina depois");
+  assert.ok(buffersOf(ctx).length === 1, "sopro grave de ruído");
+});
+
+// ----- chiado -----
+test("hiss: só ruído de banda larga (nenhum oscilador), filtros de Q baixo, passa-alta entre 2 e 8 kHz, ataque seco e queda, ~0,5 s", () => {
+  const { ctx, dur } = build("hiss");
+  assert.strictEqual(ctx.nodes.filter((n) => n.kind === "osc").length, 0, "nenhum oscilador: nenhuma componente tonal");
+  const bufs = buffersOf(ctx);
+  assert.ok(bufs.length >= 2);
+  assert.ok(dur >= 0.4 && dur <= 0.55, `duração ${dur}`);
+  const hp = [];
+  for (const b of bufs) for (const f of filtersOf(b)) {
+    assert.ok(f.q <= 1, `Q ${f.q}: filtro estreito deixaria o chiado tonal`);
+    if (f.type === "highpass") hp.push(f);
+    if (f.type === "lowpass") assert.ok(f.f >= 6000, "o passa-baixa só limita a banda lá em cima");
+    assert.ok(f.type === "highpass" || f.type === "lowpass", "sem passa-banda estreito");
+  }
+  assert.ok(hp.length >= 2 && hp.every((f) => f.f >= 2000 && f.f <= 8000), "passa-alta entre 2 e 8 kHz");
+  const body = envelopesOf(ctx).sort((a, b) => b.t1 - a.t1)[0];
+  // ataque seco (<= 15 ms) e queda forte (o nível cai a 30% ou menos antes do fim) em todas as camadas
+  for (const b of bufs) {
+    let nd = b; while (nd && !(nd.kind === "gain" && nd.gain.events.some((x) => x.type === "lin"))) nd = nd.out[0];
+    const ev = nd.gain.events;
+    assert.ok(ev[1].t - ev[0].t <= 0.015, "ataque seco");
+    assert.ok(ev[2].v <= ev[1].v * 0.31, "queda");
+  }
+  assert.ok(body.t1 - body.t0 >= 0.4, "o sopro principal dura ~0,5 s");
+});
+
+// ----- guincho do ratinho -----
+test("squeak: fundamental entre 3 e 4,5 kHz com leve queda e harmônicos, 80 a 160 ms, baixo e pode tocar dezenas de vezes por fase", () => {
+  const { ctx, dur } = build("squeak");
+  assert.ok(dur >= 0.08 && dur <= 0.16, `duração ${dur}`);
+  const osc = audioOscs(ctx), fund = osc.reduce((a, b) => (a.f <= b.f ? a : b));
+  assert.ok(fund.f >= 3000 && fund.f <= 4500, `fundamental ${fund.f} Hz`);
+  assert.ok(fund.f2 < fund.f && fund.f2 > fund.f * 0.75 && fund.f2 >= 3000, `leve queda de ${fund.f} para ${fund.f2} Hz`);
+  assert.ok(osc.every((o) => o.f >= fund.f * 0.999), "nenhuma voz abaixo da fundamental");
+  assert.ok(osc.some((o) => Math.abs(o.f / fund.f - 2) < 0.05) && osc.some((o) => Math.abs(o.f / fund.f - 3) < 0.05), "2º e 3º harmônicos");
+  assert.ok(modOscs(ctx).length >= 1, "vibrato rápido");
+  const { s, ctx: c2, now } = ready();
+  for (let i = 0; i < 40; i++) { c2.currentTime = i * 0.1; now.set(1000 + i * 100); assert.strictEqual(s.play("squeak"), true, "pedido " + i); }
+  assert.strictEqual(s.events.length, 40);
+});
+
+// ----- novelo -----
+test("yarn: \"boing\" de mola (senoide que sobe e assenta) com farfalhar de papel; sem arpejo, sem quadrada e sem as notas do bone", () => {
+  const { ctx, dur } = build("yarn");
+  assert.ok(dur >= 0.3 && dur <= 0.45, `duração ${dur}`);
+  const osc = audioOscs(ctx);
+  assert.ok(osc.every((o) => o.type === "sine" || o.type === "triangle"), "só senoide e triangular (nada de quadrada/serra/pulso)");
+  assert.ok(osc.some((o) => o.type === "sine" && o.f2 >= o.f * 2.5), "o boing sobe ao menos 2,5 vezes");
+  assert.ok(osc.some((o) => o.type === "sine" && o.f2 < o.f), "e assenta caindo");
+  assert.ok(buffersOf(ctx).length >= 1, "farfalhar de papel (ruído)");
+  const bone = pitchesOf("bone").start, mine = pitchesOf("yarn").start;
+  assert.ok(!mine.some((f) => bone.some((b) => Math.abs(f / b - 1) < 0.02)), `yarn ${mine.join(",")} não usa as notas do bone ${bone.join(",")}`);
+  assert.ok(mine.length <= 3 + 1 && osc.filter((o) => o.f < 400 && o.type === "sine").length === 1, "um só glissando, não um arpejo");
+});
+
+// ----- cão inimigo -----
+test("woof: latido curto do cão inimigo (0,25 a 0,4 s, F0 de 0,5 a 0,8 kHz caindo, dente de serra com formante e ruído)", () => {
+  const { ctx, dur } = build("woof");
+  assert.ok(dur >= 0.25 && dur <= 0.4, `duração ${dur}`);
+  const saw = audioOscs(ctx).filter((o) => o.type === "sawtooth");
+  assert.ok(saw.length >= 1 && saw.every((o) => o.f >= 500 && o.f <= 800 && o.f2 < o.f * 0.8), "F0 de 0,5 a 0,8 kHz, caindo");
+  const lp = ctx.nodes.filter((x) => x.kind === "biquad" && x._type === "lowpass" && x.Q.value >= 2);
+  assert.ok(lp.length >= 1, "formante: passa-baixa ressonante");
+  const ev = lp[0].frequency.events.filter((e) => e.type === "set" || e.type === "exp");
+  assert.ok(ev[1].v < ev[0].v * 0.5, "o formante fecha (\"uóf\")");
+  assert.ok(buffersOf(ctx).length >= 1);
+});
+test("growl: rosnado de ~0,5 s com dentes de serra graves de 90 a 145 Hz, modulação de amplitude de ~30 Hz (20 a 40 Hz) e ruído grave", () => {
+  const { ctx, dur } = build("growl");
+  assert.ok(dur >= 0.4 && dur <= 0.6, `duração ${dur}`);
+  const saw = audioOscs(ctx).filter((o) => o.type === "sawtooth");
+  assert.ok(saw.length >= 2 && saw.every((o) => o.f >= 90 && o.f <= 145 && o.f2 >= 90), "serras graves");
+  const mods = modOscs(ctx);
+  assert.ok(mods.length >= 3 && mods.every((m) => m.f >= 20 && m.f <= 40), `taxas de modulação ${mods.map((m) => m.f).join(", ")} Hz`);
+  assert.ok(new Set(mods.map((m) => m.f)).size >= 2, "taxas um pouco diferentes (rosnado irregular)");
+  assert.ok(mods.some((m) => Math.abs(m.f - 30) <= 1), "uma delas em ~30 Hz");
+  const b = buffersOf(ctx);
+  assert.ok(b.length >= 1 && filtersOf(b[0])[0].type === "lowpass" && filtersOf(b[0])[0].f <= 2000, "ruído grave");
+});
+test("yowl: miado de susto/dor agudo e caindo (~0,35 s, F0 inicial >= 1 kHz, queda de mais da metade), duas serras desafinadas e ruído áspero", () => {
+  const { ctx, dur } = build("yowl");
+  assert.ok(dur >= 0.3 && dur <= 0.4, `duração ${dur}`);
+  const saw = audioOscs(ctx).filter((o) => o.type === "sawtooth");
+  assert.ok(saw.length >= 2 && saw.every((o) => o.f >= 1000 && o.f2 < o.f * 0.55), "agudo e caindo");
+  const r = Math.max(...saw.map((o) => o.f)) / Math.min(...saw.map((o) => o.f));
+  assert.ok(r > 1.01 && r < 1.06, `desafinadas ${(100 * (r - 1)).toFixed(1)}% (aspereza)`);
+  assert.ok(buffersOf(ctx).length >= 1);
+  assert.ok(f0Contour("yowl")[0][1] > f0Contour("cmeow3")[0][1] * 2, "bem mais agudo que o miado do adulto");
+});
+
+// ----- sons de ação -----
+test("sons de ação (splash, shake, jump, dash, pant) e squeak são DISCRETOS: ganho agregado menor que o de qualquer som de evento e <= 0,75 da mediana", () => {
+  const repeated = [...ACTION_NAMES, "squeak"];
+  const events = Sound.NAMES.filter((n) => !repeated.includes(n)), aggs = events.map(aggGain).sort((a, b) => a - b);
+  const min = aggs[0], median = aggs[Math.floor(aggs.length / 2)];
+  assert.strictEqual(events.length, 23);
+  for (const n of repeated) {
+    const g = aggGain(n);
+    assert.ok(g < min, `${n}: ganho agregado ${g.toFixed(2)} deve ser menor que o do menor som de evento (${min.toFixed(2)})`);
+    assert.ok(g <= 0.75 * median, `${n}: ${g.toFixed(2)} <= 0,75 x mediana ${median.toFixed(2)}`);
+  }
+  for (const n of ["shake", "splash"]) assert.ok(aggGain(n) < aggGain("bone") && aggGain(n) < aggGain("ration") && aggGain(n) < aggGain("meow"), n + " mais baixo que ração, osso e miau");
+});
+test("splash: pancada de ruído, respingo que cai e bolha senoidal que sobe (~0,3 s)", () => {
+  const { ctx, dur } = build("splash");
+  assert.ok(dur >= 0.25 && dur <= 0.35, `duração ${dur}`);
+  const b = buffersOf(ctx).map(filtersOf);
+  assert.ok(b.length >= 2 && b.some((f) => f[0].type === "bandpass" && f[0].f2 < f[0].f), "respingo passa-banda que cai");
+  assert.ok(audioOscs(ctx).some((o) => o.type === "sine" && o.f2 > o.f * 2 && o.end - o.t <= 0.12), "bolha curta que sobe");
+});
+test("shake: 8 rajadas rápidas de ruído passa-banda (~0,4 s), cada uma mais fraca que a anterior", () => {
+  const { ctx, dur } = build("shake");
+  assert.ok(dur >= 0.35 && dur <= 0.45, `duração ${dur}`);
+  const bufs = buffersOf(ctx);
+  assert.strictEqual(bufs.length, 8);
+  assert.ok(bufs.every((b) => filtersOf(b)[0].type === "bandpass"));
+  const env = envelopesOf(ctx).sort((a, b) => a.t0 - b.t0);
+  for (let i = 1; i < env.length; i++) { assert.ok(env[i].t0 - env[i - 1].t0 >= 0.04 && env[i].t0 - env[i - 1].t0 <= 0.07, "rajadas a cada ~50 ms"); assert.ok(env[i].peak < env[i - 1].peak, "cada rajada mais fraca"); assert.ok(env[i].t0 >= env[i - 1].t1 - 1e-9 - 0.01, "sem emendar"); }
+});
+test("jump: \"tum\" curtíssimo (seno grave caindo) e sopro que sobe, ~0,15 s", () => {
+  const { ctx, dur } = build("jump");
+  assert.ok(dur >= 0.1 && dur <= 0.18, `duração ${dur}`);
+  assert.ok(audioOscs(ctx).some((o) => o.type === "sine" && o.f <= 200 && o.f2 < o.f && o.end - o.t <= 0.08), "tum grave e curtíssimo");
+  assert.ok(buffersOf(ctx).some((b) => { const f = filtersOf(b)[0]; return f.type === "bandpass" && f.f2 > f.f * 2; }), "sopro que sobe");
+});
+test("dash: arrancada de ~0,2 s com sopro passa-banda que SOBE (600 -> 3600 Hz)", () => {
+  const { ctx, dur } = build("dash");
+  assert.ok(dur >= 0.15 && dur <= 0.22, `duração ${dur}`);
+  assert.ok(buffersOf(ctx).some((b) => { const f = filtersOf(b)[0]; return f.type === "bandpass" && f.f2 >= f.f * 4; }), "sopro que sobe");
+});
+test("pant: respiração de ~0,35 s em DUAS ondas de ruído passa-banda, a segunda mais fraca", () => {
+  const { ctx, dur } = build("pant");
+  assert.ok(dur >= 0.3 && dur <= 0.4, `duração ${dur}`);
+  const bufs = buffersOf(ctx), env = envelopesOf(ctx).sort((a, b) => a.t0 - b.t0);
+  assert.strictEqual(bufs.length, 2);
+  assert.ok(bufs.every((b) => filtersOf(b)[0].type === "bandpass"));
+  assert.ok(env[1].t0 >= env[0].t1 && env[1].peak < env[0].peak, "duas ondas separadas, a segunda mais fraca");
+  assert.strictEqual(ctx.nodes.filter((n) => n.kind === "osc").length, 0, "só respiração");
+});
+
+// ----- contrato com o README -----
+test("README: a subseção \"Sons do Gatinho (0.18.0)\" lista os 15 sons, diz quando tocar cada um e avisa que os números ainda não foram verificados", () => {
+  const rp = path.join(__dirname, "../README.md");
+  if (!fs.existsSync(rp)) return; // (a pasta de trabalho pode não ter o README)
+  const readme = fs.readFileSync(rp, "utf8"), i = readme.indexOf("### Sons do Gatinho (0.18.0)");
+  assert.ok(i >= 0, "subseção não encontrada");
+  const rest = readme.slice(i + 10), j = rest.search(/\n##+ /), sec = j < 0 ? rest : rest.slice(0, j);
+  for (const n of NEW_NAMES) assert.ok(sec.includes("`" + n + "`"), "README sem o som " + n);
+  assert.ok(sec.includes("escolha de design inspirada em literatura, ainda não verificada"), "frase de honestidade");
+  assert.ok(/Quando tocar/i.test(sec));
+  assert.ok(!/\bet al\b|doi\.org|\(\s*(19|20)\d\d\s*\)/.test(sec), "nenhum artigo citado como fonte verificada (sem et al., doi nem ano entre parênteses)");
+  const src = fs.readFileSync(SOUND_PATH, "utf8");
+  assert.ok(/INSPIRADAS EM LITERATURA RECENTE, AINDA NÃO VERIFICADAS/.test(src), "aviso também no código");
+});
+
 test("render: nome inexistente devolve 0 e não cria nó; sem contexto ou destino lança TypeError", () => {
   const f = makeFake(), ctx = new f.Ctx();
   for (const n of ["", "xyz", null, undefined, 3, {}, "constructor", "__proto__", "toString", "hasOwnProperty"]) assert.strictEqual(Sound.render(n, ctx, ctx.destination, 0), 0, String(n));
@@ -313,9 +638,9 @@ test("limite de taxa: o mesmo som não repete antes de 60 ms; outros sons não s
 test("no máximo 8 sons ao mesmo tempo; quando terminam, volta a tocar", () => {
   const { s, ctx, fake, now } = ready();
   const res = [];
-  // 14 nomes diferentes no mesmo instante: do 9º em diante são recusados
+  // todos os nomes diferentes no mesmo instante: do 9º em diante são recusados
   for (const n of Sound.NAMES) res.push(s.play(n));
-  assert.deepStrictEqual(res, [true, true, true, true, true, true, true, true, false, false, false, false, false, false]);
+  assert.deepStrictEqual(res, Sound.NAMES.map((_, i) => i < 8));
   ctx.currentTime = 0.5; // ration, bone, transform e postman já acabaram: sobram 4 vozes
   assert.strictEqual(s.play("gameover"), true, "há vaga depois que sons curtos terminam");
   ctx.currentTime = 10; now.add(1000);
@@ -375,7 +700,7 @@ test("sem Web Audio (AudioContextClass null): supported=false, unlock e play dev
   assert.strictEqual(s.supported, false);
   assert.strictEqual(s.unlock(), false);
   for (const n of Sound.NAMES) assert.strictEqual(s.play(n), false);
-  assert.strictEqual(s.events.length, 14);
+  assert.strictEqual(s.events.length, Sound.NAMES.length);
   s.setMuted(true); assert.strictEqual(s.isMuted(), true);
   s.setVolume(0.2); assert.strictEqual(s.getVolume(), 0.2);
 });

@@ -281,6 +281,70 @@ Todos os efeitos são **sintetizados na hora** com a Web Audio API (osciladores 
 
 Os sons são **baixos por padrão** (volume 0,35) e foram medidos (pico, duração, cliques, equilíbrio de volume e diferença entre eles: 182 de 182 verificações); no máximo 8 sons ao mesmo tempo e o mesmo som não repete antes de 60 ms. **Menu, pausa, jogo carregado e reinício não tocam nada.** O botão **Som: ligado / desligado** (no menu e na pausa) e a tecla **M** ligam e desligam; a escolha fica em `localStorage` na chave `cachorrinho.som.v1` (separada do jogo salvo e das contas). O gancho de testes `window.__game.sounds` registra todo pedido de som (nome, instante e se tocou).
 
+### Sons do Gatinho (0.18.0)
+São **15 sons novos** em `js/sound.js` (Atualização 3 · 0.18.0 · Gatinho): três miados por fase da vida, o ronronar, o chiado, o guincho do ratinho, o novelo, o latido e o rosnado do cão inimigo, o miado de susto e cinco sons de ação. Continuam **100% sintetizados** na hora (nada de arquivo de áudio, biblioteca ou rede) e **genéricos da espécie**: nada muda por raça nem por skin, **só pela fase da vida** (miado do filhote → jovem → adulto, como os latidos `bark1/2/3` do cachorrinho). Os 14 sons antigos não mudaram (conferido por medição: mesmos números de antes).
+
+**Honestidade científica.** Todos os números abaixo são **escolha de design inspirada em literatura, ainda não verificada**: a rede do ambiente de desenvolvimento estava bloqueada para artigos, então são pistas de literatura recente colhidas por busca e **nenhum valor foi conferido em artigo aberto**. Nenhum artigo é citado aqui como fonte verificada; a seção "Biologia por trás" só poderá citá-los depois de lidos de verdade. O que foi **medido** é o áudio gerado (tabela de medições abaixo), não a fidelidade à espécie.
+
+| Som | Quando toca | Parâmetros (escolha de design inspirada em literatura, ainda não verificada) |
+|---|---|---|
+| `cmeow1` | miado do **filhote** | F0 inicial 1400 Hz, sobe a 1500 e cai a 950 Hz em ~0,34 s; dente de serra com passa-baixa que abre (2,2 → 4,8 kHz) e fecha (4,8 → 1,8 kHz); vibrato leve; sopro de ruído agudo (5,2 kHz) |
+| `cmeow2` | miado do **jovem** | F0 inicial 900 Hz, sobe a 1000 e cai a 700 Hz em ~0,41 s; mesmo desenho, passa-baixa 1,5 → 3,6 → 1,1 kHz; sopro bem leve |
+| `cmeow3` | miado do **adulto** | F0 330 Hz sobe a 540 Hz (em 0,2 s) e cai a 300 Hz em ~0,74 s (sobe-e-desce); passa-baixa 0,7 → 2,4 → 0,6 kHz como no `meow`; vibrato no fim; sem ruído |
+| `purr` | ronronar | ~1,5 s. **Trem de pulsos de 26 Hz** (ciclo 33%, cai a 30% entre os pulsos) multiplicando portadoras de dente de serra de 156 Hz (inspiração, mais fraca) e 130 → 122 Hz (expiração, mais forte), 2ª harmônica triangular e sopro grave de ruído. (As pregas vibram a ~25-30 Hz, que o alto-falante não reproduz: o que se ouve é a portadora pulsando.) |
+| `hiss` | chiado | ~0,5 s, **só ruído** (nenhum oscilador): estalo seco (passa-alta 3 kHz) e sopro que cai (passa-alta 2,2 kHz), os dois limitados a ~8-9 kHz; filtros de Q baixo (sem componente tonal) |
+| `squeak` | guincho do ratinho | ~0,11 s; fundamental triangular 3800 → 3300 Hz com vibrato rápido (40 Hz) e harmônicos (2f e 3f) fracos; baixo, para tocar dezenas de vezes |
+| `yarn` | novelo (poder) | ~0,42 s; "boing" de mola (senoide 300 → 900 Hz que assenta em 700 Hz, com vibrato) e farfalhar de papel (ruído agudo); sem arpejo nem quadrada (diferente do `bone`) |
+| `woof` | cão inimigo nota o gatinho | ~0,34 s; "UÓF" de dente de serra 690 → 480 Hz com formante (passa-baixa 2,6 kHz → 750 Hz, Q 2,5), quadrada de peito (uma oitava abaixo) e sopros de ruído |
+| `growl` | rosnado do cão inimigo | ~0,52 s; serras de 118 → 98 Hz e 141 → 112 Hz com modulação de amplitude de 30 e 27 Hz e ruído grave que pulsa a 30 Hz |
+| `yowl` | miado de susto/dor | ~0,36 s; duas serras desafinadas (1250 e 1285 Hz) caindo a ~560 Hz, vibrato e ruído áspero |
+| `splash` | pata na poça (ação) | ~0,29 s; "pá" de ruído, respingo passa-banda 2200 → 1100 Hz e bolha senoidal 420 → 1200 Hz |
+| `shake` | sacudir o pelo molhado (ação) | ~0,41 s; 8 rajadas de ruído passa-banda (2200 e 2900 Hz alternando), cada uma mais fraca |
+| `jump` | pulo (ação) | ~0,15 s; "tum" senoidal 170 → 85 Hz e sopro passa-banda 700 → 1900 Hz |
+| `dash` | arrancada (ação) | ~0,2 s; sopro passa-banda 600 → 3600 Hz que sobe, com corpo triangular fraco |
+| `pant` | fôlego acabando (ação) | ~0,35 s; respiração em duas ondas de ruído passa-banda (~1,5 kHz), a segunda mais fraca |
+
+**Quando tocar (contrato para a integração no jogo).** O jogo só chama `sound.play(nome, { delay })`; o escolher-por-fase fica no `js/game.js`:
+- **Completar a fase** (junto do `levelup`, como o latido do cachorrinho): o miado da fase da vida do gatinho, `cmeow1` (filhote), `cmeow2` (jovem) ou `cmeow3` (adulto), com `delay: 0.9`; e depois o `purr` (sugestão `delay: 1.7`, para o ronronar começar quando o miado do adulto acaba). Os miados também servem de **"chamar"**.
+- **Vencer a fase** e **pegar um ratinho raro**: `purr`. No ratinho raro, o `squeak` primeiro e o `purr` logo depois (sugestão `delay: 0.15`).
+- **Pegar um ratinho (presa)**: `squeak`, uma vez por ratinho (o motor já ignora o mesmo som repetido em menos de 60 ms; é curto e baixo porque pode tocar dezenas de vezes por fase).
+- **Pegar o novelo (poder)**: `yarn` (no lugar do `bone`). **Quando o poder do novelo "eriça" o gatinho e afugenta os cães**: `hiss` (sugestão `delay: 0.3`, como o `transform` depois do `bone`).
+- **Um cão inimigo nota o gatinho**: `woof` (com um intervalo mínimo no jogo por cão, como os 4 s do `meow` do gato, para não virar metralhadora). O `growl` é o rosnado do mesmo cão; o dono ainda não disse em que momento ele toca (sugestão: quando o cão chega perto do gatinho, no máximo uma vez a cada 3 s) — **dúvida para o dono**.
+- **Um cão pega o gatinho**: `yowl` junto do `capture` (sugestão: `capture` sem atraso, `yowl` com `delay: 0.1` e o `lifelost` depois, como já é hoje).
+- **Ações do gatinho (discretas, tocam muitas vezes)**: `splash` ao pisar na poça, `shake` ao sacudir o pelo molhado, `jump` no pulo, `dash` na arrancada, `pant` quando o fôlego está acabando.
+- Nunca por raça nem por skin: as skins só mudam o visual.
+
+```js
+const MIAU = { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" };   // fase da vida do gatinho (mesma regra do cachorrinho)
+sound.play("levelup");
+sound.play(MIAU[fase], { delay: 0.9 });
+sound.play("purr", { delay: 1.7 });
+```
+
+**Medições (áudio renderizado de verdade).** Cada som foi renderizado offline no Chromium (`OfflineAudioContext`, 44 100 Hz, volume padrão 0,35 + compressor, como o jogador ouve) e analisado com FFT. Os 14 sons antigos ficam entre **−16,9 e −23,7 dBFS de RMS**; os de evento novos ficaram entre **−20,1 e −23,1**; o `squeak` (que pode tocar dezenas de vezes por fase) em **−24,5**; e os de ação, mais baixos de propósito, entre **−29,5 e −33,0**. O pico com o **volume no máximo** fica abaixo de 0,99 em todos (os maiores dos novos são o `hiss`, 0,885, e o `purr`, 0,877; o maior dos antigos é o `capture`, 0,898), sem amostra cortada; o começo (primeiros 2 ms) fica abaixo de 25% do pico e o fim abaixo de 5%, sem clique.
+
+| Som | Duração audível (s) | Máximo (s) | RMS (dBFS) | Pico (vol. padrão) | Pico (vol. 1,0) | `LEVEL` | Medido no áudio |
+|---|---|---|---|---|---|---|---|
+| `cmeow1` | 0,342 | 0,4 | −22,3 | 0,294 | 0,649 | 1,4 | F0 1425 → 1487 → 977 Hz |
+| `cmeow2` | 0,412 | 0,5 | −22,1 | 0,280 | 0,619 | 1,25 | F0 925 → 998 → 728 Hz |
+| `cmeow3` | 0,740 | 0,8 | −20,6 | 0,328 | 0,673 | 1,2 | F0 342 → 526 → 309 Hz |
+| `purr` | 1,498 | 1,8 | −20,1 | 0,540 | 0,877 | 1,3 | modulação de amplitude em 26,2 Hz |
+| `hiss` | 0,498 | 0,55 | −23,1 | 0,538 | 0,885 | 0,9 | centroide 6,7 kHz; platitude espectral 0,45 (ruído) |
+| `squeak` | 0,115 | 0,16 | −24,5 | 0,184 | 0,493 | 0,7 | pico espectral em 3564 Hz |
+| `yarn` | 0,421 | 0,45 | −20,4 | 0,257 | 0,609 | 0,7 | glissando 365 → 922 Hz |
+| `woof` | 0,337 | 0,4 | −21,4 | 0,393 | 0,735 | 1,3 | dente de serra 690 → 480 Hz |
+| `growl` | 0,523 | 0,6 | −20,2 | 0,448 | 0,811 | 1,3 | modulação de amplitude em 29,6 Hz |
+| `yowl` | 0,364 | 0,4 | −21,7 | 0,396 | 0,768 | 1,2 | F0 1255 → 507 Hz |
+| `splash` | 0,268 | 0,35 | −30,6 | 0,139 | 0,393 | 1,1 | — |
+| `shake` | 0,410 | 0,45 | −33,0 | 0,168 | 0,458 | 1,0 | 8 rajadas |
+| `jump` | 0,146 | 0,18 | −29,5 | 0,175 | 0,478 | 0,75 | — |
+| `dash` | 0,203 | 0,22 | −30,8 | 0,138 | 0,389 | 1,2 | — |
+| `pant` | 0,354 | 0,4 | −31,0 | 0,166 | 0,456 | 1,5 | 2 ondas |
+
+**Testes.** `node tests/sound.test.js` confere, com o áudio de mentira: os 15 nomes, `MAX_SECONDS` e `LEVEL`; o mesmo conjunto de exigências dos sons antigos (envelope de 0 a 0, ataque de pelo menos 3 ms, duração, até 8 vozes, atraso); a ordem **filhote > jovem > adulto** na F0 inicial, na máxima e na duração; o `purr` com taxa de modulação entre 20 e 35 Hz e portadoras de 90 a 180 Hz; o `squeak` com fundamental entre 3 e 4,5 kHz; o `hiss` sem nenhum oscilador (só ruído, filtros de Q baixo); `splash`, `shake`, `jump`, `dash`, `pant` e `squeak` com ganho agregado menor que o de qualquer som de evento; e este README (a lista acima e a frase de honestidade). Os números de volume (RMS, pico, F0 medida) vêm da renderização no Chromium acima e **não** são um teste automático do repositório.
+
+**Limites honestos.** (1) Nada aqui foi verificado em artigo, e **ninguém ouviu** os sons ainda: só foram medidos (ouvir é o teste que falta; o dono deve julgar se o ronronar e o rosnado soam bem, já que o grave quase não sai em alto-falante de celular). (2) `purr` e `growl` ficam mais fracos para o ouvido que os outros (ponderação A de −27,0 e −26,6 dB, contra cerca de −21 a −23 dos demais eventos novos): são sons graves; o `LEVEL` foi calibrado pelo RMS, como os latidos do adulto. (3) O ganho agregado dos testes é uma medida de projeto que ignora filtros; o volume de verdade é o da tabela acima.
+
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*; **a partir da Fase 11 o máximo sobe até 10**, veja *Missões e mais vidas*); as vidas são **cumulativas**:
 
