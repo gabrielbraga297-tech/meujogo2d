@@ -10125,6 +10125,46 @@ const PAGE_HELPERS = () => {
     ok(/shopTitle|Lojinha de skins do gatinho/.test(readme) && /Gatinho: sons e skins/.test(readme), "o README cita o título da lojinha do Gatinho e a seção de testes nova");
   });
 
+  await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+    const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));
+    const rows = tbl.split("\n").filter((l) => /^\| \d+ \|/.test(l)).map((l) => l.split("|").map((c) => c.trim()).filter(Boolean));
+    const num = (s) => Number(String(s).replace(",", ".").replace(/ px\/s/, ""));
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    const data = await ev(cp, () => Object.values(__game.builtOf("cat")).sort((a, b) => a.id - b.id).map((l) => ({ id: l.id, place: l.place, cols: l.cols, rows: l.rows, min: l.minPoints, vets: l.vetSpawns.length, trackers: l.catSpawns.length, rations: l.rations, bones: l.bones, balls: l.balls, sp: l.vetCfgs[0].speed, ch: l.vetCfgs[0].chaseSpeed, tsp: l.catSpawns.length ? l.catCfg.speed : 0, tch: l.catSpawns.length ? l.catCfg.chaseSpeed : 0, cat: 252 * l.dogSpeed, cap: l.lifeCap, pen: l.lifePenalty || 50, mission: l.mission, bonus: l.missionBonus || 0, night: !!l.night })));
+    ok(rows.length === 20 && data.length === 20, `a tabela do Gatinho no README tem uma linha para cada fase (${rows.length} de ${data.length})`);
+    const diffs = [];
+    data.forEach((l, i) => {
+      const r = rows[i]; if (!r) return;
+      const [id, place, size, cond, vets, trk, rat, bon, ball, vs, ts, cat, cap, pen, mis, bonus, night] = r;
+      const [sp, ch] = vs.split("/").map((x) => num(x.trim()));
+      if (num(id) !== l.id) diffs.push(`fase ${l.id}: id`);
+      if (place !== l.place) diffs.push(`fase ${l.id}: ambiente "${place}" ≠ "${l.place}"`);
+      if (size !== `${l.cols}×${l.rows}`) diffs.push(`fase ${l.id}: mapa ${size} ≠ ${l.cols}×${l.rows}`);
+      if (num(vets) !== l.vets) diffs.push(`fase ${l.id}: cães ${vets} ≠ ${l.vets}`);
+      if ((trk === "—" ? 0 : num(trk)) !== l.trackers) diffs.push(`fase ${l.id}: rastreadores ${trk} ≠ ${l.trackers}`);
+      if (num(rat) !== l.rations) diffs.push(`fase ${l.id}: ratinhos ${rat} ≠ ${l.rations}`);
+      if ((bon === "—" ? 0 : num(bon)) !== l.bones) diffs.push(`fase ${l.id}: novelos ${bon} ≠ ${l.bones}`);
+      if ((ball === "—" ? 0 : num(ball)) !== l.balls) diffs.push(`fase ${l.id}: camundongos ${ball} ≠ ${l.balls}`);
+      if (Math.abs(sp - l.sp) > 1e-9 || Math.abs(ch - l.ch) > 1e-9) diffs.push(`fase ${l.id}: velocidade dos cães ${vs} ≠ ${l.sp} / ${l.ch}`);
+      if (l.trackers) { const [a, b] = ts.split("/").map((x) => num(x.trim())); if (Math.abs(a - l.tsp) > 1e-9 || Math.abs(b - l.tch) > 1e-9) diffs.push(`fase ${l.id}: rastreadores ${ts} ≠ ${l.tsp} / ${l.tch}`); } else if (ts !== "—") diffs.push(`fase ${l.id}: velocidade dos rastreadores sem rastreadores`);
+      if (Math.abs(num(cat) - l.cat) > 1e-6) diffs.push(`fase ${l.id}: gatinho ${cat} ≠ ${l.cat}`);
+      if (num(cap) !== l.cap) diffs.push(`fase ${l.id}: vidas máx. ${cap} ≠ ${l.cap}`);
+      if (num(pen) !== l.pen) diffs.push(`fase ${l.id}: perda por vida ${pen} ≠ ${l.pen}`);
+      if (l.min) { if (!cond.startsWith(`${l.min} pontos`)) diffs.push(`fase ${l.id}: condição "${cond}" sem ${l.min} pontos`); } else if (cond !== "pegar tudo") diffs.push(`fase ${l.id}: condição "${cond}"`);
+      if (l.mission) {
+        const parts = [l.mission.bones ? "todos os novelos" : "", l.mission.rations ? `${l.mission.rations} ratinhos` : ""].filter(Boolean).join(" + ");
+        if (!/missão/.test(cond)) diffs.push(`fase ${l.id}: condição sem "missão"`);
+        if (mis !== parts) diffs.push(`fase ${l.id}: missão "${mis}" ≠ "${parts}"`);
+        if (num(bonus) !== l.bonus) diffs.push(`fase ${l.id}: bônus ${bonus} ≠ ${l.bonus}`);
+      } else if (mis !== "—" || bonus !== "—" || /missão/.test(cond)) diffs.push(`fase ${l.id}: a fase não tem missão`);
+      if ((night === "sim") !== l.night) diffs.push(`fase ${l.id}: noite ${night} ≠ ${l.night}`);
+    });
+    ok(!diffs.length, `os números da tabela das fases do Gatinho (ambiente, mapa, cães, rastreadores, ratinhos, novelos, camundongos, velocidades, vidas, perda por vida, missão, bônus, noite) são os do jogo ${diffs.join("; ")}`);
+    await cp.context().close();
+  });
+
 //E2B1-NEXT
 //E2A-NEXT
   console.log("erros JS:", errs);

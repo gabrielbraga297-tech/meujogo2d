@@ -5,7 +5,7 @@ Versão atual: **Fase 1 a Fase 20** (com gatos, missões, ossos de tipos novos, 
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.17.0 · 22/10/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.18.0 · 23/10/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -530,6 +530,53 @@ As 20 fases do Gatinho (`js/cat-levels.js`, `window.CatLevels`) rodam no **mesmo
 **Jogo salvo.** O do Gatinho guarda `sta` (fôlego), `wet` (s de molhado) e `wnd` (s de ofegante) além do de sempre, e a revisão `mz` 1; um salvo sem esses campos carrega com fôlego cheio e pelo seco, e valores fora dos limites são recusados. O do Cachorrinho continua com exatamente os campos de sempre.
 
 **Testes.** `node tests/e2e.js "Gatinho: mecânicas"` (adaptador e regras copiadas das 20 fases, símbolos, arrancada por teclado, controle simulado e toque, fôlego, molhado, lugar alto, X sem proteção, camundongos, novelos, rastreadores, noite, jogo salvo, e um robô que **joga as 20 fases de verdade** até a vitória). As seções antigas do `tests/e2e.js` abrem as páginas sem o `js/cat-levels.js` (testam o encanamento com as fases de teste); as desta seção usam `newPage({ realCat: true })`. Ganchos de teste de `window.__game`: `defineCatLevels(lista)` / `catLevels()`, `catDefFrom(c)`, `buildLevel(def)` e os estados `stamina`, `winded`, `wet`, `sprinting`, `safe`, `darkness`. `enableTestAnimal("cat")` continua dando ao Gatinho as fases de teste copiadas do Cachorrinho.
+
+## Tabela das fases do Gatinho (0.18.0)
+Cópia técnica da tabela que é entregue ao dono a cada versão (conferida por um teste: `node tests/e2e.js "tabela das fases do Gatinho"`). O Gatinho tem as suas **20 fases próprias**; pontos mínimos, vidas, perda por vida, missões e bônus seguem a rampa do Cachorrinho, e as velocidades dos cães de guarda e dos rastreadores são as dos agentes e dos gatos do Cachorrinho da fase equivalente. O gatinho anda a 252 px/s × o fator da fase (filhote 0,8 na Fase 1, 0,9 na Fase 3) e a arrancada multiplica por 1,35. Ratinho = 100 pontos, novelo = 150, camundongo ágil = 50, cão afugentado = 100.
+
+| Fase | Ambiente | Mapa | Condição para avançar | Cães de guarda | Rastreadores | Ratinhos | Novelos | Camundongos | Velocidade dos cães (sem ! / com !) | Velocidade dos rastreadores (anda / persegue) | Velocidade do gatinho | Vidas máx. | Perda por vida | Missão | Bônus da missão | Noite |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Sala de estar | 25×18 | pegar tudo | 1 | — | 5 | — | — | 55 / 110 | — | 201,6 | 5 | 50 | — | — | — |
+| 2 | Cozinha e despensa | 25×18 | pegar tudo | 2 | — | 7 | 2 | 1 | 60,5 / 121 | — | 252 | 5 | 50 | — | — | — |
+| 3 | Quintal dos fundos | 25×18 | pegar tudo | 2 | — | 7 | 2 | 1 | 66,55 / 133,1 | — | 226,8 | 5 | 50 | — | — | — |
+| 4 | Jardim e varal | 41×29 | 800 pontos | 3 | — | 15 | 2 | 2 | 73,21 / 146,41 | — | 252 | 5 | 200 | — | — | — |
+| 5 | Telhados e muros | 41×29 | 1000 pontos | 3 | — | 20 | 2 | 2 | 73,21 / 146,41 | — | 252 | 5 | 200 | — | — | — |
+| 6 | Beco da cidade | 49×33 | 1250 pontos | 3 | — | 24 | 3 | 3 | 76,14 / 152,27 | — | 252 | 5 | 250 | — | — | — |
+| 7 | Feira livre | 49×37 | 1400 pontos | 4 | — | 28 | 3 | 3 | 79,07 / 158,12 | — | 252 | 5 | 250 | — | — | — |
+| 8 | Peixaria e mercado | 55×39 | 1650 pontos | 5 | — | 32 | 4 | 3 | 82 / 163,98 | — | 252 | 5 | 250 | — | — | — |
+| 9 | Parque e lago | 55×39 | 1800 pontos | 5 | — | 36 | 4 | 3 | 84,92 / 169,84 | — | 252 | 5 | 300 | — | — | — |
+| 10 | Armazém de grãos | 55×41 | 2050 pontos | 6 | — | 40 | 5 | 3 | 87,85 / 175,69 | — | 252 | 5 | 300 | — | — | — |
+| 11 | Celeiro e curral | 57×41 | 2300 pontos + missão | 5 | 2 | 44 | 5 | 4 | 89,32 / 178,62 | 130 / 200 | 252 | 6 | 300 | todos os novelos | 200 | — |
+| 12 | Horta e galinheiro | 57×41 | 2450 pontos + missão | 5 | 3 | 46 | 5 | 4 | 90,78 / 181,55 | 132 / 203 | 252 | 6 | 300 | 34 ratinhos | 250 | — |
+| 13 | Borda da mata | 57×43 | 2650 pontos + missão | 6 | 3 | 48 | 6 | 4 | 92,24 / 184,48 | 134 / 205 | 252 | 7 | 325 | 36 ratinhos | 300 | — |
+| 14 | Riacho e pedras | 57×43 | 2800 pontos + missão | 6 | 4 | 50 | 6 | 4 | 93,71 / 187,4 | 135 / 208 | 252 | 7 | 325 | todos os novelos | 350 | — |
+| 15 | Vila de pescadores | 59×43 | 3000 pontos + missão | 6 | 4 | 52 | 6 | 4 | 95,17 / 190,33 | 137 / 211 | 252 | 8 | 350 | 40 ratinhos | 400 | — |
+| 16 | Docas do porto | 59×45 | 3200 pontos + missão | 7 | 5 | 54 | 7 | 5 | 96,64 / 193,26 | 139 / 214 | 252 | 8 | 350 | 44 ratinhos | 450 | — |
+| 17 | Praia e dunas | 61×45 | 3400 pontos + missão | 7 | 5 | 56 | 7 | 5 | 98,1 / 196,19 | 141 / 216 | 252 | 9 | 375 | todos os novelos + 40 ratinhos | 500 | — |
+| 18 | Telhados à noite | 61×45 | 3600 pontos + missão | 7 | 6 | 58 | 7 | 5 | 99,57 / 199,12 | 143 / 219 | 252 | 9 | 375 | 46 ratinhos | 550 | sim |
+| 19 | Mercado à noite | 61×45 | 3800 pontos + missão | 8 | 6 | 60 | 8 | 5 | 101,03 / 202,05 | 144 / 222 | 252 | 10 | 400 | todos os novelos + 48 ratinhos | 600 | sim |
+| 20 | A casa grande | 63×47 | 4000 pontos + missão | 8 | 7 | 62 | 8 | 5 | 102,49 / 204,97 | 146 / 224 | 252 | 10 | 400 | todos os novelos + 52 ratinhos | 650 | — |
+
+## Biologia por trás do Gatinho (0.18.0)
+
+**Situação das fontes (leia primeiro).** A regra do projeto é que cada característica de um bichinho tenha por base **artigos científicos revisados por pares, de periódicos reconhecidos, publicados entre out/2021 e out/2026, abertos e conferidos** antes de serem citados aqui. Durante a construção do Gatinho (22 e 23/10/2026) a **rede do ambiente de desenvolvimento bloqueou todos os sites de artigos** (PubMed Central, Europe PMC, doi.org, Nature, MDPI, PLOS, Frontiers, ScienceDirect, Springer...), e só a busca na web funcionou, devolvendo resumos. Por isso **nenhum artigo foi aberto e nada abaixo está verificado**: **todo traço do Gatinho é uma "escolha de design inspirada em literatura, ainda não verificada"**. As pistas que a busca achou (autores, ano, periódico, o que o resumo diz, lacunas e descartados) estão em [`docs/pesquisa-gatinho/`](docs/pesquisa-gatinho/LEIAME.md) com a lista de quais abrir primeiro; **quando houver acesso, elas serão abertas e conferidas, e só o que for confirmado será citado aqui**.
+
+Regras que valem sempre: só traços **genéricos do gato doméstico** (nunca de raça: nenhuma raça nem skin tem vantagem; as skins são só visual e podem ter nome de raça); os **sons** são genéricos e só mudam com a **fase da vida** (filhote → jovem → adulto).
+
+| Traço no jogo | O que o jogo faz | Pistas (não verificadas) | Situação |
+|---|---|---|---|
+| Presas: ratinhos e camundongos ágeis | o gatinho coleta ratinhos (parados) e camundongos que disparam e congelam; passarinhos e lagartixas não aparecem | dieta e presas de gatos de vida livre (R1) | escolha de design |
+| Ambientes das 20 fases | casa, quintal, jardim, telhados, beco, feira, peixaria, parque, armazém, celeiro, horta, mata, riacho, vila de pescadores, docas, praia, telhados e mercado à noite, casa grande | uso do espaço por gatos (GPS) e ratos em galpões (R5) | escolha de design (vários sem pista) |
+| Arrancada com fôlego | ×1,35 de velocidade por ~2,5 s; recupera em ~5 s; ofega 1,5 s | nada recente achado (lacuna, R3) | escolha de design |
+| Pelo molhado | pisar numa poça deixa o gatinho ×0,65 de velocidade, sem arrancada, por ~6 s | só análogos de outros mamíferos; nada de gato (lacuna, R3) | escolha de design |
+| Lugar alto (T) | o gatinho fica a salvo em cima; cães esperam até 4 s e desistem | gatos preferem lugares altos e esconderijos (R4) | escolha de design |
+| Obstáculo baixo (X) | só o gatinho pula | agilidade e frestas (R3) | escolha de design |
+| Cães como inimigos | cães de guarda patrulham; rastreadores ouvem e seguem o rastro | convivência cão-gato (R4); fuga do gato ao cão: lacuna | escolha de design |
+| Novelo: brinquedo e poder | o novelo vale 150 pontos e o comum "eriça o pelo" e afugenta os cães | brincar com objetos (R4); fio e novelo são um **risco real** para gatos (corpo estranho linear) | o poder é pura escolha de design |
+| Sons | miado de filhote/jovem/adulto, ronronar (pulsos de ~26 Hz), chiado, guincho de rato (~3,5 kHz), latido e rosnado do cão, miado de susto, pulo, poça, sacudir o pelo, arrancada, fôlego | bioacústica (R2) | escolha de design |
+| Noite (Fases 18 e 19) | escurece com um halo em volta do gatinho | atividade crepuscular e noturna (R1, R5) | escolha de design |
+
+**Cuidado na vida real:** o novelo do jogo é só uma brincadeira de computador. Fio, linha e novelo soltos podem machucar gatos de verdade se forem engolidos: não deixe o gato brincar com eles sem supervisão.
 
 ## Conta com senha (opcional)
 Além do nome simples, dá para criar uma **conta**: nome de usuário + senha.

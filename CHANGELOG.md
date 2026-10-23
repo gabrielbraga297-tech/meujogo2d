@@ -1,8 +1,20 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.17.0 · 22/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.18.0 · 23/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.18.0 — 23/10/2026
+**Atualização 3 · Gatinho.**
+Pedido do dono: o **Gatinho** vira jogável, com o **seu próprio jogo de 20 fases** (pontos, recordes, ranking, progresso, "fases anteriores" e jogo salvo independentes dos do Cachorrinho), com ecologia e corpo de **gato doméstico genérico** (nada de raça; skins só visuais).
+- **20 fases próprias**, cada uma num ambiente diferente e com mapa de layout diferente (sala, cozinha, quintal, jardim, telhados, beco, feira, peixaria, parque com lago, armazém, celeiro, horta, borda da mata, riacho, vila de pescadores, docas, praia, telhados à noite, mercado à noite e a casa grande). Pontos mínimos, vidas, perda por vida, missões e bônus seguem a rampa do Cachorrinho. *(A tabela das fases do Gatinho está no README.)*
+- **Papéis novos:** **ratinhos** (presa, 100 pontos), **novelos** (150 pontos; o comum "eriça o pelo" e afugenta os cães; dourado = escudo, azul = congela os cães, laranja = arrancada sem cansar, roxo = ímã de ratinhos), **camundongos ágeis** (+50, disparam e congelam), **cães de guarda** e, a partir da Fase 11, **cães rastreadores** (ouvem e seguem o rastro).
+- **Mecânicas do gato:** **arrancada com fôlego** (Shift ou Espaço, gatilho do controle, botão "Correr" no toque); **pelo molhado** nas poças (mais lento por ~6 s); **lugares altos** (o gatinho fica a salvo e os cães desistem); **obstáculos baixos** que só o gatinho pula; **noite** com halo nas Fases 18 e 19.
+- **Desenhos novos:** o gatinho (cresce de filhote a adulto; molhado, arrancada, a salvo e eriçado), cães, ratinhos, camundongos, novelos, casinhas e **20 ambientes**; 12 **skins do gato** (só visual) na lojinha, com a carteira de petscoin **única** e as skins compradas e em uso **por bichinho**.
+- **Sons novos:** miado de filhote, jovem e adulto, ronronar, chiado, guincho, latido e rosnado do cão, miado de susto e sons de pulo, poça, sacudir o pelo, arrancada e fôlego.
+- **Motor por bichinho:** perfil de textos (`js/profiles.js`), fases e mapas por bichinho, ambientes e desenhos por bichinho; quem escolhe um bichinho sem nome e depois digita o nome joga o bichinho escolhido.
+- **O Cachorrinho não mudou:** as 20 fases, regras, textos, sons e desenhos continuam idênticos (provado com testes lado a lado de pixels e de jogo, e com a suíte completa).
+- **Biologia:** a rede do ambiente bloqueou os sites de artigos científicos e **nenhum artigo foi aberto**; todo traço do Gatinho é **escolha de design inspirada em literatura, ainda não verificada**; as pistas e a lista do que abrir primeiro estão em `docs/pesquisa-gatinho/` e no README ("Biologia por trás do Gatinho").
 
 ## 0.17.0 — 22/10/2026
 **Atualização 2 · Escolha do bichinho.**

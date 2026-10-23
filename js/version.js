@@ -6,4 +6,4 @@
 // `build` vale "dev" no código; ao publicar no GitHub Pages o workflow troca "dev" pelo código curto do commit,
 // para saber exatamente qual versão está no ar.
 // `founded`: dia em que o jogo foi criado (primeiro commit do repositório); o menu mostra "Fundado em 06/10/2026".
-window.GAME_VERSION = { number: "0.17.0", date: "2026-10-22", founded: "2026-10-06", build: "dev" };
+window.GAME_VERSION = { number: "0.18.0", date: "2026-10-23", founded: "2026-10-06", build: "dev" };
