@@ -141,12 +141,17 @@ test("Gatinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins
 
 test("Gatinho: substantivos do gato (ratinho, novelo, cão, cão afugentado) e sem segundo inimigo", () => {
   const n = cat.noun;
-  assert.deepStrictEqual([n.self.one, n.self.cap, n.prey.one, n.prey.many, n.power.one, n.power.many, n.ball.one, n.ball.many], ["gatinho", "Gatinho", "ratinho", "ratinhos", "novelo", "novelos", "bolinha", "bolinhas"]);
+  assert.deepStrictEqual([n.self.one, n.self.cap, n.prey.one, n.prey.many, n.power.one, n.power.many, n.ball.one, n.ball.many], ["gatinho", "Gatinho", "ratinho", "ratinhos", "novelo", "novelos", "camundongo", "camundongos"]);
   assert.deepStrictEqual([n.foe.one, n.foe.many, n.scared.one, n.scared.many], ["cão", "cães", "cão afugentado", "cães afugentados"]);
   assert.strictEqual(n.foe2, null);
   assert.deepStrictEqual(Object.values(cat.reinforce).map((r) => r.name), ["Patas ágeis", "Novelo poderoso", "Vida extra", "Coração maior", "Pelo grosso", "Cães lentos", "Passos de veludo", "Bigodes atentos", "Chamado de petisco"]);
-  assert.deepStrictEqual(cat.hud, { ...cat.hud, prey: "RATINHOS", power: "NOVELOS", balls: "BOLINHAS", powerBadge: "PODER" });
-  assert.strictEqual(cat.say.ballGot(50, 1, 3), "Bolinha! +50 pontos (1/3)");
+  assert.deepStrictEqual(cat.hud, { ...cat.hud, prey: "RATINHOS", power: "NOVELOS", balls: "CAMUNDONGOS", powerBadge: "PODER" });
+  assert.strictEqual(cat.say.ballGot(50, 1, 3), "Camundongo! +50 pontos (1/3)");
+  assert.strictEqual(cat.say.winBalls(50), " + camundongos: 50");
+  assert.strictEqual(cat.say.foes(5, 2, true), "5 cães e 2 rastreadores"); // (0.18.0, E2a: os `R` do mapa são os cães rastreadores)
+  assert.strictEqual(cat.say.foes(6, 1, false), "6 cães e 1 rastreador");
+  assert.strictEqual(cat.sfx.alert2, "", "o rastreador do Gatinho não mia ao notar o gatinho");
+  assert.strictEqual(cat.fx.turbo(8, 40), "+40% de velocidade e arrancada sem cansar por 8 s!");
   assert.strictEqual(cat.say.beat(100), "Você afugentou o cão! +100 pontos");
   assert.strictEqual(cat.say.winPrey(300), "Ratinhos: 300");
   assert.strictEqual(cat.say.foes(2, 0, false), "2 cães");
@@ -185,11 +190,15 @@ test("Gatinho: as frases do Gatinho são diferentes das do Cachorrinho (só as n
 test("Gatinho: os textos fixos (Como jogar etc.) têm o mesmo roteiro do Cachorrinho e falam do gato", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
   const steps = (cat.ui.howto.match(/<li><strong>([^<]+)<\/strong>/g) || []).map((x) => x.replace(/<[^>]+>/g, ""));
-  for (const h of ["Objetivo:", "Mover:", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Bolinhas (a partir da Fase 2):", "Reforços:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Gatinho: " + h);
+  for (const h of ["Objetivo:", "Mover:", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Camundongos ágeis (a partir da Fase 2):", "Correr (arrancada):", "Poças e pelo molhado:", "Pular e subir:", "Reforços:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Gatinho: " + h);
   assert.ok(/gatinho/.test(cat.ui.howto) && /ratinho/.test(cat.ui.howto) && /novelo/.test(cat.ui.howto) && !/cachorr|carroc|carteiro/i.test(cat.ui.howto));
   assert.ok(/gatinho/.test(cat.ui.shopHelp) && /gatinho/.test(cat.ui.nameTip) && /gatinho/.test(cat.ui.canvasLabel) && /gatinho/.test(cat.ui.padLabel));
   assert.ok(html.includes('id="howto-steps"') && html.includes('id="scores-help"') && html.includes('id="name-tip"') && html.includes('id="name-step1"') && html.includes('id="reg-hint"'), "o index.html tem os ids dos textos que o perfil troca");
-  assert.ok(/ratinho/.test(cat.ui.scoresHelp) && /novelo/.test(cat.ui.scoresHelp));
+  assert.ok(/ratinho/.test(cat.ui.scoresHelp) && /novelo/.test(cat.ui.scoresHelp) && /50 por camundongo/.test(cat.ui.scoresHelp));
+  // (0.18.0, E2a) o Como jogar do Gatinho explica as mecânicas novas: arrancada (Shift, Espaço, A/RB/RT, botão Correr), fôlego, poça, obstáculo baixo, lugar alto e rastreadores
+  const how = cat.ui.howto.replace(/<[^>]+>/g, "");
+  for (const re of [/Shift/, /Espaço/, /\bA\b.*\bRB\b.*\bRT\b/, /botão Correr/, /FÔLEGO/, /ofegante/, /sem cansar/, /poça/, /MOLHADO/, /65%/, /obstáculos baixos/, /pula/, /lugares altos/, /A SALVO/, /4 s/, /rastreadores/, /camundongos ágeis/]) assert.ok(re.test(how), "falta no Como jogar do Gatinho: " + re);
+  assert.ok(!/bolinha/i.test(how) && !/bolinha/i.test(cat.ui.canvasLabel + cat.ui.scoresHelp), "o Gatinho não fala de bolinhas (são camundongos)");
 });
 
 // ---------- ambientes por bichinho ----------

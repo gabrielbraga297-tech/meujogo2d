@@ -105,6 +105,16 @@ const PAGE_HELPERS = () => {
 
 (async () => {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  // (0.18.0, E2a) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
+  // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
+  // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
+  const rawNewContext = browser.newContext.bind(browser);
+  browser.newContext = async (o = {}) => {
+    const { realCat, ...opts } = o;
+    const c = await rawNewContext(opts);
+    if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    return c;
+  };
   const errs = [];
   const watch = (page) => {
     page.on("pageerror", (e) => errs.push(e.message));
@@ -8619,7 +8629,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-howto");
     const catHow = await page.textContent("#howto");
     ok(/ajude o gatinho a pegar todos os ratinhos/.test(catHow) && /novelo/.test(catHow) && /cães/.test(catHow) && !/cachorr|carroc|carteiro/i.test(catHow) && /Controle \(gamepad\)/.test(catHow) && /Conta \(opcional\)/.test(catHow), "Gatinho: o Como jogar fala do gatinho, dos ratinhos, dos novelos e dos cães");
-    ok(await ev(page, () => document.getElementById("howto-steps").children.length) >= 18, "Gatinho: o Como jogar tem todos os itens (objetivo, mover, cães, novelo, missão, bolinhas, petiscos, bichinhos, reforços, vidas, pontuação, salvar...)");
+    ok(await ev(page, () => document.getElementById("howto-steps").children.length) >= 18, "Gatinho: o Como jogar tem todos os itens (objetivo, mover, cães, novelo, missão, camundongos, correr, poças, pular e subir, petiscos, bichinhos, reforços, vidas, pontuação, salvar...)");
     await page.keyboard.press("Escape");
     await page.click("#btn-shop");
     const shopCat = { help: await page.textContent("#shop-help"), names: await page.$$eval("#shop-list .shop-card strong", (e) => e.map((x) => x.textContent)), subs: await page.$$eval("#shop-list .shop-card .sub", (e) => e.map((x) => x.textContent)) };
@@ -8640,7 +8650,7 @@ const PAGE_HELPERS = () => {
     await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
     const cg = await ev(page, () => ({ animal: __game.gameAnimal, level: __game.level, ph: __game.builtOf("cat")[2].placeholder, prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), ptitle: document.getElementById("hud-power-item").title, btitle: document.getElementById("hud-balls-item").title, toast: document.getElementById("toast").textContent, canvas: document.getElementById("game").getAttribute("aria-label"), pad: document.getElementById("pad").getAttribute("aria-label") }));
     ok(cg.animal === "cat" && cg.level === 2 && cg.ph, "Gatinho: a partida usa o bichinho Gatinho e as fases dele");
-    ok(cg.prey === "RATINHOS 0/7" && cg.bones === "NOVELOS 0/2" && cg.balls === "BOLINHAS 0/1" && cg.power === "PODER —" && cg.aria === "Poder do novelo: desligado" && /cães afugentados/.test(cg.ptitle) && /^Bolinhas: cada uma vale 50 pontos/.test(cg.btitle), `Gatinho: o placar diz ${JSON.stringify([cg.prey, cg.bones, cg.balls, cg.power])} e a leitura do poder "${cg.aria}"`);
+    ok(cg.prey === "RATINHOS 0/7" && cg.bones === "NOVELOS 0/2" && cg.balls === "CAMUNDONGOS 0/1" && cg.power === "PODER —" && cg.aria === "Poder do novelo: desligado" && /cães afugentados/.test(cg.ptitle) && /^Camundongos ágeis: cada um vale 50 pontos/.test(cg.btitle), `Gatinho: o placar diz ${JSON.stringify([cg.prey, cg.bones, cg.balls, cg.power])} e a leitura do poder "${cg.aria}"`);
     ok(/Fase 2: 2 cães$/.test(cg.toast) && !/agente|carrocinha/.test(cg.toast), `Gatinho: o aviso do começo da fase diz "${cg.toast}"`);
     ok(/^Área do jogo: um gatinho coleta ratinhos e novelos e foge dos cães/.test(cg.canvas) && /mover o gatinho$/.test(cg.pad), "Gatinho: a descrição do jogo e do controle falam do gatinho");
     await ev(page, () => { const it = __game.items.find((i) => i.bone); __game.player.x = it.x - 4; __game.player.y = it.y - 4; __game.tick(0.01); });

@@ -119,6 +119,12 @@
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
   const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
+  // ---------- Gatinho (0.18.0): mecânicas das fases do gato. ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases que ligam os campos `sprint`, `water`, `refuge` e `night` (todas as 20 do Gatinho; nenhuma do Cachorrinho) ----------
+  const CAT_SPRINT = 1.35, SPRINT_DRAIN = 0.4, SPRINT_REGEN = 0.2, WINDED_TIME = 1.5; // arrancada: × velocidade; fôlego (0 a 1) gasto por s (2,5 s de tanque cheio) e recuperado por s (5 s); s "ofegante" (sem arrancada) quando o fôlego acaba
+  const WET_TIME = 6, WET_SLOW = 0.65, JUMP_SLOW = 0.85; // pelo molhado: s depois de sair da poça (renova enquanto está nela) e × velocidade (sem arrancada); × velocidade sobre um obstáculo baixo (X), o "pulo suave"
+  const REFUGE_WAIT = 4, LOW_REACH = 34;                 // lugar alto (T): s que o cão espera ao pé dele antes de desistir; alcance (px) dos cães sobre um X (o gatinho não fica a salvo no meio de um obstáculo baixo)
+  const NIGHT_DARK = 0.75, NIGHT_HALO = 5;               // fases noturnas: quanto escurece (0 a 1) e o raio da luz em volta do gatinho (tiles); o desenho é da etapa seguinte
+  const CAT_REV = 1;                                     // revisão dos mapas do Gatinho (js/cat-levels.js): jogos salvos de outra revisão são descartados com aviso
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
@@ -1332,6 +1338,29 @@
   // textos do perfil) poder ser testado. Os mapas de verdade do gato substituem esta lista (cada fase com o seu `map`, `vets`... e sem `placeholder`); nada mais precisa mudar.
   const CAT_LEVELS = LEVELS.map((l) => ({ ...l, placeholder: true }));
 
+  // (0.18.0, E2a) ADAPTADOR dos mapas do Gatinho (js/cat-levels.js = window.CatLevels) para a definição que a buildLevel aceita.
+  // De cada fase do gato (c) vêm o que é DELE: id, título, mapa, quantos ratinhos/novelos/camundongos, tipos de novelo, vidas extras, nota e a velocidade do gatinho (catSpeed = dogSpeed do motor).
+  // Da fase do CACHORRINHO que ela imita (c.like) vêm as REGRAS e a DIFICULDADE: a configuração dos cães (a do agente `vets[0]` repetida pelo número de `V` do mapa), o alcance do "!", pontos por vida perdida,
+  // pontos mínimos, poder do novelo, máximo de vidas, missão e bônus, degrau do bônus de tempo, esmagar, facilitação do toque, renascer no lugar e a configuração dos gatos inimigos (aqui: dos RASTREADORES, `R` do mapa).
+  // O mapa tem 3 símbolos a mais: `T` lugar alto, `~` poça e `R` posto de um rastreador (a célula vira chão e a posição vai para `cats`). As mecânicas do gato (`sprint`, `water`, `refuge`, `night`) ligam aqui.
+  const NIGHT_LEVELS = [18, 19];
+  function catDefFrom(c) {
+    const like = c && LEVELS.find((l) => l.id === c.like);
+    if (!like || !Array.isArray(c.map)) throw new Error(`Fase do Gatinho sem fase do Cachorrinho para copiar as regras: ${c && c.title}`);
+    const trackers = [];
+    const map = c.map.map((row, r) => [...row].map((ch, col) => { if (ch === "R") { trackers.push([col, r]); return "."; } return ch; }).join(""));
+    const count = (ch) => map.reduce((n, row) => n + [...row].filter((x) => x === ch).length, 0);
+    const sp = c.special || {};
+    return {
+      id: c.id, title: c.title, map, vets: Array.from({ length: count("V") }, () => like.vets[0]), rations: c.rations, bones: c.bones, boneMix: c.boneMix ? c.boneMix.slice() : undefined, balls: c.balls, extraLives: c.extraLives.slice(), note: c.note, dogSpeed: c.catSpeed,
+      alertTiles: like.alertTiles, lifePenalty: like.lifePenalty, minPoints: like.minPoints, bonePower: like.bonePower, lifeCap: like.lifeCap, mission: like.mission, missionBonus: like.missionBonus,
+      bonusStep: like.bonusStep, blockEvery: like.blockEvery, crush: like.crush, touchEase: like.touchEase, respawnInPlace: like.respawnInPlace, cat: like.cat,
+      blocks: [], cats: trackers, catMode: true, like: like.id, place: c.place,
+      sprint: true, water: count("~") > 0 ? true : null, refuge: count("T") > 0 ? true : null, night: c.night === true || sp.night === true || NIGHT_LEVELS.includes(c.id) ? true : null,
+      placeholder: false,
+    };
+  }
+
   // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. `bt` = segundos de relógio do bloco. Ele fica parado em `from` até `every` s;
   // a partir daí muda de lado a cada `every` s (começa a deslizar em every, 2·every, 3·every...) e leva `slide` s para chegar.
   function blockFraction(d, bt) {
@@ -1353,15 +1382,20 @@
     const { map } = def;
     const rows = map.length, cols = rows ? map[0].length : 0;
     if (rows < 8 || rows > 64 || cols < 8 || cols > 100 || map.some((r) => r.length !== cols)) throw new Error(`Mapa inválido: ${def.title}`);
-    const solids = [], exitTiles = [], vetSpawns = [];
+    // (0.18.0) Modo GATO (`def.catMode`, só as fases do Gatinho): três símbolos a mais no mapa. `X` (obstáculo baixo) e `T` (lugar alto) são sólidos para os CÃES e os RASTREADORES (fora do `walk` deles),
+    // mas o gatinho (o jogador) os atravessa: não entram em `solids` (só em `lowSolids`, que param as bolinhas); `~` (poça) é chão normal para todos; `R` é o posto de um rastreador.
+    const cat = !!def.catMode;
+    const solids = [], lowSolids = [], exitTiles = [], vetSpawns = [], trackSpawns = [];
     let spawnTile = null;
-    const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X"));
+    const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X" && !(cat && ch === "T")));
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const ch = map[r][c];
-      if (ch === "#" || ch === "X") solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch, van: ch === "X" && def.id >= 4 && Math.abs(c - (cols >> 1)) === 3 && Math.abs(r - (rows >> 1)) === 2 }); // nas cidades (Fase 4 em diante) as 4 "caixas" dos cantos do pátio da praça são as vans da carrocinha
+      if (ch === "#" || (ch === "X" && !cat)) solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch, van: ch === "X" && def.id >= 4 && Math.abs(c - (cols >> 1)) === 3 && Math.abs(r - (rows >> 1)) === 2 }); // nas cidades (Fase 4 em diante) as 4 "caixas" dos cantos do pátio da praça são as vans da carrocinha
+      else if (cat && (ch === "X" || ch === "T")) lowSolids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch });
       else if (ch === "E") exitTiles.push([c, r]);
       else if (ch === "P") spawnTile = [c, r];
       else if (ch === "V") vetSpawns.push([c, r]);
+      else if (cat && ch === "R") trackSpawns.push([c, r]);
     }
     if (!spawnTile || !exitTiles.length || vetSpawns.length !== def.vets.length) throw new Error(`Mapa incompleto: ${def.title}`);
     const [lifeMin, lifeMax] = def.extraLives, bones = def.bones || 0, bonusStep = def.bonusStep || 10, dogSpeed = def.dogSpeed ?? 1;
@@ -1386,8 +1420,8 @@
     if (!Number.isInteger(alertTiles) || alertTiles < 1 || alertTiles > 24) throw new Error(`Alcance do "!" inválido: ${def.title}`);
     // gatos: `cats` = tiles de chão onde cada um começa; `cat` = velocidades (px/s) e alcance do ouvido (passos) que mudam o padrão CAT_BASE
     const catSpawns = [], catCfg = { ...CAT_BASE, ...(def.cat || {}), sight: (alertTiles + 4) * TILE };
-    for (const t of def.cats || []) {
-      if (!Array.isArray(t) || t.length !== 2 || !Number.isInteger(t[0]) || !Number.isInteger(t[1]) || t[0] < 0 || t[1] < 0 || t[0] >= cols || t[1] >= rows || map[t[1]][t[0]] !== "." || catSpawns.some((o) => o[0] === t[0] && o[1] === t[1])) throw new Error(`Posição de gato inválida: ${def.title}`);
+    for (const t of [...(def.cats || []), ...trackSpawns.filter((r) => !(def.cats || []).some((o) => o && o[0] === r[0] && o[1] === r[1]))]) { // (modo gato: os `R` do mapa são os rastreadores, além dos de `cats`)
+      if (!Array.isArray(t) || t.length !== 2 || !Number.isInteger(t[0]) || !Number.isInteger(t[1]) || t[0] < 0 || t[1] < 0 || t[0] >= cols || t[1] >= rows || !(map[t[1]][t[0]] === "." || (cat && map[t[1]][t[0]] === "R")) || catSpawns.some((o) => o[0] === t[0] && o[1] === t[1])) throw new Error(`Posição de gato inválida: ${def.title}`);
       catSpawns.push([t[0], t[1]]);
     }
     if (catSpawns.length > 8 || !(catCfg.speed >= 40 && catCfg.speed <= 300 && catCfg.chaseSpeed >= catCfg.speed && catCfg.chaseSpeed <= 400 && catCfg.hear >= 0 && catCfg.hear <= 20)) throw new Error(`Gatos inválidos: ${def.title}`);
@@ -1421,25 +1455,36 @@
     const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos agentes e do cachorro
     if (te && !(te.vet > 0.5 && te.vet <= 1 && te.dog >= 1 && te.dog <= 1.25)) throw new Error(`Facilitação do toque inválida: ${def.title}`);
     const touchEase = te ? { vet: te.vet, dog: te.dog } : null;
-    const catWalk = map.map((row) => [...row].map((ch) => ch !== "#")); // o gato pula as caixas "X": para ele, só a parede é obstáculo
+    const catWalk = cat ? walk : map.map((row) => [...row].map((ch) => ch !== "#")); // o gato pula as caixas "X": para ele, só a parede é obstáculo (0.18.0: o RASTREADOR do Gatinho NÃO pula: anda no mesmo chão dos cães)
     const exitDist = new Int16Array(rows * cols).fill(-1); // passos de cada tile até a saída (pelo chão do gato, sem contar os blocos): o gato de número ímpar fecha esse caminho
     { const q = []; for (const [c, r] of exitTiles) { exitDist[r * cols + c] = 0; q.push([c, r]); }
       for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = exitDist[r * cols + c]; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc >= 0 && nr >= 0 && nc < cols && nr < rows && catWalk[nr][nc] && exitDist[nr * cols + nc] < 0) { exitDist[nr * cols + nc] = d + 1; q.push([nc, nr]); } } } }
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
-    // GANCHOS (0.18.0) para recursos que só algumas fases de outros bichinhos terão; ficam DESLIGADOS (null) em todas as fases do Cachorrinho e ainda não fazem nada no jogo.
-    // Cada fase liga o seu com um campo opcional na definição (LEVELS / CAT_LEVELS). Quem implementar a mecânica valida o campo aqui e lê `lv.sprint`, `lv.water` e `lv.refuge`:
-    //  - `sprint`: corrida/fôlego do Gatinho (ex.: { max: segundos de fôlego, regen: s para encher })  -> entra em update() (updateSprint) e no placar (updateHud)
-    //  - `water`: poças/água que molham o pelo do gato e o deixam lento (ex.: lista de tiles ou retângulos) -> entra em update() (updateWater) e no desenho (drawLevelExtras)
-    //  - `refuge`: lugares altos onde os cães não alcançam (ex.: lista de tiles de refúgio)               -> entra em updateVet() (o cão não entra) e no desenho (drawLevelExtras)
-    // (um campo que a fase trouxer agora é guardado e ignorado: não quebra nada)
-    const sprint = def.sprint || null, water = def.water || null, refuge = def.refuge || null;
+    const waterTiles = []; // poças (`~`): ratinhos, novelos e camundongos nunca nascem nelas
+    if (cat) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (map[r][c] === "~") waterTiles.push([c, r]);
+    // MECÂNICAS por fase (0.18.0): cada fase liga a sua com um campo opcional na definição (LEVELS / CAT_LEVELS / catDefFrom). Ficam DESLIGADAS (null) em todas as fases do Cachorrinho.
+    //  - `sprint`: arrancada com fôlego do Gatinho  -> updateSprint (update()) e a barra FÔLEGO do placar (updateHud)
+    //  - `water`: poças (`~`) que molham o pelo e deixam o gato lento -> updateWater (update()) e o placar
+    //  - `refuge`: lugares altos (`T`) onde o gatinho fica a salvo -> update() (ninguém o pega) e updateVet/updateCat (o cão espera ao pé e desiste)
+    //  - `night`: fase noturna: `darkness` no estado (o desenho que escurece é da etapa de desenhos)
+    // (0.18.0, E2a) As mecânicas do Gatinho: `true` = os números de sempre (constantes CAT_*, SPRINT_*, WET_*, REFUGE_*, NIGHT_*), ou um objeto que troca alguns deles. Desligadas (null) em todas as fases do Cachorrinho.
+    const okNum = (v, lo, hi) => Number.isFinite(v) && v >= lo && v <= hi, objOf = (v) => (v && typeof v === "object" ? v : {});
+    const sprint = def.sprint ? { factor: CAT_SPRINT, drain: SPRINT_DRAIN, regen: SPRINT_REGEN, winded: WINDED_TIME, ...objOf(def.sprint) } : null;
+    const water = def.water ? { wet: WET_TIME, slow: WET_SLOW, ...objOf(def.water) } : null;
+    const refuge = def.refuge ? { wait: REFUGE_WAIT, ...objOf(def.refuge) } : null;
+    const night = def.night ? { darkness: NIGHT_DARK, halo: NIGHT_HALO, ...objOf(def.night) } : null;
+    if ((sprint && !(okNum(sprint.factor, 1, 2) && okNum(sprint.drain, 0.05, 5) && okNum(sprint.regen, 0.02, 5) && okNum(sprint.winded, 0, 10))) || (water && !(okNum(water.wet, 0.5, 30) && okNum(water.slow, 0.3, 1))) ||
+        (refuge && !okNum(refuge.wait, 0.5, 30)) || (night && !(okNum(night.darkness, 0, 1) && okNum(night.halo, 2, 12)))) throw new Error(`Mecânica do Gatinho inválida: ${def.title}`);
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
       id: def.id, title: def.title, cols, rows, worldW: cols * TILE, worldH: rows * TILE, solids, walk, bld: map.map((row) => [...row].map((ch) => ch === "#")), spawnTile, vetSpawns, exitTiles, vetCfgs: def.vets.map((c) => ({ ...c, alertTiles, sight: alertTiles * TILE })), alertTiles, rations: def.rations, bones, lifeMin, lifeMax, bonusStep, dogSpeed,
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
       balls, lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
-      sprint, water, refuge, placeholder: !!def.placeholder, // (ganchos desligados nas fases do Cachorrinho; placeholder = fase de teste copiada de outro bichinho)
+      sprint, water, refuge, night, placeholder: !!def.placeholder, // (mecânicas desligadas (null) nas fases do Cachorrinho; placeholder = fase de teste copiada de outro bichinho)
+      catMode: cat, lowSolids, waterTiles, place: def.place || "", like: def.like || 0, // (modo gato: obstáculos baixos e lugares altos, poças e o lugar da fase)
+      high: cat ? map.map((row) => [...row].map((ch) => ch === "T")) : null, puddle: cat ? map.map((row) => [...row].map((ch) => ch === "~")) : null, // os lugares altos e as poças, tile a tile
+      floorFree: cat ? map.map((row) => [...row].map((ch) => ch !== "#")) : walk, avoidTiles: waterTiles.length ? trackTiles.concat(waterTiles) : trackTiles, postTiles: cat ? vetSpawns.concat(catSpawns) : vetSpawns, // chão para o desenho, tiles sem itens e postos (os itens ficam longe deles)
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       blockDefs, blockRange, trackTiles,
       spawn: { x: spawnTile[0] * TILE + 4, y: spawnTile[1] * TILE + 4 },
@@ -1478,9 +1523,21 @@
     } });
     return g;
   }
+  // (0.18.0, E2a) O Gatinho: se js/cat-levels.js (window.CatLevels) foi carregado, as 20 fases dele são as convertidas por catDefFrom (revisão própria CAT_REV, `placeholder: false`) e ele está PRONTO;
+  // sem esse arquivo (ou se alguma fase for inválida) ele segue com CAT_LEVELS (a cópia de teste das fases do Cachorrinho, `placeholder`), desligado (`ready: false`, "Em breve"), como na etapa 1.
+  const CAT_BLURB_SOON = "Ágil e curioso: vai ter as suas próprias 20 fases.", CAT_BLURB = "Ratinhos, novelos, cães e lugares altos: 20 fases de aventura.";
+  function catGameFrom(list) { // as fases do Gatinho a partir de uma lista no formato de js/cat-levels.js; null se a lista não serve (a falha vai para o console, e os testes a pegam)
+    try {
+      if (!Array.isArray(list) || !list.length) return null; // (js/cat-levels.js traz as 20; os testes podem trazer menos)
+      const defs = list.map(catDefFrom);
+      defs.forEach(buildLevel); // (confere as 20 já ao carregar)
+      return defs;
+    } catch (e) { if (typeof console !== "undefined") console.error(`Mapas do Gatinho inválidos: ${e.message}`); return null; }
+  }
+  const catReal = catGameFrom(window.CatLevels);
   const GAMES = [
     makeGame({ id: "dog", name: "Cachorrinho", emoji: "🐶", blurb: "Rações, ossos, carrocinha e gatos: 20 fases de aventura.", ready: true, rev: MAP_REV, levels: LEVELS }),
-    makeGame({ id: "cat", name: "Gatinho", emoji: "🐱", blurb: "Ágil e curioso: vai ter as suas próprias 20 fases.", ready: false, rev: 2 /* (a cópia das fases do Cachorrinho está na revisão 2 deles; os mapas de verdade do gato definem a revisão deles) */, levels: CAT_LEVELS }),
+    makeGame({ id: "cat", name: "Gatinho", emoji: "🐱", blurb: catReal ? CAT_BLURB : CAT_BLURB_SOON, ready: !!catReal, rev: catReal ? CAT_REV : 2 /* (a cópia das fases do Cachorrinho está na revisão 2 deles; os mapas de verdade do gato têm a revisão deles) */, levels: catReal || CAT_LEVELS }),
     makeGame({ id: "bird", name: "Passarinho", emoji: "🐦", blurb: "Voando alto: vai ter as suas próprias 20 fases.", ready: false, rev: 1, levels: [] }),
   ];
   const gameOf = (id) => GAMES.find((g) => g.id === id) || null;
@@ -1570,6 +1627,9 @@
   const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
   const bonePowerNow = () => (lv.bonePower ? lv.bonePower + REINFORCE_BONE * up.bone : 0);
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
+  // Estado das mecânicas do Gatinho (0.18.0; só mudam nas fases que ligam `sprint`, `water`, `refuge` e `night`): fôlego (0 a 1), s ofegante, s de pelo molhado, arrancada em andamento, a salvo num lugar alto, escuridão (0 a 1) e o botão "Correr" do toque
+  let stamina = 1, winded = 0, wet = 0, sprintOn = false, safe = false, darkness = 0, runTouch = false;
+  let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
   let noCatch = false;    // usado apenas em testes
@@ -1625,12 +1685,15 @@
     gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.18.0: o bichinho da partida vem ANTES das fases: elas, o ambiente e o texto são os dele)
     levelId = id; lv = builtOf(gameAnimal)[id]; theme = Themes.of(id, gameAnimal); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
     applyGameUi(gameAnimal);
+    document.body.classList.toggle("sprint-on", !!lv.sprint); // (o botão "Correr" do toque só aparece nas fases do Gatinho)
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn; refreshSkin();
     blocks = pickActiveBlocks(o.active).map((i) => ({ i, d: lv.blockDefs[i], bt: lv.blockDefs[i].phase, rect: blockRectAt(lv.blockDefs[i], lv.blockDefs[i].phase) }));
     solids = blocks.length ? [...lv.solids, ...blocks.map((b) => b.rect)] : lv.solids; // os blocos que se movem também são sólidos
+    ballSolids = lv.lowSolids.length ? solids.concat(lv.lowSolids) : solids; // (Gatinho: os camundongos também batem nos obstáculos baixos e nos lugares altos)
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; balls = []; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
+    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; darkness = lv.night ? lv.night.darkness : 0; // (mecânicas do Gatinho: cada fase começa com fôlego cheio e pelo seco)
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -1643,7 +1706,7 @@
       return { cat: true, cfg: lv.catCfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 0.8 + 0.4 * i, think: 0.1, modeT: 0, chaseAge: 0, cool: 1.5, dir: 1, idx: i, goal: null, hold: 0, stuck: 0, from: null, slow: false, hitCool: 0, seen: null, seenDir: [0, 0], searchT: 0, searched: false, pounce: 0, pounceCd: 0, look: i % 4 };
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
-    items = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.rations + lv.bones, lv.trackTiles).map((t) => tileItem(t, false));
+    items = placeItems(lv.spawnTile, lv.postTiles, lv.exitTiles, lv.rations + lv.bones, lv.avoidTiles).map((t) => tileItem(t, false));
     const boneAt = shuffle(items.map((_, i) => i)).slice(0, lv.bones), mix = lv.boneMixed ? shuffle(lv.boneMix.slice()) : lv.boneMix; // (sem tipos novos não há sorteio a mais: o sorteio das fases antigas não muda)
     boneAt.forEach((i, k) => { items[i].bone = true; items[i].kind = mix[k]; });
     // Alguns itens (ração ou osso) trazem uma vida extra: a quantidade é sorteada entre o mínimo e o máximo da fase (Fase 1: 1; Fases 2 e 3: 1 ou 2; Fases 4 e 5: 3 e 4; Fases 6 a 10: 3 ou 4).
@@ -1659,7 +1722,7 @@
     if (lv.balls) { // bolinhas (0.15.8): em chão livre, longe dos itens, dos trilhos e do início; o sorteio é à parte (não mexe nos sorteios do resto do jogo)
       const used = items.map((it) => [(it.x - 8) / TILE, (it.y - 8) / TILE]), keepRand = rand;
       rand = Math.random; // (sorteio à parte: os testes com semente fixa continuam vendo o mesmo sorteio de itens, vidas e agentes)
-      const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, lv.balls, [...used, ...lv.trackTiles]);
+      const tiles = placeItems(lv.spawnTile, lv.postTiles, lv.exitTiles, lv.balls, [...used, ...lv.avoidTiles]);
       rand = keepRand;
       balls = tiles.map(([c, r], i) => { const [x, y] = centerOf(c, r); return { x, y, vx: 0, vy: 0, taken: false, hue: i % BALL_COLORS.length }; });
     }
@@ -1673,7 +1736,7 @@
     const taken = items.filter((i) => i.taken).map((i) => [(i.x - 8) / TILE, (i.y - 8) / TILE]); // não cair em cima de um item já pego
     const near = []; // renascendo no lugar, nenhum item cai em cima do cachorro nem logo ao lado dele
     if (lv.respawnInPlace) { const [pc, pr] = tileOf(player.x + player.w / 2, player.y + player.h / 2); for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) near.push([c, r]); }
-    const tiles = placeItems(lv.spawnTile, lv.vetSpawns, lv.exitTiles, rest.length, [...taken, ...lv.trackTiles, ...near]); // (as bolinhas têm sorteio à parte: não entram aqui, para os itens sorteados com a mesma semente não mudarem)
+    const tiles = placeItems(lv.spawnTile, lv.postTiles, lv.exitTiles, rest.length, [...taken, ...lv.avoidTiles, ...near]); // (as bolinhas têm sorteio à parte: não entram aqui, para os itens sorteados com a mesma semente não mudarem)
     rest.forEach((it, i) => { if (tiles[i]) Object.assign(it, tileItem(tiles[i], it.life, it.bone, it.kind)); });
   }
 
@@ -1737,17 +1800,73 @@
     refreshBlockTiles();
   }
 
-  // ---------- GANCHOS (0.18.0): recursos novos que só algumas fases de outros bichinhos terão ----------
-  // Ainda NÃO fazem nada (a fase só os chama se ligar o campo: `lv.sprint`, `lv.water` ou `lv.refuge`, veja buildLevel; nas fases do Cachorrinho os três são null). Quem implementar a mecânica preenche estas funções:
-  //  - updateSprint(dt): fôlego da corrida do Gatinho (gasta correndo, enche parado); o botão e o medidor entram no placar (updateHud)
-  //  - updateWater(dt): poças que molham o pelo e deixam o gato lento
-  //  - drawLevelExtras(): desenha a água e os lugares altos (refúgio) sobre o chão, antes dos itens
-  function updateSprint(dt) { /* gancho: ainda sem mecânica */ }
-  function updateWater(dt) { /* gancho: ainda sem mecânica */ }
-  function drawLevelExtras() { /* gancho: ainda sem desenho */ }
+  // ---------- Mecânicas do Gatinho (0.18.0, E2a): arrancada com fôlego, pelo molhado e lugar alto ----------
+  // Só rodam nas fases que ligam `lv.sprint`, `lv.water` e `lv.refuge` (as 20 do Gatinho); nas fases do Cachorrinho nada disto é chamado.
+  // Arrancada: segurar Shift ou Espaço (teclado), A, RB ou RT (controle) ou o botão "Correr" (toque) deixa o gatinho ×1,35 mais rápido enquanto ele se move e tem fôlego; gasta 0,4/s (2,5 s de tanque cheio);
+  // sem arrancada o fôlego volta a 0,2/s (5 s). Quando acaba, o gatinho fica ofegante por 1,5 s (sem arrancada). Molhado = sem arrancada. Com o novelo turbo (fx.turbo) a arrancada não gasta fôlego.
+  const padSprint = () => { const g = activePad(); return !!g && (padBtn(g, 0) || padBtn(g, 5) || padBtn(g, 7)); }; // A, RB ou RT (controle padrão; fora do padrão só o A)
+  const sprintHeld = () => !!(keys.Shift || keys[" "] || runTouch || padSprint());
+  function updateSprint(dt, moving) {
+    const S = lv.sprint, free = fx.turbo > 0;
+    if (winded > 0) winded = Math.max(0, winded - dt);
+    sprintOn = sprintHeld() && moving && wet <= 0 && winded <= 0 && (stamina > 0 || free);
+    if (sprintOn) {
+      if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; /* E2b: som do gatinho ofegante (se houver) */ } }
+    } else stamina = Math.min(1, stamina + S.regen * dt);
+  }
+  // Pelo molhado: o centro do gatinho numa poça (`~`) define `wet` = lv.water.wet s (renova enquanto ele estiver nela); depois de sair seca devagar. Molhado: ×0,65 de velocidade e sem arrancada. Os cães não se molham.
+  function updateWater(dt) {
+    const [c, r] = dogTileNow();
+    if (lv.puddle && lv.puddle[r] && lv.puddle[r][c]) wet = lv.water.wet;
+    else if (wet > 0 && (wet -= dt) <= 0) { wet = 0; /* E2b: o gatinho sacode o pelo ao secar (som "shake" e CatArt.drawFx "shake") */ }
+  }
+  // Lugar alto: com o centro do gatinho num tile `T` ele fica A SALVO (nenhum cão nem rastreador o pega); ao descer, não há proteção nenhuma.
+  const onHighNow = () => { const [c, r] = dogTileNow(); return !!(lv.high && lv.high[r] && lv.high[r][c]); };
+  const onLowNow = () => { const [c, r] = dogTileNow(); return !!(lv.catMode && lv.crate[r] && lv.crate[r][c]); }; // sobre um obstáculo baixo (X): o "pulo suave"
+  const catSpeedFactor = () => (lv.catMode || lv.sprint ? (sprintOn && lv.sprint ? lv.sprint.factor : 1) * (wet > 0 && lv.water ? lv.water.slow : 1) * (onLowNow() ? JUMP_SLOW : 1) : 1);
+  // Onde o cão (ou rastreador) espera: o tile alcançável (pelo chão `grid` dele) mais perto do lugar alto onde o gatinho está. Nunca por cima do T (fora do chão dos cães).
+  function refugeFoot(from, grid) {
+    const g = bfs(from, false, null, grid), [pc, pr] = dogTileNow();
+    let best = null;
+    for (const [c, r] of g.q) {
+      const d = Math.hypot(c - pc, r - pr), steps = g.dist.get(g.key(c, r));
+      if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) < 1e-9 && steps < best.steps)) best = { c, r, d, steps };
+    }
+    return best ? [best.c, best.r] : null;
+  }
+  // O cão (ou rastreador) `v` em perseguição com o gatinho a salvo espera ao pé do lugar alto no máximo lv.refuge.wait s e DESISTE: volta a patrulhar (descansando), e só volta a perseguir depois que o gatinho descer.
+  // Devolve true se desistiu agora.
+  function refugeGiveUp(v, dt) {
+    if (!safe) { if (v.refugeT || v.gaveUp) { v.refugeT = 0; v.gaveUp = false; } return false; }
+    if (v.mode !== "chase") return false;
+    v.refugeT = (v.refugeT || 0) + dt;
+    if (v.refugeT < lv.refuge.wait) return false;
+    v.refugeT = 0; v.gaveUp = true;
+    Object.assign(v, { mode: "patrol", cool: v.cfg.restTime, route: [], goal: null, idle: 0.5, modeT: 0, chaseAge: 0 });
+    if (v.cat) { v.seen = null; v.pounce = 0; }
+    return true;
+  }
+  function drawLevelExtras(c0, c1, r0, r1, rect, g) {
+    // E2b: trocar estas formas simples pelos desenhos do ambiente (CatThemes: th.crate / th.high / th.water) e da noite. Por enquanto o jogo já mostra onde ficam os obstáculos, os lugares altos e as poças.
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      const x = c * TILE, y = r * TILE;
+      if (lv.puddle && lv.puddle[r][c]) {
+        ctx.fillStyle = "rgba(70,140,210,.62)"; rect(x, y, TILE, TILE);
+        ctx.strokeStyle = "rgba(220,240,255,.7)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x + 11, y + 12, 6, 2.5, 0, 0, Math.PI * 2); ctx.ellipse(x + 22, y + 22, 5, 2, 0, 0, Math.PI * 2); ctx.stroke();
+      } else if (lv.high && lv.high[r][c]) {
+        ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(x + 17, y + 26, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#6b4a2b"; rect(x + 12, y + 14, 8, 14);
+        ctx.fillStyle = "#3f8f4a"; ctx.beginPath(); ctx.arc(x + 16, y + 12, 13, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#58b062"; ctx.beginPath(); ctx.arc(x + 12, y + 9, 6, 0, Math.PI * 2); ctx.fill();
+      } else if (lv.crate[r][c]) {
+        g.x = x; g.y = y; g.c = c; g.r = r; g.free = false; g.border = false;
+        theme.crate(g);
+      }
+    }
+  }
 
   // ---------- Cachorro ----------
-  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade
+  const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1) * catSpeedFactor(); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade (Gatinho: ×1,35 na arrancada, ×0,65 molhado, ×0,85 sobre um X)
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
     for (const s of solids) {
@@ -1757,6 +1876,7 @@
       if (dy > 0) player.y = s.y - player.h;
       else if (dy < 0) player.y = s.y + s.h;
     }
+    if (lv.catMode) { player.x = clamp(player.x, 0, WORLD_W - player.w); player.y = clamp(player.y, 0, WORLD_H - player.h); } // (no Gatinho a saída `E` pode ficar na borda do mapa: ninguém sai do mundo)
   }
 
   // ---------- Agente (caminha pelo centro dos tiles, sem atravessar paredes) ----------
@@ -1785,8 +1905,10 @@
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
     const dx = px - v.cx, dy = py - v.cy, dist = Math.hypot(dx, dy);
     if (dist > v.cfg.sight - up.stealth * TILE) return false; // (Patas de veludo: notam 1 quadrado mais tarde por nível)
+    const [pc, pr] = lv.catMode ? tileOf(px, py) : [-1, -1]; // (Gatinho: o tile onde o gatinho está pode ser X ou T, que os cães não pisam; ele não esconde o gatinho)
     for (let d = 0; d < dist; d += 8) {
       const [c, r] = tileOf(v.cx + (dx * d) / dist, v.cy + (dy * d) / dist);
+      if (c === pc && r === pr) continue;
       if (!walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
     }
     return true;
@@ -1874,8 +1996,9 @@
     if (v.bounce > 0) v.bounce = Math.max(0, v.bounce - dt / 8);
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
-      if (power <= 0 && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; }
+      if (power <= 0 && !(safe && v.gaveUp) && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; } // (Gatinho: quem já desistiu ao pé do lugar alto só volta a perseguir depois que o gatinho descer)
     }
+    if (lv.refuge) refugeGiveUp(v, dt); // (Gatinho a salvo num lugar alto: o cão espera ao pé dele e desiste)
     if (v.mode === "chase") {
       v.chaseAge += dt;
       if (canSee(v)) v.modeT = Math.max(v.modeT, cfg.chaseTime * 0.4); // enquanto vê o cachorro, não desiste
@@ -1905,7 +2028,7 @@
           if (!v.leg) { v.idle = 0.25; return; } // sem para onde fugir: espera um instante
         } else if (v.mode === "chase") {
           // vai atrás do cachorro por um caminho que não passa pelo tile dos outros agentes (se houver outro caminho): eles se espalham em vez de andar em fila
-          const from = tileOf(v.cx, v.cy), dogTile = tileOf(player.x + player.w / 2, player.y + player.h / 2);
+          const from = tileOf(v.cx, v.cy), dogTile = safe ? refugeFoot(from, walk) || dogTileNow() : tileOf(player.x + player.w / 2, player.y + player.h / 2); // (Gatinho a salvo: o alvo é o pé do lugar alto)
           const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
           let p = [];
           if (from[0] !== dogTile[0] || from[1] !== dogTile[1]) { // (já no tile do cachorrinho, por exemplo enquanto ele está protegido: não há caminho a buscar, e a busca não se repete 3 vezes por quadro)
@@ -2039,11 +2162,12 @@
       if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
       if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
         c.think = cfg.thinkEvery;
-        if (sees || heard) { // notou o cachorrinho: persegue (e mia, no máximo uma vez a cada CAT_MEOW_EVERY s)
+        if ((sees || heard) && !(safe && c.gaveUp)) { // notou o cachorrinho: persegue (e mia, no máximo uma vez a cada CAT_MEOW_EVERY s)
           c.mode = "chase"; c.modeT = cfg.chaseTime; c.chaseAge = 0; c.route = []; c.goal = null; c.idle = 0;
-          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; sound.play(P().sfx.alert2); }
+          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; const alert = P().sfx.alert2; if (alert) sound.play(alert); } // (o rastreador do Gatinho não mia: o perfil dele não tem som de aviso; E2b: som do cão rastreador)
         }
       }
+      if (lv.refuge) refugeGiveUp(c, dt); // (Gatinho a salvo num lugar alto: o rastreador espera ao pé dele e desiste)
       if (c.mode === "chase") {
         c.chaseAge += dt;
         if (sees || heard) c.modeT = Math.max(c.modeT, cfg.chaseTime * 0.5); // enquanto vê ou ouve o cachorrinho, não desiste
@@ -2066,11 +2190,11 @@
           c.leg = fleeStep(c);
           if (!c.leg) { c.idle = 0.2; return; }
         } else if (c.mode === "chase") {
-          const goal = catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
+          const goal = safe ? refugeFoot(from, cw) || dogTileNow() : catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
           const dogT = dogTileNow(), atGoal = from[0] === goal[0] && from[1] === goal[1], atDog = from[0] === dogT[0] && from[1] === dogT[1];
           let p = [];
           if (!atGoal) { p = pathTo(bfs(from, false, taken, cw), goal); if (!p.length) p = pathTo(bfs(from, false, null, cw), goal); }
-          if (!p.length && !atDog) p = pathTo(bfs(from, false, null, cw), dogT); // já está no tile do alvo: vai direto ao cachorrinho (se já está no tile dele, não há caminho a buscar)
+          if (!p.length && !atDog && !safe) p = pathTo(bfs(from, false, null, cw), dogT); // já está no tile do alvo: vai direto ao cachorrinho (se já está no tile dele, não há caminho a buscar)
           c.leg = p[0] || null;
         } else {
           if (c.idle > 0) { if (!idled) c.idle -= dt; return; }
@@ -2158,6 +2282,7 @@
       Object.assign(c, { cx: c.sx, cy: c.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 2.5, modeT: 0, chaseAge: 0, think: c.cfg.thinkEvery, seen: null, pounce: 0, pounceCd: 0 });
     }
     invuln = invulnNow();
+    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; // (Gatinho: renasce com fôlego cheio e pelo seco)
     return inPlace;
   }
 
@@ -2217,7 +2342,7 @@
   // Bolinhas (0.15.8): quando o cachorrinho chega a 3 tiles (e a vê) a bolinha é chutada para longe pelo eixo em que ele está, rola, quica nas paredes e para sozinha.
   function moveBall(b, dx, dy) {
     const nx = b.x + dx, ny = b.y + dy, box = { x: nx - BALL_R, y: ny - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R };
-    if (nx < BALL_R || ny < BALL_R || nx > WORLD_W - BALL_R || ny > WORLD_H - BALL_R || solids.some((o) => overlap(box, o))) { // bateu: quica perdendo um pouco de velocidade
+    if (nx < BALL_R || ny < BALL_R || nx > WORLD_W - BALL_R || ny > WORLD_H - BALL_R || ballSolids.some((o) => overlap(box, o))) { // bateu: quica perdendo um pouco de velocidade
       if (dx) b.vx = -b.vx * 0.7; if (dy) b.vy = -b.vy * 0.7;
       return;
     }
@@ -2228,10 +2353,10 @@
     for (const b of balls) {
       if (b.taken) continue;
       { // um bloco que desliza por cima de uma bolinha a empurra para o lado livre mais perto (ela não fica presa por baixo dele)
-        const box = { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }, hit = solids.find((o) => overlap(box, o));
+        const box = { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }, hit = ballSolids.find((o) => overlap(box, o));
         if (hit) {
           const outs = [[hit.x - BALL_R - 0.5, b.y], [hit.x + hit.w + BALL_R + 0.5, b.y], [b.x, hit.y - BALL_R - 0.5], [b.x, hit.y + hit.h + BALL_R + 0.5]].sort((p, q) => Math.hypot(p[0] - b.x, p[1] - b.y) - Math.hypot(q[0] - b.x, q[1] - b.y));
-          const free = outs.find(([x, y]) => { const bx = { x: x - BALL_R, y: y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }; return x > BALL_R && y > BALL_R && x < WORLD_W - BALL_R && y < WORLD_H - BALL_R && !solids.some((o) => overlap(bx, o)); });
+          const free = outs.find(([x, y]) => { const bx = { x: x - BALL_R, y: y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R }; return x > BALL_R && y > BALL_R && x < WORLD_W - BALL_R && y < WORLD_H - BALL_R && !ballSolids.some((o) => overlap(bx, o)); });
           if (free) { b.x = free[0]; b.y = free[1]; b.vx = 0; b.vy = 0; }
         }
       }
@@ -2255,9 +2380,10 @@
   }
   // Há caminho livre (sem parede nem bloco) em linha reta entre dois pontos?
   function lineClear(ax, ay, bx, by) {
-    const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy);
+    const dx = bx - ax, dy = by - ay, dist = Math.hypot(dx, dy), [sc, sr] = lv.catMode ? tileOf(ax, ay) : [-1, -1]; // (Gatinho: o tile de quem olha pode ser X ou T)
     for (let d = 0; d <= dist; d += 8) {
       const [c, r] = tileOf(ax + (dist ? (dx * d) / dist : 0), ay + (dist ? (dy * d) / dist : 0));
+      if (c === sc && r === sr) continue;
       if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
     }
     return true;
@@ -2326,13 +2452,14 @@
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
+    if (lv.water) updateWater(dt);                    // (Gatinho) pelo molhado e arrancada valem para este passo
+    if (lv.sprint) updateSprint(dt, !!(ix || iy));
     const step = Math.min(dt, 0.05) * dogSpeedNow();
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
+    if (lv.refuge) safe = onHighNow();                // (Gatinho) com o centro num lugar alto ele está a salvo
 
     updateBlocks(dt);
-    if (lv.sprint) updateSprint(dt);
-    if (lv.water) updateWater(dt);
     if (crushed) { crushed = false; loseLife("crush"); return; }
     for (const k of ["shield", "ice", "turbo", "magnet"]) if (fx[k] > 0 && (fx[k] -= dt) <= 0) { fx[k] = 0; endFx(k); } // (os efeitos dos ossos novos acabam)
     for (const it of items) if (!it.taken && overlap(player, it)) takeItem(it);
@@ -2357,13 +2484,13 @@
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
     if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
-    const px = player.x + player.w / 2, py = player.y + player.h / 2, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < 22;
+    const px = player.x + player.w / 2, py = player.y + player.h / 2, reach = lv.catMode && onLowNow() ? LOW_REACH : 22, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < reach; // (Gatinho: sobre um X os cães o alcançam do tile ao lado)
     const protectedNow = invuln > 0 || fx.shield > 0; // (o escudo do osso de ouro também protege)
     if (invuln > 0) invuln -= dt;
     if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
       for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
       for (const c of cats) if (!c.slow && touching(c)) defeatCat(c); // (o gato assustado vale o mesmo: +100 por poder)
-    } else if (!protectedNow && !noCatch && fx.ice <= 0 && (vets.some(touching) || cats.some(touching))) { loseLife(vets.some(touching) ? undefined : "cat"); return; } // (congelado, o inimigo é inofensivo)
+    } else if (!protectedNow && !noCatch && fx.ice <= 0 && !safe && (vets.some(touching) || cats.some(touching))) { loseLife(vets.some(touching) ? undefined : "cat"); return; } // (congelado, o inimigo é inofensivo; Gatinho a salvo num lugar alto: ninguém o pega)
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
@@ -2456,6 +2583,7 @@
       ...(balls.length ? { bs: balls.map((b) => [Math.round(b.x), Math.round(b.y), b.taken ? 1 : 0]) } : {}), // bolinhas (0.15.8): posição (px) e se já foi pega
       ...(fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? { fx: [r2(fx.shield), r2(fx.ice), r2(fx.turbo), r2(fx.magnet)] } : {}), // efeitos dos ossos novos que ainda faltam (0.15.7)
       ...(cats.length ? { cats: cats.map((c) => [r2(c.cx), r2(c.cy)]), cd: cats.map((c) => (c.slow ? 1 : 0)) } : {}), // gatos (0.16.0): posições e quais já foram assustados neste poder
+      ...(lv.sprint || lv.water ? { sta: r2(stamina), wet: r2(wet), wnd: r2(winded) } : {}), // Gatinho (0.18.0): fôlego (0 a 1), s de pelo molhado e s de ofegante; o salvo do Cachorrinho NÃO ganha estes campos
     };
   }
 
@@ -2483,7 +2611,7 @@
       for (const it of sv.items) {
         if (!Array.isArray(it) || it.length !== (sv.v === 3 ? 4 : 5)) return null;
         const [c, r, t, l] = it, b = sv.v === 3 ? 0 : it[4];
-        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || !Number.isInteger(b) || b < 0 || b > BONE_KINDS.length) return null;
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (L.puddle && L.puddle[r][c]) || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || !Number.isInteger(b) || b < 0 || b > BONE_KINDS.length) return null;
         // dois itens que faltam pegar não podem ocupar o mesmo tile (um já pego pode: jogos salvos da 0.4.0 tinham esse defeito)
         if (t === 0) { if (seen.has(r * L.cols + c)) return null; seen.add(r * L.cols + c); }
         if (L.trackTiles.some(([tc, tr]) => tc === c && tr === r)) return null; // nunca no trilho de um bloco
@@ -2539,7 +2667,13 @@
         }
       }
       if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
-      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, bs: bsv, legacyBones, up: UP_KEYS.map((k) => upv[k]) };
+      let cx = {}; // Gatinho (0.18.0): fôlego, pelo molhado e ofegante; um jogo salvo sem estes campos carrega com os valores de sempre (fôlego cheio, pelo seco)
+      if (L.sprint || L.water) {
+        const sta = sv.sta === undefined ? 1 : sv.sta, wt = sv.wet === undefined ? 0 : sv.wet, wd = sv.wnd === undefined ? 0 : sv.wnd;
+        if (!num(sta, 0, 1) || !num(wt, 0, L.water ? L.water.wet : 0) || !num(wd, 0, L.sprint ? L.sprint.winded : 0)) return null;
+        cx = { sta, wet: wt, wnd: wd };
+      }
+      return { ...sv, v: 4, items: items4, bl, ba, pw, vd, pk, cd, fx: fxv, bs: bsv, legacyBones, up: UP_KEYS.map((k) => upv[k]), ...cx };
     } catch { return null; }
   }
 
@@ -2577,6 +2711,7 @@
     });
     if (sv.bs) balls.forEach((b, i) => { b.x = sv.bs[i][0]; b.y = sv.bs[i][1]; b.taken = sv.bs[i][2] === 1; b.vx = 0; b.vy = 0; });
     power = sv.pw; postmen = sv.pk; fx = { shield: sv.fx[0], ice: sv.fx[1], turbo: sv.fx[2], magnet: sv.fx[3] }; score = runningScore();
+    if (lv.sprint || lv.water) { stamina = sv.sta ?? 1; wet = sv.wet ?? 0; winded = sv.wnd ?? 0; safe = lv.refuge ? onHighNow() : false; } // (Gatinho)
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
       if (all.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
@@ -3543,14 +3678,15 @@
     // o ambiente da fase (js/themes.js) desenha o chão, as paredes e as "caixas"; as paredes vizinhas se juntam num bloco só
     const g = themeG; g.ctx = ctx; g.rect = rect; g.solid = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
-      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.walk[r][c];
+      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c];
       theme.floor(g);
     }
     ctx.fillStyle = exitOpen() ? "#3ddc84" : "#7a4b4b";
     rect(exitRect.x, exitRect.y, exitRect.w, exitRect.h);
     ctx.fillStyle = exitOpen() ? "#06210f" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center"; // contraste nos dois estados
-    ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
-    if (lv.water || lv.refuge) drawLevelExtras();
+    if (exitRect.h > exitRect.w) { ctx.save(); ctx.translate(exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } // (a saída do Gatinho pode ser vertical, na borda esquerda ou direita)
+    else ctx.fillText("SAÍDA", exitRect.x + exitRect.w / 2, exitRect.y + exitRect.h / 2 + 5);
+    if (lv.catMode) drawLevelExtras(c0, c1, r0, r1, rect, g);
     drawBlocks();
     for (const s of solids) {
       if (s.x + s.w < camX || s.x > camX + vw || s.y + s.h < camY || s.y > camY + vh) continue; // fora da tela
@@ -3628,6 +3764,7 @@
     level: $("hud-level"), items: $("hud-items"), bonesItem: $("hud-bones-item"), bones: $("hud-bones"), ballsItem: $("hud-balls-item"), balls: $("hud-balls"), points: $("hud-points"), time: $("hud-time"), bonus: $("hud-bonus"), bonusItem: $("hud-bonus-item"),
     pointsItem: $("hud-points-item"), missionBar: $("mission-bar"), fxBar: $("fx-bar"), powerItem: $("hud-power-item"), power: $("hud-power"),
     retryItem: $("hud-retry-item"), retry: $("hud-retry"), lives: $("hud-lives"), hearts: [...document.querySelectorAll("#hud-lives .heart")],
+    stamina: $("hud-stamina"), staminaFill: $("hud-stamina-fill"), stateItem: $("hud-state-item"), state: $("hud-state"), // (Gatinho: fôlego e estado)
   };
   const hudCache = {};
   function setHud(key, node, value) { if (hudCache[key] !== value) { hudCache[key] = value; node.textContent = value; } }
@@ -3646,6 +3783,7 @@
       wide(hudEl.balls, `${lv.balls}/${lv.balls}`);
       wide(hudEl.points, `${"0".repeat(String(top).length)}${lv.minPoints ? ` / ${lv.minPoints}` : ""}`);
       wide(hudEl.power, `${bonePowerNow()} s`);
+      wide(hudEl.state, "MOLHADO 6 s");
       wide(hudEl.time, "0:00,0");
       wide(hudEl.bonus, `+${lv.bonusStep * 10}`);
     }
@@ -3672,6 +3810,20 @@
     }
     if (hudCache.bp !== lv.bonePower) { hudCache.bp = lv.bonePower; hudEl.powerItem.classList.toggle("hidden", !lv.bonePower); }
     if (lv.bonePower) { setHud("pw", hudEl.power, power > 0 ? `${Math.ceil(power)} s` : "—"); const pl = power > 0 ? hp.hud.powerOn(Math.ceil(power)) : hp.hud.powerOff; if (hudCache.pwl !== pl) { hudCache.pwl = pl; hudEl.powerItem.setAttribute("aria-label", pl); } }
+    { // Gatinho (0.18.0): a barra FÔLEGO e o ESTADO (A SALVO, MOLHADO n s, OFEGANTE); escondidos e parados nas fases do Cachorrinho
+      const spr = !!lv.sprint, any = !!(lv.sprint || lv.water || lv.refuge);
+      if (hudCache.cs !== spr) { hudCache.cs = spr; hudEl.stamina.classList.toggle("hidden", !spr); }
+      if (hudCache.cst !== any) { hudCache.cst = any; hudEl.stateItem.classList.toggle("hidden", !any); }
+      if (spr) {
+        const pct = Math.round(stamina * 100), mode = winded > 0 ? "winded" : sprintOn ? "run" : "";
+        if (hudCache.sta !== pct) { hudCache.sta = pct; hudEl.staminaFill.style.transform = `scaleX(${stamina.toFixed(3)})`; hudEl.stamina.setAttribute("aria-valuenow", String(pct)); hudEl.stamina.setAttribute("aria-valuetext", `Fôlego: ${pct}%`); }
+        if (hudCache.stm !== mode) { hudCache.stm = mode; hudEl.stamina.classList.toggle("winded", mode === "winded"); hudEl.stamina.classList.toggle("run", mode === "run"); }
+      }
+      if (any) {
+        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · ") || "—";
+        if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t === "—" ? "normal" : t.toLowerCase()}`); }
+      }
+    }
     setHud("t", hudEl.time, fmt(time * 1000));
     setHud("b", hudEl.bonus, `+${Records.timeBonus(officialTimeMs(), lv.bonusStep)}`);
     if (hudCache.r !== retries) {
@@ -3828,7 +3980,7 @@
     if (state === "playing") {
       keys[k] = true;
       if (k === "p") { if (!e.repeat) pauseGame(); return; }
-      if (k.startsWith("Arrow") || (k === " " && !(e.target instanceof HTMLButtonElement))) e.preventDefault(); // não rola a página
+      if (k.startsWith("Arrow") || (k === " " && (!(e.target instanceof HTMLButtonElement) || lv.sprint))) e.preventDefault(); // não rola a página (e, no Gatinho, o Espaço é a arrancada: não aperta o botão em foco)
     } else if (e.repeat && (k === "Enter" || k.startsWith("Arrow")) && document.body.dataset.screen && e.target instanceof HTMLButtonElement) {
       e.preventDefault(); // segurar a tecla não repete o clique nem corre pelos botões (a escolha do reforço vale uma vez e não se desfaz)
     } else if ((k === "ArrowDown" || k === "ArrowUp") && document.body.dataset.screen && !document.querySelector(".screen:not(.hidden)")?.hasAttribute("data-scroll")) {
@@ -3841,7 +3993,7 @@
       e.preventDefault(); moveFocus(k === "ArrowRight" ? 1 : -1); // a grade de reforços tem duas colunas
     }
   });
-  window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; });
+  window.addEventListener("keyup", (e) => { keys[keyName(e)] = false; if (e.key === " " && state === "playing" && lv.sprint) e.preventDefault(); }); // (no Gatinho o Espaço é a arrancada: não pode "apertar" o botão que estiver em foco)
   window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; clearTouch(); pauseGame(); }); // trocar de janela pausa (pauseGame só age se estiver jogando)
   document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
   window.addEventListener("pagehide", () => saveNow()); // fechar/recarregar a página também salva
@@ -3853,6 +4005,7 @@
     padPointer = null;
     touch.left = touch.right = touch.up = touch.down = false;
     knob.style.transform = "";
+    runTouch = false; $("btn-run").classList.remove("on"); // (Gatinho: soltou o botão Correr)
   }
   function padMove(e) {
     const r = pad.getBoundingClientRect(), R = r.width / 2;
@@ -3872,6 +4025,14 @@
   pad.addEventListener("pointermove", (e) => { if (e.pointerId === padPointer) padMove(e); });
   for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) pad.addEventListener(ev, (e) => { if (e.pointerId === padPointer) clearTouch(); });
   pad.addEventListener("contextmenu", (e) => e.preventDefault());
+  // Botão "Correr" (Gatinho, 0.18.0): enquanto o dedo estiver nele vale a arrancada; funciona junto com o controle direcional (outro dedo)
+  { const run = $("btn-run"); let runPointer = null;
+    const setRun = (on) => { runTouch = on; run.classList.toggle("on", on); };
+    run.addEventListener("pointerdown", (e) => { if (runPointer !== null) return; runPointer = e.pointerId; try { run.setPointerCapture(e.pointerId); } catch { /* ponteiro sintético */ } setRun(true); e.preventDefault(); });
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) run.addEventListener(ev, (e) => { if (e.pointerId === runPointer) { runPointer = null; setRun(false); } });
+    run.addEventListener("contextmenu", (e) => e.preventDefault());
+    run.addEventListener("click", (e) => e.preventDefault());
+  }
 
   const touchCapable = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || navigator.maxTouchPoints > 0 || /[?&]touch=1\b/.test(location.search);
   if (touchCapable) document.body.classList.add("touch");
@@ -3970,6 +4131,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     enableTestAnimal(id) {
       const g = gameOf(id);
       if (!g || g.id === DEFAULT_ANIMAL) return false;
+      if (g.id === "cat" && !g.levels.every((l) => l.placeholder)) { g.levels = CAT_LEVELS; g.rev = 2; g.blurb = CAT_BLURB_SOON; } // (as fases de TESTE do encanamento: a cópia das do Cachorrinho; para as de verdade use catLevels())
       g.ready = true;
       if (!g.levels.length) g.levels = LEVELS.map((l) => ({ ...l, placeholder: true }));
       syncAnimal(true); // (a escolha guardada do jogador, se era este bichinho, passa a valer)
@@ -3977,6 +4139,21 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
       if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
       return true;
     },
+    // (0.18.0, E2a) Gatinho: o estado das mecânicas (fôlego 0 a 1, s ofegante, s molhado, arrancada em andamento, a salvo num lugar alto, escuridão 0 a 1) e ganchos de teste.
+    // `catDefFrom(c)` = a conversão de uma fase de js/cat-levels.js; `defineCatLevels(lista)` = troca as 20 fases do Gatinho por uma lista nesse formato (false se não servir); `catLevels()` volta às de js/cat-levels.js (se houver).
+    get stamina() { return stamina; }, set stamina(v) { stamina = clamp(Number(v) || 0, 0, 1); }, get winded() { return winded; }, set winded(v) { winded = Math.max(0, Number(v) || 0); },
+    get wet() { return wet; }, set wet(v) { wet = Math.max(0, Number(v) || 0); }, get sprinting() { return sprintOn; }, get safe() { return safe; }, get darkness() { return darkness; },
+    catDefFrom(c) { return catDefFrom(c); },
+    defineCatLevels(list) {
+      const defs = catGameFrom(list), g = gameOf("cat");
+      if (!defs) return false;
+      g.levels = defs; g.rev = CAT_REV; g.ready = true; g.blurb = CAT_BLURB;
+      syncAnimal(true);
+      const screen = document.body.dataset.screen;
+      if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
+      return true;
+    },
+    catLevels() { return this.defineCatLevels(window.CatLevels); },
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
