@@ -8,10 +8,14 @@
 //   CatArt.drawCat(ctx, p, o)        o GATINHO. p = { x, y, w, h, facing: "left"|"right"|"up"|"down", moving }, a mesma caixa do cachorrinho (desenha centrado em p.x + p.w/2, p.y + p.h/2);
 //                                    o = { gr: 0..1 (0 filhote, 1 adulto), skin, still (sem balançar), time, calm, wet: 0..1 (molhado), sprint (arrancada), safe (em lugar alto), hiss (pelo eriçado) }
 //   CatArt.SKINS, CatArt.skinById    as 12 skins (só visual): { id, name, text, price }
-//   CatArt.drawDog(ctx, d, o)        o CÃO INIMIGO. d = { x, y (centro), dir: -1|1, mode: "patrol"|"chase"|"flee"|"search"|"idle", kind: "guard"|"tracker", size: "small"|"medium"|"large", frozen, slow, idx }; o = { time, calm }
-//   CatArt.drawMouse(ctx, it, o)     o RATINHO (presa parada): it = { x, y (canto do item 16×16), variant: 0..2 }
-//   CatArt.drawAgileMouse(ctx, b, o) o CAMUNDONGO ÁGIL: b = { x, y (centro), vx, vy, hue }; o = { time, calm, r (raio, 8) }
-//   CatArt.drawYarn(ctx, it, o)      o NOVELO: it = { x, y (canto 16×16), kind: "scare"|"gold"|"ice"|"turbo"|"magnet" }
+//   CatArt.drawDog(ctx, d, o)        o CÃO INIMIGO. d = { x, y (centro), dir: -1|1, mode: "patrol"|"chase"|"flee"|"search"|"idle", kind: "guard"|"tracker", size: "small"|"medium"|"large", frozen, slow, idx }; o = { time, calm, look }
+//   CatArt.drawMouse(ctx, it, o)     o RATINHO (presa parada): it = { x, y (canto do item 16×16), variant: 0..2 }; o = { time, calm, look }
+//   CatArt.drawAgileMouse(ctx, b, o) o CAMUNDONGO ÁGIL: b = { x, y (centro), vx, vy, hue }; o = { time, calm, r (raio, 8), look }
+//   CatArt.drawYarn(ctx, it, o)      o NOVELO: it = { x, y (canto 16×16), kind: "scare"|"gold"|"ice"|"turbo"|"magnet" }; o = { time, calm, look }
+//   CatArt.drawPerch(ctx, x, y, o)   o LUGAR ALTO (T) de uma skin da lojinha: o tile de 32×32 com canto em (x, y); o = { look }; sem `look.style` não desenha nada e devolve false (o jogo usa então o lugar alto do ambiente)
+//   CatArt.YARN_KEYS                 as cores-CHAVE de cada tipo de novelo (fill, strand, hi, glow): nenhuma skin as muda; conferidas em tests/skins-cat.test.js e tests/e2e.js
+// `o.look` (0.19.0, lojinha única): a skin em uso da categoria (guard, tracker, mouse, agile, yarn, perch), um objeto de js/skins-cat.js; os campos visuais de cada categoria estão documentados no topo de js/skins-cat.js.
+//   Sem `look` (ou sem nenhum campo visual) o desenho é EXATAMENTE o de sempre (pixel a pixel); nenhum campo muda tamanho, posição ou o que o objeto é.
 //   CatArt.drawPost(ctx, x, y, o)    o POSTO dos cães (centro x, y; ~40 px): o.kind "guard" (casinha) ou "tracker" (almofada com tigela)
 //   CatArt.drawFx(ctx, kind, x, y, t, o)  efeitos curtos, t = 0..1: "splash", "shake", "dust", "hiss", "sparkle", "wetdrop" (o.facing: lado para onde o gatinho olhava, usado na poeira)
 //   CatArt.growthStage(gr)           "filhote" (< 0,34), "jovem" (< 0,67) ou "adulto" (o mesmo corte do cachorrinho)
@@ -431,7 +435,29 @@
     ],
   ];
   const DOG_PAL = Object.create(null); // [família][pelagem][0 normal, 1 afugentado, 2 congelado]
-  function dogPal(kind, coat, st) {
+  // Skin do cão (0.19.0): campos visuais de `look` (guard/tracker em js/skins-cat.js): collar (cor da coleira ou "rainbow"), tag (cor da plaquinha), acc ("bandana"|"bowtie"|"hat"|"bow"), c1 e c2 (cores do acessório), pat ("dots"|"check": estampa do lenço).
+  // As cores da skin passam pelo MESMO tom do cão afugentado/congelado (mixc), então os estados continuam legíveis. Paletas guardadas por skin (WeakMap): nada é montado por quadro.
+  const DOG_LOOK_PAL = new WeakMap();
+  const RAINBOW = ["#e8403a", "#ffc83d", "#4fb85a", "#3f86e0"];
+  const dogLooked = (look) => !!look && typeof look === "object" && !!(look.collar || look.tag || look.acc);
+  function dogPal(kind, coat, st, look) {
+    const base = dogPal0(kind, coat, st);
+    if (!dogLooked(look)) return base;
+    let byKey = DOG_LOOK_PAL.get(look);
+    if (!byKey) DOG_LOOK_PAL.set(look, (byKey = Object.create(null)));
+    const key = kind * 12 + coat * 3 + st;
+    if (byKey[key]) return byKey[key];
+    const tint = st === 1 ? "#dcdbe6" : "#8fd0ff", w = st === 1 ? 0.3 : st === 2 ? 0.6 : 0, m = (cc) => (w ? mixc(cc, tint, w) : cc), hex = (cc, d) => (typeof cc === "string" && /^#[0-9a-f]{6}$/i.test(cc) ? cc.toLowerCase() : d);
+    const P = Object.assign({}, base);
+    if (look.collar === "rainbow") { P.rb = RAINBOW.map(m); P.wide = true; }
+    else if (look.collar) { P.collar = m(hex(look.collar, "#d6392f")); P.wide = true; }
+    if (look.tag) P.tag = m(hex(look.tag, "#ffd24a"));
+    P.acc = typeof look.acc === "string" ? look.acc : ""; P.pat = look.pat === "check" ? "check" : "dots";
+    P.a1 = m(hex(look.c1, "#e8403a")); P.a2 = m(hex(look.c2, "#ffffff"));
+    byKey[key] = P;
+    return P;
+  }
+  function dogPal0(kind, coat, st) {
     const key = kind * 12 + coat * 3 + st;
     if (DOG_PAL[key]) return DOG_PAL[key];
     const C = DOG_COATS[kind][coat], tint = st === 1 ? "#dcdbe6" : "#8fd0ff", w = st === 1 ? 0.3 : st === 2 ? 0.6 : 0;
@@ -442,6 +468,38 @@
     return P;
   }
   const DS = { pal: null, kind: 0, mode: "patrol", stretch: 1, wag: 0, l1: 0, l2: 0, l3: 0, l4: 0, headA: 0, bob: 0, blink: false, flap: 0, t: 0, calm: false, frozen: false };
+
+  // ---- enfeites das skins dos cães (0.19.0), desenhados no grupo da cabeça (que gira) ----
+  function dogNeck(c, D) { // no pescoço, por baixo da cabeça: coleira larga (puxada um pouco para trás, para não ficar escondida pela orelha) e coleira de arco-íris
+    const P = D.pal, g = D.kind === 0, sh = g ? 1.3 : 1.9;
+    const x0 = (g ? -3 : -1.4) - sh, y0 = (g ? -2 : -3) - 0.4, x1 = (g ? -2.2 : -0.8) - sh, y1 = 6.4, w = (g ? 3.8 : 3) + 1.2;
+    if (P.rb) { c.lineCap = "butt"; for (let i = 0; i < 4; i++) seg(c, x0 + ((x1 - x0) * i) / 4, y0 + ((y1 - y0) * i) / 4, x0 + ((x1 - x0) * (i + 1)) / 4, y0 + ((y1 - y0) * (i + 1)) / 4, P.rb[i], w); c.lineCap = "round"; }
+    else seg(c, x0, y0, x1, y1, P.collar, w);
+    dot(c, (g ? -2 : -0.6) - sh * 0.5, 7.4, 1.6, P.tag); // a plaquinha vai junto
+  }
+  function dogHead(c, D) { // por cima de tudo (depois da cabeça e da orelha): lenço, gravata-borboleta, chapéu de festa e laço
+    const P = D.pal, g = D.kind === 0, ac = P.acc;
+    if (ac === "bandana") { // lenço: triângulo que cai embaixo do queixo, de bolinhas ou xadrez
+      const ax = g ? 0.2 : 1.1, ty = g ? 3 : 2.6, a = [ax - 4.4, ty], b = [ax + 4.8, ty + 0.5], t = [ax + 0.2, ty + 8.4];
+      c.fillStyle = P.a1; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(t[0], t[1]); c.closePath(); c.fill();
+      if (P.pat === "check") { c.save(); c.clip(); c.fillStyle = P.a2; for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2 === 0) c.fillRect(ax - 4.6 + i * 2.5, ty - 0.2 + j * 2.4, 2.5, 2.4); c.restore(); }
+      else { dot(c, ax - 1.9, ty + 1.9, 0.95, P.a2); dot(c, ax + 1.9, ty + 2.3, 0.95, P.a2); dot(c, ax, ty + 4.6, 0.95, P.a2); dot(c, ax + 0.2, ty + 6.9, 0.65, P.a2); }
+      c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(t[0], t[1]); c.closePath(); c.strokeStyle = LINE; c.lineWidth = 0.9; c.stroke();
+    } else if (ac === "bowtie") { // gravata-borboleta embaixo do queixo
+      const bx = g ? 0.4 : 1.4, by = g ? 4.9 : 4.4;
+      tri(c, bx, by, bx - 5, by - 3.1, bx - 5, by + 3.1, P.a1, true); tri(c, bx, by, bx + 5, by - 3.1, bx + 5, by + 3.1, P.a1, true);
+      dot(c, bx, by, 1.5, P.a2); c.strokeStyle = LINE; c.lineWidth = 0.7; c.beginPath(); c.arc(bx, by, 1.5, 0, TAU); c.stroke();
+    } else if (ac === "hat") { // cone de festa com bolinhas e pompom
+      const bx = g ? 3.2 : 2.6, by = g ? -7.5 : -6.2, H = g ? 9.5 : 8.5;
+      tri(c, bx - 3.5, by + 1, bx + 3.5, by + 1, bx + 0.8, by - H, P.a1, true);
+      dot(c, bx - 0.5, by - 1.8, 0.9, P.a2); dot(c, bx + 1.4, by - 4.2, 0.8, P.a2); dot(c, bx + 0.4, by - 6.4, 0.6, P.a2);
+      dot(c, bx + 0.8, by - H, 1.5, P.a2); c.strokeStyle = LINE; c.lineWidth = 0.7; c.beginPath(); c.arc(bx + 0.8, by - H, 1.5, 0, TAU); c.stroke();
+    } else if (ac === "bow") { // laço na cabeça, na base da orelha
+      const bx = g ? 0.6 : 0.8, by = g ? -7.4 : -6.2;
+      tri(c, bx, by, bx - 3.6, by - 2.8, bx - 3.6, by + 2.4, P.a1, true); tri(c, bx, by, bx + 3.6, by - 2.8, bx + 3.6, by + 2.4, P.a1, true);
+      dot(c, bx, by, 1.3, P.a2); c.strokeStyle = LINE; c.lineWidth = 0.7; c.beginPath(); c.arc(bx, by, 1.3, 0, TAU); c.stroke();
+    }
+  }
 
   function dogSide(c, D) {
     const P = D.pal, guard = D.kind === 0, mode = D.mode, flee = mode === "flee", chase = mode === "chase", search = mode === "search";
@@ -478,6 +536,7 @@
     const nX = bx + rx - 2.4, nY = by - ry * 0.62;
     c.save(); c.translate(nX, nY); c.rotate(D.headA);
     seg(c, guard ? -3 : -1.4, guard ? -2 : -3, guard ? -2.2 : -0.8, 6.2, P.collar, guard ? 3.8 : 3); dot(c, guard ? -2 : -0.6, 7.2, 1.5, P.tag); // coleira (atrás da cabeça) e plaquinha
+    if (P.wide) dogNeck(c, D); // (skins da lojinha: coleira larga ou de arco-íris)
     if (guard) { // cabeça robusta de focinho largo e curto, orelhas caídas
       ovalL(c, 3.6, -2.4, 6.8, 6.2, P.fur);
       oval(c, 9.5, 0.6, 4.6, 3.5, P.light); c.strokeStyle = LINE; c.lineWidth = 0.8; c.stroke();
@@ -500,6 +559,7 @@
       if (flee) { dot(c, ex, ey, 2, "#ffffff"); dot(c, ex + 0.4, ey, 1, "#111"); } else if (D.blink) seg(c, ex - 1.2, ey, ex + 1.2, ey, "#111", 1); else { dot(c, ex, ey, chase ? 1.15 : 1.3, "#111"); dot(c, ex + 0.45, ey - 0.45, 0.45, "#fff"); }
       if (chase) seg(c, 3, ey - 2.8, 7, ey - 1.4, P.dark, 1.4);
     }
+    if (P.acc) dogHead(c, D); // (skins da lojinha: lenço, gravata, chapéu ou laço)
     c.restore();
   }
 
@@ -513,7 +573,7 @@
     const idx = floor(num(d.idx, 0)), coat = ((idx % 4) + 4) % 4, calm = !!o.calm, frozen = !!d.frozen;
     const ti = calm ? 0 : num(o.time, 0), ph0 = idx * 1.7;
     const flee = mode === "flee", chase = mode === "chase", search = mode === "search", idle = mode === "idle";
-    const P = dogPal(kind, coat, frozen ? 2 : flee ? 1 : 0);
+    const P = dogPal(kind, coat, frozen ? 2 : flee ? 1 : 0, o.look);
     LINE = P.line;
     DS.pal = P; DS.kind = kind; DS.mode = mode; DS.calm = calm; DS.frozen = frozen;
     DS.stretch = chase ? 1.1 : 1;
@@ -552,11 +612,25 @@
     { fur: "#a8744a", dark: "#7c5232", belly: "#d3ad86", ear: "#e7a3ad", eye: "#1a1a1f" },
     { fur: "#f4efe8", dark: "#d6cec2", belly: "#fffaf3", ear: "#f3a6b4", eye: "#b3263a" },
   ];
+  // enfeites das skins do ratinho (0.19.0): `lk.c1` e `lk.c2` = as duas cores do enfeite (corpo do ratinho em coordenadas locais: cabeça em (5.9, 0.2), pescoço em x ≈ 3,5)
+  function mouseCap(c, lk) { // gorrinho de tricô em cone, entre as orelhas: faixa clara embaixo e pompom na ponta (que cai para trás)
+    const c1 = lk.c1 || "#e8403a", c2 = lk.c2 || "#ffffff";
+    tri(c, 2.4, -3.3, 8.6, -3.1, 4.2, -9.8, c1, true);
+    c.fillStyle = c2; c.beginPath(); c.moveTo(2.1, -2.5); c.lineTo(8.9, -2.3); c.lineTo(8.4, -4.2); c.lineTo(2.6, -4.4); c.closePath(); c.fill(); c.strokeStyle = LINE; c.lineWidth = 0.6; c.stroke();
+    dot(c, 4.1, -10, 1.6, c2); c.strokeStyle = LINE; c.lineWidth = 0.6; c.beginPath(); c.arc(4.1, -10, 1.6, 0, TAU); c.stroke();
+  }
+  function mouseScarf(c, lk, ti, calm) { // cachecol de duas cores no pescoço, com a ponta caída atrás
+    const c1 = lk.c1 || "#e8403a", c2 = lk.c2 || "#ffffff", fl = calm ? 0 : sin(ti * 6) * 0.4;
+    seg(c, 3, 3, 1.3 + fl, 6.8, LINE, 3.6); seg(c, 3, 3, 1.3 + fl, 6.8, c1, 2.4); seg(c, 2.4 + fl * 0.5, 5.2, 0.4 + fl, 5.6, c2, 0.8);
+    seg(c, 3.5, -1.8, 3.3, 3.8, LINE, 3.9); seg(c, 3.5, -1.8, 3.3, 3.8, c1, 2.7);
+    seg(c, 2.1, -0.2, 4.7, -0.2, c2, 0.9); seg(c, 2.1, 2.2, 4.5, 2.2, c2, 0.9);
+  }
   function drawMouse(ctx, it, o) {
     if (!ctx) return;
     A0 = alphaIn(ctx);
     it = it || {}; o = o || {};
-    const x = num(it.x, 0), y = num(it.y, 0), M = MICE[((floor(num(it.variant, 0)) % 3) + 3) % 3];
+    const vr = ((floor(num(it.variant, 0)) % 3) + 3) % 3, lk = o.look, M = lk && lk.coats && lk.coats.length ? lk.coats[vr % lk.coats.length] : MICE[vr]; // (skin da lojinha: outra pelagem e/ou um enfeite)
+    const x = num(it.x, 0), y = num(it.y, 0);
     const calm = !!o.calm, ti = calm ? 0 : num(o.time, 0), ph = x * 0.13 + y * 0.07, dir = (floor(x / 16) + floor(y / 16)) & 1 ? -1 : 1;
     const br = sin(ti * 3 + ph) * 0.3, tw = sin(ti * 13 + ph) * 0.35, twitch = !calm && mod(ti + ph, 3.1) < 0.16 ? -0.35 : 0;
     ctx.save(); LINE = "rgba(28,16,8,.5)";
@@ -573,6 +647,8 @@
     tri(ctx, 8.5, -1.7, 12.7, 0.9 + tw * 0.4, 8.5, 2.8, M.fur, true); // focinho pontudo
     ovalL(ctx, 3.8, -3.3 + twitch * 0.5, 2.7, 2.8, M.fur, twitch); oval(ctx, 3.9, -3.1 + twitch * 0.5, 1.6, 1.8, M.ear, twitch); // orelha grande
     ovalL(ctx, 6.9, -3.5, 2.0, 2.2, M.dark, 0.2, 0.7); oval(ctx, 6.9, -3.4, 1.1, 1.3, M.ear);
+    if (lk && lk.acc === "cap") mouseCap(ctx, lk);
+    if (lk && lk.acc === "scarf") mouseScarf(ctx, lk, ti, calm);
     dot(ctx, 12.4, 0.8 + tw * 0.4, 1.1, "#e57f93");
     dot(ctx, 7.7, -0.5, 1, M.eye); dot(ctx, 8, -0.9, 0.38, "#fff");
     ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = 0.55; ctx.beginPath();
@@ -581,12 +657,30 @@
   }
 
   const AGILE = ["#d3d7de", "#f1e2c6", "#f3cfd6", "#cddbe9"];
+  // enfeites das skins do camundongo ágil (0.19.0): gorro, laço ou faixa de corredor; `run` = correndo (orelhas para trás) ou parado, sentadinho
+  function agileAcc(c, lk, run, ti, calm) {
+    const c1 = lk.c1 || "#e8403a", c2 = lk.c2 || "#ffffff", ac = lk.acc, wig = calm ? 0 : sin(ti * 14) * 0.9;
+    if (ac === "cap") { // gorro de tricô com pompom
+      const cx = run ? 4.8 : 3.1, cy = run ? -1.5 : -2.9, rx = run ? 2.8 : 3.3, ry = run ? 2.1 : 2.5;
+      c.fillStyle = c1; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, PI, TAU); c.closePath(); c.fill(); c.strokeStyle = LINE; c.lineWidth = 0.7; c.stroke();
+      c.fillStyle = c2; c.fillRect(cx - rx - 0.2, cy - 0.1, 2 * rx + 0.4, 1.4); c.strokeStyle = LINE; c.lineWidth = 0.5; c.strokeRect(cx - rx - 0.2, cy - 0.1, 2 * rx + 0.4, 1.4);
+      dot(c, cx - (run ? rx - 0.4 : 0.3), cy - ry - 0.5, 1.15, c2); c.beginPath(); c.arc(cx - (run ? rx - 0.4 : 0.3), cy - ry - 0.5, 1.15, 0, TAU); c.stroke();
+    } else if (ac === "bow") { // laço entre as orelhas
+      const bx = run ? 4.2 : 3.2, by = run ? -3.6 : -5.2;
+      tri(c, bx, by, bx - 3.4, by - 2.5, bx - 3.4, by + 2.3, c1, true); tri(c, bx, by, bx + 3.4, by - 2.5, bx + 3.4, by + 2.3, c1, true);
+      dot(c, bx, by, 1.3, c2); c.strokeStyle = LINE; c.lineWidth = 0.6; c.beginPath(); c.arc(bx, by, 1.3, 0, TAU); c.stroke();
+    } else if (ac === "band") { // faixa de corredor na testa, com as pontas ao vento
+      const ax = run ? 3.4 : 0.4, ay = run ? -2.2 : -2.5, bx = run ? 7.6 : 6.3, by = run ? -0.4 : -2.5;
+      seg(c, ax, ay, ax - 4.2, ay - 1 + wig, c1, 1.2); seg(c, ax, ay, ax - 3.8, ay + 1.1 + wig, c1, 1.2);
+      seg(c, ax, ay, bx, by, LINE, 2.6); seg(c, ax, ay, bx, by, c1, 1.7); seg(c, (ax + bx) / 2 - 0.4, (ay + by) / 2 - 0.2, (ax + bx) / 2 + 0.4, (ay + by) / 2 + 0.2, c2, 0.9);
+    }
+  }
   function drawAgileMouse(ctx, b, o) {
     if (!ctx) return;
     A0 = alphaIn(ctx);
     b = b || {}; o = o || {};
     const x = num(b.x, 0), y = num(b.y, 0), vx = num(b.vx, 0), vy = num(b.vy, 0), s = clamp(num(o.r, 8), 2, 40) / 8;
-    const calm = !!o.calm, ti = calm ? 0 : num(o.time, 0), hue = floor(num(b.hue, 0)), F = AGILE[((hue % 4) + 4) % 4], sp = hypot(vx, vy), run = sp >= 8;
+    const calm = !!o.calm, ti = calm ? 0 : num(o.time, 0), hue = floor(num(b.hue, 0)), lk = o.look, hi = ((hue % 4) + 4) % 4, F = lk && lk.coats && lk.coats.length ? lk.coats[hi % lk.coats.length] : AGILE[hi], sp = hypot(vx, vy), run = sp >= 8;
     const side = vx < -0.5 ? -1 : vx > 0.5 ? 1 : hue & 1 ? -1 : 1, ang = run ? atan2(vy, vx * side) : 0;
     ctx.save(); LINE = "rgba(28,16,8,.45)";
     ctx.globalAlpha = A0 * (0.24); oval(ctx, x, y + 6.2 * s, 7.5 * s, 2.3 * s, "#000000"); ctx.globalAlpha = A0;
@@ -600,6 +694,7 @@
       ovalL(ctx, -0.5, 0.2, 6.2, 3.2, F, 0, 0.8);
       ovalL(ctx, 5.4, -0.1, 3, 2.4, F, 0, 0.8); tri(ctx, 7.4, -1.4, 10.4, 0.2, 7.4, 1.6, F, true); dot(ctx, 10.2, 0.2, 0.9, "#e57f93");
       ovalL(ctx, 3.1, -2.2, 1.6, 1.8, F, -0.9, 0.7); oval(ctx, 3.0, -2.1, 0.8, 1, "#e7a3ad", -0.9);
+      if (lk && lk.acc) agileAcc(ctx, lk, true, ti, calm);
       dot(ctx, 6, -0.7, 0.75, eyec);
     } else { // congelado: sentado, atento, orelhas em pé
       ovalL(ctx, -0.2, 1.7, 4.6, 3.8, F, 0, 0.8); oval(ctx, 0, 3.6, 3.4, 1.2, "rgba(255,255,255,.55)");
@@ -607,6 +702,7 @@
       oval(ctx, 3.4, 5.3, 1.7, 1, pink); oval(ctx, -2.6, 5.3, 1.7, 1, pink);
       ovalL(ctx, 3.3, -1.3, 3.3, 2.7, F, 0, 0.8); tri(ctx, 5.7, -2, 8.8, -0.4, 5.7, 0.9, F, true); dot(ctx, 8.6, -0.5, 0.85, "#e57f93");
       ovalL(ctx, 1.1, -3.9, 2.1, 2.5, F, -0.1, 0.8); oval(ctx, 1.1, -3.8, 1.2, 1.5, "#e7a3ad", -0.1); ovalL(ctx, 4.7, -3.9, 2.1, 2.5, F, 0.1, 0.8); oval(ctx, 4.7, -3.8, 1.2, 1.5, "#e7a3ad", 0.1);
+      if (lk && lk.acc) agileAcc(ctx, lk, false, ti, calm);
       dot(ctx, 5, -1.7, 1.05, eyec); dot(ctx, 5.3, -2.1, 0.4, "#fff");
     }
     ctx.restore();
@@ -623,6 +719,19 @@
     turbo: { fill: "#ff9f43", strand: "#c2570c", hi: "#ffd9a8", glow: "rgba(255,120,40,.36)" },
     magnet: { fill: "#cfa8ff", strand: "#8a4fd1", hi: "#efe0ff", glow: "rgba(190,130,255,.4)" },
   };
+  const YARN_KEYS = Object.freeze(Object.fromEntries(Object.keys(YARN).map((k) => [k, Object.freeze(Object.assign({}, YARN[k]))]))); // as cores-chave de cada tipo de poder (cópia congelada, para os testes): nenhuma skin as muda
+  // estampas das skins do novelo (0.19.0): só ENFEITE em branco ou cores pequenas por cima da cor do tipo (a cor-chave de cada poder, a marquinha e o brilho continuam como são); desenhadas dentro da bola (clip)
+  function heart(c, x, y, s) { c.beginPath(); c.moveTo(x, y + s * 0.95); c.bezierCurveTo(x - s * 1.7, y - s * 0.1, x - s * 0.7, y - s * 1.5, x, y - s * 0.5); c.bezierCurveTo(x + s * 0.7, y - s * 1.5, x + s * 1.7, y - s * 0.1, x, y + s * 0.95); c.closePath(); c.fill(); }
+  function yarnPattern(c, pat) {
+    if (pat === "stripes") { c.strokeStyle = "#ffffff"; c.lineWidth = 1.7; c.globalAlpha = A0 * 0.6; c.beginPath(); for (let i = -2; i <= 2; i++) { const k = i * 4.6, x1 = Math.min(7, k + 7), x2 = Math.max(-7, k - 7); c.moveTo(x1, k - x1); c.lineTo(x2, k - x2); } c.stroke(); } // (listras na diagonal "/", dentro do quadrado da bola)
+    else if (pat === "dots") { c.fillStyle = "#ffffff"; c.globalAlpha = A0 * 0.9; for (const [px, py] of [[-3.4, -3.6], [1, -4.6], [-5, 0.4], [-0.6, -0.4], [4, -1.8], [-3, 4], [1.6, 3.4], [5, 3.6]]) { c.beginPath(); c.arc(px, py, 1.15, 0, TAU); c.fill(); } }
+    else if (pat === "hearts") { c.fillStyle = "#ffffff"; c.globalAlpha = A0 * 0.95; heart(c, -3, -2.4, 2.1); heart(c, 3.2, -0.6, 2.1); heart(c, -1.6, 3.8, 2.1); heart(c, 4, 5, 1.3); }
+    else if (pat === "rainbow") { // arquinho de arco-íris (adesivo) embaixo à esquerda
+      c.globalAlpha = A0; c.lineCap = "butt"; c.lineWidth = 1.1;
+      c.strokeStyle = "#e8403a"; c.beginPath(); c.arc(-3.2, 4.6, 4, PI, TAU); c.stroke(); c.strokeStyle = "#ffc83d"; c.beginPath(); c.arc(-3.2, 4.6, 2.9, PI, TAU); c.stroke(); c.strokeStyle = "#3f86e0"; c.beginPath(); c.arc(-3.2, 4.6, 1.8, PI, TAU); c.stroke();
+      c.lineCap = "round"; dot(c, -7.2, 4.8, 1.2, "#ffffff"); dot(c, 0.8, 4.8, 1.2, "#ffffff");
+    }
+  }
   function drawYarn(ctx, it, o) {
     if (!ctx) return;
     A0 = alphaIn(ctx);
@@ -643,6 +752,7 @@
     for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(0, 0, 8.4, 3.6 + (i % 2) * 0.6, i * 0.8 - 0.2, 0, TAU); ctx.stroke(); }
     ctx.strokeStyle = K.hi; ctx.lineWidth = 0.8; ctx.globalAlpha = A0 * (0.7);
     for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(-0.6, -0.6, 7.2, 2.6, i * 1.05 + 0.4, 0, TAU); ctx.stroke(); }
+    if (o.look && o.look.pat) yarnPattern(ctx, o.look.pat); // (skin da lojinha: estampa por cima da cor do tipo)
     ctx.globalAlpha = A0 * (0.16); oval(ctx, 1.5, 3.2, 7, 4.5, "#000000"); ctx.globalAlpha = A0;
     ctx.restore();
     ctx.beginPath(); ctx.arc(0, 0, 7.2, 0, TAU); ctx.strokeStyle = LINE; ctx.lineWidth = 1.2; ctx.stroke();
@@ -694,6 +804,82 @@
     c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r); c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
     c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
     c.fillStyle = fill; c.fill(); if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1.4; c.stroke(); }
+  }
+
+  // ====================================================================================================================
+  //  O LUGAR ALTO (T) DAS SKINS DA LOJINHA (0.19.0): o tile de 32×32 inteiro, no lugar do lugar alto do ambiente (js/game.js só chama quando a skin em uso tem `style`)
+  // ====================================================================================================================
+  // Mesma linguagem dos lugares altos dos ambientes: topo claro com brilho na quina, face da frente mais escura, contorno suave e sombra COMPRIDA para baixo e para a direita, tudo dentro do tile.
+  // O topo (o chão onde o gatinho fica de pé) ocupa o meio do tile; campos de `look`: style ("wood"|"cushion"|"castle"|"tree"), top, face, edge, acc1, acc2 (cores; cada estilo tem as suas padrão).
+  const hexOr = (v, d) => (typeof v === "string" && (/^#[0-9a-f]{6}$/i.test(v) || /^rgba\(\s*\d{1,3},\s*\d{1,3},\s*\d{1,3},\s*(0|1|0?\.\d+)\s*\)$/i.test(v)) ? v : d);
+  function perchShade(c, x, y, ox, oy, w, h, round) { // sombra comprida: o mesmo contorno do objeto, deslocado em dois passos para baixo e para a direita (nunca sai do tile)
+    for (const [dx, dy, a] of [[3, 5, ".13"], [6, 9, ".17"]]) {
+      const sx = ox + dx, sy = oy + dy, ww = Math.max(0, Math.min(w, 32 - sx)), hh = Math.max(0, Math.min(h, 32 - sy));
+      if (ww <= 0 || hh <= 0) continue;
+      c.fillStyle = "rgba(0,0,0," + a + ")";
+      if (round) { c.beginPath(); c.ellipse(x + sx + ww / 2, y + sy + hh / 2, ww / 2, hh / 2, 0, 0, TAU); c.fill(); } else c.fillRect(x + sx, y + sy, ww, hh);
+    }
+  }
+  const PERCH = {
+    wood(c, x, y, L) { // prateleira de madeira: tampo de tábuas, frente escura e dois pezinhos
+      const top = hexOr(L.top, "#ecc88f"), face = hexOr(L.face, "#a9753f"), edge = hexOr(L.edge, "rgba(60,36,12,.62)"), grain = hexOr(L.acc1, "#c99a5c"), nail = hexOr(L.acc2, "#6e4a24");
+      perchShade(c, x, y, 3, 6, 26, 22);
+      c.fillStyle = nail; c.fillRect(x + 5, y + 27, 5, 4); c.fillRect(x + 22, y + 27, 5, 4);
+      c.fillStyle = face; c.fillRect(x + 3, y + 22, 26, 6);
+      c.fillStyle = top; c.fillRect(x + 3, y + 6, 26, 16);
+      c.strokeStyle = grain; c.lineWidth = 1; c.beginPath(); for (const yy of [10, 14, 18]) { c.moveTo(x + 4, y + yy); c.lineTo(x + 28, y + yy); } c.stroke(); // juntas das tábuas
+      c.strokeStyle = face; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x + 3, y + 25); c.lineTo(x + 29, y + 25); c.stroke(); c.globalAlpha = A0 * 0.35; c.strokeStyle = "#000000"; c.beginPath(); c.moveTo(x + 3, y + 25.5); c.lineTo(x + 29, y + 25.5); c.stroke(); c.globalAlpha = A0;
+      c.fillStyle = "rgba(255,255,255,.55)"; c.fillRect(x + 3, y + 6, 26, 1.6); c.fillRect(x + 3, y + 6, 1.6, 16); // brilho da quina de cima e da esquerda
+      for (const [nx, ny] of [[6.5, 9.5], [25.5, 9.5], [6.5, 19], [25.5, 19]]) dot(c, x + nx, y + ny, 0.9, nail);
+      c.strokeStyle = edge; c.lineWidth = 1; c.strokeRect(x + 3.5, y + 6.5, 25, 21.5); c.beginPath(); c.moveTo(x + 3, y + 22); c.lineTo(x + 29, y + 22); c.stroke();
+    },
+    cushion(c, x, y, L) { // almofadão redondo (pufe): disco de cima fofo, lateral mais escura, cordão e botão
+      const top = hexOr(L.top, "#ffc4dc"), face = hexOr(L.face, "#e48ab0"), edge = hexOr(L.edge, "rgba(110,36,76,.55)"), cord = hexOr(L.acc1, "#c8688f"), tuft = hexOr(L.acc2, "rgba(150,60,104,.4)");
+      perchShade(c, x, y, 4, 8, 26, 17, true);
+      c.fillStyle = face; c.fillRect(x + 3, y + 14, 26, 9); oval(c, x + 16, y + 23, 13, 6, face);
+      c.strokeStyle = edge; c.lineWidth = 1; c.beginPath(); c.ellipse(x + 16, y + 23, 13, 6, 0, 0, PI); c.stroke(); c.beginPath(); c.moveTo(x + 3, y + 14); c.lineTo(x + 3, y + 23); c.moveTo(x + 29, y + 14); c.lineTo(x + 29, y + 23); c.stroke();
+      oval(c, x + 16, y + 14, 13, 9, top);
+      c.strokeStyle = cord; c.lineWidth = 1.4; c.beginPath(); c.ellipse(x + 16, y + 14, 12.4, 8.4, 0, 0, TAU); c.stroke(); // cordão em volta do disco
+      c.strokeStyle = tuft; c.lineWidth = 0.9; c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * (PI / 3) + 0.5; c.moveTo(x + 16 + cos(a) * 2.2, y + 14 + sin(a) * 1.5); c.lineTo(x + 16 + cos(a) * 10, y + 14 + sin(a) * 6.6); } c.stroke(); // franzidos até o botão
+      dot(c, x + 16, y + 14, 2, cord);
+      c.globalAlpha = A0 * 0.5; oval(c, x + 11, y + 9.5, 6, 2.2, "#ffffff", -0.25); c.globalAlpha = A0;
+      c.strokeStyle = edge; c.lineWidth = 1; c.beginPath(); c.ellipse(x + 16, y + 14, 13, 9, 0, 0, TAU); c.stroke();
+    },
+    castle(c, x, y, L) { // castelinho de brinquedo: topo de pedra com ameias, parede da frente com porta e bandeirinha
+      const top = hexOr(L.top, "#dde5f6"), face = hexOr(L.face, "#8ea5cf"), edge = hexOr(L.edge, "rgba(30,40,84,.62)"), flag = hexOr(L.acc1, "#e8403a"), door = hexOr(L.acc2, "#3a2f5e");
+      perchShade(c, x, y, 3, 6, 26, 22);
+      c.fillStyle = face; c.fillRect(x + 3, y + 22, 26, 6.5);
+      c.strokeStyle = mixc(face, "#000000", 0.25); c.lineWidth = 0.9; c.beginPath(); c.moveTo(x + 3, y + 25.2); c.lineTo(x + 29, y + 25.2); for (const bx of [6, 12, 20, 26]) { c.moveTo(x + bx, y + 22); c.lineTo(x + bx, y + 25.2); } for (const bx of [9, 23]) { c.moveTo(x + bx, y + 25.2); c.lineTo(x + bx, y + 28.5); } c.stroke();
+      c.fillStyle = door; c.beginPath(); c.moveTo(x + 13, y + 28.5); c.lineTo(x + 13, y + 26); c.arc(x + 16, y + 26, 3, PI, 0); c.lineTo(x + 19, y + 28.5); c.closePath(); c.fill();
+      c.fillStyle = top; c.fillRect(x + 3, y + 6.5, 26, 15.5);
+      c.fillStyle = top; for (let i = 0; i < 5; i++) { const mx = x + 3 + i * 5.5; c.fillRect(mx, y + 2.6, 4, 4.4); c.strokeStyle = edge; c.lineWidth = 0.9; c.strokeRect(mx + 0.4, y + 3, 3.2, 3.8); } // ameias
+      c.strokeStyle = mixc(top, "#5c70a8", 0.45); c.lineWidth = 0.9; c.beginPath(); for (const [ax, ay, bx2] of [[5, 11, 14], [17, 11, 27], [5, 16, 10], [12, 16, 22], [24, 16, 27]]) { c.moveTo(x + ax, y + ay); c.lineTo(x + bx2, y + ay); } c.stroke(); // juntas das pedras
+      c.fillStyle = "rgba(255,255,255,.6)"; c.fillRect(x + 3, y + 6.5, 26, 1.4); c.fillRect(x + 3, y + 6.5, 1.4, 15.5);
+      c.strokeStyle = edge; c.lineWidth = 1; c.strokeRect(x + 3.5, y + 6.5, 25, 22); c.beginPath(); c.moveTo(x + 3, y + 22); c.lineTo(x + 29, y + 22); c.stroke();
+      c.fillStyle = "#6b5a3c"; c.fillRect(x + 25.6, y + 0.4, 1, 3.4); tri(c, x + 26.6, y + 0.4, x + 31.2, y + 1.9, x + 26.6, y + 3.4, flag, true); // bandeirinha na ameia da direita
+    },
+    tree(c, x, y, L) { // torre de arranhar: topo de carpete macio com borda, poste de corda embaixo e bolinha pendurada
+      const top = hexOr(L.top, "#e4d6fa"), face = hexOr(L.face, "#9c7fd0"), edge = hexOr(L.edge, "rgba(56,28,98,.58)"), rope = hexOr(L.acc1, "#d9c28c"), ball = hexOr(L.acc2, "#e8403a");
+      perchShade(c, x, y, 3, 6, 26, 22);
+      c.fillStyle = rope; c.fillRect(x + 12.5, y + 25, 7, 6.6); c.strokeStyle = mixc(rope, "#000000", 0.28); c.lineWidth = 0.9; c.beginPath(); for (const yy of [27, 29, 31]) { c.moveTo(x + 12.5, y + yy); c.lineTo(x + 19.5, y + yy - 1); } c.stroke();
+      rr(c, x + 3, y + 6, 26, 20, 5, face, null); // base escura (a borda)
+      rr(c, x + 3, y + 6, 26, 16.5, 5, top, null);
+      c.fillStyle = "rgba(255,255,255,.55)"; c.fillRect(x + 7, y + 6.5, 18, 1.4);
+      c.fillStyle = "rgba(120,92,180,.32)"; for (const [px, py] of [[8, 12], [13, 9.5], [20, 11], [24, 15], [10, 18], [17, 17.5], [6, 15.5], [22, 19]]) c.fillRect(x + px, y + py, 1.4, 1.4); // carpete felpudo
+      c.fillStyle = "rgba(130,100,190,.55)"; c.beginPath(); c.ellipse(x + 8.5, y + 18, 1.9, 1.5, 0, 0, TAU); c.fill(); for (const [px, py] of [[6.2, 15.4], [8.4, 14.6], [10.6, 15.4]]) { c.beginPath(); c.arc(x + px, y + py, 0.8, 0, TAU); c.fill(); } // patinha
+      rr(c, x + 3, y + 6, 26, 20, 5, "rgba(0,0,0,0)", edge); c.beginPath(); c.moveTo(x + 4, y + 22.5); c.lineTo(x + 28, y + 22.5); c.strokeStyle = edge; c.lineWidth = 0.9; c.stroke();
+      seg(c, x + 27, y + 14, x + 29.4, y + 21, edge, 0.9); dot(c, x + 29.4, y + 22.4, 2.2, ball); c.strokeStyle = edge; c.lineWidth = 0.7; c.beginPath(); c.arc(x + 29.4, y + 22.4, 2.2, 0, TAU); c.stroke(); dot(c, x + 28.7, y + 21.7, 0.7, "rgba(255,255,255,.8)");
+    },
+  };
+  function drawPerch(ctx, x, y, o) {
+    o = o || {};
+    const L = o.look, fn = L && typeof L.style === "string" ? PERCH[L.style] : null;
+    if (!ctx || !fn) return false;
+    A0 = alphaIn(ctx);
+    ctx.save(); ctx.lineJoin = "round"; ctx.lineCap = "round"; LINE = "rgba(28,16,8,.5)";
+    fn(ctx, num(x, 0), num(y, 0), L);
+    ctx.restore();
+    return true;
   }
 
   // ---------- efeitos curtos (t de 0 a 1) ----------
@@ -762,5 +948,5 @@
     ctx.restore();
   }
 
-  return { drawCat, drawDog, drawMouse, drawAgileMouse, drawYarn, drawPost, drawFx, growthStage, SKINS, skinById };
+  return { drawCat, drawDog, drawMouse, drawAgileMouse, drawYarn, drawPost, drawPerch, drawFx, growthStage, SKINS, skinById, YARN_KEYS };
 });
