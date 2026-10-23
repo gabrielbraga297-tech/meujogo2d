@@ -4143,7 +4143,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     // `catDefFrom(c)` = a conversão de uma fase de js/cat-levels.js; `defineCatLevels(lista)` = troca as 20 fases do Gatinho por uma lista nesse formato (false se não servir); `catLevels()` volta às de js/cat-levels.js (se houver).
     get stamina() { return stamina; }, set stamina(v) { stamina = clamp(Number(v) || 0, 0, 1); }, get winded() { return winded; }, set winded(v) { winded = Math.max(0, Number(v) || 0); },
     get wet() { return wet; }, set wet(v) { wet = Math.max(0, Number(v) || 0); }, get sprinting() { return sprintOn; }, get safe() { return safe; }, get darkness() { return darkness; },
-    catDefFrom(c) { return catDefFrom(c); },
+    catDefFrom(c) { return catDefFrom(c); }, buildLevel(def) { return buildLevel(def); }, // (só para testes: a conversão e a montagem de uma fase)
     defineCatLevels(list) {
       const defs = catGameFrom(list), g = gameOf("cat");
       if (!defs) return false;

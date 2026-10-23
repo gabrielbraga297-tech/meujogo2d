@@ -8756,6 +8756,220 @@ const PAGE_HELPERS = () => {
     ok(await page.textContent("#menu-player") === "ainda não escolhido" && await ev(page, () => __game.animal) === "dog", "sair da conta e recarregar volta ao Cachorrinho");
   });
 
+  // =====================================================================
+  // 0.18.0 (Gatinho, E2a): as MECÂNICAS do Gatinho no motor. Estas seções abrem as páginas com os mapas de verdade (`realCat: true`: js/cat-levels.js carregado) e,
+  // onde é preciso controlar tudo, trocam as fases do Gatinho por uma ARENA de teste (25×18, com P, 2 V, 1 R, muro de X, T e poças) com `__game.defineCatLevels`.
+  // =====================================================================
+  const CAT_ARENA = (() => {
+    const W = 25, H = 18, g = Array.from({ length: H }, (_, r) => Array.from({ length: W }, (_, c) => (r === 0 || r === H - 1 || c === 0 || c === W - 1 ? "#" : ".")));
+    const put = (ch, cells) => cells.forEach(([c, r]) => { g[r][c] = ch; });
+    put("P", [[2, 9]]); put("V", [[14, 3], [14, 14]]); put("R", [[20, 8]]);
+    put("X", Array.from({ length: 8 }, (_, i) => [8, 5 + i]));          // muro de obstáculos baixos: coluna 8, linhas 5 a 12 (os cães contornam pelas linhas 1 a 4 e 13 a 16)
+    put("T", [[5, 3], [6, 3], [19, 12]]);                                 // lugares altos
+    put("~", [[11, 9], [12, 9], [11, 10], [12, 10], [3, 14], [4, 14]]);   // poças
+    put("E", [[24, 8], [24, 9], [24, 10]]);                               // saída vertical na borda direita
+    return g.map((row) => row.join(""));
+  })();
+  const catArenaLevels = () => [
+    { id: 1, title: "Fase 1", place: "Arena de teste", note: "arena de teste do gatinho", map: CAT_ARENA, like: 3, rations: 6, bones: 2, boneMix: ["scare", "turbo"], balls: 2, extraLives: [1, 1], catSpeed: 1, special: { T: 2, water: 2 } },
+    { id: 2, title: "Fase 2", place: "Arena de teste", note: "arena com um novelo de cada tipo", map: CAT_ARENA, like: 3, rations: 8, bones: 4, boneMix: ["scare", "gold", "ice", "magnet"], balls: 1, extraLives: [1, 1], catSpeed: 1, special: { T: 2, water: 2 } },
+  ];
+  // ajudantes que rodam dentro da página
+  const CAT_PAGE = () => {
+    window.__at = (c, r) => { __game.player.x = c * 32 + 4; __game.player.y = r * 32 + 4; }; // o centro do gatinho no centro do tile (c, r)
+    window.__tileOf = (o) => [Math.floor((o.x + 12) / 32), Math.floor((o.y + 12) / 32)];
+    window.__mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // roda `frames` quadros com `keys` apertadas (nomes das teclas), devolve o que aconteceu a cada quadro; `stay`: teletransporta o gatinho de volta ao ponto de partida a cada quadro (assim não bate em nada)
+    window.__run = (frames, keys, o = {}) => {
+      const out = [], p0 = { x: __game.player.x, y: __game.player.y };
+      for (const k of keys) __t.press(k, true);
+      for (let i = 0; i < frames; i++) {
+        const x0 = __game.player.x, y0 = __game.player.y;
+        __game.tick(o.dt || 1 / 60);
+        out.push({ dx: __game.player.x - x0, dy: __game.player.y - y0, sprinting: __game.sprinting, stamina: __game.stamina, winded: __game.winded, wet: __game.wet, speed: __game.dogSpeed });
+        if (o.stay) { __game.player.x = p0.x; __game.player.y = p0.y; }
+      }
+      for (const k of keys) __t.press(k, false);
+      return out;
+    };
+  };
+  // abre uma página do Gatinho (mapas de verdade) já com a arena de teste e a fase `id` em jogo
+  async function catArena(pg, id = 1, { freeze = true, noCatch = false, query = "" } = {}) {
+    await fresh(pg, { name: "Totó", query });
+    await pg.evaluate(CAT_PAGE);
+    await ev(pg, ([L, id, freeze, noCatch]) => { __game.defineCatLevels(L); __game.setAnimal("cat"); __game.freezeVets = freeze; __game.noCatch = noCatch; __game.start(id); __game.items.forEach((it) => { it.life = false; }); }, [catArenaLevels(), id, freeze, noCatch]);
+  }
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (adaptador: as 20 fases de js/cat-levels.js viram fases do motor com as regras das do Cachorrinho)", async () => {
+    const cp = await newPage({ realCat: true });
+    await fresh(cp, { name: "Totó" });
+    const raw = await ev(cp, () => window.CatLevels.map((c) => ({ id: c.id, like: c.like, map: c.map, rations: c.rations, bones: c.bones, boneMix: c.boneMix, balls: c.balls, extraLives: c.extraLives, catSpeed: c.catSpeed, note: c.note, place: c.place, special: c.special })));
+    const g = await ev(cp, () => __game.games.map((x) => [x.id, x.ready, x.levels, x.total, x.rev, x.placeholder]));
+    ok(JSON.stringify(g) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", true, 20, 20, 1, false], ["bird", false, 0, 0, 1, false]]), `com js/cat-levels.js o Gatinho está pronto com as 20 fases dele (placeholder: não), revisão própria 1; o Cachorrinho segue na 2 (${JSON.stringify(g)})`);
+    ok(raw.length === 20 && raw.every((c, i) => c.id === i + 1 && c.like === i + 1), "js/cat-levels.js traz as 20 fases em ordem, cada uma imitando a fase de mesmo número do Cachorrinho");
+    const cmp = await ev(cp, () => {
+      const dog = __game.levels, cat = __game.levelsOf("cat"), raw = window.CatLevels, out = [];
+      raw.forEach((c, i) => {
+        const d = dog[i], k = cat[i], nV = c.map.join("").split("V").length - 1, nR = c.map.join("").split("R").length - 1;
+        const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+        out.push({
+          id: c.id,
+          rules: ["alertTiles", "lifePenalty", "minPoints", "bonePower", "crush", "touchEase", "respawnInPlace", "lifeCap", "mission", "missionBonus", "bonusStep"].filter((f) => !same(d[f], k[f])),
+          vets: k.vets.length === nV && k.vets.every((v) => same(v, d.vets[0])), cats: k.cats.length === nR && same(k.cat, d.cat),
+          own: k.rations === c.rations && k.bones === c.bones && k.balls === c.balls && same(k.extraLives, c.extraLives) && k.dogSpeed === c.catSpeed && k.note === c.note && k.title === `Fase ${c.id}` && k.blocks.length === 0,
+          mapR: !k.map.join("").includes("R"), mapSame: k.map.every((row, r) => row === c.map[r].replace(/R/g, ".")),
+        });
+      });
+      return out;
+    });
+    ok(cmp.every((c) => c.rules.length === 0), `cada fase do Gatinho copia as regras da fase que imita (alcance do "!", perda por vida, pontos mínimos, poder, esmagar, toque, renascer, vidas máximas, missão, bônus, degrau do bônus): ${JSON.stringify(cmp.filter((c) => c.rules.length).map((c) => [c.id, c.rules]))}`);
+    ok(cmp.every((c) => c.vets), "a configuração dos cães é a do agente da fase imitada repetida pelo número de V do mapa (a Fase 18 tem 7 cães, o Cachorrinho 8 agentes)");
+    ok(cmp.every((c) => c.cats), "os R do mapa viram os rastreadores (`cats`), com a configuração dos gatos da fase imitada");
+    ok(cmp.every((c) => c.own && c.mapR && c.mapSame), "do mapa do gato vêm os ratinhos, novelos, camundongos, vidas extras, nota, título e a velocidade do gatinho (catSpeed); o R vira chão no mapa; nenhuma peça móvel");
+    const sp = await ev(cp, () => __game.levelsOf("cat").map((l) => l.dogSpeed));
+    ok(sp[0] === 0.8 && sp[2] === 0.9 && sp.filter((v, i) => i !== 0 && i !== 2).every((v) => v === 1), `velocidade do gatinho: Fase 1 ×0,8, Fase 3 ×0,9, as outras ×1 (${sp.join(",")})`);
+    // ---- as fases montadas: símbolos, grafos e mecânicas ligadas ----
+    const sem = await ev(cp, () => {
+      const B = __game.builtOf("cat"), out = [];
+      for (let id = 1; id <= 20; id++) {
+        const lv = B[id], m = __game.levelsOf("cat")[id - 1].map, count = (ch) => m.join("").split(ch).length - 1;
+        let walkX = 0, walkT = 0, walkW = 0, walkDot = 0, walkOk = true, catEq = lv.catWalk === lv.walk;
+        m.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "X" && lv.walk[r][c]) walkX++; if (ch === "T" && lv.walk[r][c]) walkT++; if (ch === "~" && !lv.walk[r][c]) walkW++; if (ch === "." && !lv.walk[r][c]) walkDot++; if (ch === "#" && lv.walk[r][c]) walkOk = false; }));
+        out.push({ id, solidsOk: lv.solids.length === count("#") && lv.solids.every((s) => s.kind === "#"), low: lv.lowSolids.length === count("X") + count("T"), walkX, walkT, walkW, walkDot, walkOk, catEq, water: !!lv.water, refuge: !!lv.refuge, night: !!lv.night, sprint: !!lv.sprint, hasT: count("T") > 0, hasW: count("~") > 0, puddles: lv.waterTiles.length === count("~"), catMode: lv.catMode, exit: [lv.exitRect.w, lv.exitRect.h] });
+      }
+      return out;
+    });
+    ok(sem.every((s) => s.solidsOk && s.low), "no modo gato só a parede # é sólida para o gatinho; X e T ficam fora dos sólidos dele (só param as bolinhas)");
+    ok(sem.every((s) => s.walkX === 0 && s.walkT === 0 && s.walkW === 0 && s.walkDot === 0 && s.walkOk && s.catEq), "no grafo dos cães X e T são sólidos, ~ e . são chão, # é parede; o rastreador usa o mesmo grafo (não pula X nem T)");
+    ok(sem.every((s) => s.sprint && s.water === s.hasW && s.refuge === s.hasT && s.puddles && s.catMode), "a arrancada liga nas 20 fases; a poça só onde o mapa tem ~ e o lugar alto só onde tem T");
+    ok(JSON.stringify(sem.filter((s) => s.night).map((s) => s.id)) === "[18,19]", "a noite só nas Fases 18 e 19");
+    const exits = sem.map((s) => s.exit.join("x"));
+    ok(exits.every((e) => e === "32x96" || e === "96x32") && exits.includes("32x96") && exits.includes("96x32"), `a saída tem 3 tiles em linha, na vertical (nas bordas esquerda/direita) ou na horizontal (em cima/embaixo): ${[...new Set(exits)].join(", ")}`);
+    const dogs = await ev(cp, () => {
+      const B = __game.builtOf("dog");
+      return Object.values(B).every((l) => l.sprint === null && l.water === null && l.refuge === null && l.night === null && l.catMode === false && l.lowSolids.length === 0 && l.high === null && l.puddle === null && l.waterTiles.length === 0 && l.floorFree === l.walk && l.avoidTiles === l.trackTiles && l.postTiles === l.vetSpawns);
+    });
+    ok(dogs, "as 20 fases do Cachorrinho continuam sem nenhuma das mecânicas novas (sprint, water, refuge, night = null; sem X/T/~ especiais)");
+    // ---- os símbolos novos só valem no modo gato ----
+    const sym = await ev(cp, () => {
+      const rows = Array.from({ length: 10 }, (_, r) => Array.from({ length: 12 }, (_, c) => (r === 0 || r === 9 || c === 0 || c === 11 ? "#" : ".")));
+      rows[5][2] = "P"; rows[2][8] = "V"; rows[8][11] = "E"; rows[7][11] = "E"; rows[6][11] = "E"; rows[3][4] = "T"; rows[4][5] = "~"; rows[3][7] = "R"; rows[6][4] = "X";
+      const map = rows.map((r) => r.join("")), base = { id: 99, title: "Teste", map, vets: [__game.levels[2].vets[0]], rations: 1, bones: 0, extraLives: [0, 0], alertTiles: 4 };
+      const dogish = __game.buildLevel(base), catish = __game.buildLevel({ ...base, catMode: true });
+      return { dogT: dogish.walk[3][4], dogW: dogish.walk[4][5], dogX: dogish.walk[6][4], dogLow: dogish.lowSolids.length, dogCats: dogish.catSpawns.length, catT: catish.walk[3][4], catW: catish.walk[4][5], catX: catish.walk[6][4], catLow: catish.lowSolids.length, catCats: catish.catSpawns.map((c) => c.join(",")) };
+    });
+    ok(sym.dogT === true && sym.dogW === true && sym.dogX === false && sym.dogLow === 0 && sym.dogCats === 0, "sem catMode a buildLevel trata T, ~ e R como chão comum (só o X é obstáculo) e não cria rastreadores");
+    ok(sym.catT === false && sym.catW === true && sym.catX === false && sym.catLow === 2 && sym.catCats.join() === "7,3", `com catMode: T e X são sólidos para os cães, ~ é chão e o R do mapa é um rastreador (${JSON.stringify(sym)})`);
+    // ---- erros e valores inválidos ----
+    const bad = await ev(cp, () => {
+      const t = (f) => { try { f(); return "ok"; } catch (e) { return e.message; } };
+      const c0 = window.CatLevels[0];
+      return [t(() => __game.catDefFrom({ ...c0, like: 99 })), t(() => __game.catDefFrom({ ...c0, map: null })), t(() => __game.buildLevel({ ...__game.catDefFrom(c0), sprint: { factor: 5 } })), t(() => __game.buildLevel({ ...__game.catDefFrom(c0), water: { slow: 0 } })), t(() => __game.buildLevel({ ...__game.catDefFrom(c0), refuge: { wait: 0 } })), t(() => __game.buildLevel({ ...__game.catDefFrom(c0), night: { darkness: 2 } })), __game.defineCatLevels(null), __game.defineCatLevels([])];
+    });
+    ok(/sem fase do Cachorrinho/.test(bad[0]) && /sem fase do Cachorrinho/.test(bad[1]) && bad.slice(2, 6).every((m) => /Mecânica do Gatinho inválida/.test(m)) && bad[6] === false && bad[7] === false, `o adaptador e a buildLevel recusam fase sem fase para imitar e mecânicas com números fora dos limites (${JSON.stringify(bad)})`);
+    const hook = await ev(cp, () => { const a = __game.defineCatLevels(window.CatLevels.slice(0, 3)), n3 = __game.games[1].levels, b = __game.catLevels(); return [a, n3, b, __game.games[1].levels]; });
+    ok(hook[0] === true && hook[1] === 3 && hook[2] === true && hook[3] === 20, "o gancho de teste defineCatLevels troca as fases do Gatinho e catLevels() volta às de js/cat-levels.js");
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (X e T só o gatinho atravessa; cães e rastreadores não; itens fora de X, T e poças)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    const lv = await ev(cp, () => { const l = __game.builtOf("cat")[1]; return { cats: __game.cats.map((c) => [Math.floor(c.cx / 32), Math.floor(c.cy / 32)]), vets: __game.vets.map((v) => [Math.floor(v.cx / 32), Math.floor(v.cy / 32)]), cols: l.cols, rows: l.rows, exit: [l.exitRect.x, l.exitRect.y, l.exitRect.w, l.exitRect.h] }; });
+    ok(lv.cols === 25 && lv.rows === 18 && JSON.stringify(lv.vets) === "[[14,3],[14,14]]" && JSON.stringify(lv.cats) === "[[20,8]]" && JSON.stringify(lv.exit) === "[768,256,32,96]", `a arena: 25×18, 2 cães (V), 1 rastreador (R) e a saída vertical na borda (${JSON.stringify(lv)})`);
+    // ---- o gatinho atravessa o muro de X (e fica 15% mais lento enquanto está sobre ele) ----
+    const cross = await ev(cp, () => {
+      __at(6, 8); __game.tick(0.001); const base = __game.dogSpeed;
+      const xs = __run(120, ["d"]), tiles = []; // 2 s andando para a direita a partir da coluna 6: passa pela coluna 8
+      __at(8, 8); __game.tick(0.001); const onX = __game.dogSpeed;
+      __at(8, 4); __game.tick(0.001); const off = __game.dogSpeed; // linha 4 da coluna 8: chão livre
+      __at(6, 8); const t0 = __game.time; __t.hold("d", 90);
+      return { base, onX, off, endTile: __tileOf(__game.player), state: __game.state, lives: __game.lives };
+    });
+    ok(cross.endTile[0] >= 11 && cross.state === "playing", `o gatinho atravessa o muro de obstáculos baixos (de ${6} para a coluna ${cross.endTile[0]})`);
+    ok(Math.abs(cross.onX - cross.base * 0.85) < 1e-6 && cross.off === cross.base && cross.base === 252, `sobre um X o gatinho anda a 85% (pulo suave: ${cross.onX.toFixed(1)} de ${cross.base} px/s); fora dele a velocidade é a normal`);
+    const lowSound = await ev(cp, () => __game.sounds.map((e) => e.name).filter((n) => /jump|pulo/i.test(n)).length);
+    ok(lowSound === 0, "o pulo ainda não tem som (E2b)");
+    // ---- T também se atravessa ----
+    await ev(cp, () => { __at(4, 3); __t.hold("d", 60); });
+    ok((await ev(cp, () => __tileOf(__game.player)))[0] >= 6, "o gatinho passa por cima do lugar alto (T) como pelo chão");
+    // ---- os cães e o rastreador contornam: nunca pisam em X nem em T ----
+    const walkers = await ev(cp, () => {
+      __at(2, 9); __game.freezeVets = false; __game.noCatch = true; __game.catsThaw = true;
+      const lv = __game.builtOf("cat")[1], bad = [], seen = new Set();
+      const sample = () => { for (const e of [...__game.vets, ...__game.cats]) { const c = Math.floor(e.cx / 32), r = Math.floor(e.cy / 32); seen.add(c + "," + r); if (!lv.walk[r][c]) bad.push([c, r]); } };
+      for (let i = 0; i < 40 * 20; i++) { __game.tick(0.05); sample(); if (i === 300) { __at(16, 9); } if (i === 600) { __at(2, 3); } }
+      return { bad: bad.length, tiles: seen.size, leftSide: [...seen].some((t) => +t.split(",")[0] < 8), rightSide: [...seen].some((t) => +t.split(",")[0] > 8) };
+    });
+    ok(walkers.bad === 0 && walkers.tiles > 60, `em 40 s de patrulha e perseguição nenhum cão nem rastreador pisou em X ou T (${walkers.tiles} tiles diferentes visitados)`);
+    ok(walkers.leftSide && walkers.rightSide, "eles passam dos dois lados do muro (pelos corredores livres), mas nunca por cima dele");
+    // perseguição: o cão está do outro lado do muro e o gatinho a 3 tiles em linha reta, mas o caminho dele dá a volta
+    const around = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = true;
+      const v = __game.vets[0], t0 = __game.time;
+      __game.cats.forEach((c) => { c.cx = 20 * 32 + 16; c.cy = 15 * 32 + 16; c.mode = "patrol"; c.cool = 99; });
+      __game.vets[1].cx = 14 * 32 + 16; __game.vets[1].cy = 15 * 32 + 16; __game.vets[1].cool = 99;
+      v.cx = 7 * 32 + 16; v.cy = 8 * 32 + 16; v.leg = null; v.mode = "chase"; v.modeT = 30; v.chaseAge = 0; v.idle = 0; v.cool = 0;
+      __at(10, 8);
+      let early = null, arrival = null, crossed = 0;
+      for (let i = 0; i < 400; i++) {
+        __game.tick(0.05); __game.player.moving = false;
+        const c = Math.floor(v.cx / 32), r = Math.floor(v.cy / 32), d = Math.hypot(v.cx - (__game.player.x + 12), v.cy - (__game.player.y + 12));
+        if (c === 8 && r >= 5 && r <= 12) crossed++;
+        if (i === 20) early = d; // 1 s depois
+        if (arrival === null && d < 40) arrival = __game.time - t0;
+      }
+      return { early, arrival, crossed };
+    });
+    ok(around.crossed === 0 && around.early > 80 && around.arrival > 2 && around.arrival < 12, `o cão em perseguição não corta pelo muro de X (1 s depois ainda está a ${Math.round(around.early)} px; chegou ao gatinho em ${around.arrival && around.arrival.toFixed(1)} s dando a volta)`);
+    // ---- itens e camundongos: nunca em X, T, poça, saída, início nem postos; o sorteio com a mesma semente é o mesmo ----
+    const items = await ev(cp, () => {
+      const lv = __game.builtOf("cat")[1], m = lv.map || null, bad = [], runs = [];
+      const forbidden = (c, r) => !lv.walk[r][c] || lv.puddle[r][c] || lv.exitTiles.some(([ec, er]) => ec === c && er === r) || (c === lv.spawnTile[0] && r === lv.spawnTile[1]) || lv.postTiles.some(([pc, pr]) => pc === c && pr === r);
+      for (let seed = 1; seed <= 60; seed++) {
+        __game.setRand(__mul(seed)); __game.start(1);
+        const tiles = [...__game.items.map((i) => [(i.x - 8) / 32, (i.y - 8) / 32]), ...__game.balls.map((b) => [Math.floor(b.x / 32), Math.floor(b.y / 32)])];
+        for (const [c, r] of tiles) if (forbidden(c, r)) bad.push([seed, c, r]);
+        if (seed <= 2) runs.push(JSON.stringify(__game.items.map((i) => [i.x, i.y, i.bone, i.kind])));
+      }
+      __game.setRand(__mul(2)); __game.start(1); const again = JSON.stringify(__game.items.map((i) => [i.x, i.y, i.bone, i.kind]));
+      __game.setRand(null);
+      return { bad, n: __game.items.length, nb: __game.balls.length, same: again === runs[1], diff: runs[0] !== runs[1] };
+    });
+    ok(items.bad.length === 0 && items.n === 8 && items.nb === 2, `em 60 sorteios (6 ratinhos, 2 novelos e 2 camundongos) nenhum item nasce em X, T, poça, saída, início ou posto de cão/rastreador (${JSON.stringify(items.bad.slice(0, 3))})`);
+    ok(items.same && items.diff, "o sorteio é determinístico pela semente (a mesma semente dá os mesmos lugares; sementes diferentes, lugares diferentes)");
+    // depois de perder uma vida os itens que faltam mudam de lugar, com as mesmas regras
+    const reloc = await ev(cp, () => {
+      const lv = __game.builtOf("cat")[1], bad = [];
+      __game.setRand(__mul(7)); __game.start(1); __game.freezeVets = true; __game.noCatch = false;
+      for (let k = 0; k < 6; k++) {
+        __game.items.forEach((it) => { it.life = false; });
+        for (let i = 0; i < 50 && __game.invuln > 0; i++) __game.tick(0.05);
+        __at(10, 15); __game.tick(0.01);
+        const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01);
+        for (const it of __game.items) { const c = (it.x - 8) / 32, r = (it.y - 8) / 32; if (!lv.walk[r][c] || lv.puddle[r][c]) bad.push([c, r]); }
+        if (__game.state !== "playing") break;
+      }
+      __game.setRand(null);
+      return { bad: bad.length, lost: __game.livesLost };
+    });
+    ok(reloc.lost >= 2 && reloc.bad === 0, `ao perder vidas os itens trocam de lugar sem cair em X, T nem poça (${reloc.lost} vidas perdidas)`);
+    // ---- os camundongos batem nos X e T (não atravessam como o gatinho) ----
+    const mice = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true;
+      __game.balls = [{ x: 7 * 32 + 16, y: 8 * 32 + 16, vx: 300, vy: 0, taken: false, hue: 0 }, { x: 4 * 32 + 16, y: 3 * 32 + 16, vx: 300, vy: 0, taken: false, hue: 1 }];
+      __at(20, 15);
+      let maxX0 = 0, maxX1 = 0, back = false;
+      for (let i = 0; i < 60; i++) { __game.tick(1 / 60); maxX0 = Math.max(maxX0, __game.balls[0].x); maxX1 = Math.max(maxX1, __game.balls[1].x); if (__game.balls[0].vx < 0) back = true; }
+      return { maxX0, maxX1, back };
+    });
+    ok(mice.maxX0 <= 8 * 32 - 8 + 0.01 && mice.maxX1 <= 5 * 32 - 8 + 0.01 && mice.back, `o camundongo que rola para o muro de X (ou para um T) bate e volta, não atravessa (parou em x=${Math.round(mice.maxX0)} e x=${Math.round(mice.maxX1)})`);
+    await cp.context().close();
+  });
+
+//E2A-NEXT
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
