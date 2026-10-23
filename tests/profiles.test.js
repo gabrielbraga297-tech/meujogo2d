@@ -110,7 +110,15 @@ test("Cachorrinho: placar (RAÇÕES, OSSOS, BOLINHAS, PODER), sons e textos fixo
   assert.strictEqual(h.powerTitle, "Poder do osso: quanto falta para os carteiros voltarem a ser agentes da carrocinha");
   assert.strictEqual(h.powerOn(25), "Poder do osso: 25 segundos");
   assert.strictEqual(h.powerOff, "Poder do osso: desligado");
-  assert.deepStrictEqual(dog.sfx, { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow" });
+  assert.deepStrictEqual(dog.sfx, { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
+    ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" }); // (0.18.0, E2b-2: os sons de sempre; os campos novos do Gatinho ficam vazios = nenhum som novo no Cachorrinho)
+  for (const k of ["ballMore", "alert", "hurt", "winMore", "splash", "shake", "jump", "dash", "pant"]) assert.strictEqual(dog.sfx[k], "", "o Cachorrinho não toca som novo: sfx." + k);
+  assert.strictEqual(dog.ui.shopTitle, null);
+  assert.strictEqual(dog.shop.preview("Dálmata"), "Prévia da skin Dálmata");
+  assert.strictEqual(dog.shop.inUse("Dálmata"), "Skin em uso: Dálmata.");
+  assert.strictEqual(dog.shop.bought("Dálmata", 0), "Você comprou a skin Dálmata e já está usando! Não sobrou nenhum petscoin.");
+  assert.strictEqual(dog.shop.bought("Dálmata", 1), "Você comprou a skin Dálmata e já está usando! Sobrou 1 petscoin.");
+  assert.strictEqual(dog.shop.bought("Dálmata", 5), "Você comprou a skin Dálmata e já está usando! Sobraram 5 petscoin.");
   assert.strictEqual(dog.skins, null);
   assert.ok(Object.values(dog.ui).every((v) => v === null), "o Cachorrinho usa o texto que já está no index.html");
 });
@@ -131,9 +139,9 @@ test("Gatinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins
   for (const k of Object.keys(a)) if (k in b && !NULLABLE(k)) assert.strictEqual(b[k], a[k], `tipo diferente em ${k}: ${a[k]} × ${b[k]}`);
   // tudo o que o Cachorrinho tem como texto fixo (ui.*), o Gatinho também tem (e como texto, não null)
   for (const k of Object.keys(dog.ui)) assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
-  // as skins do Gatinho cobrem as skins do motor (mesmos ids)
-  assert.deepStrictEqual(Object.keys(cat.skins).sort(), ["", "arco-iris", "astronauta", "chocolate", "cinza", "dalmata", "dourado", "pirata", "super"]);
-  for (const v of Object.values(cat.skins)) assert.ok(v.name && v.text);
+  // (0.18.0, E2b-2) as skins do Gatinho vêm de CatArt.SKINS (12 skins), não do catálogo do Cachorrinho: o perfil não troca nome nem frase
+  assert.strictEqual(cat.skins, null);
+  assert.strictEqual(cat.ui.shopTitle, "Lojinha de skins do gatinho");
   // os reforços têm os mesmos ids e todos têm nome e texto
   assert.deepStrictEqual(Object.keys(cat.reinforce), Object.keys(dog.reinforce));
   for (const v of Object.values(cat.reinforce)) assert.ok(v.name && v.text);
@@ -150,7 +158,13 @@ test("Gatinho: substantivos do gato (ratinho, novelo, cão, cão afugentado) e s
   assert.strictEqual(cat.say.winBalls(50), " + camundongos: 50");
   assert.strictEqual(cat.say.foes(5, 2, true), "5 cães e 2 rastreadores"); // (0.18.0, E2a: os `R` do mapa são os cães rastreadores)
   assert.strictEqual(cat.say.foes(6, 1, false), "6 cães e 1 rastreador");
-  assert.strictEqual(cat.sfx.alert2, "", "o rastreador do Gatinho não mia ao notar o gatinho");
+  // (E2b-2) os sons do Gatinho, pelo contrato do README ("Sons do Gatinho")
+  assert.deepStrictEqual(cat.sfx, { ration: "squeak", bone: "yarn", capture: "capture", transform: "hiss", beat: "postman", win: { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" }, alert2: "growl",
+    ball: "squeak", ballMore: "purr", alert: "woof", alert2Every: 3, alert2Near: 8, hurt: "yowl", winMore: "purr", splash: "splash", shake: "shake", jump: "jump", dash: "dash", pant: "pant" });
+  assert.strictEqual(cat.sfx.alert2, "growl", "o rastreador do Gatinho rosna (não mia) ao começar a perseguir");
+  assert.strictEqual(cat.shop.preview("Preto"), "Prévia da skin Preto do gatinho");
+  assert.strictEqual(cat.shop.inUse("Preto"), "Skin do gatinho em uso: Preto.");
+  assert.strictEqual(cat.shop.bought("Preto", 3), "Você comprou a skin Preto para o gatinho e já está usando! Sobraram 3 petscoin.");
   assert.strictEqual(cat.fx.turbo(8, 40), "+40% de velocidade e arrancada sem cansar por 8 s!");
   assert.strictEqual(cat.say.beat(100), "Você afugentou o cão! +100 pontos");
   assert.strictEqual(cat.say.winPrey(300), "Ratinhos: 300");

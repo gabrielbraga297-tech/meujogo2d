@@ -12,7 +12,8 @@
 //    esse inimigo ficam sem ele e o aviso de "assustou" cai no do inimigo principal (veja `say.beat2` e `lose.foe2`).
 //  - `say.*`, `lose.*`, `fx.*`, `effect.*`, `mission.*`, `hud.*`: funções (ou textos) que o motor chama com os números; devolvem a frase pronta, já com a gramática (artigos, gênero, plural) do bichinho.
 //  - `reinforce[id]`: { name, text } de cada reforço (os ids, máximos e a fase em que entram são do motor: REINFORCEMENTS em js/game.js).
-//  - `skins`: null = usa o catálogo de skins do motor; um objeto { idDaSkin: { name, text } } só troca o nome e a frase (preço e desenho continuam os do motor).
+//  - `skins`: null = usa o catálogo de skins do bichinho (o do Cachorrinho está no js/game.js, o do Gatinho em CatArt.SKINS); um objeto { idDaSkin: { name, text } } só troca o nome e a frase (preço e desenho continuam os do catálogo).
+//  - `shop`: os avisos da lojinha de skins (prévia, skin em uso, compra); `ui.shopTitle` é o título da tela.
 //  - `ui.*`: textos fixos do index.html (Como jogar, ajuda da lojinha...). null = fica o que está no index.html (o texto do Cachorrinho); texto = troca o conteúdo daquele elemento.
 //  - `sfx.*`: nomes dos sons (js/sound.js) que o jogo toca nos momentos de cada bichinho; o motor só chama `sound.play(P().sfx.x)`.
 (function (root, factory) {
@@ -113,10 +114,20 @@
       powerOff: "Poder do osso: desligado",
     },
     // sons (js/sound.js): o que toca em cada momento (o latido de filhote, jovem ou adulto ao completar a fase; o miado do gato que nota o cachorrinho)
-    sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow" },
+    // (0.18.0, E2b-2) os campos do segundo bloco são momentos que só o Gatinho tem som: aqui ficam vazios ("" = nenhum som) e o Cachorrinho toca EXATAMENTE os sons de sempre.
+    //  ball/ballMore = pegar a bolinha (o 2º som vem 0,15 s depois); alert = o "!" do agente liga; alert2Every/alert2Near = s entre os avisos do 2º inimigo e a que distância (tiles; 0 = qualquer) ele é ouvido;
+    //  hurt = som extra de ser pego (0,1 s depois da captura); winMore = som extra ao completar a fase (1,7 s depois da fanfarra); splash/shake/jump/dash/pant = ações do gatinho.
+    sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
+      ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" },
     skins: null,
+    // textos da lojinha de skins (0.18.0, E2b-2); `ui.shopTitle` troca o título da tela
+    shop: {
+      preview: (name) => `Prévia da skin ${name}`,
+      inUse: (name) => `Skin em uso: ${name}.`,
+      bought: (name, left) => `Você comprou a skin ${name} e já está usando! ${left === 0 ? "Não sobrou nenhum petscoin." : left === 1 ? "Sobrou 1 petscoin." : `Sobraram ${left} petscoin.`}`,
+    },
     // textos fixos do index.html (null = o que está lá, que é o do Cachorrinho)
-    ui: { howto: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null, docTitle: null }, // (docTitle: o título da aba do navegador)
+    ui: { howto: null, shopTitle: null, shopHelp: null, scoresHelp: null, nameTip: null, nameStep: null, regHint: null, canvasLabel: null, padLabel: null, docTitle: null }, // (docTitle: o título da aba do navegador)
   };
 
   // ---------------------------------------------------------------------------------------------------------------------------------
@@ -201,21 +212,20 @@
       powerOn: (s) => `Poder do novelo: ${s} segundos`,
       powerOff: "Poder do novelo: desligado",
     },
-    // (os sons do gato são os que já existem em js/sound.js: o miado no lugar do latido; o agente de sons troca por sons próprios)
-    // alert2 vazio: o cão rastreador não "mia" ao notar o gatinho (o som dele é da etapa de sons)
-    sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "meow", jovem: "meow", adulto: "meow" }, alert2: "" },
-    skins: {
-      "": { name: "Caramelo", text: "o gatinho de sempre (grátis)" },
-      cinza: { name: "Cinza-prata", text: "pelo cinza de gato velho e sábio" },
-      dalmata: { name: "Vaquinha", text: "branco com manchas pretas" },
-      chocolate: { name: "Chocolate", text: "pelo marrom de chocolate" },
-      dourado: { name: "Dourado", text: "pelo dourado e coleira de ouro" },
-      "arco-iris": { name: "Arco-íris", text: "pelo rosa-bebê e coleira de arco-íris" },
-      pirata: { name: "Pirata", text: "bandana vermelha e tapa-olho" },
-      astronauta: { name: "Astronauta", text: "capacete de astronauta" },
-      super: { name: "Super-gato", text: "capa vermelha de super-herói" },
+    // Sons do Gatinho (0.18.0, E2b-2): o contrato é o do README ("Sons do Gatinho"). O miado da fase da vida (`win`) vem 0,9 s depois da fanfarra e o ronronar (`winMore`) 1,7 s; o ratinho é o `squeak`;
+    // o camundongo ágil é um ratinho raro (`squeak` + `purr` 0,15 s depois); o novelo é o `yarn` e o comum, que eriça o pelo, solta o `hiss` 0,3 s depois (`transform`); o cão de guarda que nota o gatinho late (`alert`: `woof`);
+    // o rastreador rosna (`alert2`: `growl`, no máximo a cada 3 s e só a até 8 tiles); ser pego é `capture` e, 0,1 s depois, o miado de susto (`hurt`: `yowl`); afugentar um cão é o som de hoje do carteiro (`beat`).
+    sfx: { ration: "squeak", bone: "yarn", capture: "capture", transform: "hiss", beat: "postman", win: { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" }, alert2: "growl",
+      ball: "squeak", ballMore: "purr", alert: "woof", alert2Every: 3, alert2Near: 8, hurt: "yowl", winMore: "purr", splash: "splash", shake: "shake", jump: "jump", dash: "dash", pant: "pant" },
+    // as skins do Gatinho vêm de CatArt.SKINS (js/cat-art.js: nome, frase e preço de cada uma); `null` = usa o catálogo dele
+    skins: null,
+    shop: {
+      preview: (name) => `Prévia da skin ${name} do gatinho`,
+      inUse: (name) => `Skin do gatinho em uso: ${name}.`,
+      bought: (name, left) => `Você comprou a skin ${name} para o gatinho e já está usando! ${left === 0 ? "Não sobrou nenhum petscoin." : left === 1 ? "Sobrou 1 petscoin." : `Sobraram ${left} petscoin.`}`,
     },
     ui: {
+      shopTitle: "Lojinha de skins do gatinho",
       howto: [
         `<li><strong>Objetivo:</strong> ajude o gatinho a pegar todos os ratinhos (e os <strong>novelos</strong>, nas fases em que eles aparecem) e depois chegar à <strong>SAÍDA</strong>. A saída abre quando você pegar tudo; nas fases com <strong>pontos mínimos</strong> (o placar mostra <strong>PONTOS n / meta</strong>), ela abre assim que a sua pontuação na fase chega a essa meta (e, a partir da Fase 11, também a <strong>missão</strong> da fase precisa estar cumprida).</li>`,
         `<li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio, os cães e os blocos ficam parados.</li>`,
@@ -235,7 +245,7 @@
         `<li><strong>Pontuação:</strong> cada ratinho vale 100 pontos, cada novelo vale 150, cada cão afugentado com o poder do novelo vale mais 100, cada camundongo vale 50 e, nas Fases 11 a 20, cumprir a missão da fase dá um bônus. Quanto mais rápido você termina, maior o <strong>bônus de tempo</strong>: ele diminui a cada 10 segundos a mais, até chegar a 0. Cada vida perdida <strong>desconta pontos</strong>, e a pontuação <strong>pode ficar negativa</strong>. Na mesma fase vale só a sua <strong>maior</strong> pontuação (jogar de novo não soma). Fases diferentes se somam. Para melhorar o recorde de uma fase, use <strong>Jogar fases anteriores</strong> no menu.</li>`,
         `<li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>`,
         `<li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou <kbd>P</kbd>, o botão <strong>Start</strong> do controle, ou toque no botão de pausa no topo do jogo.</li>`,
-        `<li><strong>Som:</strong> o jogo tem efeitos sonoros (o gatinho <strong>mia</strong> ao completar a fase; ratinho, novelo, cão afugentado, ser pego, perder e ganhar vida, passar de fase e fim de jogo). O navegador só libera o som depois do seu primeiro toque ou tecla. Para desligar, use o botão <strong>Som</strong> do menu ou da pausa, ou a tecla <kbd>M</kbd>.</li>`,
+        `<li><strong>Som:</strong> o jogo tem efeitos sonoros (o gatinho <strong>mia</strong> e <strong>ronrona</strong> ao completar a fase; ratinho que guincha, novelo, cães que ladram e rosnam, cão afugentado, ser pego, pata na poça, pelo sacudido, pulo, arrancada, fôlego acabando, perder e ganhar vida, passar de fase e fim de jogo). O navegador só libera o som depois do seu primeiro toque ou tecla. Para desligar, use o botão <strong>Som</strong> do menu ou da pausa, ou a tecla <kbd>M</kbd>.</li>`,
         `<li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Shift</kbd> ou <kbd>Espaço</kbd> (segurar) dão a arrancada; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva; <kbd>M</kbd> liga e desliga o som. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>`,
         `<li><strong>Controle (gamepad):</strong> conecte um controle (Bluetooth ou cabo) e aperte qualquer botão para ele ser reconhecido. O <strong>analógico esquerdo</strong> ou o <strong>direcional</strong> movem o gatinho; <strong>A</strong>, <strong>RB</strong> ou <strong>RT</strong> (segurar) dão a arrancada; <strong>Start</strong> pausa e continua; <strong>Y</strong> salva; nos menus, o direcional escolhe, <strong>A</strong> confirma e <strong>B</strong> volta.</li>`,
         `<li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos os jogadores deste aparelho e mostra apenas a melhor pontuação de cada um.</li>`,

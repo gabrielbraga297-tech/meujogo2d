@@ -118,12 +118,15 @@
   const refreshSkin = () => { const me = store.player(), w = me ? store.wallet(me) : null; skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : ""; };
   const lureRadius = (n) => 48 + 32 * n; // reforço Ímã de ração: px até onde as rações vêm sozinhas (80, 112 e 144 px)
   const CAT_POUNCE = 1.3, CAT_POUNCE_TIME = 0.7, CAT_POUNCE_COOLDOWN = 3, CAT_POUNCE_RANGE = 4 * TILE; // bote: × velocidade, duração (s), espera até o próximo (s), distância
-  const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_MEOW_EVERY = 4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, s entre miados, passos que olha ao fugir
+  const CAT_SEARCH = 6, CAT_SEARCH_FACTOR = 1.4, CAT_FLEE_DEPTH = 16; // s procurando, × velocidade de patrulha ao procurar, passos que olha ao fugir (o intervalo entre os avisos sonoros do 2º inimigo é do perfil: sfx.alert2Every)
   // ---------- Gatinho (0.18.0): mecânicas das fases do gato. ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases que ligam os campos `sprint`, `water`, `refuge` e `night` (todas as 20 do Gatinho; nenhuma do Cachorrinho) ----------
   const CAT_SPRINT = 1.35, SPRINT_DRAIN = 0.4, SPRINT_REGEN = 0.2, WINDED_TIME = 1.5; // arrancada: × velocidade; fôlego (0 a 1) gasto por s (2,5 s de tanque cheio) e recuperado por s (5 s); s "ofegante" (sem arrancada) quando o fôlego acaba
   const WET_TIME = 6, WET_SLOW = 0.65, JUMP_SLOW = 0.85; // pelo molhado: s depois de sair da poça (renova enquanto está nela) e × velocidade (sem arrancada); × velocidade sobre um obstáculo baixo (X), o "pulo suave"
   const REFUGE_WAIT = 4, LOW_REACH = 34;                 // lugar alto (T): s que o cão espera ao pé dele antes de desistir; alcance (px) dos cães sobre um X (o gatinho não fica a salvo no meio de um obstáculo baixo)
   const NIGHT_DARK = 0.75, NIGHT_HALO = 5;               // fases noturnas: quanto escurece (0 a 1) e o raio da luz em volta do gatinho (tiles); o desenho é da etapa seguinte
+  // Sons (0.18.0, E2b-2): quais sons tocam em cada momento é do perfil do bichinho (P().sfx: o Cachorrinho toca os de sempre, o Gatinho os do README "Sons do Gatinho"); aqui ficam só os atrasos (s) e os intervalos mínimos.
+  const SFX_WIN = 0.9, SFX_WIN_MORE = 1.7, SFX_BALL_MORE = 0.15, SFX_HURT = 0.1, SFX_TRANSFORM = 0.3; // atrasos: o miado/latido depois da fanfarra, o ronronar, o 2º som do camundongo, o miado de susto depois da captura, o chiado depois do novelo
+  const SFX_WOOF_DOG = 2.5, SFX_WOOF_ALL = 0.4, SFX_JUMP_EVERY = 0.4, SFX_DASH_EVERY = 0.6; // intervalos mínimos (s): latido de cada cão, latido de qualquer cão, pulo, arrancada
   const CAT_REV = 1;                                     // revisão dos mapas do Gatinho (js/cat-levels.js): jogos salvos de outra revisão são descartados com aviso
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
@@ -1612,7 +1615,8 @@
   let cats = [];               // gatos da fase atual (a partir da Fase 11): veja updateCat
   let catOverride = null;      // usado apenas em testes: posições dos gatos no lugar das da fase
   let catsThaw = false;        // usado apenas em testes: com `freezeVets` ligado, os gatos continuam andando (assim os testes congelam só os agentes)
-  let meowAt = -99;            // quando foi o último miau (um só som a cada CAT_MEOW_EVERY s, mesmo com vários gatos)
+  let meowAt = -99;            // quando foi o último aviso sonoro do 2º inimigo (o miado do gato; no Gatinho, o rosnado do rastreador): um só a cada sfx.alert2Every s, mesmo com vários
+  let woofAt = -99, jumpAt = -99, dashAt = -99, onLow = false; // (Gatinho, E2b-2) quando foi o último latido de qualquer cão, o último pulo e a última arrancada (s da fase) e se o gatinho está sobre um X
   let collected, bonesGot, score, time, lives, livesLost, retries, invuln, hintTimer; // collected = rações pegas; bonesGot = ossos pegos
   let theme = Themes.of(1, DEFAULT_ANIMAL); // o ambiente (lugar) da fase atual: js/themes.js (Themes.of(fase, bichinho))
   const themeG = { ctx: null, rect: null, x: 0, y: 0, c: 0, r: 0, free: false, border: false, solid: null, h: (k) => Themes.hash(themeG.c, themeG.r, k) }; // o que cada função de desenho do ambiente recebe
@@ -1635,6 +1639,8 @@
   let gameAnimal = DEFAULT_ANIMAL; // (0.17.0) o bichinho da partida em andamento: pontos, progresso e jogo salvo vão para o jogo DELE, mesmo que a escolha mude no menu
   // O perfil de texto em uso (0.18.0): na partida (jogando, pausa, vitória, derrota) o do bichinho DA PARTIDA; no menu, o do bichinho ESCOLHIDO. Barato: não relê o armazenamento (as telas do menu já chamam syncAnimal() ao desenhar).
   const P = () => profileOf(state === "menu" ? animal : gameAnimal);
+  // toca o som `name` (vazio = nenhum: o perfil do Cachorrinho deixa em branco os momentos que só o Gatinho tem) com um atraso opcional (s). Quem decide QUAL som é o perfil (P().sfx), nunca um `if` do bichinho.
+  const sfx = (name, delay) => { if (name) sound.play(name, delay ? { delay } : undefined); };
   const reinf = (r, p = P()) => p.reinforce[r.id]; // { name, text } de um reforço no perfil
   let carriedLives = START_LIVES; // vidas com que a fase terminou (passam para a próxima)
   let up = noUp();         // reforços desta partida (valem até o fim da sequência de fases)
@@ -1718,7 +1724,7 @@
     ballSolids = lv.lowSolids.length ? solids.concat(lv.lowSolids) : solids; // (Gatinho: os camundongos também batem nos obstáculos baixos e nos lugares altos)
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; balls = []; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
-    up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99;
+    up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99; woofAt = -99; jumpAt = -99; dashAt = -99; onLow = false;
     stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; darkness = lv.night ? lv.night.darkness : 0; // (mecânicas do Gatinho: cada fase começa com fôlego cheio e pelo seco)
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
@@ -1838,15 +1844,16 @@
     const was = sprintOn;
     sprintOn = sprintHeld() && moving && wet <= 0 && winded <= 0 && (stamina > 0 || free);
     if (sprintOn) {
-      if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; /* E2b-2: som do gatinho ofegante (se houver) */ } }
+      if (!was && time - dashAt >= SFX_DASH_EVERY) { dashAt = time; sfx(P().sfx.dash); } // começou uma arrancada (no máximo uma vez a cada SFX_DASH_EVERY s)
+      if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; sfx(P().sfx.pant); } } // o fôlego acabou: o gatinho fica ofegante
       if (catDraw && (!was || (dustT -= dt) <= 0)) { dustT = 0.17; addCatFx("dust", player.x + player.w / 2, player.y + player.h / 2, player.facing); } // poeirinha da arrancada (ao começar e a cada ~0,17 s)
     } else stamina = Math.min(1, stamina + S.regen * dt);
   }
   // Pelo molhado: o centro do gatinho numa poça (`~`) define `wet` = lv.water.wet s (renova enquanto ele estiver nela); depois de sair seca devagar. Molhado: ×0,65 de velocidade e sem arrancada. Os cães não se molham.
   function updateWater(dt) {
     const [c, r] = dogTileNow(), inP = !!(lv.puddle && lv.puddle[r] && lv.puddle[r][c]), px = player.x + player.w / 2, py = player.y + player.h / 2;
-    if (inP) { wet = lv.water.wet; if (!inPuddle) addCatFx("splash", px, py); } // pisou na poça: splash (E2b-2: som da água)
-    else if (wet > 0 && (wet -= dt) <= 0) { wet = 0; addCatFx("shake", px, py); /* E2b-2: som "shake" */ } // secou: sacode o pelo
+    if (inP) { wet = lv.water.wet; if (!inPuddle) { addCatFx("splash", px, py); sfx(P().sfx.splash); } } // pisou na poça: splash (e o som da pata na água)
+    else if (wet > 0 && (wet -= dt) <= 0) { wet = 0; addCatFx("shake", px, py); sfx(P().sfx.shake); } // secou: sacode o pelo (e o som)
     inPuddle = inP;
     if (wet > 0 && catDraw && player.moving && (dropT -= dt) <= 0) { dropT = 0.45; addCatFx("wetdrop", px, py + 4); } // pelo molhado pinga por onde anda
   }
@@ -2003,6 +2010,12 @@
     const goal = safe || best;
     return goal && !(goal.c === from[0] && goal.r === from[1]) ? pathTo(g, [goal.c, goal.r])[0] || null : null; // null = fica parado onde está (já é o melhor lugar)
   }
+  // O "!" ligou: o cão de guarda notou o gatinho. Som do perfil (`sfx.alert`: o latido do Gatinho; o Cachorrinho não tem), com intervalo mínimo de SFX_WOOF_DOG s por cão e de SFX_WOOF_ALL s entre quaisquer cães.
+  function noticeSound(v) {
+    const name = P().sfx.alert;
+    if (!name || time - (v.woofAt ?? -99) < SFX_WOOF_DOG || time - woofAt < SFX_WOOF_ALL) return;
+    v.woofAt = woofAt = time; sfx(name);
+  }
   function updateVet(v, dt) {
     const cfg = v.cfg;
     if (v.hitCool > 0) v.hitCool -= dt;
@@ -2010,7 +2023,7 @@
     if (v.bounce > 0) v.bounce = Math.max(0, v.bounce - dt / 8);
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
-      if (power <= 0 && !(safe && v.gaveUp) && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; } // (Gatinho: quem já desistiu ao pé do lugar alto só volta a perseguir depois que o gatinho descer)
+      if (power <= 0 && !(safe && v.gaveUp) && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; noticeSound(v); } // (Gatinho: quem já desistiu ao pé do lugar alto só volta a perseguir depois que o gatinho descer)
     }
     if (lv.refuge) refugeGiveUp(v, dt); // (Gatinho a salvo num lugar alto: o cão espera ao pé dele e desiste)
     if (v.mode === "chase") {
@@ -2176,9 +2189,10 @@
       if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
       if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
         c.think = cfg.thinkEvery;
-        if ((sees || heard) && !(safe && c.gaveUp)) { // notou o cachorrinho: persegue (e mia, no máximo uma vez a cada CAT_MEOW_EVERY s)
+        if ((sees || heard) && !(safe && c.gaveUp)) { // notou o cachorrinho: persegue (e avisa com o som do perfil, no máximo uma vez a cada sfx.alert2Every s: o miado do gato; o rosnado do rastreador do Gatinho, só se ele está a até sfx.alert2Near tiles)
           c.mode = "chase"; c.modeT = cfg.chaseTime; c.chaseAge = 0; c.route = []; c.goal = null; c.idle = 0;
-          if (time - meowAt >= CAT_MEOW_EVERY) { meowAt = time; const alert = P().sfx.alert2; if (alert) sound.play(alert); } // (o rastreador do Gatinho não mia: o perfil dele não tem som de aviso; E2b: som do cão rastreador)
+          const sf = P().sfx;
+          if (time - meowAt >= sf.alert2Every) { meowAt = time; if (sf.alert2 && (!sf.alert2Near || Math.hypot(c.cx - px, c.cy - py) <= sf.alert2Near * TILE)) sfx(sf.alert2); }
         }
       }
       if (lv.refuge) refugeGiveUp(c, dt); // (Gatinho a salvo num lugar alto: o rastreador espera ao pé dele e desiste)
@@ -2303,7 +2317,7 @@
   function loseLife(why) {
     lives--; livesLost++;
     score = runningScore();
-    if (why !== "crush") sound.play(P().sfx.capture); // o agente da carrocinha pegou o cachorrinho
+    if (why !== "crush") { sfx(P().sfx.capture); sfx(P().sfx.hurt, SFX_HURT); } // o agente da carrocinha pegou o cachorrinho (Gatinho: logo depois, o miado de susto)
     if (lives <= 0) { gameOver(why); return; }
     sound.play("lifelost", { delay: why === "crush" ? 0 : 0.5 }); // depois do som da captura
     const inPlace = respawn();
@@ -2387,7 +2401,7 @@
       }
       if (overlap(player, { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R })) { // pegou!
         b.taken = true; b.vx = 0; b.vy = 0;
-        sound.play("pick"); puffs.push({ x: b.x, y: b.y, t: 0.4 }); addCatFx("sparkle", b.x, b.y);
+        sfx(P().sfx.ball); sfx(P().sfx.ballMore, SFX_BALL_MORE); puffs.push({ x: b.x, y: b.y, t: 0.4 }); addCatFx("sparkle", b.x, b.y); // (Gatinho: o camundongo ágil é um ratinho raro: guincho e, logo depois, ronronar)
         if (time >= pickupToastUntil) toast(P().say.ballGot(Records.BALL_POINTS, ballsGot(), balls.length), 1.4);
         score = runningScore(); saveNow();
       }
@@ -2408,10 +2422,10 @@
     addCatFx("sparkle", it.x + 8, it.y + 8); // (Gatinho) brilhinho ao pegar um ratinho ou um novelo
     const kind = it.kind || "scare";
     if (it.bone) {
-      bonesGot++; sound.play(P().sfx.bone);
+      bonesGot++; sfx(P().sfx.bone);
       if (kind !== "scare") startFx(kind);
-      else if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sound.play(P().sfx.transform, { delay: 0.3 }); } // os agentes viram carteiros
-    } else { collected++; sound.play(P().sfx.ration); }
+      else if (lv.bonePower) { const wasOff = power <= 0; startPower(); if (wasOff) sfx(P().sfx.transform, SFX_TRANSFORM); } // os agentes viram carteiros (Gatinho: o pelo se eriça e o gatinho chia)
+    } else { collected++; sfx(P().sfx.ration); }
     if (it.life) giveLife(it, it.bone ? (kind !== "scare" ? ` · ${P().boneLabel[kind]}!` : lv.bonePower ? ` · ${P().say.powerShort(bonePowerNow())}` : "") : "");
     score = runningScore(); saveNow();
   }
@@ -2474,6 +2488,7 @@
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
     if (lv.refuge) safe = onHighNow();                // (Gatinho) com o centro num lugar alto ele está a salvo
+    if (lv.catMode) { const low = onLowNow(); if (low && !onLow && time - jumpAt >= SFX_JUMP_EVERY) { jumpAt = time; sfx(P().sfx.jump); } onLow = low; } // (Gatinho) começou a atravessar um obstáculo baixo (X): o pulo (no máximo uma vez a cada SFX_JUMP_EVERY s)
 
     updateBlocks(dt);
     if (crushed) { crushed = false; loseLife("crush"); return; }
@@ -3004,7 +3019,7 @@
     score = points;
     setState("won");
     sound.play("levelup");
-    sound.play(P().sfx.win[dogStage(dogGrowth())], { delay: 0.9 }); // (0.15.3) o cachorrinho late ao completar a fase: agudo de filhote, médio de jovem, grave de adulto, depois da fanfarra (0.18.0: o som de cada estágio vem do perfil)
+    sfx(P().sfx.win[dogStage(dogGrowth())], SFX_WIN); sfx(P().sfx.winMore, SFX_WIN_MORE); // (0.15.3) o cachorrinho late ao completar a fase: agudo de filhote, médio de jovem, grave de adulto, depois da fanfarra (0.18.0: o som de cada estágio vem do perfil)
     carriedLives = lives; nextUp = null; chosenReinforce = null;
     const next = levelsOf(gameAnimal).find((l) => l.id === levelId + 1), pw = P();
     $("win-title").textContent = `${lv.title} concluída!`;
