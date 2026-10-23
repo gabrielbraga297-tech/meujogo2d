@@ -600,8 +600,7 @@
     water(g) { // ~: poça com o reflexo amarelo de uma janela e de um poste
       const t = g.time || 0;
       pond(g, "#1c3260", "#7fa4e0", "#0f1c3c");
-      const wob = Math.round(Math.sin(t * 1.4 + g.c) * 1);
-      for (let i = 0; i < 8; i++) { const w = Math.max(2, Math.round(12 - i * 1.4)); dot(g, "rgba(255,216,138,.6)", 16 - w / 2 + Math.round(Math.sin(t * 1.6 + i + g.c) * 1.5) + wob, 2 + i * 3.6, w, 2); }    // reflexo de uma janela: faixas que afinam e tremem
+      for (let i = 0; i < 8; i++) { const w = Math.max(2, Math.round(12 - i * 1.4 + (g.h(20 + i) * 4 - 2))); dot(g, "rgba(255,216,138,.6)", 16 - w / 2 + Math.round(Math.sin(t * 1.6 + i + g.c) * 1.5), 2 + i * 3.6, w, 2); }    // reflexo de uma janela: faixas que afinam e tremem
       dot(g, "rgba(255,255,255,.35)", 3 + Math.floor(g.h(3) * 6), 22, 5, 1.5);
     },
   });
