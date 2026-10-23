@@ -30,7 +30,7 @@ const SHEET = ({ id, scale }) => {
   const g = window.__game, T = 32;
   const press = (k, on) => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k, code: k === "Shift" ? "ShiftLeft" : "" }));
   const notes = [];
-  const begin = () => { g.start(id); g.autoStart = true; g.freezeVets = true; g.catSkin = ""; g.setLives(5); };
+  const begin = () => { g.autoStart = true; g.start(id); g.freezeVets = true; g.catSkin = ""; g.setLives(5); }; // (autoStart antes: a fase já começa a contar, sem esperar o primeiro passo)
   begin();
   const lv = g.builtOf("cat")[id], kinds = lv.kinds, rows = lv.rows, cols = lv.cols;
   const at = (c, r) => (c < 0 || r < 0 || c >= cols || r >= rows ? "#" : kinds[r][c]);
@@ -93,7 +93,7 @@ const SHEET = ({ id, scale }) => {
 // Posição típica para a captura da página inteira: o gatinho perto de um X, de um T e de uma poça, ou na maior concentração deles; molhado se houver poça.
 const TYPICAL = ({ id }) => {
   const g = window.__game, T = 32;
-  g.start(id); g.autoStart = true; g.freezeVets = true; g.catSkin = ""; g.setLives(5);
+  g.autoStart = true; g.start(id); g.freezeVets = true; g.catSkin = ""; g.setLives(5);
   const lv = g.builtOf("cat")[id], kinds = lv.kinds, rows = lv.rows, cols = lv.cols;
   const at = (c, r) => (c < 0 || r < 0 || c >= cols || r >= rows ? "#" : kinds[r][c]);
   let best = null;
