@@ -8969,6 +8969,225 @@ const PAGE_HELPERS = () => {
     await cp.context().close();
   });
 
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (arrancada com fôlego: velocidade, gasto, recuperação, ofegante, turbo; teclado, controle e toque)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    // ---- velocidade: ×1,35 só enquanto se move e aperta a tecla ----
+    const sp = await ev(cp, () => {
+      __at(2, 2);
+      const walk = __run(30, ["d"], { stay: true }), shift = __run(30, ["Shift", "d"], { stay: true }), space = __run(30, [" ", "d"], { stay: true }), idle = (() => { __game.stamina = 1; return __run(30, ["Shift"], { stay: true }); })();
+      return { walk: walk.map((f) => f.dx), shift: shift.map((f) => f.dx), space: space.map((f) => f.dx), sh: shift[0].speed, base: walk[0].speed, idle: idle.map((f) => f.sprinting), idleSta: idle[29].stamina };
+    });
+    ok(sp.walk.every((d) => near(d, 4.2, 0.001)) && near(sp.base, 252, 1e-6), `sem arrancada o gatinho anda 252 px/s (${sp.walk[0].toFixed(3)} px por quadro)`);
+    ok(sp.shift.every((d) => near(d, 4.2 * 1.35, 0.001)) && near(sp.sh, 252 * 1.35, 1e-6), `segurando Shift: ×1,35 (${sp.sh.toFixed(1)} px/s; ${sp.shift[0].toFixed(3)} px por quadro)`);
+    ok(sp.space.every((d) => near(d, 4.2 * 1.35, 0.001)), "segurando Espaço: também ×1,35");
+    ok(sp.idle.every((s) => s === false) && sp.idleSta === 1, "segurar Shift sem se mover não dá arrancada nem gasta fôlego");
+    // ---- gasto: 2,5 s de tanque cheio; depois ofegante por 1,5 s; depois a arrancada volta com o fôlego recuperado ----
+    const burn = await ev(cp, () => {
+      __at(2, 2); __game.stamina = 1; __game.winded = 0;
+      const f = __run(330, ["Shift", "d"], { stay: true });
+      const firstOff = f.findIndex((x) => !x.sprinting), resume = f.findIndex((x, i) => i > firstOff && x.sprinting);
+      return { firstOff, resume, at100: f[99].stamina, windedAt: f[firstOff].winded, dxWinded: f[firstOff + 10].dx, staAtResume: f[resume].stamina, sprintTicks: f.slice(0, firstOff).filter((x) => x.sprinting).length };
+    });
+    ok(near(burn.firstOff / 60, 2.5, 0.05) && burn.sprintTicks === burn.firstOff, `o tanque cheio dura 2,5 s de arrancada (${(burn.firstOff / 60).toFixed(2)} s)`);
+    ok(near(burn.at100, 1 - 0.4 * (100 / 60), 0.01), `o fôlego cai 0,4 por segundo (depois de 100 quadros: ${burn.at100.toFixed(3)})`);
+    ok(near(burn.windedAt, 1.5, 0.03) && near(burn.dxWinded, 4.2, 0.001), `quando o fôlego acaba o gatinho fica ofegante 1,5 s e anda normal (${burn.dxWinded.toFixed(2)} px por quadro)`);
+    ok(near((burn.resume - burn.firstOff) / 60, 1.5, 0.05) && near(burn.staAtResume, 0.3, 0.02), `depois de 1,5 s volta a poder correr com o fôlego recuperado (${((burn.resume - burn.firstOff) / 60).toFixed(2)} s; fôlego ${burn.staAtResume.toFixed(2)})`);
+    // ---- recuperação: 0,2 por segundo (5 s) parado ou andando ----
+    const rec = await ev(cp, () => {
+      __at(2, 2); __game.stamina = 0; __game.winded = 0;
+      const a = __run(150, [], { stay: true }), halfway = a[149].stamina;
+      const b = __run(150, ["d"], { stay: true }), full = b[149].stamina; // andando (sem arrancada) também recupera
+      const c = __run(120, [], { stay: true });
+      return { halfway, full, max: Math.max(...a.map((x) => x.stamina), ...b.map((x) => x.stamina), ...c.map((x) => x.stamina)) };
+    });
+    ok(near(rec.halfway, 0.5, 0.01) && near(rec.full, 1, 0.01) && rec.max <= 1, `sem arrancada o fôlego volta a 0,2/s: 2,5 s = ${rec.halfway.toFixed(2)}, 5 s = ${rec.full.toFixed(2)}, nunca passa de 1`);
+    // ---- novelo turbo: arrancada sem gastar fôlego ----
+    const tb = await ev(cp, () => {
+      __at(2, 2); __game.stamina = 1; __game.winded = 0; __game.fx = { turbo: 8 };
+      const a = __run(180, ["Shift", "d"], { stay: true }), noShift = __run(2, ["d"], { stay: true });
+      return { sta: a[179].stamina, speed: a[0].speed, all: a.every((x) => x.sprinting), turboLeft: __game.fx.turbo, normal: noShift[0].speed };
+    });
+    ok(tb.sta === 1 && tb.all && near(tb.speed, 252 * 1.4 * 1.35, 1e-6) && near(tb.normal, 252 * 1.4, 1e-6) && near(tb.turboLeft, 8 - 182 / 60, 0.05), `com o novelo turbo a arrancada não gasta fôlego (fica em ${tb.sta}) e soma ao ×1,4 do turbo: ${tb.speed.toFixed(1)} px/s (${tb.normal.toFixed(1)} sem apertar)`);
+    // ---- molhado: sem arrancada (e a lentidão está na seção da poça) ----
+    const wetNo = await ev(cp, () => { __game.fx = { turbo: 0 }; __at(2, 2); __game.stamina = 1; __game.wet = 3; const f = __run(30, ["Shift", "d"], { stay: true }); return { any: f.some((x) => x.sprinting), speed: f[0].speed, sta: f[29].stamina }; });
+    ok(!wetNo.any && near(wetNo.speed, 252 * 0.65, 1e-6) && wetNo.sta === 1, "molhado não consegue dar arrancada, mesmo com a tecla apertada");
+    // ---- controle (gamepad): A, RB ou RT ----
+    const MOCK_PAD = () => {
+      const pad = { id: "Controle de teste", index: 0, connected: true, mapping: "standard", axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
+      let present = false;
+      navigator.getGamepads = () => [present ? pad : null, null, null, null];
+      window.__padOn = (on) => { present = on; };
+      window.__padSet = ({ press = [], release = [] }) => { for (const i of press) pad.buttons[i] = { pressed: true, touched: true, value: 1 }; for (const i of release) pad.buttons[i] = { pressed: false, touched: false, value: 0 }; };
+    };
+    const gp = await newPage({ realCat: true });
+    await gp.addInitScript(MOCK_PAD);
+    await catArena(gp, 1);
+    const pad = await ev(gp, () => {
+      __padOn(true); const out = {};
+      for (const [name, b] of [["A", 0], ["RB", 5], ["RT", 7], ["X", 2], ["B", 1], ["Y", 3]]) {
+        __padSet({ press: [b] }); __at(2, 2); __game.stamina = 1; __game.winded = 0;
+        const f = __run(20, ["d"], { stay: true }); __padSet({ release: [b] });
+        out[name] = f.every((x) => x.sprinting) ? "corre" : f.some((x) => x.sprinting) ? "meio" : "anda";
+      }
+      __padOn(false); __at(2, 2); out.sem = __run(10, ["d"], { stay: true }).some((x) => x.sprinting) ? "corre" : "anda";
+      return out;
+    });
+    ok(pad.A === "corre" && pad.RB === "corre" && pad.RT === "corre" && pad.X === "anda" && pad.B === "anda" && pad.Y === "anda" && pad.sem === "anda", `no controle a arrancada é o A, o RB ou o RT (os outros botões não: ${JSON.stringify(pad)})`);
+    await gp.context().close();
+    // ---- toque: o botão Correr ----
+    const tp = await newPage({ realCat: true, viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+    await catArena(tp, 1, { query: "?touch=1" });
+    ok(await tp.isVisible("#btn-run") && /Correr/.test(await tp.textContent("#btn-run")) && await tp.getAttribute("#btn-run", "aria-label") === "Correr: segure para dar uma arrancada", "no toque, jogando o Gatinho, o botão Correr aparece (com nome para leitor de tela)");
+    const box = await tp.$eval("#btn-run", (e) => e.getBoundingClientRect().toJSON()), padBox = await tp.$eval("#pad", (e) => e.getBoundingClientRect().toJSON());
+    const overlap = !(box.right <= padBox.left || padBox.right <= box.left || box.bottom <= padBox.top || padBox.bottom <= box.top);
+    ok(box.width >= 44 && box.height >= 44 && box.left >= 0 && box.right <= 390 && box.bottom <= 780 && !overlap, `o botão Correr tem ${Math.round(box.width)}×${Math.round(box.height)} px, cabe na tela de 390×780 e não encosta no controle direcional`);
+    const tr = await ev(tp, async () => {
+      const b = document.getElementById("btn-run"), fire = (type, id) => b.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: "touch", bubbles: true, cancelable: true }));
+      __at(2, 2); __game.stamina = 1; __game.winded = 0;
+      const before = __run(15, ["d"], { stay: true });
+      fire("pointerdown", 7); const on = b.classList.contains("on"), down = __run(15, ["d"], { stay: true });
+      fire("pointerup", 99); const stillOn = __run(5, ["d"], { stay: true }); // outro dedo soltando não solta o botão
+      fire("pointerup", 7); const off = __run(15, ["d"], { stay: true }), cls = b.classList.contains("on");
+      fire("pointerdown", 8); const again = __run(5, ["d"], { stay: true }); fire("pointercancel", 8); const cancelled = __run(5, ["d"], { stay: true });
+      return { before: before.some((x) => x.sprinting), on, down: down.every((x) => x.sprinting), stillOn: stillOn.every((x) => x.sprinting), off: off.some((x) => x.sprinting), cls, again: again.every((x) => x.sprinting), cancelled: cancelled.some((x) => x.sprinting) };
+    });
+    ok(!tr.before && tr.on && tr.down && tr.stillOn && !tr.off && !tr.cls && tr.again && !tr.cancelled, `o botão Correr: segurado dá a arrancada, soltar (ou cancelar) para, e outro dedo não o solta (${JSON.stringify(tr)})`);
+    // pausar solta o botão
+    const paused = await ev(tp, () => { document.getElementById("btn-run").dispatchEvent(new PointerEvent("pointerdown", { pointerId: 3, pointerType: "touch", bubbles: true })); document.getElementById("btn-pause").click(); const a = document.getElementById("btn-run").classList.contains("on"); document.getElementById("btn-resume").click(); return a; });
+    ok(paused === false, "pausar o jogo solta o botão Correr");
+    await ev(tp, () => { __game.setAnimal("dog"); __game.start(2); });
+    ok(await tp.isHidden("#btn-run") && !await ev(tp, () => document.body.classList.contains("sprint-on")), "jogando o Cachorrinho com toque o botão Correr não aparece");
+    await tp.context().close();
+    // ---- o Cachorrinho: Shift e Espaço não fazem nada ----
+    await fresh(cp, { name: "Totó" }); await cp.evaluate(CAT_PAGE);
+    const dogRun = await ev(cp, () => {
+      __game.setAnimal("dog"); __game.freezeVets = true; __game.start(2); __at(2, 2);
+      const a = __run(20, ["d"], { stay: true }), b = __run(20, ["Shift", "d"], { stay: true }), c = __run(20, [" ", "d"], { stay: true });
+      return { a: a[0].speed, b: b[0].speed, c: c[0].speed, sp: [...a, ...b, ...c].some((x) => x.sprinting), sta: __game.stamina, hud: [document.getElementById("hud-stamina").classList.contains("hidden"), document.getElementById("hud-state-item").classList.contains("hidden")] };
+    });
+    ok(dogRun.a === dogRun.b && dogRun.b === dogRun.c && !dogRun.sp && dogRun.sta === 1 && dogRun.hud.every(Boolean), "no Cachorrinho Shift e Espaço não mudam a velocidade e o placar não tem FÔLEGO nem ESTADO");
+    await cp.context().close();
+  });
+
+  // =====================================================================
+  await section("0.18.0 · Gatinho: mecânicas (pelo molhado, lugar alto a salvo, X sem proteção, placar FÔLEGO e ESTADO)", async () => {
+    const cp = await newPage({ realCat: true });
+    await catArena(cp, 1);
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    // ---- pelo molhado ----
+    const w = await ev(cp, () => {
+      __at(2, 2); __game.tick(0.001); const dry = __game.dogSpeed;
+      __at(11, 9); __game.tick(0.01); const wet0 = __game.wet, slow = __game.dogSpeed;
+      __run(180, [], { stay: true }); const stillIn = __game.wet; // 3 s parado na poça: renova
+      __at(2, 2); const f = __run(60, ["d"], { stay: true }), after1 = __game.wet, spd = f[0].speed;
+      const g = __run(305, ["d"], { stay: true }), after6 = __game.wet, spdDry = g[g.length - 1].speed;
+      __at(3, 14); __game.tick(0.01); const second = __game.wet; // outra poça
+      return { dry, wet0, slow, stillIn, after1, spd, after6, spdDry, second, catWet: __game.vets.some((v) => "wet" in v) || __game.cats.some((c) => "wet" in c) };
+    });
+    ok(w.dry === 252 && near(w.slow, 252 * 0.65, 1e-6) && w.wet0 === 6, `pisar numa poça deixa o pelo molhado por 6 s e a velocidade em 65% (${w.slow.toFixed(1)} px/s)`);
+    ok(w.stillIn === 6, "parado na poça o tempo de molhado renova (continua 6 s)");
+    ok(near(w.after1, 5, 0.03) && near(w.spd, 252 * 0.65, 1e-6), `saindo da poça, o molhado dura mais 6 s: depois de 1 s faltam ${w.after1.toFixed(2)} s e ainda está lento`);
+    ok(w.after6 === 0 && w.spdDry === 252 && w.second === 6, `depois de 6 s fora da poça o pelo seca (${w.after6}) e a velocidade volta a 252; outra poça molha de novo`);
+    ok(!w.catWet, "os cães e rastreadores não se molham (não têm estado de molhado)");
+    await ev(cp, () => { __at(2, 2); __game.wet = 4.2; __game.tick(0.01); });
+    ok(await cp.waitForFunction(() => /^MOLHADO [45] s$/.test(document.getElementById("hud-state").textContent), null, { timeout: 3000 }).then(() => true, () => false), `o placar mostra MOLHADO com a contagem ("${await cp.textContent("#hud-state")}")`);
+    // ---- lugar alto ----
+    const hi = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      const v = __game.vets[0], c = __game.cats[0], out = {};
+      __at(5, 3); __game.tick(0.01); out.safe = __game.safe;
+      v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01); out.dogOn = [__game.lives, __game.state];
+      v.cx = 14 * 32 + 16; v.cy = 3 * 32 + 16;
+      c.cx = __game.player.x + 12; c.cy = __game.player.y + 12; __game.tick(0.01); out.trkOn = [__game.lives, __game.state];
+      c.cx = 20 * 32 + 16; c.cy = 8 * 32 + 16;
+      __at(6, 3); __game.tick(0.01); out.safe2 = __game.safe; // outro tile T
+      __at(19, 12); __game.tick(0.01); out.safe3 = __game.safe;
+      __at(7, 3); __game.tick(0.01); out.down = __game.safe; out.invuln = __game.invuln; // descendeu: nenhuma proteção
+      v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; __game.tick(0.01); out.caught = [__game.lives, __game.state];
+      return out;
+    });
+    ok(hi.safe === true && hi.safe2 === true && hi.safe3 === true && hi.down === false, "com o centro num tile T o gatinho está a salvo; ao sair do T deixa de estar");
+    ok(hi.dogOn[0] === 3 && hi.dogOn[1] === "playing" && hi.trkOn[0] === 3 && hi.trkOn[1] === "playing", "em cima do T o contato com um cão ou com um rastreador não tira vida");
+    ok(hi.invuln === 0 && hi.caught[0] === 2, "ao descer não há proteção nenhuma: o cão encostou e tirou 1 vida");
+    await hudIs(cp, "#hud-state", "—");
+    await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __at(5, 3); __game.tick(0.01); });
+    ok(await cp.waitForFunction(() => document.getElementById("hud-state").textContent === "A SALVO", null, { timeout: 3000 }).then(() => true, () => false), "o placar mostra A SALVO enquanto o gatinho está no lugar alto");
+    // ---- o cão em perseguição vai ao pé do T, espera e desiste em até 4 s; o relógio não para ----
+    const wait = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false;
+      const lv = __game.builtOf("cat")[1], v = __game.vets[0], other = __game.vets[1], trk = __game.cats[0];
+      other.cool = 999; trk.cool = 999; trk.cx = 22 * 32 + 16; trk.cy = 16 * 32 + 16; other.cx = 14 * 32 + 16; other.cy = 15 * 32 + 16;
+      v.cx = 10 * 32 + 16; v.cy = 3 * 32 + 16; v.leg = null; v.route = []; v.mode = "chase"; v.modeT = 30; v.chaseAge = 0; v.cool = 0; v.idle = 0;
+      __at(5, 3); const t0 = __game.time;
+      let giveUp = null, minD = 99, onT = 0, chaseAgain = 0, safeAll = true;
+      for (let i = 0; i < 20 * 22; i++) {
+        __game.tick(0.05); __game.player.moving = false;
+        const c = Math.floor(v.cx / 32), r = Math.floor(v.cy / 32);
+        if (lv.high[r][c]) onT++;
+        minD = Math.min(minD, Math.hypot(c - 5, r - 3));
+        if (!__game.safe) safeAll = false;
+        if (giveUp === null && v.mode !== "chase") giveUp = __game.time - t0;
+        else if (giveUp !== null && v.mode === "chase") chaseAgain++;
+      }
+      return { giveUp, minD, onT, chaseAgain, safeAll, lives: __game.lives, state: __game.state, elapsed: __game.time - t0, gaveUp: v.gaveUp, mode: v.mode, bonus: document.getElementById("hud-bonus").textContent };
+    });
+    ok(wait.giveUp !== null && wait.giveUp >= 3.9 && wait.giveUp <= 4.15 && wait.gaveUp === true, `o cão em perseguição desiste depois de 4 s com o gatinho no lugar alto (desistiu em ${wait.giveUp && wait.giveUp.toFixed(2)} s)`);
+    ok(wait.minD <= 1.5 && wait.onT === 0, `ele vai até o pé do T (chegou a ${wait.minD.toFixed(1)} tile do T) e nunca anda por cima dele`);
+    ok(wait.chaseAgain === 0 && wait.mode === "patrol", "depois de desistir ele não volta a perseguir enquanto o gatinho fica lá em cima (18 s depois)");
+    ok(wait.safeAll && wait.lives === 3 && wait.state === "playing" && near(wait.elapsed, 22, 0.1), `em cima do T não há derrota nem limite de tempo, e o relógio corre (${wait.elapsed.toFixed(1)} s)`);
+    // o mesmo com o rastreador
+    const trk = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false; __game.sound.reset();
+      const lv = __game.builtOf("cat")[1], t = __game.cats[0];
+      for (const v of __game.vets) { v.cool = 999; v.cx = 22 * 32 + 16; v.cy = (v === __game.vets[0] ? 15 : 16) * 32 + 16; }
+      t.cx = 10 * 32 + 16; t.cy = 3 * 32 + 16; t.leg = null; t.route = []; t.mode = "chase"; t.modeT = 30; t.chaseAge = 0; t.cool = 0; t.idle = 0;
+      __at(5, 3); const t0 = __game.time;
+      let giveUp = null, minD = 99, onT = 0, modes = new Set();
+      for (let i = 0; i < 20 * 14; i++) {
+        __game.tick(0.05); __game.player.moving = false;
+        const c = Math.floor(t.cx / 32), r = Math.floor(t.cy / 32);
+        if (lv.high[r][c]) onT++;
+        minD = Math.min(minD, Math.hypot(c - 5, r - 3)); modes.add(t.mode);
+        if (giveUp === null && t.mode !== "chase") giveUp = __game.time - t0;
+      }
+      return { giveUp, minD, onT, modes: [...modes].join(), lives: __game.lives, meows: __game.sounds.filter((e) => e.name === "meow").length };
+    });
+    ok(trk.giveUp >= 3.9 && trk.giveUp <= 4.15 && trk.minD <= 1.5 && trk.onT === 0 && !trk.modes.includes("search") && trk.lives === 3, `o rastreador também espera ao pé do T e desiste em 4 s (${trk.giveUp && trk.giveUp.toFixed(2)} s; modos ${trk.modes})`);
+    ok(trk.meows === 0, "o rastreador não mia (nenhum som de miado ao notar o gatinho)");
+    // 60 s em cima do T com todos soltos: ninguém persegue por mais de 4 s seguidos e não há derrota
+    const long = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = false; __game.noCatch = false; __game.setRand(__mul(3));
+      __at(19, 12); const list = [...__game.vets, ...__game.cats], run = list.map(() => 0), maxRun = list.map(() => 0);
+      for (let i = 0; i < 20 * 60; i++) {
+        __game.tick(0.05); __game.player.moving = false;
+        list.forEach((e, k) => { if (e.mode === "chase") { run[k] += 0.05; maxRun[k] = Math.max(maxRun[k], run[k]); } else run[k] = 0; });
+      }
+      __game.setRand(null);
+      return { max: Math.max(...maxRun), lives: __game.lives, state: __game.state, time: __game.time };
+    });
+    ok(long.max <= 4.2 && long.lives === 3 && long.state === "playing", `60 s em cima do T com 2 cães e 1 rastreador soltos: nenhum persegue por mais de 4 s seguidos (${long.max.toFixed(2)} s) e o gatinho não perde vida`);
+    // ---- X não é lugar alto: no meio de um obstáculo baixo os cães ao lado alcançam ----
+    const lowX = await ev(cp, () => {
+      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __game.noCatch = false;
+      const v = __game.vets[0], out = {};
+      __at(10, 8); v.cx = 9 * 32 + 16; v.cy = 8 * 32 + 16; __game.tick(0.01); out.floor = [__game.lives, __game.safe]; // no chão, a um tile: 32 px, fora do alcance de 22 px
+      __at(8, 8); v.cx = 7 * 32 + 16; v.cy = 8 * 32 + 16; __game.tick(0.01); out.onX = [__game.lives, __game.safe];
+      return out;
+    });
+    ok(lowX.floor[0] === 3 && lowX.onX[0] === 2 && lowX.onX[1] === false, `em cima de um obstáculo baixo (X) o gatinho não fica a salvo: o cão ao lado o alcança (${JSON.stringify(lowX)})`);
+    // ---- o placar ----
+    const hud = await ev(cp, () => { __game.start(1); const h = document.getElementById("hud-stamina"); return { hidden: h.classList.contains("hidden"), text: h.textContent, role: h.getAttribute("role"), label: h.getAttribute("aria-label"), st: document.getElementById("hud-state-item").classList.contains("hidden") }; });
+    ok(!hud.hidden && hud.text === "FÔLEGO" && hud.role === "progressbar" && hud.label === "Fôlego" && !hud.st, "o placar do Gatinho tem a barra FÔLEGO (com nome e papel para leitor de tela) e o ESTADO");
+    await ev(cp, () => { __game.stamina = 0.5; __game.tick(0.001); });
+    ok(await cp.waitForFunction(() => { const n = +document.getElementById("hud-stamina").getAttribute("aria-valuenow"); return n >= 45 && n <= 60 && /Fôlego: \d+%/.test(document.getElementById("hud-stamina").getAttribute("aria-valuetext")); }, null, { timeout: 3000 }).then(() => true, () => false), "a barra de fôlego acompanha o fôlego (aria-valuenow e valuetext)");
+    await ev(cp, () => { __game.stamina = 0; __game.winded = 1.2; });
+    ok(await cp.waitForFunction(() => document.getElementById("hud-stamina").classList.contains("winded") && /OFEGANTE/.test(document.getElementById("hud-state").textContent), null, { timeout: 3000 }).then(() => true, () => false), "sem fôlego a barra fica vermelha e o estado diz OFEGANTE");
+    await cp.context().close();
+  });
+
 //E2A-NEXT
   console.log("erros JS:", errs);
   if (errs.length) failed++;
