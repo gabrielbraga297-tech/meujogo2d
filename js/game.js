@@ -1825,14 +1825,17 @@
   const onLowNow = () => { const [c, r] = dogTileNow(); return !!(lv.catMode && lv.crate[r] && lv.crate[r][c]); }; // sobre um obstáculo baixo (X): o "pulo suave"
   const catSpeedFactor = () => (lv.catMode || lv.sprint ? (sprintOn && lv.sprint ? lv.sprint.factor : 1) * (wet > 0 && lv.water ? lv.water.slow : 1) * (onLowNow() ? JUMP_SLOW : 1) : 1);
   // Onde o cão (ou rastreador) espera: o tile alcançável (pelo chão `grid` dele) mais perto do lugar alto onde o gatinho está. Nunca por cima do T (fora do chão dos cães).
-  function refugeFoot(from, grid) {
-    const g = bfs(from, false, null, grid), [pc, pr] = dogTileNow();
+  function refugeFoot(v, from, grid) {
+    const [pc, pr] = dogTileNow(), key = pr * COLS + pc;
+    if (v.foot && v.footKey === key) return v.foot; // (o pé do lugar alto só muda quando o gatinho muda de tile: não refaz a busca a cada quadro)
+    const g = bfs(from, false, null, grid);
     let best = null;
     for (const [c, r] of g.q) {
       const d = Math.hypot(c - pc, r - pr), steps = g.dist.get(g.key(c, r));
       if (!best || d < best.d - 1e-9 || (Math.abs(d - best.d) < 1e-9 && steps < best.steps)) best = { c, r, d, steps };
     }
-    return best ? [best.c, best.r] : null;
+    v.footKey = key; v.foot = best ? [best.c, best.r] : null;
+    return v.foot;
   }
   // O cão (ou rastreador) `v` em perseguição com o gatinho a salvo espera ao pé do lugar alto no máximo lv.refuge.wait s e DESISTE: volta a patrulhar (descansando), e só volta a perseguir depois que o gatinho descer.
   // Devolve true se desistiu agora.
@@ -2028,7 +2031,7 @@
           if (!v.leg) { v.idle = 0.25; return; } // sem para onde fugir: espera um instante
         } else if (v.mode === "chase") {
           // vai atrás do cachorro por um caminho que não passa pelo tile dos outros agentes (se houver outro caminho): eles se espalham em vez de andar em fila
-          const from = tileOf(v.cx, v.cy), dogTile = safe ? refugeFoot(from, walk) || dogTileNow() : tileOf(player.x + player.w / 2, player.y + player.h / 2); // (Gatinho a salvo: o alvo é o pé do lugar alto)
+          const from = tileOf(v.cx, v.cy), dogTile = safe ? refugeFoot(v, from, walk) || dogTileNow() : tileOf(player.x + player.w / 2, player.y + player.h / 2); // (Gatinho a salvo: o alvo é o pé do lugar alto)
           const taken = new Set(vets.filter((o) => o !== v).map((o) => { const [c, r] = tileOf(o.cx, o.cy); return r * COLS + c; }));
           let p = [];
           if (from[0] !== dogTile[0] || from[1] !== dogTile[1]) { // (já no tile do cachorrinho, por exemplo enquanto ele está protegido: não há caminho a buscar, e a busca não se repete 3 vezes por quadro)
@@ -2190,7 +2193,7 @@
           c.leg = fleeStep(c);
           if (!c.leg) { c.idle = 0.2; return; }
         } else if (c.mode === "chase") {
-          const goal = safe ? refugeFoot(from, cw) || dogTileNow() : catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
+          const goal = safe ? refugeFoot(c, from, cw) || dogTileNow() : catTarget(c), taken = new Set(cats.filter((o) => o !== c).map((o) => { const [oc, orr] = tileOf(o.cx, o.cy); return orr * COLS + oc; }));
           const dogT = dogTileNow(), atGoal = from[0] === goal[0] && from[1] === goal[1], atDog = from[0] === dogT[0] && from[1] === dogT[1];
           let p = [];
           if (!atGoal) { p = pathTo(bfs(from, false, taken, cw), goal); if (!p.length) p = pathTo(bfs(from, false, null, cw), goal); }
@@ -3820,8 +3823,8 @@
         if (hudCache.stm !== mode) { hudCache.stm = mode; hudEl.stamina.classList.toggle("winded", mode === "winded"); hudEl.stamina.classList.toggle("run", mode === "run"); }
       }
       if (any) {
-        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · ") || "—";
-        if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t === "—" ? "normal" : t.toLowerCase()}`); }
+        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · "); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura)
+        if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t ? t.toLowerCase() : "normal"}`); }
       }
     }
     setHud("t", hudEl.time, fmt(time * 1000));

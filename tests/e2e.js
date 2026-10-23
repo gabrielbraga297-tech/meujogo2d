@@ -9112,7 +9112,7 @@ const PAGE_HELPERS = () => {
     ok(hi.safe === true && hi.safe2 === true && hi.safe3 === true && hi.down === false, "com o centro num tile T o gatinho está a salvo; ao sair do T deixa de estar");
     ok(hi.dogOn[0] === 3 && hi.dogOn[1] === "playing" && hi.trkOn[0] === 3 && hi.trkOn[1] === "playing", "em cima do T o contato com um cão ou com um rastreador não tira vida");
     ok(hi.invuln === 0 && hi.caught[0] === 2, "ao descer não há proteção nenhuma: o cão encostou e tirou 1 vida");
-    await hudIs(cp, "#hud-state", "—");
+    await hudIs(cp, "#hud-state", "");
     await ev(cp, () => { __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __at(5, 3); __game.tick(0.01); });
     ok(await cp.waitForFunction(() => document.getElementById("hud-state").textContent === "A SALVO", null, { timeout: 3000 }).then(() => true, () => false), "o placar mostra A SALVO enquanto o gatinho está no lugar alto");
     // ---- o cão em perseguição vai ao pé do T, espera e desiste em até 4 s; o relógio não para ----

@@ -90,7 +90,8 @@ body.touch .icon-btn { width: 44px; height: 44px; }
 #mission-bar b { color: var(--gold); }
 #mission-bar.done { color: var(--green); }
 /* Gatinho (0.18.0): barra de fôlego da arrancada no placar (só aparece nas fases do Gatinho) */
-#hud-stamina .meter { display: inline-block; width: 52px; height: 9px; margin-left: .45em; vertical-align: -1px; border-radius: 5px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+#hud-state-item b { color: var(--gold); }
+#hud-stamina .meter { display: inline-block; width: 46px; height: 9px; margin-left: .45em; vertical-align: -1px; border-radius: 5px; background: rgba(255, 255, 255, .16); overflow: hidden; }
 #hud-stamina .meter i { display: block; width: 100%; height: 100%; background: var(--green); transform-origin: left center; }
 #hud-stamina.run .meter i { background: var(--gold); }
 #hud-stamina.winded .meter i { background: #ff7a6b; }
