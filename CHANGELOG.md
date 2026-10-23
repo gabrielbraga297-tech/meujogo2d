@@ -4,6 +4,11 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
+## 0.19.0 — 23/10/2026 (em preparação)
+**Atualização 4 · Loja única ampliada.**
+Pedido do dono: a lojinha passa a vender **skins de todos os personagens e objetos que aparecem nos jogos** (agentes da carrocinha, carteiros, gatos, rações, ossos, bolinhas, blocos, vans, saída; e, no jogo do Gatinho, cães de guarda, ratinhos, novelos, camundongos, lugares altos, gatos rastreadores), e cada categoria só **abre para compra quando o jogador alcança, naquele jogo, a fase em que o objeto aparece** (sem gatos na fase atual, ainda não dá para comprar skins de gatos).
+- Em construção: catálogo único (`js/skins.js`), carteira por categoria, lojinha com abas por jogo e por categoria e as skins de cada categoria.
+
 ## 0.18.0 — 23/10/2026
 **Atualização 3 · Gatinho.**
 Pedido do dono: o **Gatinho** vira jogável, com o **seu próprio jogo de 20 fases** (pontos, recordes, ranking, progresso, "fases anteriores" e jogo salvo independentes dos do Cachorrinho), com ecologia e corpo de **gato doméstico genérico** (nada de raça; skins só visuais).
