@@ -2597,6 +2597,7 @@
     last = performance.now();
   }
 
+  const NARROW_FIELD = 340; // px: campo mais estreito que isto (celular pequeno em pé) recebe o aviso curto de começo de fase no Gatinho
   // Começa uma fase: do zero (vidas = 3), com as vidas que vieram da fase anterior, ou como nova tentativa.
   // `o.player`: quem segue na mesma partida (Próxima fase, Jogar novamente, Tentar novamente) continua sendo quem jogou, mesmo que outra aba tenha trocado o jogador atual
   function begin(id = levelId, o = {}) {
@@ -2607,9 +2608,11 @@
     reset(id, { ...o, animal: a });
     beginPlay();
     const n = vets.length, nc = cats.length;
+    const narrow = lv.catMode && $("game").getBoundingClientRect().width < NARROW_FIELD; // (Gatinho, celular pequeno: o campo é estreito e o aviso comprido cobria dois terços dele e o gatinho)
     const msg = o.retries ? `Tentativa extra ${o.retries} de ${MAX_RETRIES}: −${Records.RETRY_PENALTY} pontos. Vamos de novo!`
+      : lv.mission && narrow ? P().say.foes(n, nc, true) // (a fase e a meta de pontos estão no placar e a missão na faixa do alto)
       : lv.mission ? `${lv.title}: ${P().say.foes(n, nc, true)} · mínimo ${lv.minPoints} pontos · missão: ${missionShort()}` // (0.16.1: nas Fases 11 a 20 o aviso é curto, senão cobria até metade do campo no celular)
-      : `${theme.place} — ${lv.title}: ${P().say.foes(n, nc, false)}${lv.minPoints ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
+      : `${theme.place} — ${lv.title}: ${P().say.foes(n, nc, false)}${lv.minPoints && !narrow ? ` · mínimo de ${lv.minPoints} pontos` : ""}`;
     const eff = o.retries ? "" : upEffects(up), msg2 = eff ? `${msg} · Reforços valendo: ${eff}` : msg; // (a partir da 0.15.2 o aviso diz o que os reforços escolhidos acrescentam)
     if (started) toast(msg2, eff ? 4.5 : 2.8);
     else { startEff = eff ? `Reforços valendo: ${eff}` : ""; toast(`${msg} · ${START_HINT}`, 600); startHint = true; }

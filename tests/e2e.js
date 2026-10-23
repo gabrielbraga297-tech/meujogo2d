@@ -10219,6 +10219,26 @@ const PAGE_HELPERS = () => {
     await tp.context().close();
   });
 
+  // Em celular pequeno o campo é estreito: o aviso de começo de fase do Gatinho fica curto (a meta de pontos está no placar e a missão na faixa do alto) e não cobre mais de ~45% do campo.
+  await section("0.18.0 · Gatinho: correções da auditoria 3 (aviso de começo de fase curto em tela estreita; o Cachorrinho e as telas largas não mudam)", async () => {
+    const small = await newPage({ realCat: true, viewport: { width: 320, height: 568 }, hasTouch: true, isMobile: true });
+    await fresh(small, { name: "Totó", query: "?touch=1" });
+    const rows = [];
+    for (const f of [14, 18, 20]) {
+      const r = await ev(small, (f) => { __game.autoStart = false; __game.setAnimal("cat"); __game.start(f); const t = document.getElementById("toast"), c = document.getElementById("game"); return { text: t.textContent, ratio: t.getBoundingClientRect().height / c.getBoundingClientRect().height, cw: c.getBoundingClientRect().width }; }, f);
+      rows.push([f, r]);
+      ok(r.cw < 340 && r.ratio <= 0.45 && /O tempo só começa quando você se mexer\.$/.test(r.text) && /rastreadores/.test(r.text) && !/mínimo|missão/.test(r.text), `320×568, Fase ${f} do Gatinho: o aviso de começo ocupa ${(r.ratio * 100).toFixed(0)}% do campo (≤ 45%): "${r.text}"`);
+    }
+    const dog = await ev(small, () => { __game.autoStart = false; __game.setAnimal("dog"); __game.start(11); return document.getElementById("toast").textContent; });
+    ok(/^Fase 11: 5 agentes e 2 gatos · mínimo 2300 pontos · missão: todos os ossos · O tempo só começa/.test(dog), `o Cachorrinho em 320×568 continua com o aviso inteiro ("${dog}")`);
+    await small.context().close();
+    const wide = await newPage({ realCat: true, viewport: { width: 1000, height: 700 } });
+    await fresh(wide, { name: "Totó" });
+    const w20 = await ev(wide, () => { __game.autoStart = false; __game.setAnimal("cat"); __game.start(20); return document.getElementById("toast").textContent; });
+    ok(/^Fase 20: 8 cães e 7 rastreadores · mínimo 4000 pontos · missão: todos os novelos \+ 52 ratinhos · O tempo só começa/.test(w20), `em tela larga o aviso do Gatinho continua inteiro ("${w20}")`);
+    await wide.context().close();
+  });
+
   await section("tabela das fases do Gatinho (a cópia técnica do README bate com os dados do jogo)", async () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     const tbl = readme.slice(readme.indexOf("## Tabela das fases do Gatinho"), readme.indexOf("## Biologia por trás do Gatinho"));
