@@ -116,6 +116,10 @@
   const skinById = (id) => SKINS.find((k) => k.id === id) || SKINS[0];
   // O catálogo de skins de cada bichinho (0.18.0): o do Cachorrinho é o SKINS acima; o do Gatinho são as 12 de CatArt.SKINS (js/cat-art.js: id, name, text, price). A carteira é única, mas as skins compradas e em uso são POR BICHINHO (js/records.js).
   const skinsOf = (animalId) => (animalId === "cat" && typeof CatArt !== "undefined" ? CatArt.SKINS : SKINS);
+  // (0.19.0) As duas categorias do próprio bichinho entram no catálogo único da lojinha (js/skins.js) com as skins de sempre: o Cachorrinho a partir de SKINS e o Gatinho a partir de CatArt.SKINS
+  // (a primeira de cada lista é a padrão: Caramelo e Rajado). As categorias dos objetos de cada jogo são registradas em js/skins-dog.js e js/skins-cat.js.
+  Skins.register("dog", SKINS.slice(1), { name: SKINS[0].name, text: SKINS[0].text });
+  if (typeof CatArt !== "undefined") Skins.register("cat", CatArt.SKINS.slice(1), { name: CatArt.SKINS[0].name, text: CatArt.SKINS[0].text }); // (sem js/cat-art.js o Gatinho não tem skins nem lojinha: o Cachorrinho continua igual)
   let skinId = ""; // a skin em uso do jogador atual (0.15.9)
   let catSkin = ""; // a skin em uso do jogador atual no Gatinho (0.18.0): lida da carteira; os testes e as capturas podem trocá-la com `__game.catSkin` (vale até a próxima leitura)
   const refreshSkin = () => {
@@ -123,6 +127,9 @@
     skinId = w && SKINS.some((k) => k.id === w.equipped) ? w.equipped : "";
     const c = me ? store.equippedSkin(me, "cat") : "";
     catSkin = skinsOf("cat").some((k) => k.id === c) ? c : ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
+    // (0.19.0) a skin em uso de TODAS as categorias (o bichinho e os objetos de cada jogo): `looks[categoria]` = a skin (objeto); sem nenhuma em uso, a padrão. Uma skin guardada que não existe no catálogo conta como a padrão.
+    const eq = me ? store.equippedSkins(me, Skins.SLOTS.map((x) => x.id)) : {};
+    for (const x of Skins.SLOTS) looks[x.id] = Skins.get(x.id, Skins.has(x.id, eq[x.id]) ? eq[x.id] : "");
   };
   // ---------- Lojinha única (0.19.0): a skin em uso de cada categoria (catálogo em js/skins.js). `looks[categoria]` = a skin (objeto) em uso; sem ela vale a padrão da categoria.
   // Os desenhos leem `lookOf("ration").campo` e desenham o visual de sempre quando o campo não existe; skins só mudam o visual. `PREVIEW[categoria] = (c2, skin, w, h)` desenha o mostruário da lojinha (use withLook). ----------
@@ -2898,60 +2905,151 @@
   }
   function openAnimals() { renderAnimals(); showScreen("animals"); }
 
-  // ---------- Lojinha de skins (0.15.9): petiscos (1 por fase completada = 1 petscoin) por skins do cachorrinho ----------
-  function renderSkinPreview(canvas, id) { // mostruário: o cachorrinho adulto, de lado, com a skin (no Gatinho, o gatinho adulto, com a skin do catálogo do gato)
-    const c2 = canvas.getContext("2d"), keep = ctx;
-    c2.clearRect(0, 0, canvas.width, canvas.height);
-    if (syncAnimal() === "cat" && typeof CatArt !== "undefined") {
-      c2.save(); c2.scale(3.4, 3.4);
-      try { CatArt.drawCat(c2, { x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true, calm: true }); } finally { c2.restore(); }
-      return;
-    }
-    ctx = c2; c2.save(); c2.scale(3.4, 3.4);
-    try { drawDog({ x: canvas.width / 6.8 - 12, y: canvas.height / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: id, still: true }); } finally { c2.restore(); ctx = keep; }
+  // ---------- Lojinha única (0.15.9; ampliada na 0.19.0): petiscos (1 por fase completada = 1 petscoin) por skins de todos os bichinhos e objetos dos jogos ----------
+  // Abas por JOGO (Cachorrinho | Gatinho | Passarinho "em breve") e, dentro do jogo, CATEGORIAS (o bichinho, os agentes da carrocinha, as rações...; o catálogo é o js/skins.js). A carteira de petscoin é uma só.
+  // Cada categoria libera quando o jogador ALCANÇA a fase em que o objeto aparece NAQUELE jogo (store.reachedLevel); antes disso ela aparece apagada, com cadeado, e não vende (o armazenamento também recusa: "locked").
+  // O mostruário de cada categoria é `PREVIEW[categoria]` (canvas 216 × 156): as do bichinho estão aqui; as dos objetos vêm de js/game.js (frentes dos objetos); sem uma, desenha um mostruário simples com o nome da categoria.
+  PREVIEW.dog = (c2, skin, w, h) => withLook("dog", skin, c2, () => { // o cachorrinho adulto, de lado, com a skin
+    c2.save(); c2.scale(3.4, 3.4);
+    try { drawDog({ x: w / 6.8 - 12, y: h / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: skin.id, still: true }); } finally { c2.restore(); }
+  });
+  PREVIEW.cat = (c2, skin, w, h) => { // o gatinho adulto, de lado, com a skin do catálogo do gato
+    c2.save(); c2.scale(3.4, 3.4);
+    try { CatArt.drawCat(c2, { x: w / 6.8 - 12, y: h / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: skin.id, still: true, calm: true }); } finally { c2.restore(); }
+  };
+  function genericPreview(c2, slot, w, h) { // mostruário simples: o nome da categoria num quadro suave
+    c2.save();
+    c2.fillStyle = "rgba(255, 255, 255, .06)"; c2.fillRect(0, 0, w, h);
+    c2.fillStyle = "#ffd54a"; c2.font = "700 24px system-ui, sans-serif"; c2.textAlign = "center"; c2.textBaseline = "middle";
+    const words = slot.name.split(" "), lines = [];
+    for (const word of words) { const last = lines[lines.length - 1]; if (last !== undefined && c2.measureText(`${last} ${word}`).width <= w - 24) lines[lines.length - 1] = `${last} ${word}`; else lines.push(word); }
+    lines.forEach((t, i) => c2.fillText(t, w / 2, h / 2 + (i - (lines.length - 1) / 2) * 28, w - 16));
+    c2.restore();
   }
-  let shopMsg = "";
+  function renderSkinPreview(canvas, slot, skin) { // o mostruário de uma skin da categoria
+    const c2 = canvas.getContext("2d");
+    c2.clearRect(0, 0, canvas.width, canvas.height);
+    const draw = PREVIEW[slot.id];
+    if (draw) { try { draw(c2, skin, canvas.width, canvas.height); return; } catch (e) { if (typeof console !== "undefined") console.error(`Mostruário da categoria ${slot.id}: ${e.message}`); c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, canvas.width, canvas.height); } }
+    genericPreview(c2, slot, canvas.width, canvas.height);
+  }
+  // Os avisos da lojinha: nas categorias do próprio bichinho valem os do perfil dele ("Skin do gatinho em uso..."); nas dos objetos, frases gerais.
+  const SHOP_SAY = {
+    preview: (k, slot) => (slot.player ? profileOf(slot.game).shop.preview(k.name) : `Prévia da skin ${k.name}: ${slot.name}`),
+    inUse: (k, slot) => (slot.player ? profileOf(slot.game).shop.inUse(k.name) : `Skin em uso: ${k.name} (${slot.name}).`),
+    bought: (k, slot, left) => (slot.player ? profileOf(slot.game) : profileOf(DEFAULT_ANIMAL)).shop.bought(k.name, left),
+  };
+  const gameName = (id) => (gameOf(id) || { name: id }).name;
+  const lockText = (from, game) => `Libera ao chegar à Fase ${from} do ${gameName(game)}`;
+  let shopMsg = "", shopGame = "", shopSlot = ""; // a mensagem, o jogo (aba) e a categoria abertos
+  const shopSlotOf = Object.create(null); // a categoria que estava aberta em cada jogo (ao voltar para a aba ela continua)
+  const shopSlots = (game) => Skins.slotsOf(game).filter((x) => Skins.count(x.id) > 0); // (uma categoria sem nenhuma skin registrada não aparece)
+  const shopGameReady = (id) => !!(gameOf(id) && gameOf(id).ready) && shopSlots(id).length > 0;
   // `refocus`: índice do cartão cujo botão acabou de ser usado (a tela é desenhada de novo e o foco não pode se perder); sem ele, mantém o foco no mesmo cartão se o foco estava na lista
   function renderShop(refocus = -1) {
-    const me = store.player(), A = syncAnimal(), PA = profileOf(A), CATALOG = skinsOf(A), w = me ? store.wallet(me, A) : null, list = $("shop-list"); // (0.18.0) a lojinha mostra as skins do bichinho escolhido: o saldo é um só, mas o que se compra e se usa é por bichinho
-    if (refocus < 0) { const a = document.activeElement; refocus = !a || !list.contains(a) ? -1 : a.id.startsWith("shop-name-") ? Number(a.id.slice(10)) : [...list.querySelectorAll("button")].indexOf(a); }
+    const me = store.player(), A = syncAnimal(), list = $("shop-list"), gamesBar = $("shop-games"), catsBar = $("shop-cats");
+    if (!shopGameReady(shopGame)) shopGame = shopGameReady(A) ? A : DEFAULT_ANIMAL;
+    const slots = shopSlots(shopGame);
+    if (!slots.some((x) => x.id === shopSlot)) shopSlot = (slots.some((x) => x.id === shopSlotOf[shopGame]) ? shopSlotOf[shopGame] : (slots.find((x) => x.player) || slots[0]).id);
+    shopSlotOf[shopGame] = shopSlot;
+    const slot = Skins.slot(shopSlot), reached = (game) => (me ? store.reachedLevel(me, game) : 1), w = me ? store.wallet(me, slot.id) : null;
+    const act = document.activeElement;
+    if (refocus < 0) refocus = !act || !list.contains(act) ? -1 : act.id.startsWith("shop-name-") ? Number(act.id.slice(10)) : [...list.querySelectorAll("button")].indexOf(act);
+    const keepTab = act && /^shop-(game|cat)-/.test(act.id || "") ? act.id : "";
     $("shop-balance").textContent = me ? `${me}, você tem ${w.treats} petscoin (${w.treats} ${w.treats === 1 ? "petisco" : "petiscos"}).` : "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.";
     $("shop-msg").textContent = shopMsg;
-    list.replaceChildren();
-    let firstFocus = true;
-    for (const [i, k0] of CATALOG.entries()) {
-      const k = PA.skins && PA.skins[k0.id] ? { ...k0, ...PA.skins[k0.id] } : k0; // (0.18.0) o perfil pode trocar o nome e a frase da skin; o preço e o desenho são do catálogo
-      const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (CATALOG.some((s) => s.id === w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
-      const card = el("div", `shop-card${equipped ? " equipped" : ""}`), cv = document.createElement("canvas");
-      cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", PA.shop.preview(k.name));
-      renderSkinPreview(cv, k.id);
-      const b = el("button", owned ? "" : "primary-ish"); b.type = "button";
-      if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
-      else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
-      else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id, A); refreshSkin(); shopMsg = PA.shop.inUse(k.name); sound.play("pick"); renderShop(i); }); }
-      else {
-        const missing = k.price - w.treats;
-        b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
-        if (missing > 0) b.title = missing === 1 ? "Falta 1 petscoin" : `Faltam ${missing} petscoin`;
-        b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos)
-          const r = store.buySkin(me, k.id, k.price, A);
-          if (r.ok) { store.equipSkin(me, k.id, A); refreshSkin(); shopMsg = PA.shop.bought(k.name, r.wallet.treats); sound.play("levelup"); }
-          else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : "Não foi possível comprar esta skin.";
-          renderShop(i);
-        });
-        if (firstFocus && !b.disabled) { b.dataset.autofocus = ""; firstFocus = false; }
-      }
-      const nm = el("strong", null, k.name); nm.id = `shop-name-${i}`; b.id = `shop-btn-${i}`;
-      b.setAttribute("aria-labelledby", `${b.id} ${nm.id}`); // o nome do botão traz a skin ("Comprar (12 petscoin) Dálmata"), senão os botões ficariam todos iguais para o leitor de tela
-      card.append(cv, nm, el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
-      list.append(card);
+    // ---- as abas: os jogos e, dentro do jogo, as categorias (setas do teclado andam entre elas; só a aba aberta entra na ordem do Tab) ----
+    gamesBar.replaceChildren();
+    for (const g of Skins.GAMES) {
+      const ready = shopGameReady(g.id), on = g.id === shopGame, t = el("button", `shop-tab${on ? " on" : ""}${ready ? "" : " soon"}`);
+      t.type = "button"; t.id = `shop-game-${g.id}`; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", on ? "true" : "false"); t.setAttribute("aria-controls", "shop-list"); t.tabIndex = on ? 0 : -1;
+      t.append(el("span", null, gameName(g.id)));
+      if (!ready) { t.disabled = true; t.append(el("small", null, "em breve")); t.setAttribute("aria-label", `${gameName(g.id)}: em breve`); }
+      else t.addEventListener("click", () => { if (shopGame !== g.id) { shopGame = g.id; shopSlot = ""; shopMsg = ""; } renderShop(); });
+      gamesBar.append(t);
     }
-    if (refocus >= 0) { // o foco não se perde ao desenhar de novo: fica no mesmo cartão (no botão, se ele ainda serve; senão no nome da skin, que não faz nada com Enter: apertar Enter duas vezes não compra a skin seguinte)
+    catsBar.replaceChildren();
+    for (const x of slots) {
+      const locked = reached(x.game) < x.from, on = x.id === slot.id, t = el("button", `shop-tab chip${on ? " on" : ""}${locked ? " locked" : ""}`);
+      t.type = "button"; t.id = `shop-cat-${x.id}`; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", on ? "true" : "false"); t.setAttribute("aria-controls", "shop-list"); t.tabIndex = on ? 0 : -1;
+      if (locked) { const ic = el("span", "lock-ico", "\u{1F512}"); ic.setAttribute("aria-hidden", "true"); t.append(ic); }
+      t.append(el("span", null, x.name));
+      if (locked) { t.append(el("small", null, `Fase ${x.from}`)); t.setAttribute("aria-label", `${x.name}, bloqueada. ${lockText(x.from, x.game)}`); }
+      t.addEventListener("click", () => { if (shopSlot !== x.id) { shopSlot = x.id; shopMsg = ""; } renderShop(); });
+      catsBar.append(t);
+    }
+    list.setAttribute("aria-labelledby", `shop-cat-${slot.id}`);
+    // ---- o painel da categoria aberta ----
+    list.replaceChildren();
+    const slotLocked = reached(slot.game) < slot.from;
+    $("shop-note").textContent = slotLocked ? "" : `Skins para ${slot.singular}.`;
+    list.classList.toggle("is-locked", slotLocked);
+    if (slotLocked) { // bloqueada: só a frase (o que há dentro fica escondido até chegar à fase)
+      const box = el("div", "shop-locked"), ic = el("span", "lock-ico", "\u{1F512}"); ic.setAttribute("aria-hidden", "true");
+      box.append(ic, el("strong", null, lockText(slot.from, slot.game)), el("span", "sub", `${me ? "Você está" : "Sem nome de usuário você está"} na Fase ${reached(slot.game)} do ${gameName(slot.game)}. Conclua a Fase ${slot.from - 1} para abrir as skins desta categoria.`));
+      list.append(box);
+    } else {
+      let firstFocus = true;
+      for (const [i, k0] of Skins.list(slot.id).entries()) {
+        const PS = slot.player ? profileOf(slot.game) : null;
+        const k = PS && PS.skins && PS.skins[k0.id] ? { ...k0, ...PS.skins[k0.id] } : k0; // (0.18.0) o perfil pode trocar o nome e a frase da skin; o preço e o desenho são do catálogo
+        const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (w.equipped !== "" && Skins.has(slot.id, w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
+        const kFrom = Skins.fromOf(slot.id, k.id), kLocked = k.id !== "" && reached(slot.game) < kFrom; // (uma skin pode abrir numa fase mais alta que a da categoria)
+        const card = el("div", `shop-card${equipped ? " equipped" : ""}${kLocked ? " locked" : ""}`), nm = el("strong", null, kLocked ? "Skin escondida" : k.name);
+        nm.id = `shop-name-${i}`;
+        const b = el("button", owned ? "" : "primary-ish"); b.type = "button"; b.id = `shop-btn-${i}`;
+        if (kLocked) {
+          b.textContent = "Bloqueada"; b.disabled = true;
+          card.append(nm, el("span", "sub", `\u{1F512} ${lockText(kFrom, slot.game)}`), b);
+        } else {
+          const cv = document.createElement("canvas");
+          cv.width = 216; cv.height = 156; cv.setAttribute("role", "img"); cv.setAttribute("aria-label", SHOP_SAY.preview(k, slot));
+          renderSkinPreview(cv, slot, k0);
+          if (!me) { b.textContent = k.price ? `${k.price} petscoin` : "Padrão"; b.disabled = true; }
+          else if (equipped) { b.textContent = "Em uso"; b.disabled = true; }
+          else if (owned) { b.textContent = "Usar"; b.addEventListener("click", () => { store.equipSkin(me, k.id, slot.id); refreshSkin(); shopMsg = SHOP_SAY.inUse(k, slot); sound.play("pick"); renderShop(i); }); }
+          else {
+            const missing = k.price - w.treats;
+            b.textContent = `Comprar (${k.price} petscoin)`; b.disabled = missing > 0;
+            if (missing > 0) b.title = missing === 1 ? "Falta 1 petscoin" : `Faltam ${missing} petscoin`;
+            b.addEventListener("click", () => { // confere de novo no armazenamento (outra aba pode ter gastado os petiscos ou o jogo pode não ter chegado à fase)
+              const r = store.buySkin(me, k.id, k.price, slot.id, { game: slot.game, from: kFrom });
+              if (r.ok) { store.equipSkin(me, k.id, slot.id); refreshSkin(); shopMsg = SHOP_SAY.bought(k, slot, r.wallet.treats); sound.play("levelup"); }
+              else shopMsg = r.error === "funds" ? "Faltam petscoin para esta skin." : r.error === "owned" ? "Você já tem esta skin." : r.error === "locked" ? `Esta skin ainda está bloqueada: ${lockText(kFrom, slot.game).replace(/^Libera/, "libera")}.` : "Não foi possível comprar esta skin.";
+              renderShop(i);
+            });
+            if (firstFocus && !b.disabled) { b.dataset.autofocus = ""; firstFocus = false; }
+          }
+          b.setAttribute("aria-labelledby", `${b.id} ${nm.id}`); // o nome do botão traz a skin ("Comprar (12 petscoin) Dálmata"), senão os botões ficariam todos iguais para o leitor de tela
+          card.append(cv, nm, el("span", "sub", `${k.text}${k.price && !owned ? ` · ${k.price} petscoin` : ""}`), b);
+        }
+        list.append(card);
+      }
+    }
+    if (keepTab) { // o foco não se perde ao trocar de aba: fica na aba (a mesma, ou a aberta se aquela já não existe)
+      const t = $(keepTab) && !$(keepTab).disabled ? $(keepTab) : (keepTab.startsWith("shop-game-") ? gamesBar : catsBar).querySelector('[aria-selected="true"]');
+      if (t) t.focus();
+    } else if (refocus >= 0) { // o foco não se perde ao desenhar de novo: fica no mesmo cartão (no botão, se ele ainda serve; senão no nome da skin, que não faz nada com Enter: apertar Enter duas vezes não compra a skin seguinte)
       const b = list.querySelectorAll("button")[refocus], nm = $(`shop-name-${refocus}`);
       if (b && !b.disabled) b.focus(); else if (nm) { nm.tabIndex = -1; nm.focus(); } else $("btn-shop-back").focus();
     }
   }
-  function openShop() { shopMsg = ""; renderShop(); showScreen("shop"); }
+  // as setas ← → (e Início/Fim) andam entre as abas e abrem a que recebeu o foco
+  function onShopTabKey(e) {
+    const k = e.key;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(k)) return;
+    const tabs = [...e.currentTarget.querySelectorAll('[role="tab"]')].filter((t) => !t.disabled), i = tabs.indexOf(document.activeElement);
+    if (i < 0 || !tabs.length) return;
+    e.preventDefault();
+    if (e.repeat) return;
+    tabs[k === "Home" ? 0 : k === "End" ? tabs.length - 1 : (i + (k === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length].click();
+  }
+  $("shop-games").addEventListener("keydown", onShopTabKey); $("shop-cats").addEventListener("keydown", onShopTabKey);
+  function openShop() { // abre no bichinho escolhido, na categoria do próprio bichinho
+    shopMsg = ""; shopGame = syncAnimal(); shopSlot = shopGame;
+    for (const k of Object.keys(shopSlotOf)) delete shopSlotOf[k];
+    renderShop(); showScreen("shop");
+  }
 
   function pauseGame() {
     if (state !== "playing") return;
@@ -4126,7 +4224,7 @@
   function moveFocus(dir) {
     const scope = document.querySelector(".screen:not(.hidden)");
     if (!scope) return;
-    const els = [...scope.querySelectorAll("button, input")].filter((e) => !e.disabled && e.offsetParent !== null);
+    const els = [...scope.querySelectorAll("button, input")].filter((e) => !e.disabled && e.offsetParent !== null && !(e.getAttribute("role") === "tab" && e.tabIndex < 0)); // (as abas da lojinha: ↑ ↓ passam só pela aberta; ← → andam entre elas)
     if (!els.length) return;
     if (els.length < 2 && scope.scrollHeight > scope.clientHeight + 1) { scope.scrollTop += dir * Math.max(80, scope.clientHeight * 0.5); return; } // (só há um botão, por exemplo a lojinha sem petscoin: as setas rolam a tela em vez de pular para ele)
     let i = els.indexOf(document.activeElement);

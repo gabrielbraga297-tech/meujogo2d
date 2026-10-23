@@ -5,7 +5,7 @@
 ## Moeda
 - **Petisco = Petscoin** (1 para 1). Aparece no jogo como **petscoin** (saldo) e como **petisco** (o que se ganha).
 - **Como ganhar:** **1 petisco a cada fase completada** (toda vez que a tela de vitória aparece, inclusive ao jogar de novo uma fase para melhorar o recorde). Quem não tem nome de usuário não guarda o petisco (a tela de vitória avisa).
-- **Onde fica:** na carteira do jogador (`wallet` em `js/records.js`, no `localStorage`): `{ t: petiscos, own: [skins compradas], eq: skin em uso }`. Apagar a conta apaga a carteira. Máximo de 99999 petiscos e 60 skins por jogador.
+- **Onde fica:** na carteira do jogador (`wallet` em `js/records.js`, no `localStorage`): `{ t: petiscos, own: [skins compradas], eq: skin em uso }`. Apagar a conta apaga a carteira. Máximo de 99999 petiscos e 200 skins por jogador.
 - **Bichinhos (0.17.0 e 0.18.0):** a carteira é **única**: o petisco de uma fase concluída em qualquer bichinho vai para o mesmo saldo. Desde a 0.18.0 (Gatinho) **as skins compradas e em uso são por bichinho** (veja **Skins por bichinho** abaixo). Veja **Bichinhos (0.17.0)** no README.
 - **Preço mínimo:** `MIN_SKIN_PRICE = 10`. A compra é recusada se o preço for menor (`buySkin`), e o teste confere todo o catálogo.
 

@@ -13,7 +13,7 @@
 //  - `say.*`, `lose.*`, `fx.*`, `effect.*`, `mission.*`, `hud.*`: funções (ou textos) que o motor chama com os números; devolvem a frase pronta, já com a gramática (artigos, gênero, plural) do bichinho.
 //  - `reinforce[id]`: { name, text } de cada reforço (os ids, máximos e a fase em que entram são do motor: REINFORCEMENTS em js/game.js).
 //  - `skins`: null = usa o catálogo de skins do bichinho (o do Cachorrinho está no js/game.js, o do Gatinho em CatArt.SKINS); um objeto { idDaSkin: { name, text } } só troca o nome e a frase (preço e desenho continuam os do catálogo).
-//  - `shop`: os avisos da lojinha de skins (prévia, skin em uso, compra); `ui.shopTitle` é o título da tela.
+//  - `shop`: os avisos da lojinha de skins do PRÓPRIO bichinho (prévia, skin em uso, compra); as categorias dos objetos usam frases gerais (js/game.js). A lojinha é única (0.19.0): `ui.shopTitle` e `ui.shopHelp` ficam null em todos os bichinhos (valem o título e a ajuda do index.html).
 //  - `ui.*`: textos fixos do index.html (Como jogar, ajuda da lojinha...). null = fica o que está no index.html (o texto do Cachorrinho); texto = troca o conteúdo daquele elemento.
 //  - `sfx.*`: nomes dos sons (js/sound.js) que o jogo toca nos momentos de cada bichinho; o motor só chama `sound.play(P().sfx.x)`.
 (function (root, factory) {
@@ -120,7 +120,7 @@
     sfx: { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
       ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" },
     skins: null,
-    // textos da lojinha de skins (0.18.0); `ui.shopTitle` troca o título da tela
+    // textos da lojinha de skins do bichinho (0.18.0); a lojinha é única (0.19.0): ficam só os avisos da categoria do próprio bichinho
     shop: {
       preview: (name) => `Prévia da skin ${name}`,
       inUse: (name) => `Skin em uso: ${name}.`,
@@ -225,7 +225,7 @@
       bought: (name, left) => `Você comprou a skin ${name} para o gatinho e já está usando! ${left === 0 ? "Não sobrou nenhum petscoin." : left === 1 ? "Sobrou 1 petscoin." : `Sobraram ${left} petscoin.`}`,
     },
     ui: {
-      shopTitle: "Lojinha de skins do gatinho",
+      shopTitle: null, // (0.19.0) a lojinha é única, de todos os bichinhos: o título e a ajuda dela são os do index.html
       howto: [
         `<li><strong>Objetivo:</strong> ajude o gatinho a pegar todos os ratinhos (e os <strong>novelos</strong>, nas fases em que eles aparecem) e depois chegar à <strong>SAÍDA</strong>. A saída abre quando você pegar tudo; nas fases com <strong>pontos mínimos</strong> (o placar mostra <strong>PONTOS n / meta</strong>), ela abre assim que a sua pontuação na fase chega a essa meta (e, a partir da Fase 11, também a <strong>missão</strong> da fase precisa estar cumprida).</li>`,
         `<li><strong>Mover:</strong> no computador, use as teclas <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas. No celular ou tablet, arraste o dedo no controle redondo que aparece na tela. <strong>O tempo só começa a contar quando você dá o primeiro passo</strong>: até lá o relógio e os cães ficam parados.</li>`,
@@ -237,7 +237,7 @@
         `<li><strong>Missão (a partir da Fase 11):</strong> além dos pontos mínimos, cada fase tem uma <strong>missão</strong> (pegar todos os novelos e/ou pegar um número de ratinhos). Ela aparece numa faixa no alto do jogo, e a saída só abre com a missão cumprida, que ainda dá <strong>pontos extras</strong>.</li>`,
         `<li><strong>Novelos de cores diferentes (a partir da Fase 11):</strong> o <strong>novelo de ouro</strong> dá um escudo (nada pega o gatinho), o <strong>novelo de gelo</strong> congela os cães, o <strong>novelo turbo</strong> deixa o gatinho mais rápido e sem cansar na arrancada, e o <strong>novelo ímã</strong> puxa os ratinhos que estão perto. Os efeitos aparecem numa faixa no alto do jogo.</li>`,
         `<li><strong>Camundongos ágeis (a partir da Fase 2):</strong> gato adora caçar! Os <strong>camundongos ágeis</strong> espalhados pela fase valem <strong>50 pontos</strong> cada, mas <strong>disparam</strong> quando você chega perto (e batem nas paredes e nos obstáculos): corra atrás e encoste neles. Eles não são obrigatórios para abrir a saída.</li>`,
-        `<li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins para o gatinho (a partir de 10 petscoin): cores, bandana de pirata, capacete de astronauta, capa de super-gato...</li>`,
+        `<li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins (a partir de 10 petscoin): para o gatinho (cores, bandana de pirata, capacete de astronauta, capa de super-gato...) e também para os objetos do jogo, como os cães de guarda, os ratinhos e os novelos. A lojinha é uma só, com uma aba para cada jogo, e <strong>cada categoria abre quando você chega à fase em que ela aparece</strong> (os lugares altos, por exemplo, só na Fase 3 do Gatinho). As skins só mudam o desenho.</li>`,
         `<li><strong>Bichinhos:</strong> no menu, toque em <strong>Bichinho</strong> para escolher com quem jogar. <strong>Cada bichinho tem as suas próprias 20 fases</strong>, com pontos, recordes, ranking, progresso e jogo salvo só dele: jogar um não mexe nos outros. <strong>Dentro de um bichinho a fase seguinte só abre quando você conclui a anterior</strong>. A <strong>lojinha de skins</strong>, os <strong>petscoin</strong>, o nome de usuário e a conta são de todos os bichinhos.</li>`,
         `<li><strong>Reforços:</strong> ao vencer uma fase você escolhe <strong>1 reforço</strong> entre <strong>3 opções sorteadas</strong> (de um conjunto de 6: patas ágeis, novelo poderoso, vida extra, coração maior, pelo grosso ou cães lentos; a partir da Fase 11 entram mais 3: passos de veludo, bigodes atentos e chamado de petisco). Ele fica com você nas fases seguintes; a próxima fase só começa depois da escolha. Começar uma fase pelo menu ou jogá-la de novo começa sem reforços.</li>`,
         `<li><strong>Crescer:</strong> na Fase 1 o gatinho é um <strong>filhote</strong> (menor, de cabeça grande e coleira rosa). A cada fase vencida e a cada reforço escolhido ele cresce: vira um gato <strong>jovem</strong> (coleira roxa) e, por fim, um gato <strong>adulto</strong> (coleira verde-água). Mudam o desenho e o miado ao completar a fase (agudo no filhote, grave no adulto). É só o desenho e o som: o tamanho de contato e as regras são os mesmos. Na pausa o jogo diz em que fase de crescimento ele está.</li>`,
@@ -252,7 +252,7 @@
         `<li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos os jogadores deste aparelho e mostra apenas a melhor pontuação de cada um.</li>`,
         `<li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome neste aparelho.</li>`,
       ].join("\n        "),
-      shopHelp: `Cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>). Troque os petiscos por skins para o gatinho: elas custam a partir de 10 petscoin.`,
+      shopHelp: null,
       scoresHelp: `Em cada fase vale a sua <strong>maior</strong> pontuação (100 por ratinho + 150 por novelo + 100 por cão afugentado + 50 por camundongo + bônus da missão nas Fases 11 a 20 + bônus de tempo − pontos por vida perdida − 100 por nova tentativa). Fases diferentes se somam.`,
       nameTip: `<strong>Dica:</strong> o nome pode ser o nome de um gatinho! Por exemplo: <strong>Mimi</strong>.`,
       nameStep: `Pense em um nome. Pode ser o do seu gatinho.`,

@@ -8594,7 +8594,7 @@ const PAGE_HELPERS = () => {
       canvas: document.getElementById("game").getAttribute("aria-label"), pad: document.getElementById("pad").getAttribute("aria-label"),
     }));
     const orig = await snap();
-    ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /skins para o cachorrinho/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
+    ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /1 petisco/.test(orig.shop) && /10 petscoin/.test(orig.shop) && /em qualquer jogo/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
     // ---- jogando o Cachorrinho (Fase 2): placar, avisos, vitória, derrota ----
     await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
     const hudDog = await ev(page, () => ({ prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), toast: document.getElementById("toast").textContent }));
@@ -8633,7 +8633,7 @@ const PAGE_HELPERS = () => {
     await page.keyboard.press("Escape");
     await page.click("#btn-shop");
     const shopCat = { help: await page.textContent("#shop-help"), names: await page.$$eval("#shop-list .shop-card strong", (e) => e.map((x) => x.textContent)), subs: await page.$$eval("#shop-list .shop-card .sub", (e) => e.map((x) => x.textContent)) };
-    ok(/skins para o gatinho/.test(shopCat.help) && shopCat.names.join() === "Rajado,Preto,Branco,Cinza,Laranja,Siamês,Van Turco,Tricolor,Smoking,Pirata,Astronauta,Super-gato" && /o gatinho de sempre/.test(shopCat.subs[0]) && /capa vermelha de super-herói · 50 petscoin/.test(shopCat.subs[11]), `Gatinho: a lojinha diz skins para o gatinho, com as 12 skins do gato (${shopCat.names.join(", ")})`);
+    ok(await page.innerHTML("#shop-help") === orig.shop && await page.textContent("#shop-title") === "Lojinha de skins" && shopCat.names.join() === "Rajado,Preto,Branco,Cinza,Laranja,Siamês,Van Turco,Tricolor,Smoking,Pirata,Astronauta,Super-gato" && /o gatinho de sempre/.test(shopCat.subs[0]) && /capa vermelha de super-herói · 50 petscoin/.test(shopCat.subs[11]), `Gatinho: a lojinha é única (título e ajuda são os mesmos do Cachorrinho) e abre na categoria do gatinho, com as 12 skins do gato (${shopCat.names.join(", ")})`);
     await page.keyboard.press("Escape");
     await page.click("#btn-scores");
     ok(/100 por ratinho \+ 150 por novelo \+ 100 por cão afugentado/.test(await page.textContent("#scores-help")) && await page.textContent("#scores-title") === "Pontuações do Gatinho", "Gatinho: as Pontuações explicam os pontos com as palavras do gato");
@@ -9971,8 +9971,9 @@ const PAGE_HELPERS = () => {
     await fresh(cp, { name: "Totó" });
     await ev(cp, () => { Records.createStore(localStorage).addTreats("Totó", 12); __game.setAnimal("cat"); });
     await cp.click("#btn-shop");
-    ok(await cp.textContent("#shop-title") === "Lojinha de skins do gatinho" && await cp.getAttribute("#shop", "aria-labelledby") === "shop-title" && await cp.getByRole("heading", { name: "Lojinha de skins do gatinho" }).isVisible(), "no Gatinho o título da lojinha cita o gatinho (e a tela continua rotulada para leitor de tela)");
-    ok(/skins para o gatinho/.test(await cp.textContent("#shop-help")) && /10 petscoin/.test(await cp.textContent("#shop-help")), "a ajuda da lojinha fala das skins do gatinho e do mínimo de 10 petscoin");
+    ok(await cp.textContent("#shop-title") === "Lojinha de skins" && await cp.getAttribute("#shop", "aria-labelledby") === "shop-title" && await cp.getByRole("heading", { name: "Lojinha de skins" }).isVisible(), "a lojinha é única: o título é o mesmo no Gatinho e no Cachorrinho (e a tela continua rotulada para leitor de tela)");
+    ok(/1 petisco/.test(await cp.textContent("#shop-help")) && /10 petscoin/.test(await cp.textContent("#shop-help")) && !/gatinho|cachorrinho/i.test(await cp.textContent("#shop-help")), "a ajuda da lojinha é geral (1 petisco por fase, mínimo de 10 petscoin) e não cita um bichinho só");
+    ok(await cp.getAttribute("#shop-game-cat", "aria-selected") === "true" && await cp.getAttribute("#shop-cat-cat", "aria-selected") === "true" && await cp.getAttribute("#shop-game-dog", "aria-selected") === "false", "com o Gatinho escolhido a lojinha abre na aba do Gatinho e na categoria do próprio gatinho");
     ok(await cp.textContent("#shop-balance") === BAL(12), `o saldo é o da carteira única: "${await cp.textContent("#shop-balance")}"`);
     let cards = await shopCards(cp);
     ok(cards.length === 12 && cards.map((c) => c.name).join() === CAT_SKIN_SPEC.map((s) => s[1]).join(), `a lojinha mostra as 12 skins do gato, na ordem do catálogo (${cards.map((c) => c.name).join(", ")})`);
@@ -10042,7 +10043,7 @@ const PAGE_HELPERS = () => {
     // ---- duas abas: a B compra uma skin do gato; a A (com a tela velha da lojinha aberta) vê e não compra de novo ----
     await B.goto(URL); await B.evaluate(PAGE_HELPERS);
     await A.click("#btn-shop"); await B.click("#btn-shop");
-    ok(await A.textContent("#shop-title") === "Lojinha de skins do gatinho" && await B.textContent("#shop-title") === "Lojinha de skins do gatinho", "as duas abas abrem a lojinha do Gatinho (a escolha do bichinho é do jogador)");
+    ok(await A.getAttribute("#shop-cat-cat", "aria-selected") === "true" && await B.getAttribute("#shop-cat-cat", "aria-selected") === "true", "as duas abas abrem a lojinha na categoria do Gatinho (a escolha do bichinho é do jogador)");
     const oldA = await A.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(3) button")); // "Comprar (12 petscoin)" da Branco, na A
     await B.click(catCardBtn("branco"));
     ok(JSON.stringify(await catWallet(B)) === '{"treats":128,"owned":["pirata","branco"],"equipped":"branco"}', "a aba B compra a Branco (12): 128 petscoin");

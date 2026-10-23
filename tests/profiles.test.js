@@ -137,11 +137,13 @@ test("Gatinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins
   const extra = Object.keys(b).filter((k) => !(k in a) && !(a[k.split(".").slice(0, k.split(".").length - 1).join(".")] === "null"));
   assert.deepStrictEqual(extra.filter((k) => !k.startsWith("skins.") && !k.startsWith("ui.")), [], "sobram no Gatinho: " + extra.join(", "));
   for (const k of Object.keys(a)) if (k in b && !NULLABLE(k)) assert.strictEqual(b[k], a[k], `tipo diferente em ${k}: ${a[k]} × ${b[k]}`);
-  // tudo o que o Cachorrinho tem como texto fixo (ui.*), o Gatinho também tem (e como texto, não null)
-  for (const k of Object.keys(dog.ui)) assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
+  // tudo o que o Cachorrinho tem como texto fixo (ui.*), o Gatinho também tem (e como texto, não null); a exceção é a lojinha: ela é única (0.19.0), com o título e a ajuda do index.html para todos
+  for (const k of Object.keys(dog.ui)) if (k !== "shopTitle" && k !== "shopHelp") assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
+  assert.strictEqual(dog.ui.shopTitle, null); assert.strictEqual(dog.ui.shopHelp, null);
   // (0.18.0) as skins do Gatinho vêm de CatArt.SKINS (12 skins), não do catálogo do Cachorrinho: o perfil não troca nome nem frase
   assert.strictEqual(cat.skins, null);
-  assert.strictEqual(cat.ui.shopTitle, "Lojinha de skins do gatinho");
+  assert.strictEqual(cat.ui.shopTitle, null, "a lojinha é única: o título é o do index.html, igual para todos os bichinhos");
+  assert.strictEqual(cat.ui.shopHelp, null, "e a ajuda também");
   // os reforços têm os mesmos ids e todos têm nome e texto
   assert.deepStrictEqual(Object.keys(cat.reinforce), Object.keys(dog.reinforce));
   for (const v of Object.values(cat.reinforce)) assert.ok(v.name && v.text);
@@ -208,7 +210,7 @@ test("Gatinho: os textos fixos (Como jogar etc.) têm o mesmo roteiro do Cachorr
   const steps = (cat.ui.howto.match(/<li><strong>([^<]+)<\/strong>/g) || []).map((x) => x.replace(/<[^>]+>/g, ""));
   for (const h of ["Objetivo:", "Mover:", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Camundongos ágeis (a partir da Fase 2):", "Correr (arrancada):", "Poças e pelo molhado:", "Pular e subir:", "Reforços:", "Crescer:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Gatinho: " + h);
   assert.ok(/gatinho/.test(cat.ui.howto) && /ratinho/.test(cat.ui.howto) && /novelo/.test(cat.ui.howto) && !/cachorr|carroc|carteiro/i.test(cat.ui.howto));
-  assert.ok(/gatinho/.test(cat.ui.shopHelp) && /gatinho/.test(cat.ui.nameTip) && /gatinho/.test(cat.ui.canvasLabel) && /gatinho/.test(cat.ui.padLabel));
+  assert.ok(/gatinho/.test(cat.ui.nameTip) && /gatinho/.test(cat.ui.canvasLabel) && /gatinho/.test(cat.ui.padLabel));
   assert.ok(html.includes('id="howto-steps"') && html.includes('id="scores-help"') && html.includes('id="name-tip"') && html.includes('id="name-step1"') && html.includes('id="reg-hint"'), "o index.html tem os ids dos textos que o perfil troca");
   assert.ok(/ratinho/.test(cat.ui.scoresHelp) && /novelo/.test(cat.ui.scoresHelp) && /50 por camundongo/.test(cat.ui.scoresHelp));
   // (0.18.0) o Como jogar do Gatinho explica as mecânicas novas: arrancada (Shift, Espaço, A/RB/RT, botão Correr), fôlego, poça, obstáculo baixo, lugar alto e rastreadores

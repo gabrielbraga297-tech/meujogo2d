@@ -233,6 +233,39 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .shop-card button:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.5); }
 .shop-card button:disabled:hover { filter: grayscale(.5); }
 .shop-card.equipped button:disabled { opacity: 1; filter: none; background: transparent; color: var(--green); border: 2px solid var(--green); cursor: default; } /* "Em uso": um selo verde, não um botão apagado */
+/* lojinha única (0.19.0): abas dos jogos e categorias (chips), categoria bloqueada (apagada, com cadeado) */
+.shop-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.shop-tab { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 6px; min-height: 44px; padding: 6px 14px; border: 2px solid transparent; border-radius: 999px; background: var(--panel-2); color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1.15; text-align: center; }
+.shop-tab small { font-size: 12px; font-weight: 600; opacity: .9; }
+.shop-tab[aria-selected="true"] { background: var(--gold); color: #1d1a05; }
+.shop-tab.locked { background: transparent; border: 2px dashed rgba(255, 255, 255, .38); color: #cfd6e6; opacity: .75; }
+.shop-tab.locked[aria-selected="true"] { opacity: 1; border-color: var(--gold); color: var(--gold); }
+.shop-tab:disabled, .shop-tab.soon { opacity: .6; cursor: not-allowed; filter: grayscale(.6); }
+#shop-games { flex-wrap: nowrap; }
+#shop-games .shop-tab { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 0; padding-inline: 6px; border-radius: 12px; font-size: 17px; }
+.lock-ico { font-size: 1.05em; line-height: 1; }
+#shop-note { font-size: 15px; }
+#shop-note:empty { display: none; }
+.shop-locked { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 14px; border-radius: 14px; border: 2px dashed rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .04); }
+.shop-locked .lock-ico { font-size: 30px; }
+.shop-locked strong { font-size: 1.15em; color: var(--gold); }
+.shop-locked .sub { font-size: .9em; color: var(--muted); }
+.shop-card.locked { opacity: .65; border-style: dashed; }
+#shop-games .shop-tab { flex: 1 1 auto; }
+@media (max-width: 380px) {
+  .shop-tabs { gap: 4px; }
+  .shop-tab { padding: 4px 10px; font-size: 14px; }
+  #shop-games .shop-tab { padding-inline: 2px; font-size: 14px; }
+}
+/* telas baixas (celular pequeno em pé ou deitado): abas mais enxutas (40 px, como os botões do menu) e sem a ajuda, que também está no Como jogar, para sobrar lugar para as skins */
+@media (max-height: 640px) {
+  .shop-tab { min-height: 40px; }
+  #shop-help { display: none; }
+}
+@media (max-height: 520px) {
+  .shop-tab { padding: 4px 12px; font-size: 14px; }
+  #shop-games .shop-tab { font-size: 15px; }
+}
 /* (0.16.0) o saldo e o aviso da compra ficam no alto e o Voltar no fim da tela, à vista mesmo com a lista longa (celular de tela baixa) */
 #shop .shop-head { position: sticky; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 6px 0; background: var(--bg); }
 #shop .shop-head p:empty { display: none; }
