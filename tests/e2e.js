@@ -6608,7 +6608,7 @@ const PAGE_HELPERS = () => {
 
     // ---- a documentação bate com o catálogo ----
     const docs = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8"), readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8"), recSrc = fs.readFileSync(path.join(root, "js/records.js"), "utf8");
-    const rows = docs.split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin");
+    const rows = docs.split("## Skins por bichinho")[0].split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin");
     ok(JSON.stringify(rows.map((r) => [r[0], /grátis/.test(r[1]) ? 0 : Number(r[1])])) === JSON.stringify(cat.map((k) => [k.name, k.price])), `a tabela de docs/LOJINHA.md lista as mesmas skins e preços do jogo, na mesma ordem (${rows.map((r) => `${r[0]} ${r[1]}`).join(", ")})`);
     ok(/MIN_SKIN_PRICE = 10/.test(docs) && /99999/.test(docs) && new RegExp(`${recSrc.match(/MAX_OWNED = (\d+)/)[1]} skins`).test(docs) && /1 petisco[^.]*fase completada/.test(docs), "docs/LOJINHA.md cita o preço mínimo (10), os limites da carteira (99999 petiscos e as skins do código) e 1 petisco por fase completada");
     const rd = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins"), readme.indexOf("## Os gatos"));
@@ -10117,6 +10117,8 @@ const PAGE_HELPERS = () => {
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), loja = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8");
     const sec = readme.slice(readme.indexOf("### Sons do Gatinho (0.18.0)"), readme.indexOf("## Vidas"));
     ok(/Integrado ao jogo \(0\.18\.0, E2b-2\)/.test(sec) && /sfx/.test(sec) && /ab-sounds\.js/.test(sec) && /2,5 s/.test(sec) && /0,4 s/.test(sec) && /8 tiles/.test(sec) && /0,6 s/.test(sec), "o README diz que os sons do Gatinho estão ligados ao jogo (pelo perfil, os intervalos, o teste A/B do Cachorrinho)");
+    const CatArt = require(path.join(root, "js/cat-art.js")), catRows = loja.split("## Skins por bichinho")[1].split("\n## ")[0].split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin do gato");
+    ok(JSON.stringify(catRows.map((r) => [r[0], /grátis/.test(r[1]) ? 0 : Number(r[1])])) === JSON.stringify(CatArt.SKINS.map((k) => [k.name, k.price])), `a tabela de docs/LOJINHA.md lista as 12 skins do gato com os nomes e preços de CatArt.SKINS (${catRows.map((r) => `${r[0]} ${r[1]}`).join(", ")})`);
     ok(/Atualização 4/.test(loja) && /por bichinho/.test(loja) && /cat:/.test(loja) && /12 skins/.test(loja) && /eqa/.test(loja), "docs/LOJINHA.md explica a carteira única com skins por bichinho (prefixo cat:, 12 skins do gato) e que a Atualização 4 amplia a loja");
     const lj = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins (0.15.9)"), readme.indexOf("## Os gatos (0.15.5"));
     ok(/Gatinho/.test(lj) && /12 skins/.test(lj) && /Atualização 4/.test(lj) && /cat:/.test(lj), "a seção da lojinha do README fala das skins do Gatinho e da Atualização 4");
