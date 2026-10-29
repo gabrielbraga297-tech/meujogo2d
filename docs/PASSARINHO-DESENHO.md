@@ -1,7 +1,7 @@
 # Atualização 5 · 0.20.0 · Passarinho — DESENHO DOS MAPAS (29/10/2026)
 
 Este documento descreve os 20 mapas do Passarinho (`js/bird-levels.js`, arquivo GERADO por `tools/birdmaze/gen_bird.py`) e as regras que o teste `node tests/bird-levels.test.js` confere.
-O desenho das mecânicas (voo baixo e voo alto, vento, galho, gavião) está em `scratchpad/A5-DESIGN.md` e, depois da entrega, no README; aqui está o que vale para os MAPAS.
+O desenho das mecânicas (voo baixo e voo alto, vento, galho, gavião) está no README (seção *Passarinho (0.20.0)*); aqui está o que vale para os MAPAS.
 
 ## Princípios
 - Mesmo padrão dos mapas do Gatinho (`docs/GATINHO-DESENHO.md`): um ambiente por fase, ruas abertas com vários caminhos (sem labirinto fechado nas fases iniciais), tamanhos e contagens da tabela, as Fases 9–10 e 17–20 as mais difíceis.
