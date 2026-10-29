@@ -2421,6 +2421,7 @@
 
   function loseLife(why) {
     lives--; livesLost++;
+    if (lv.birdMode) addCatFx("feather", player.x + player.w / 2, player.y + player.h / 2); // (Passarinho) as penas voam onde ele foi pego
     score = runningScore();
     if (why !== "crush") { sfx(P().sfx.capture); sfx(P().sfx.hurt, SFX_HURT); } // o agente da carrocinha pegou o cachorrinho (Gatinho: logo depois, o miado de susto)
     if (lives <= 0) { gameOver(why); return; }
@@ -2527,7 +2528,7 @@
   }
   function takeItem(it) { // pega um item (o cachorrinho encostou nele ou o ímã o trouxe)
     it.taken = true;
-    addCatFx("sparkle", it.x + 8, it.y + 8); // (Gatinho) brilhinho ao pegar um ratinho ou um novelo
+    addCatFx(lv.birdMode && !it.bone ? "peck" : "sparkle", it.x + 8, it.y + 8); // (Gatinho) brilhinho ao pegar um ratinho ou um novelo (Passarinho: a bicada na semente)
     const kind = it.kind || "scare";
     if (it.bone) {
       bonesGot++; sfx(P().sfx.bone);

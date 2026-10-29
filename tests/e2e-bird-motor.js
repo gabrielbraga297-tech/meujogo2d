@@ -23,6 +23,8 @@ module.exports = async function (T) {
   const BIRD_PAGE = () => { // roda dentro da página: ferramentas de teste do motor do Passarinho (window.__b)
     const g = window.__game;
     const press = (k, on) => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k, code: k.length === 1 ? "Key" + k.toUpperCase() : k }));
+    let seed = 20261029; // (sorteios do jogo com semente fixa: as fases-miniatura se repetem igual a cada rodada)
+    g.setRand(() => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; });
     window.__b = {
       press,
       start(id = 1, o) { g.setAnimal("bird"); g.start(id, o); g.freezeVets = true; g.autoStart = true; },
@@ -297,7 +299,7 @@ module.exports = async function (T) {
   // O voo alto: o poder do fruto comum. 10 s (12 com o reforço Fruto poderoso), passa por cima dos muros M (não das paredes #), pisca nos últimos 2 s e pousa em segurança.
   const WALLS = room((g) => { for (let r = 1; r <= 7; r++) { g[r][6] = "M"; g[r][10] = "#"; } }); // um muro M na coluna 6 e uma parede # na coluna 10 (o voo alto passa pelo primeiro, não pela segunda)
   const FLY = mini(WALLS, { seeds: 3, fruits: 2, fruitMix: ["scare", "gold"] });
-  const parkSeeds = () => { for (const it of __game.items) if (!it.bone) { it.x = -900; it.y = -900; } __game.balls = []; };
+  const parkSeeds = () => { for (const it of __game.items) { it.life = false; if (!it.bone) { it.x = -900; it.y = -900; } } __game.balls = []; }; // (sem vida extra escondida: o aviso dela cobriria o do fruto)
 
   await section("0.20.0 · Passarinho (motor): voo alto (pegar o fruto, passar por cima do muro, parar na parede, pisca, pouso seguro sem perder vida)", async () => {
     const pg = await open({}, [FLY]);
@@ -605,6 +607,8 @@ module.exports = async function (T) {
     ok(w.score === 50 && /^Minhoca! \+50 pontos \(1\/2\)$/.test(w.toast) && /worm/.test(w.snd), `pegar uma minhoca vale 50 pontos, o aviso diz "${w.toast}" e toca o worm (${w.snd})`);
     ok(w.art && w.art.r === 8 && w.art.hidden === false && /x,y,vx,vy,hue/.test(w.art.keys), "BirdArt.drawWorm recebe { x, y, vx, vy, hue } e { time, calm, r, hidden }");
     ok(await hudText(pg, "#hud-balls", "1/2") && /MINHOCAS/.test(await pg.textContent("#hud-balls-item")) && /Minhocas/.test(await pg.getAttribute("#hud-balls-item", "title")), "o placar diz MINHOCAS 1/2");
+    const pk = await ev(pg, () => { __b.start(1); __game.freezeVets = true; __game.balls = []; const sd = __game.items.find((i) => !i.bone); __game.player.x = sd.x - 4; __game.player.y = sd.y - 4; __game.tick(0.01); const a = __game.catFx.map((f) => f.kind); __game.noCatch = false; __game.freezeVets = false; const v = __game.vets[0], h = __game.cats[0]; __game.invuln = 0; h.cx = __game.player.x + 12; h.cy = __game.player.y + 12; h.mode = "chase"; __game.tick(0.02); return { peck: a.includes("peck"), feather: __game.catFx.map((f) => f.kind).includes("feather"), lives: __game.lives }; });
+    ok(pk.peck && pk.feather && pk.lives === 2, `pegar uma semente solta o efeito peck e ser pego solta o feather (BirdArt.drawFx)`);
     // frutos
     const fr = await ev(pg, () => {
       const out = {}, kinds = ["scare", "gold", "ice", "turbo", "magnet"];
