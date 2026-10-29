@@ -704,6 +704,14 @@ test("pios: o filhote e o jovem são de senoide pura (leves) e o adulto é mais 
   assert.deepStrictEqual([syl("chirp1"), syl("chirp2"), syl("chirp3")], [2, 2, 3], "sílabas por pio (começos diferentes)");
   assert.deepStrictEqual([...types_(voicesOf("chirp1").v)], ["sine"]);
   assert.deepStrictEqual([...types_(voicesOf("chirp2").v)], ["sine"]);
+  for (const n of ["chirp1", "chirp2"]) { // cada sílaba tem um 2º harmônico FRACO (menos de 20% da fundamental)
+    const { v, ctx } = voicesOf(n), env = envelopesOf(ctx);
+    for (const o of lowestPerOnset(v, "sine")) {
+      const h = v.find((p) => p !== o && p.t0 === o.t0 && Math.abs(p.f / o.f - 2) < 0.01);
+      assert.ok(h, `${n}: sílaba em ${o.t0.toFixed(2)} s sem 2º harmônico`);
+      assert.ok(env.find((e) => e.src === h.n).peak < 0.2 * env.find((e) => e.src === o.n).peak, `${n}: 2º harmônico forte demais`);
+    }
+  }
   const c = voicesOf("chirp3"), tri = c.v.filter((o) => o.type === "triangle");
   assert.strictEqual(tri.length, 3, "uma triangular por sílaba");
   for (const t of tri) {
@@ -881,7 +889,8 @@ test("README: a subseção \"Sons do Passarinho (0.20.0)\" vem logo depois da do
   assert.ok(g >= 0 && i > g, "subseção não encontrada depois da do Gatinho");
   assert.ok(!/\n##+ /.test(readme.slice(g + 10, i)), "nenhuma outra seção entre a do Gatinho e a do Passarinho");
   const rest = readme.slice(i + 10), j = rest.search(/\n##+ /), sec = j < 0 ? rest : rest.slice(0, j);
-  for (const n of BIRD_NAMES) assert.ok(sec.includes("`" + n + "`"), "README sem o som " + n);
+  for (const n of BIRD_NAMES) assert.strictEqual(sec.split("\n").filter((l) => l.startsWith("| `" + n + "` |")).length, 2, `README: o som ${n} precisa de uma linha na tabela de parâmetros e outra na de medições`);
+  assert.strictEqual(sec.split("\n").filter((l) => /^\| `[a-z0-9]+` \|/.test(l)).length, 2 * 16, "só os 16 sons novos entram nas duas tabelas");
   assert.ok(sec.includes("escolha de design, não verificada em fonte"), "frase de honestidade");
   assert.ok(/Quando toca/i.test(sec));
   assert.ok(!/\bet al\b|doi\.org|\(\s*(19|20)\d\d\s*\)/.test(sec), "nenhum artigo citado como fonte verificada (sem et al., doi nem ano entre parênteses)");

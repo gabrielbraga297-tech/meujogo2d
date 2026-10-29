@@ -535,7 +535,7 @@
       s.noise({ at: 0.17, dur: 0.12, type: "highpass", f: 6000, lp: 10000, q: 0.7, gain: 0.08, a: 0.015, r: 0.06, sus: 0.2, off: 0.5 });
     },
     // Início do voo alto, ~0,62 s: o vento sobe (ruído passa-banda 400 -> 2600 Hz, ataque lento) junto de um glissando triangular de duas oitavas (330 -> 1320 Hz, vibrato lento como o bater das
-    // asas, passa-baixa que abre) e, no topo, um "pi-pii" de remate (2500 -> 3300 Hz e 3300 -> 2900 Hz).
+    // asas, passa-baixa que abre) e, no topo, um "piu" de remate numa só nota (2500 -> 3300 -> 2900 Hz, opção path).
     soar(s) {
       s.noise({ at: 0, dur: 0.55, type: "bandpass", f: 400, f2: 2600, q: 1.1, gain: 0.55, a: 0.2, r: 0.2, sus: 0.8, off: 0.1 });
       s.tone({ at: 0, dur: 0.46, f: 330, f2: 1320, type: "triangle", lp: 1500, lp2: 3200, vib: [7, 14], gain: 0.4, a: 0.05, r: 0.1, sus: 0.8 });
