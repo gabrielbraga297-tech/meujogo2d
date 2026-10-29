@@ -1,8 +1,13 @@
 # Histórico de versões
 
-A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.19.0 · 29/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
+A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exemplo "Versão 0.20.0 · 30/10/2026". No GitHub Pages ela também mostra o código curto do commit ("· build abc1234"), que diz exatamente qual atualização está no ar.
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
+
+## 0.20.0 — 30/10/2026 (em preparação)
+**Atualização 5 · Passarinho.**
+Pedido do dono: o **Passarinho** vira jogável, com o **seu próprio jogo de 20 fases** (pontos, recordes, ranking, progresso e jogo salvo independentes dos outros bichinhos), voando por cima dos muros dos labirintos, pegando sementes, frutos e minhocas e fugindo de gatos e gaviões.
+- Em construção: texto final da entrega.
 
 ## 0.19.0 — 29/10/2026
 **Atualização 4 · Loja única ampliada.**
