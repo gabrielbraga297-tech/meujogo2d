@@ -407,6 +407,75 @@ sound.play("purr", { delay: 1.7 });
 
 **Limites honestos.** (1) Nada aqui foi verificado em artigo, e **ninguém ouviu** os sons ainda: só foram medidos (ouvir é o teste que falta; o dono deve julgar se o ronronar e o rosnado soam bem, já que o grave quase não sai em alto-falante de celular). (2) `purr` e `growl` ficam mais fracos para o ouvido que os outros (ponderação A de −27,0 e −26,6 dB, contra cerca de −21 a −23 dos demais eventos novos): são sons graves; o `LEVEL` foi calibrado pelo RMS, como os latidos do adulto. (3) O ganho agregado dos testes é uma medida de projeto que ignora filtros; o volume de verdade é o da tabela acima.
 
+### Sons do Passarinho (0.20.0)
+São **16 sons novos** em `js/sound.js` (Atualização 5 · 0.20.0 · Passarinho), anexados no fim da lista `Sound.NAMES`: três pios por fase da vida, a cantiga de completar a fase, o bater de asas, o bicar, a minhoca, o fruto, o início e o fim do voo alto, o pouso no galho, o vento, o miado de ameaça do gato, o grito do gavião, o susto e o fôlego vazio. Continuam **100% sintetizados** na hora (nada de arquivo de áudio, biblioteca ou rede) e **genéricos**: nada muda por skin, **só pela fase da vida** (pio do filhote → jovem → adulto, como os latidos `bark1/2/3` e os miados `cmeow1/2/3`). Os **29 sons antigos** (Cachorrinho e Gatinho) **não mudaram**: o teste confere uma impressão digital do grafo de áudio de cada um, tirada do código de antes, e as medições deles são as mesmas.
+
+**Honestidade científica.** Todos os números abaixo são **escolha de design, não verificada em fonte**: nenhum artigo foi aberto (a rede do ambiente de desenvolvimento estava bloqueada) e nenhuma pista de literatura foi usada para estes sons; o desenho busca só um som **agradável para criança**, genérico e sem espécie nenhuma. Nada aqui afirma como um passarinho de verdade soa. O que foi **medido** é o áudio gerado (tabela de medições abaixo), não a fidelidade a bicho nenhum.
+
+| Som | Quando toca | Parâmetros (escolha de design, não verificada em fonte) |
+|---|---|---|
+| `chirp1` | pio do **filhote** (completar a fase; também serve de "chamar") | ~0,24 s; dois pios de senoide: um "pi" que sobe (3000 → 3800 Hz, 0,06 s) e um "piu" que sobe a 4100 Hz e cai a 3100 Hz numa só nota (vibrato leve de 28 Hz); 2º harmônico muito fraco; sem ruído |
+| `chirp2` | pio do **jovem** | ~0,35 s; dois "piu" de senoide (2200 → 3000 → 2300 Hz e 2400 → 3200 → 2400 Hz), cada um numa só nota com vibrato de 24 Hz; 2º harmônico fraco; sem ruído |
+| `chirp3` | pio do **adulto** | ~0,56 s; três sílabas de onda triangular, mais encorpadas (2º e 3º harmônicos): 1500 → 2100 → 1800 Hz, 1600 → 2200 → 1900 Hz e 1700 → 2300 → 1300 Hz (a última mais longa, com vibrato de 18 Hz); sem ruído |
+| `song` | **cantiga** ao completar a fase | ~1,22 s; 12 notas de senoide em dó maior (sol5 dó6 mi6 sol6 dó7, um gorjeio lá6 sol6 lá6 sol6, mi6 sol6 e o dó7 final), cada uma começa 7% abaixo e "derrapa" até o tom; 2º harmônico fraco; sem ruído e sem onda quadrada |
+| `flap` | **bater asas** (a arrancada começa) | ~0,26 s; **só ruído**: quatro "fup" passa-banda graves (1100 → 600 Hz, a cada 63 ms, cada um mais fraco) e um sopro de ar agudo (passa-alta 2,6 kHz) por cima |
+| `peck` | **bicar a semente** (pegar uma semente) | ~0,12 s; dois "toc-tic" de madeira: senoide 1500 → 750 Hz e 1900 → 1000 Hz (a 2ª mais fraca), cada uma com um estalo de ruído (passa-banda 3,2 e 3,8 kHz); baixo, porque toca dezenas de vezes por fase |
+| `worm` | **puxar a minhoca** (pegar uma minhoca) | ~0,22 s; esticada mole (triangular 520 → 260 Hz com vibrato largo, 20 Hz e ±80 Hz, e farfalhar de terra passa-banda 900 → 500 Hz) e um "pop" de senoide que sobe (300 → 1000 Hz) com um estalo |
+| `fruit` | **pegar o fruto** (poder; no lugar do `bone`) | ~0,47 s; harpa brilhante de quatro sinos de senoide (sol6 si6 ré7 sol7, a cada 60 ms, cada um toca e se apaga em 0,3 s) com 2º harmônico, corpo triangular de sol5 e brilho de ruído (passa-alta 6 kHz); sem onda quadrada e sem as notas do `bone` |
+| `soar` | **início do voo alto** (fruto comum) | ~0,62 s; vento que sobe (passa-banda 400 → 2600 Hz, ataque lento de 0,2 s) com glissando triangular de duas oitavas (330 → 1320 Hz, passa-baixa que abre, vibrato lento de 7 Hz) e um "piu" de remate (2500 → 3300 → 2900 Hz) |
+| `soarend` | **fim do voo alto** | ~0,43 s; o contrário, mais macio: glissando triangular que desce (1000 → 350 Hz, passa-baixa que fecha), vento que desce (passa-banda 2400 → 500 Hz) e um "pof" de ar grave no fim |
+| `landing` | **pouso no galho** (a salvo) | ~0,23 s; dois baques de asa que acabam (passa-banda 1400 → 800 Hz e 1100 → 700 Hz), um "tup" senoidal leve (420 → 240 Hz) e folhas que assentam (ruído agudo bem fraco) |
+| `gust` | **vento** (entrar numa corrente de ar) | ~0,55 s; **só ruído**, sem assobio: passa-banda 500 → 1400 Hz (Q 0,7, limitado a 2,6 kHz) com um corpo grave (passa-baixa 700 Hz) e ataque lento de 0,2 s; nenhum filtro acima de 3 kHz, para não irritar |
+| `hiss2` | **miado de ameaça** do gato de quintal | ~0,49 s; agudo e rouco: um "ssh" de ruído passa-alta e duas serras desafinadas em 3% (700 e 722 Hz → 1300 e 1344 Hz → 760 e 782 Hz, cada uma numa só nota) com passa-baixa de 3,2 kHz, tremolo áspero de 38 Hz e ruído por baixo; sobe e cai (o `yowl` do Gatinho só cai) |
+| `shriek` | **grito do gavião** | ~0,30 s; agudo e curto, numa só nota triangular: sobe de 1800 a 3100 Hz em 0,07 s e cai a 1700 Hz, com vibrato rápido (24 Hz, ±90 Hz), uma serra fraca com tremolo de 45 Hz (aspereza) e um sopro de ruído |
+| `scare` | **susto/captura** do passarinho (junto do `capture`) | ~0,34 s; três "pi" assustados que despencam (3500 → 3000, 3200 → 2500 e 2900 → 1800 Hz, vibrato de 34 Hz) sobre uma batida de penas (ruído passa-banda 1800 → 700 Hz) |
+| `wheeze` | **fôlego vazio** (a barra de fôlego esvazia) | ~0,36 s; três sopros curtos de ruído passa-banda (1,9 → 2,5 kHz, 2,2 → 2,8 kHz e 1,7 → 1,3 kHz, o último mais fraco) e um chiado fino de senoide bem fraca (1500 → 1100 Hz) por baixo; o mais baixo de todos |
+
+**Quando tocar (contrato para a integração no jogo).** O jogo só chama `sound.play(nome, { delay })`; **quem escolhe o som de cada momento é o perfil do bichinho** (`P().sfx` em `js/profiles.js`, chaves `bird.sfx.*`), nunca um `if (passarinho)` no motor. Sugestão (o perfil decide):
+- **Completar a fase** (junto do `levelup`, como o latido do cachorrinho e o miado do gatinho): o pio da fase da vida, `chirp1` (filhote), `chirp2` (jovem) ou `chirp3` (adulto), com `delay: 0.9`; e a cantiga `song` logo depois do pio (sugestão `delay: 1.5`).
+- **Pegar uma semente**: `peck` (no lugar do som da ração). **Pegar uma minhoca**: `worm`.
+- **Pegar um fruto**: `fruit` (no lugar do `bone`); no fruto comum, que liga o **voo alto**, o `soar` logo depois (sugestão `delay: 0.25`, como o `transform` depois do `bone`). Quando o voo alto acaba: `soarend`.
+- **Bater asas (a arrancada começa)**: `flap`, no máximo 1 a cada 0,6 s (como o `dash`). **Pousar no galho (ficar a salvo)**: `landing`, uma vez a cada pouso.
+- **Entrar numa corrente de vento**: `gust`, com um intervalo mínimo (sugestão 2 s) para o vento contínuo não virar metralhadora.
+- **Um gato de quintal nota o passarinho**: `hiss2` (com intervalo mínimo por gato, como o `woof` e o `meow`). **Um gavião nota o passarinho (ou parte para cima dele)**: `shriek` (sugestão: no máximo 1 a cada 3 s e só se ele está a até 8 tiles). O momento exato dos dois é **dúvida para o dono**.
+- **Um gato ou um gavião pega o passarinho**: `capture`, o `scare` com `delay: 0.1` e o `lifelost` depois, como já é hoje.
+- **O fôlego acaba**: `wheeze`, uma vez a cada vez que a barra esvazia.
+- Vida extra, vida perdida, fim de jogo e escolher o reforço: `life`, `lifelost`, `gameover` e `pick` de sempre. Nunca por skin.
+
+```js
+const PIO = { filhote: "chirp1", jovem: "chirp2", adulto: "chirp3" };   // fase da vida do passarinho (mesma regra dos outros bichinhos)
+sound.play("levelup");
+sound.play(PIO[fase], { delay: 0.9 });
+sound.play("song", { delay: 1.5 });
+```
+
+**Novidade no sintetizador.** `sc.tone` ganhou a opção `path` (`[[fração da duração, frequência], ...]`: uma rampa exponencial até cada ponto), que faz um piu **subir e cair numa só nota**. Antes disso a subida e a descida eram duas notas emendadas, e as duas ondas, com fases diferentes, podiam se anular por alguns milissegundos (um "tique" no meio do piu). Nenhum som antigo usa `path`: o teste confere.
+
+**Medições (áudio renderizado de verdade).** Cada som foi renderizado offline no Chromium (`OfflineAudioContext`, 44 100 Hz, volume padrão 0,35 + compressor, como o jogador ouve) e analisado com FFT, com o mesmo método dos sons do Gatinho. Os de evento (pios, cantiga, minhoca, fruto, voo alto, ameaça, grito e susto) ficaram entre **−20,9 e −23,2 dBFS de RMS**, a faixa dos sons antigos de evento; o `peck`, que toca dezenas de vezes por fase, em **−25,7**; e os de ação, mais baixos de propósito, entre **−29,4 e −31,8**. O pico com o **volume no máximo** fica abaixo de 0,99 em todos (o maior é o do `hiss2`, 0,836), sem amostra cortada; o começo (primeiros 2 ms) fica abaixo de 25% do pico e o fim abaixo de 5%, sem clique.
+
+| Som | Duração audível (s) | Máximo (s) | RMS (dBFS) | Pico (vol. padrão) | Pico (vol. 1,0) | `LEVEL` | Medido no áudio |
+|---|---|---|---|---|---|---|---|
+| `chirp1` | 0,245 | 0,25 | −22,1 | 0,201 | 0,517 | 0,73 | F0 3160 → máx 4048 → 3219 Hz |
+| `chirp2` | 0,355 | 0,4 | −22,4 | 0,201 | 0,515 | 0,67 | F0 2374 → máx 3120 → 2494 Hz |
+| `chirp3` | 0,564 | 0,6 | −22,2 | 0,268 | 0,604 | 0,78 | F0 1600 → máx 2255 → 1343 Hz |
+| `song` | 1,224 | 1,3 | −22,0 | 0,185 | 0,489 | 0,62 | centroide 1,9 kHz |
+| `flap` | 0,263 | 0,3 | −31,1 | 0,196 | 0,522 | 1,0 | só ruído, centroide 4,8 kHz |
+| `peck` | 0,118 | 0,15 | −25,7 | 0,267 | 0,625 | 0,75 | centroide 2,8 kHz |
+| `worm` | 0,225 | 0,3 | −21,8 | 0,221 | 0,556 | 0,8 | centroide 1,1 kHz (o som mais grave dos novos) |
+| `fruit` | 0,470 | 0,5 | −20,9 | 0,377 | 0,717 | 0,95 | notas 1568 → 2349 → 3136 Hz |
+| `soar` | 0,624 | 0,65 | −20,9 | 0,274 | 0,637 | 0,9 | F0 351 → 3311 Hz |
+| `soarend` | 0,431 | 0,5 | −23,2 | 0,271 | 0,632 | 1,0 | F0 969 → 246 Hz |
+| `landing` | 0,225 | 0,3 | −29,4 | 0,221 | 0,559 | 1,0 | centroide 4,0 kHz |
+| `gust` | 0,551 | 0,6 | −30,0 | 0,167 | 0,459 | 1,0 | só ruído, centroide 1,8 kHz |
+| `hiss2` | 0,493 | 0,55 | −22,1 | 0,473 | 0,836 | 1,65 | centroide 3,9 kHz (ruído e serras) |
+| `shriek` | 0,305 | 0,35 | −22,5 | 0,268 | 0,626 | 1,25 | F0 2084 → máx 2991 → 1708 Hz |
+| `scare` | 0,345 | 0,4 | −22,0 | 0,290 | 0,651 | 1,15 | F0 3483 → 1915 Hz |
+| `wheeze` | 0,363 | 0,4 | −31,8 | 0,141 | 0,396 | 1,25 | só ruído, centroide 5,7 kHz |
+
+**Testes.** `node tests/sound.test.js` confere, com o áudio de mentira: os 16 nomes (depois dos 29 antigos, sem repetição), `MAX_SECONDS` e `LEVEL`; o mesmo conjunto de exigências de todos os sons (envelope de 0 a 0, ataque de pelo menos 3 ms, duração, até 8 vozes, atraso, nenhum fio solto); o ruído de cada som novo cabendo no buffer de 1 s, sem laço; a faixa de ganho agregado (de 0,3 a 2,5, com o pior caso abaixo de 1 no volume padrão); o botão de som mudo silenciando **todos** os 45 sons; a impressão digital dos 29 sons antigos; a ordem **filhote > jovem > adulto** na F0 inicial, na máxima e na duração dos pios; a cantiga só com tons de dó maior; o `flap` e o `gust` sem nenhum oscilador (só ruído, o vento sem filtro acima de 3 kHz e com ataque lento); o `hiss2` com duas serras desafinadas e tremolo de 30 a 50 Hz; o `shriek` sempre acima de 1,5 kHz; o `scare` com os três pios em queda, sem emenda; e este README (a lista acima e a frase de honestidade). Os números de volume (RMS, pico, F0 medida) vêm da renderização no Chromium acima e **não** são um teste automático do repositório.
+
+**Limites honestos.** (1) Nada aqui foi verificado em artigo, e **ninguém ouviu** os sons no jogo: só foram medidos e olhados em espectrograma (ouvir é o teste que falta; o dono deve julgar se os pios e o grito soam bem e não cansam). (2) Os pios, o grito e o susto ficam na faixa de **3 a 4 kHz**, onde o ouvido é mais sensível, e o alto-falante de celular reproduz bem: se cansarem, basta baixar o `LEVEL` deles. (3) O `peck`, o `flap` e o `gust` podem tocar muitas vezes por fase: ficam mais baixos que os de evento e dependem dos intervalos mínimos que o jogo impuser; só ouvindo se saberá se incomodam. (4) O ganho agregado dos testes é uma medida de projeto que ignora filtros; o volume de verdade é o da tabela acima, e o `worm` (centroide baixo) fica 4,5 dB abaixo do RMS na ponderação A.
+
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*; **a partir da Fase 11 o máximo sobe até 10**, veja *Missões e mais vidas*); as vidas são **cumulativas**:
 
