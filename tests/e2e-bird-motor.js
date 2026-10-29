@@ -793,4 +793,116 @@ module.exports = async function (T) {
     ok(errs.length === e0, "nenhum erro de JavaScript");
     await pg.context().close();
   });
+
+  // =====================================================================================================================================================================
+  await section("0.20.0 · Passarinho (motor): cinco tamanhos de tela (320×568, 360×640, 390×780, 568×320 e 1000×700): sem rolagem lateral, placar legível e do mesmo tamanho com qualquer estado, botão Voar à mão", async () => {
+    const e0 = errs0();
+    for (const [w, h, touch] of [[320, 568, true], [360, 640, true], [390, 780, true], [568, 320, true], [1000, 700, false]]) {
+      const pg = await newPage({ realBird: true, viewport: { width: w, height: h }, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
+      await fresh(pg, { name: "Totó", query: touch ? "?touch=1" : "" });
+      await pg.evaluate(BIRD_PAGE);
+      const snaps = await ev(pg, async () => {
+        __b.start(4); __game.noCatch = true; __b.park();
+        const rect = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; };
+        const snap = async (name, fn) => { fn(); __game.tick(0.001); await new Promise((r) => setTimeout(r, 140)); return { name, text: document.getElementById("hud-state").textContent, sizes: [rect("hud"), rect("game"), rect("hud-state-item")].flat().join("x"), over: document.getElementById("hud-state").scrollWidth > document.getElementById("hud-state-item").clientWidth + 1 }; };
+        const out = [];
+        out.push(await snap("normal", () => { __b.at(1, 1); __game.power = 0; __game.winded = 0; }));
+        out.push(await snap("voo alto", () => { __game.power = 6; }));
+        out.push(await snap("voo acabando", () => { __game.power = 1.5; }));
+        out.push(await snap("a salvo", () => { __game.power = 0; __b.at(5, 6); }));
+        out.push(await snap("sem fôlego", () => { __b.at(1, 1); __game.winded = 1.4; }));
+        out.push(await snap("a favor do vento", () => { __game.winded = 0; __b.at(3, 3); __b.press("d", true); }));
+        out.push(await snap("contra o vento", () => { __b.press("d", false); __b.press("a", true); }));
+        out.push(await snap("no vento", () => { __b.press("a", false); }));
+        out.push(await snap("normal de novo", () => { __b.at(1, 1); }));
+        return out;
+      });
+      const base = snaps[0].sizes;
+      ok(snaps.every((s) => s.sizes === base), `${w}×${h}: placar, campo e lugar do estado têm sempre o mesmo tamanho (${base}) com ${snaps.map((s) => `"${s.text}"`).join(", ")}${snaps.filter((s) => s.sizes !== base).map((s) => ` [${s.name}: ${s.sizes}]`).join("")}`);
+      ok(snaps.map((s) => s.text).join("|") === "|VOO ALTO|VOO ACABANDO|A SALVO|SEM FÔLEGO|A FAVOR DO VENTO|CONTRA O VENTO|NO VENTO|" && snaps.every((s) => !s.over), `${w}×${h}: cada estado diz a palavra certa e cabe no espaço reservado`);
+      const m = await ev(pg, () => {
+        const doc = document.documentElement, hud = [...document.querySelectorAll("#hud .hud-item:not(.hidden)")], fs = Math.min(...hud.map((e) => parseFloat(getComputedStyle(e).fontSize)));
+        const c = document.getElementById("game").getBoundingClientRect(), run = document.getElementById("btn-run"), rr = run.getBoundingClientRect();
+        const tip = document.querySelector(".rotate-tip"), range = document.createRange(); range.selectNodeContents(tip);
+        const hits = [...range.getClientRects()].filter((q) => q.width > 0).some((q) => !(q.right <= rr.left || rr.right <= q.left || q.bottom <= rr.top || rr.bottom <= q.top));
+        return { hscroll: doc.scrollWidth - innerWidth, bodyScroll: document.body.scrollWidth - innerWidth, fs, canvas: [Math.round(c.left), Math.round(c.right), innerWidth], runShown: getComputedStyle(run).display !== "none", runSize: [Math.round(rr.width), Math.round(rr.height)], runIn: rr.left >= 0 && rr.right <= innerWidth && rr.top >= 0 && rr.bottom <= innerHeight, runLabel: run.textContent, tipHit: hits, labels: hud.map((e) => e.textContent.trim().split(" ")[0]).join(",") };
+      });
+      ok(m.hscroll <= 0 && m.bodyScroll <= 0 && m.canvas[0] >= -1 && m.canvas[1] <= w + 1, `${w}×${h}: sem rolagem lateral e o campo cabe na largura (${m.canvas})`);
+      ok(m.fs >= 11 && /SEMENTES/.test(m.labels) && /FRUTOS/.test(m.labels) && /VOO/.test(m.labels), `${w}×${h}: o placar do passarinho é legível (letra mínima ${m.fs}px; ${m.labels})`);
+      if (touch) ok(m.runShown && m.runLabel === "Voar" && m.runIn && m.runSize[0] >= 44 && m.runSize[1] >= 44 && !m.tipHit, `${w}×${h}: o botão Voar aparece (${m.runSize}), cabe na tela e não cobre a dica de girar o aparelho`);
+      else ok(!m.runShown, `${w}×${h}: sem toque o botão Voar não aparece`);
+      // um quadro de cada estado desenha sem erro
+      const dr = await ev(pg, () => { __b.start(5); for (const [p, perch] of [[0, false], [6, false], [1.5, false]]) { __game.power = p; __game.drawNow(); } __b.at(4, 12); __game.drawNow(); const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i] !== 0x1d) n++; return n; });
+      ok(dr > 100, `${w}×${h}: o quadro do Passarinho desenha (${dr} amostras com cor)`);
+      await pg.context().close();
+    }
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+  });
+
+  // =====================================================================================================================================================================
+  await section("0.20.0 · Passarinho (motor): isolamento e reserva (o Cachorrinho e o Gatinho não tocam em nada do Passarinho; sem BirdArt o jogo desenha com formas de reserva; BirdArt que falha não derruba o jogo)", async () => {
+    const e0 = errs0();
+    // 1. sem js/bird-levels.js (página comum): o Passarinho continua "Em breve"
+    const soon = await newPage();
+    await fresh(soon, { name: "Totó" });
+    const sg = await ev(soon, () => __game.games.find((g) => g.id === "bird"));
+    ok(!sg.ready && sg.levels === 0 && sg.total === 0 && /vai ter as suas próprias 20 fases/.test(sg.blurb), `sem os mapas do Passarinho ele continua Em breve, sem fases (${JSON.stringify(sg)})`);
+    ok(await ev(soon, () => { __game.setAnimal("bird"); return __game.animal === "dog"; }), "e não dá para escolhê-lo");
+    // os testes do encanamento por bichinho: enableTestAnimal("bird") continua dando uma cópia das fases do Cachorrinho (sem desenho de passarinho)
+    const et = await ev(soon, () => { const ok1 = __game.enableTestAnimal("bird"); __game.setAnimal("bird"); __game.autoStart = true; __game.start(1); return { ok1, levels: __game.games.find((g) => g.id === "bird").levels, birdDraw: __game.birdDraw, profile: __game.profile.id, ph: __game.games.find((g) => g.id === "bird").placeholder }; });
+    ok(et.ok1 && et.levels === 20 && et.ph && !et.birdDraw && et.profile === "bird", "enableTestAnimal(\"bird\") liga o Passarinho de teste com as 20 fases copiadas do Cachorrinho (e o texto do perfil dele), sem desenhar como passarinho");
+    await soon.context().close();
+    // 2. o Cachorrinho e o Gatinho: nenhum BirdArt, nenhum perfil do passarinho
+    const cp = await newPage({ realBird: true, realCat: true });
+    await fresh(cp, { name: "Totó" });
+    const iso = await ev(cp, () => {
+      const out = {}, C = window.BirdArt.__calls;
+      for (const [animal, ids] of [["dog", [1, 4, 11, 20]], ["cat", [1, 3, 11, 18]]]) {
+        out[animal] = [];
+        for (const id of ids) {
+          __game.setAnimal(animal); __game.autoStart = true; __game.start(id); __game.freezeVets = true;
+          const b = __game.builtOf(animal)[id], p = __game.player; p.x += 40;
+          for (let i = 0; i < 30; i++) __game.tick(1 / 60);
+          __game.drawNow();
+          out[animal].push({ id, bird: __game.birdDraw, flight: b.flight, wind: b.wind, hawk: b.hawkWalk, birdMode: b.birdMode, profile: __game.profile.id, safe: __game.safe, flying: __game.flying });
+        }
+      }
+      out.calls = Object.keys(C).length;
+      return out;
+    });
+    ok(iso.dog.every((x) => !x.bird && !x.flight && !x.wind && !x.hawk && !x.birdMode && x.profile === "dog" && !x.flying) && iso.cat.every((x) => !x.bird && !x.flight && !x.wind && !x.hawk && !x.birdMode && x.profile === "cat" && !x.flying), "nas fases do Cachorrinho e do Gatinho nada do Passarinho liga (birdDraw, flight, wind, hawkWalk, birdMode)");
+    ok(iso.calls === 0, `jogando o Cachorrinho e o Gatinho (8 fases, com desenho) nenhuma função de BirdArt é chamada (${iso.calls})`);
+    const boneDog = await ev(cp, () => { __game.setAnimal("dog"); __game.start(2); __game.freezeVets = true; const v = __game.vets[0], p = __game.player; const bone = __game.items.find((i) => i.bone); p.x = bone.x - 4; p.y = bone.y - 4; __game.tick(0.01); return { power: __game.power, flee: __game.vets.every((x) => x.mode === "flee") }; });
+    ok(near(boneDog.power, 29.99, 0.02) && boneDog.flee, "no Cachorrinho o osso continua dando 30 s de poder e os agentes viram carteiros e fogem (os gatos e o voo alto do Passarinho não entram)");
+    await cp.context().close();
+    // 3. sem BirdArt nem ambiente: desenho de reserva, sem erro, com formas diferentes por situação
+    const np = await newPage({ realBird: "levels" });
+    await fresh(np, { name: "Totó" });
+    const fb = await ev(np, () => {
+      const hash = () => { const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data, u = new Uint32Array(d.buffer, d.byteOffset, d.byteLength >> 2); let h = 2166136261 >>> 0; for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0; return h; };
+      const out = { art: typeof BirdArt, hashes: [], draw: [] };
+      for (const id of [1, 2, 3, 4, 5]) {
+        __game.setAnimal("bird"); __game.autoStart = true; __game.start(id); __game.freezeVets = true;
+        for (let i = 0; i < 20; i++) __game.tick(1 / 60);
+        __game.drawNow(); const h1 = hash(); __game.power = 6; __game.tick(0.01); for (let i = 0; i < 30; i++) __game.tick(1 / 60); __game.drawNow(); const h2 = hash(); __game.power = 0;
+        out.hashes.push(h1 !== h2); out.draw.push(__game.birdDraw);
+      }
+      __game.start(3); __game.drawNow(); out.failed = __game.birdFailed;
+      return out;
+    });
+    ok(fb.art === "undefined" && fb.draw.every(Boolean) && fb.failed.length === 0, "sem BirdArt a partida do Passarinho desenha com as formas de reserva do motor (birdDraw) e nada falha");
+    ok(fb.hashes.filter(Boolean).length >= 4, `e o voo alto muda o quadro (o passarinho sobe e a sombra se afasta) em ${fb.hashes.filter(Boolean).length} das 5 fases`);
+    ok(await ev(np, () => { __game.setAnimal("dog"); return true; }) && await np.evaluate(() => { document.getElementById("btn-animal").click(); const b = document.getElementById("animal-bird"); return !!b.querySelector("canvas.animal-art"); }), "o cartão do Passarinho também usa o desenho de reserva");
+    await np.context().close();
+    // 4. BirdArt que lança erro: o jogo continua, cai no desenho de reserva e o erro vai uma vez para o console
+    const bp2 = await newPage({ realBird: true });
+    await bp2.addInitScript(() => { const orig = Object.getOwnPropertyDescriptor(window, "BirdArt"); Object.defineProperty(window, "BirdArt", { configurable: true, get: () => { const a = orig.get(); return a.__broken ? a : Object.assign(a, { __broken: true, drawBird() { throw new Error("arte quebrada de teste"); } }); }, set: () => {} }); });
+    await fresh(bp2, { name: "Totó" });
+    const before = errs.length;
+    const bx = await ev(bp2, () => { __game.setAnimal("bird"); __game.autoStart = true; __game.start(2); __game.freezeVets = true; for (let i = 0; i < 5; i++) { __game.tick(1 / 60); __game.drawNow(); } const cv = document.getElementById("game"), d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 101) if (d[i] !== 0x1d) n++; return { failed: __game.birdFailed, n, state: __game.state }; });
+    const newErrs = errs.splice(before);
+    ok(bx.failed.join() === "drawBird" && bx.n > 100 && bx.state === "playing" && newErrs.length === 1 && /BirdArt\.drawBird: arte quebrada de teste/.test(newErrs[0]), `uma função de BirdArt que lança erro cai no desenho de reserva e o erro vai UMA vez para o console (${bx.failed}; ${newErrs.length} erro)`);
+    await bp2.context().close();
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+  });
 };
