@@ -988,7 +988,7 @@
       }
       case "shadow": { // a sombra do voo alto no chão: t é o quanto ele voa (mais alto = sombra mais larga e mais fraca)
         const q = clamp(t, 0, 1);
-        ctx.globalAlpha = A0 * (0.28 - 0.08 * q); oval(ctx, x, y + 11, 8.6 + 4 * q, 2.7 + 0.5 * q, "#000000");
+        ctx.globalAlpha = A0 * (0.4 - 0.1 * q); oval(ctx, x, y + 11.5, 9 + 4.6 * q, 3 + 0.7 * q, "#000000"); // (forte o bastante para aparecer também sobre um muro escuro)
         break;
       }
       default: break;

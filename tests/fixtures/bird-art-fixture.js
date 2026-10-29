@@ -19,7 +19,7 @@
     FRUIT_KEYS: { scare: "#e5533d", gold: "#ffd23f", ice: "#6ec6ff", turbo: "#ff9f43", magnet: "#b57cff" },
     drawRoost(ctx, x, y, o) { note("drawRoost", { x, y, o: { ...o } }); return false; }, // (sem look.style: devolve false e o ambiente desenha o galho)
     drawPost(ctx, x, y, o) { note("drawPost", { x, y, o: { ...o } }); calls["post:" + o.kind] = (calls["post:" + o.kind] || 0) + 1; ctx.fillStyle = o.kind === "hawk" ? "#6b4a2a" : "#3f8a45"; ctx.fillRect(x - 8, y - 8, 16, 16); },
-    drawNest(ctx, x, y, o) { note("drawNest", { x, y, o: { ...o } }); ctx.fillStyle = o.open ? "#e0c060" : "#80603a"; ctx.fillRect(x - o.w / 2, y - o.h / 2, o.w, o.h); },
+    drawNest(ctx, x, y, o) { note("drawNest", { x, y, o: { ...o } }); ctx.fillStyle = o.open ? "#e0c060" : "#80603a"; ctx.fillRect(x, y, o.w, o.h); }, // (x, y = o CANTO de cima à esquerda, como o BirdArt de verdade)
     drawFx(ctx, kind, x, y, t, o) { note("drawFx", { kind, x, y, t }); (calls["fx:" + kind] = (calls["fx:" + kind] || 0) + 1); ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 6 + t * 10, 0, Math.PI * 2); ctx.stroke(); },
   };
   const theme = {

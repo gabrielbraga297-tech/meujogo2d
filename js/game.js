@@ -161,6 +161,8 @@
   const BIRD_FLIGHT = 10, BIRD_FLIGHT_STEP = 2, BIRD_FLIGHT_WARN = 2; // s do voo alto do fruto comum, s a mais por nível do reforço Fruto poderoso e s finais em que o passarinho pisca (aviso)
   const WIND_SPEED = 90;                                 // px/s do empurrão de uma corrente de vento (só no voo baixo)
   const BIRD_WIND = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] }; // as setas do vento no mapa
+  // ENTARDECER (Fase 18, `theme.dusk`): a luz do jogo é LARANJA e vai escurecendo: o escuro começa em DUSK_FROM (0 a 1) e sobe até o da noite (NIGHT_DARK) em DUSK_SECS s de jogo (o halo em volta do passarinho continua); a Fase 19 é noite de verdade (azul-escuro)
+  const DUSK_FROM = 0.3, DUSK_SECS = 90;
   // ===== fim PASSARINHO: motor =====
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
@@ -1755,6 +1757,8 @@
   // `flyAnim` = 0 (voo baixo) a 1 (voo alto), só o desenho da altura; `gustAt` = quando soou o último vento; `flightEndWarned` = o aviso dos últimos segundos do voo alto já foi dado.
   let birdDraw = false, perch = false, windNow = 0, flyAnim = 0, gustAt = -99, gustFxT = 0, flightEndWarned = false;
   const flightOn = () => !!lv.flight && power > 0;     // voo alto ligado (o fruto comum do Passarinho)
+  const duskOn = () => !!(lv.birdMode && lv.night && theme && theme.dusk === true); // o ambiente da fase é o entardecer (luz laranja)
+  const duskDark = () => DUSK_FROM + (lv.night.darkness - DUSK_FROM) * Math.min(1, Math.max(0, time) / DUSK_SECS); // quanto escurece agora, sobe devagar até o escuro da noite
   const scaring = () => power > 0 && !lv.flight;       // poder de ASSUSTAR ligado (o osso do Cachorrinho e o novelo do Gatinho; o voo alto do Passarinho não assusta ninguém)
   // ===== fim PASSARINHO: motor — estado =====
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
@@ -1823,7 +1827,7 @@
     refreshBlockTiles();
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; balls = []; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99; woofAt = -99; jumpAt = -99; dashAt = -99; onLow = false;
-    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; darkness = lv.night ? lv.night.darkness : 0; // (mecânicas do Gatinho: cada fase começa com fôlego cheio e pelo seco)
+    stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; darkness = lv.night ? (duskOn() ? duskDark() : lv.night.darkness) : 0; // (mecânicas do Gatinho: cada fase começa com fôlego cheio e pelo seco; o entardecer do Passarinho começa mais claro)
     perch = false; windNow = 0; flyAnim = 0; gustAt = -99; gustFxT = 0; flightEndWarned = false; // (Passarinho: cada fase começa no voo baixo, fora do vento)
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
@@ -2502,11 +2506,12 @@
       if (Math.hypot(dx, dy) < BALL_SCARE && Math.hypot(b.vx, b.vy) < 40 && lineClear(px, py, b.x, b.y)) { // chute: foge pelo eixo em que o cachorrinho está mais perto
         const k = ballKick(levelId);
         if (Math.abs(dx) >= Math.abs(dy)) { b.vx = (dx >= 0 ? 1 : -1) * k; b.vy = 0; } else { b.vy = (dy >= 0 ? 1 : -1) * k; b.vx = 0; }
+        if (lv.birdMode) b.dug = false; // (Passarinho: a minhoca sai da terra para fugir)
       }
       const sp = Math.hypot(b.vx, b.vy);
       if (sp > 0) {
         const ns = Math.max(0, sp - BALL_FRICTION * dt);
-        if (ns < 8) { b.vx = 0; b.vy = 0; } else { b.vx *= ns / sp; b.vy *= ns / sp; moveBall(b, b.vx * dt, 0); moveBall(b, 0, b.vy * dt); }
+        if (ns < 8) { b.vx = 0; b.vy = 0; if (lv.birdMode) b.dug = true; } else { b.vx *= ns / sp; b.vy *= ns / sp; moveBall(b, b.vx * dt, 0); moveBall(b, 0, b.vy * dt); }
       }
       if (overlap(player, { x: b.x - BALL_R, y: b.y - BALL_R, w: 2 * BALL_R, h: 2 * BALL_R })) { // pegou!
         b.taken = true; b.vx = 0; b.vy = 0;
@@ -2624,6 +2629,7 @@
       if (startHint) { startHint = false; if ($("toast").textContent.includes(START_HINT)) { hintTimer = 0; $("toast").classList.remove("show"); if (startEff) toast(startEff, 4.5); } startEff = ""; } // (só some o aviso do primeiro passo; outro aviso na tela segue até o fim)
     }
     time += dt;
+    if (lv.birdMode && lv.night && duskOn()) darkness = duskDark(); // (Passarinho, Fase 18: a luz alaranjada escurece com o tempo de jogo)
     player.moving = !!(ix || iy);
     if (ix && Math.abs(ix) >= Math.abs(iy)) player.facing = ix > 0 ? "right" : "left";
     else if (iy) player.facing = iy > 0 ? "down" : "up";
@@ -4219,26 +4225,38 @@
   });
   // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
   // Barato: o halo é uma imagem pequena (um gradiente radial pintado uma vez, só com o desenho do degradê) esticada sobre o quadrado em volta do gatinho, e o resto do campo é um retângulo liso por quadro (quatro faixas): o gradiente do tamanho da tela inteira custava mais.
-  let nightImg = null;
-  function nightTexture() {
-    if (nightImg) return nightImg;
-    const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  let nightImg = null, duskImg = null, glowImg = null, glowKey = "";
+  const DUSK_RGB = "46,18,12", NIGHT_RGB = "6,10,32"; // o escuro da noite (azul) e o do entardecer (marrom-avermelhado, para a luz ficar quente)
+  function nightTexture(dusk) { // o halo (um degradê pintado uma vez); a noite e o entardecer têm uma imagem cada
+    if (dusk ? duskImg : nightImg) return dusk ? duskImg : nightImg;
+    const cv = document.createElement("canvas"), rgb = dusk ? DUSK_RGB : NIGHT_RGB; cv.width = cv.height = 128;
     const c = cv.getContext("2d"), g = c.createRadialGradient(64, 64, 0, 64, 64, 64);
-    g.addColorStop(0, "rgba(6,10,32,0)"); g.addColorStop(0.42, "rgba(6,10,32,0)"); g.addColorStop(0.72, "rgba(6,10,32,0.45)"); g.addColorStop(1, "rgba(6,10,32,1)"); // (a opacidade de cada ponto, de 0 a 1, vezes o escuro da fase)
+    g.addColorStop(0, `rgba(${rgb},0)`); g.addColorStop(0.42, `rgba(${rgb},0)`); g.addColorStop(0.72, `rgba(${rgb},0.45)`); g.addColorStop(1, `rgba(${rgb},1)`); // (a opacidade de cada ponto, de 0 a 1, vezes o escuro da fase)
     c.fillStyle = g; c.fillRect(0, 0, 128, 128);
-    return (nightImg = cv);
+    if (dusk) duskImg = cv; else nightImg = cv;
+    return cv;
+  }
+  function glowTexture(color) { // (Passarinho) o brilho suave da cor `theme.halo` no meio do halo (luz de lampião no entardecer, luar na noite); uma imagem pequena guardada por cor
+    if (glowImg && glowKey === color) return glowImg;
+    const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+    const c = cv.getContext("2d"), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    glowKey = color; return (glowImg = cv);
   }
   function drawNight(sx, camX, camY) {
-    const R = lv.night.halo * TILE * sx * (calm ? 1 : 1 + 0.025 * Math.sin(time * 2)), cx = Math.round((player.x + player.w / 2 - camX) * sx), cy = Math.round((player.y + player.h / 2 - camY) * sx), W = canvas.width, H = canvas.height;
+    const dusk = duskOn(), R = lv.night.halo * TILE * sx * (calm ? 1 : 1 + 0.025 * Math.sin(time * 2)), cx = Math.round((player.x + player.w / 2 - camX) * sx), cy = Math.round((player.y + player.h / 2 - camY) * sx), W = canvas.width, H = canvas.height;
     const x0 = Math.round(cx - R), y0 = Math.round(cy - R), x1 = Math.round(cx + R), y1 = Math.round(cy + R);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalAlpha = Math.min(0.9, darkness); ctx.fillStyle = "rgb(6,10,32)";
+    if (dusk) { ctx.globalAlpha = Math.min(0.2, 0.06 + 0.2 * darkness); ctx.fillStyle = "rgb(255,146,52)"; ctx.fillRect(0, 0, W, H); } // a luz alaranjada em todo o campo (antes do escuro)
+    ctx.globalAlpha = Math.min(0.9, darkness); ctx.fillStyle = `rgb(${dusk ? DUSK_RGB : NIGHT_RGB})`;
     if (y0 > 0) ctx.fillRect(0, 0, W, Math.min(H, y0));            // faixas lisas: em cima, embaixo, à esquerda e à direita do quadrado do halo
     if (y1 < H) ctx.fillRect(0, Math.max(0, y1), W, H - Math.max(0, y1));
     const ya = Math.max(0, y0), yb = Math.min(H, y1);
     if (x0 > 0 && yb > ya) ctx.fillRect(0, ya, Math.min(W, x0), yb - ya);
     if (x1 < W && yb > ya) ctx.fillRect(Math.max(0, x1), ya, W - Math.max(0, x1), yb - ya);
-    ctx.drawImage(nightTexture(), x0, y0, x1 - x0, y1 - y0);        // o halo
+    ctx.drawImage(nightTexture(dusk), x0, y0, x1 - x0, y1 - y0);   // o halo
+    if (lv.birdMode && theme.halo) { ctx.globalAlpha = Math.min(1, 0.5 + darkness * 0.5); ctx.drawImage(glowTexture(theme.halo), cx - R * 0.62, cy - R * 0.62, R * 1.24, R * 1.24); } // (Passarinho: o brilho da cor do halo do ambiente)
     ctx.globalAlpha = 1;
     ctx.setTransform(sx, 0, 0, sx, -camX * sx, -camY * sx);
   }
@@ -4256,7 +4274,7 @@
   const FRUIT_PLAIN = { scare: "#e5533d", gold: "#ffd23f", ice: "#6ec6ff", turbo: "#ff9f43", magnet: "#b57cff" }; // (reserva) a cor de cada tipo de fruto
   function plainBird(p, o) { // o passarinho de reserva: corpo marrom, asa, bico e olho; maior e elevado no voo alto, com a sombra no chão
     const cx = p.x + p.w / 2, cy = p.y + p.h / 2, fl = o.flying || 0, sc = (0.72 + 0.28 * (o.gr ?? 1)) * (1 + 0.35 * fl), dir = p.facing === "left" ? -1 : 1;
-    ellipse(cx, cy + 10, 10 * (1 - 0.25 * fl), 3.5 * (1 - 0.25 * fl), `rgba(0,0,0,${(0.28 - 0.1 * fl).toFixed(2)})`);
+    if (!o.noShadow) ellipse(cx, cy + 10, 10 * (1 - 0.25 * fl), 3.5 * (1 - 0.25 * fl), `rgba(0,0,0,${(0.28 - 0.1 * fl).toFixed(2)})`);
     if (o.blink) ctx.globalAlpha = 0.35;
     ctx.save(); ctx.translate(cx, cy - 2 - 15 * fl); ctx.scale(dir * sc, sc);
     const wing = o.flap || fl > 0.5 ? -5 : 2;
@@ -4335,12 +4353,12 @@
     ctx.fillStyle = open ? "#3b2a07" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center";
     if (ex.h > ex.w) { ctx.save(); ctx.translate(ex.x + ex.w / 2, ex.y + ex.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } else ctx.fillText("SAÍDA", ex.x + ex.w / 2, ex.y + ex.h / 2 + 5);
   }
-  function drawBirdExit(rect) { // o ninho (a saída): BirdArt.drawNest, uma vez, no centro da saída (o.w e o.h = o tamanho dela); sem ele, o ninho de reserva
-    const ex = exitRect, open = exitOpen(), k = lookOf("birdexit");
-    if (!birdArt("drawNest", ctx, ex.x + ex.w / 2, ex.y + ex.h / 2, { open, look: k, time, calm, w: ex.w, h: ex.h })) plainNest(rect, ex, open);
+  function drawBirdExit(rect) { // o ninho (a saída): BirdArt.drawNest, uma vez, com o CANTO de cima à esquerda da saída e o tamanho dela (o.w × o.h; em pé quando h > w) e as cores do ambiente (theme.nest); sem ele, o ninho de reserva
+    const ex = exitRect, open = exitOpen(), k = lookOf("birdexit"), nest = theme.nest || {};
+    if (!birdArt("drawNest", ctx, ex.x, ex.y, { open, look: k, time, calm, w: ex.w, h: ex.h, rim: nest.rim, twig: nest.twig, lining: nest.lining })) plainNest(rect, ex, open);
   }
   function drawBirdTiles(c0, c1, r0, r1, rect, g) { // chão em todos os tiles (menos sob `#`) e por cima: parede, muro voável, obstáculo baixo, galho e vento
-    g.kind = catKind; g.mass = catMass; g.time = calm ? 0 : time; g.gustLook = lookOf("gust"); g.roostLook = lookOf("roost"); // (g.gustLook/g.roostLook: as skins do vento e do galho em uso, para o ambiente)
+    g.kind = catKind; g.mass = catMass; g.time = calm ? 0 : time; const gustLook = lookOf("gust"); g.gustLook = gustLook; g.roostLook = lookOf("roost"); // (g.gustLook/g.roostLook: as skins do vento e do galho em uso, para o ambiente; o vento as recebe em g.look, só enquanto desenha um tile de vento)
     const border = (c, r) => c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1, kinds = lv.kinds, roost = lookOf("roost");
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
       if (!catFloorAll && kinds[r][c] === "#") continue;
@@ -4358,7 +4376,7 @@
         else if (ch === "M") (theme.muro || plainMuro)(g);
         else if (ch === "X") theme.crate(g);
         else if (ch === "G") { if (!birdArt("drawRoost", ctx, g.x, g.y, { look: roost, time, calm })) (theme.roost || theme.high || plainRoost)(g); }
-        else (theme.wind || plainWind)(g);
+        else { g.look = gustLook; (theme.wind || plainWind)(g); g.look = null; } // (o ambiente do vento lê g.look: a skin de vento em uso (fitas, setinha e estilo); fora do vento ninguém a lê)
       }
     }
   }
@@ -4380,13 +4398,15 @@
       if (it.bone) { if (!birdArt("drawFruit", ctx, { x: it.x, y: it.y, kind: it.kind || "scare" }, { time, calm, look: lkBerry })) plainFruit(it); }
       else if (!birdArt("drawSeed", ctx, { x: it.x, y: it.y, variant: i % 3 }, { time, calm, look: lkSeed })) plainSeed(it);
     }
-    for (const b of balls) if (!b.taken && !birdArt("drawWorm", ctx, b, { time, calm, r: BALL_R, hidden: false, look: lkBug })) plainWorm(b);
+    for (const b of balls) if (!b.taken && !birdArt("drawWorm", ctx, b, { time, calm, r: BALL_R, hidden: !!b.dug, look: lkBug })) plainWorm(b); // (a minhoca que fugiu e parou se enterra: só o montinho de terra)
     for (const v of vets) drawBirdFoe(v, false);
     for (const c of cats) drawBirdFoe(c, true);
   }
   function drawBirdPlayer() { // o passarinho: cresce como o cachorrinho, bate asas na arrancada, sobe e projeta a sombra no voo alto e pisca nos últimos 2 s do voo
-    const ending = flightOn() && power <= BIRD_FLIGHT_WARN, o = { gr: dogGrowth(), skin: lookOf("bird").id || "", look: lookOf("bird"), time, calm, flap: sprintOn, flying: flyAnim, safe: perch, blink: ending && (calm || Math.floor(time * 8) % 2 === 0) };
-    if (flyAnim > 0.02) ellipse(player.x + player.w / 2, player.y + player.h / 2 + 10, 11 * (1 - 0.3 * flyAnim), 3.8 * (1 - 0.3 * flyAnim), `rgba(0,0,0,${(0.3 - 0.08 * flyAnim).toFixed(2)})`); // a sombra no chão, afastada do passarinho
+    const ending = flightOn() && power <= BIRD_FLIGHT_WARN, fly = flyAnim > 0.02, cx = player.x + player.w / 2, cy = player.y + player.h / 2;
+    const o = { gr: dogGrowth(), skin: lookOf("bird").id || "", look: lookOf("bird"), time, calm, flap: sprintOn, flying: flyAnim, safe: perch, noShadow: fly, blink: ending && (calm || Math.floor(time * 8) % 2 === 0) };
+    // no voo alto a sombra no chão (afastada do passarinho, mais larga quanto mais alto) é UMA só, desenhada aqui por BirdArt.drawFx("shadow") e o passarinho não desenha a dele (noShadow); no chão, quem desenha a sombra é o próprio passarinho
+    if (fly && !birdArt("drawFx", ctx, "shadow", cx, cy, flyAnim, { calm })) ellipse(cx, cy + 10, 11 * (1 - 0.3 * flyAnim), 3.8 * (1 - 0.3 * flyAnim), `rgba(0,0,0,${(0.3 - 0.08 * flyAnim).toFixed(2)})`);
     if (!birdArt("drawBird", ctx, player, o)) plainBird(player, o);
   }
   // ===== fim PASSARINHO: motor — desenho =====

@@ -121,7 +121,7 @@ const PAGE_HELPERS = () => {
     const c = await rawNewContext(opts);
     if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
     if (!realBird) await c.addInitScript(() => { Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => undefined, set: () => {} }); });
-    else if (realBird === "levels") await c.addInitScript({ content: `${FIX("bird-levels-fixture.js")}\nObject.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });` }); // só as fases das fixtures: sem BirdArt nem ambiente (os desenhos de reserva do motor)
+    else if (realBird === "levels") await c.addInitScript({ content: `${FIX("bird-levels-fixture.js")}\nObject.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });\nObject.defineProperty(window, "BirdArt", { configurable: true, get: () => undefined, set: () => {} });` }); // só as fases das fixtures: sem BirdArt nem ambiente (os desenhos de reserva do motor; js/bird-art.js, carregado pelo index.html, é escondido)
     else if (realBird !== "real") await c.addInitScript({ content: BIRD_FIXTURES() });
     return c;
   };

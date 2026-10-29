@@ -595,7 +595,7 @@ module.exports = async function (T) {
       for (const it of __game.items) { it.x = -900; it.y = -900; }
       const o = {}, mk = (c, r) => ({ x: c * 32 + 16, y: r * 32 + 16, vx: 0, vy: 0, taken: false, hue: 0 });
       __game.balls = [mk(8, 3), mk(8, 6)];
-      __b.at(4, 3); __b.run(2); o.far = Math.hypot(__game.balls[0].vx, __game.balls[0].vy);          // a 4 tiles: parada
+      __b.at(4, 3); __b.run(2); o.far = Math.hypot(__game.balls[0].vx, __game.balls[0].vy); __game.drawNow(); o.hidBefore = window.BirdArt.__last.drawWorm.o.hidden; // a 4 tiles: parada (e ainda fora da terra)
       __b.at(6, 3, 8); __b.run(1); o.kick = Math.hypot(__game.balls[0].vx, __game.balls[0].vy); o.dir = Math.sign(__game.balls[0].vx); // a menos de 3 tiles: dispara para longe
       __b.run(300); const b0 = __game.balls[0]; o.stopped = Math.hypot(b0.vx, b0.vy) === 0; o.x = b0.x;
       __b.at(8, 6); __b.at(8, 6, 4); const s0 = __game.score; __game.sound.reset(); __b.run(1, []); o.score = __game.score - s0; o.toast = document.getElementById("toast").textContent; o.snd = __game.sounds.map((e) => e.name).join(",");
@@ -605,7 +605,8 @@ module.exports = async function (T) {
     });
     ok(w.far === 0 && near(w.kick, 185.5, 1.2) && w.dir === 1 && w.stopped, `a minhoca fica parada a 4 tiles e dispara quando o passarinho chega a menos de 3 (${w.kick.toFixed(0)} px/s, para longe), rola e para sozinha`);
     ok(w.score === 50 && /^Minhoca! \+50 pontos \(1\/2\)$/.test(w.toast) && /worm/.test(w.snd), `pegar uma minhoca vale 50 pontos, o aviso diz "${w.toast}" e toca o worm (${w.snd})`);
-    ok(w.art && w.art.r === 8 && w.art.hidden === false && /x,y,vx,vy,hue/.test(w.art.keys), "BirdArt.drawWorm recebe { x, y, vx, vy, hue } e { time, calm, r, hidden }");
+    ok(w.art && w.art.r === 8 && /x,y,vx,vy,hue/.test(w.art.keys), "BirdArt.drawWorm recebe { x, y, vx, vy, hue } e { time, calm, r, hidden }");
+    ok(w.hidBefore === false && w.art && w.art.hidden === true, `a minhoca ainda não assustada aparece fora da terra (hidden ${w.hidBefore}) e a que fugiu e parou se enterra (hidden ${w.art && w.art.hidden}: só o montinho)`);
     ok(await hudText(pg, "#hud-balls", "1/2") && /MINHOCAS/.test(await pg.textContent("#hud-balls-item")) && /Minhocas/.test(await pg.getAttribute("#hud-balls-item", "title")), "o placar diz MINHOCAS 1/2");
     const pk = await ev(pg, () => { __b.start(1); __game.freezeVets = true; __game.balls = []; const sd = __game.items.find((i) => !i.bone); __game.player.x = sd.x - 4; __game.player.y = sd.y - 4; __game.tick(0.01); const a = __game.catFx.map((f) => f.kind); __game.noCatch = false; __game.freezeVets = false; const v = __game.vets[0], h = __game.cats[0]; __game.invuln = 0; h.cx = __game.player.x + 12; h.cy = __game.player.y + 12; h.mode = "chase"; __game.tick(0.02); return { peck: a.includes("peck"), feather: __game.catFx.map((f) => f.kind).includes("feather"), lives: __game.lives }; });
     ok(pk.peck && pk.feather && pk.lives === 2, `pegar uma semente solta o efeito peck e ser pego solta o feather (BirdArt.drawFx)`);
