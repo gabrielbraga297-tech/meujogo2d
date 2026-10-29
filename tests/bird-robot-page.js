@@ -51,8 +51,13 @@ module.exports = function ROBOT(o) {
     }
     return D;
   }
+  function statueGrid() { // inimigos congelados (testes): ninguém persegue, mas encostar neles ainda custa uma vida; o gavião sobre um X também
+    const D = new Float32Array(N);
+    for (const f of [...g.vets, ...g.cats]) { const [fc, fr] = tileOf(f.cx, f.cy); for (let r = Math.max(0, fr - 2); r <= Math.min(rows - 1, fr + 2); r++) for (let c = Math.max(0, fc - 2); c <= Math.min(cols - 1, fc + 2); c++) { const d = Math.hypot(c - fc, r - fr); if (d <= 2) D[idx(c, r)] += 40 - 12 * d; } }
+    return D;
+  }
   // ---------- planejamento ----------
-  function plan(src, flyBudget, D, blocked) { // Dijkstra de `src` (índice) por todo o mapa; flyBudget > 0: o voo alto está ligado e os muros M valem até essa distância (em passos)
+  function plan(src, flyBudget, D, blocked, noExit) { // Dijkstra de `src` (índice) por todo o mapa; flyBudget > 0: o voo alto está ligado e os muros M valem até essa distância (em passos)
     const dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1), steps = new Float64Array(N);
     dist[src] = 0; heap.a.length = 0; heap.push(0, src);
     while (heap.a.length) {
@@ -64,6 +69,7 @@ module.exports = function ROBOT(o) {
         if (k === "M" && !(flyBudget > 0 && steps[u] + 1 < flyBudget)) continue;
         const v = idx(nc, nr); let w = 1 + D[v] + (windAt(nc, nr) ? 0.6 : 0) + (blocked && blocked.has(v) ? 30 : 0);
         if (k === "M") w += 0.3;
+        if (noExit && exitSet.has(v)) w += 600; // pegando tudo: não passa por cima do ninho aberto antes da hora (tocar nele termina a fase)
         if (d + w < dist[v]) { dist[v] = d + w; prev[v] = u; steps[v] = steps[u] + 1; heap.push(dist[v], v); }
       }
     }
@@ -80,7 +86,7 @@ module.exports = function ROBOT(o) {
     g.setAnimal("bird"); g.setRand(mul((o.seed || 1) * 1000 + attempt * 77 + id)); g.freezeVets = !live; g.noCatch = false;
     g.start(id, { retries: attempt }); g.autoStart = true;
     res.attempts = attempt + 1;
-    let frames = 0, target = null, path = [], refuge = null, perchWait = 0, lastPos = null, stillN = 0, lastLost = g.livesLost, prevM = false, plans = 0;
+    let prevInfo = null, frames = 0, target = null, path = [], refuge = null, perchWait = 0, lastPos = null, stillN = 0, lastLost = g.livesLost, prevM = false, plans = 0;
     const blocked = new Map(); // tile -> quadro em que o bloqueio some
     while (g.state === "playing" && frames < (o.cap || cap)) {
       const p = g.player, [px, py] = mid(p), [pc, pr] = tileOf(px, py), me = idx(pc, pr);
@@ -93,10 +99,10 @@ module.exports = function ROBOT(o) {
       if (g.sprinting) stats.sprintFrames++;
       const chasers = [...g.vets, ...g.cats].filter((f) => f.mode === "chase");
       if (chasers.length) stats.chaseFrames++;
-      if (g.livesLost > lastLost) { // perdeu vida: quem estava mais perto?
-        let best = null; for (const f of g.vets) { const d = Math.hypot(f.cx - px, f.cy - py); if (!best || d < best.d) best = { d, by: "gato" }; }
-        for (const f of g.cats) { const d = Math.hypot(f.cx - px, f.cy - py); if (!best || d < best.d) best = { d, by: "gavião" }; }
-        hits.push({ attempt, t: +g.time.toFixed(1), by: best ? best.by : "?", d: best ? Math.round(best.d) : -1, tile: [pc, pr], flying, perched });
+      if (g.livesLost > lastLost) { // perdeu vida: o que havia no quadro ANTERIOR (agora o passarinho já voltou ao início)?
+        const q = prevInfo || { px, py, pc, pr, flying, perched, refuge: false, sprint: false, sta: 1, winded: 0, chasing: 0, near: [] };
+        const nearest = q.near[0];
+        hits.push({ attempt, t: +g.time.toFixed(1), by: nearest ? nearest.k : "?", d: nearest ? Math.round(nearest.d * 32) : -1, tile: [q.pc, q.pr], flying: q.flying, perched: q.perched, refuge: q.refuge, sprint: q.sprint, sta: q.sta, winded: q.winded, chasing: q.chasing, near: q.near.slice(0, 3) });
         lastLost = g.livesLost; target = null; path = []; refuge = null; perchWait = 0;
       }
       if (res.exitOpenAt === null && exitOpen()) res.exitOpenAt = +g.time.toFixed(1);
@@ -110,9 +116,9 @@ module.exports = function ROBOT(o) {
       if (frames % 5 === 0 || !path.length) {
         plans++;
         for (const [k, until] of blocked) if (until < frames) blocked.delete(k);
-        const D = live ? dangerGrid(flying, perched || safeNow && !flying) : new Float32Array(N);
+        const D = live ? dangerGrid(flying, perched || safeNow && !flying) : statueGrid(); // (inimigos parados continuam pegando quem encosta neles: o robô dá a volta)
         const flyBudget = flying ? Math.max(0, (g.power - 1.4) * g.dogSpeed / 32) : 0;
-        const pl = plan(me, flyBudget, D, blocked);
+        const pl = plan(me, flyBudget, D, blocked, collectAll && g.items.some((i) => !i.taken));
         // perseguição por perto: busca refúgio (galho) se chega antes do inimigo
         const near = chasers.filter((f) => Math.hypot(f.cx - px, f.cy - py) < 9 * 32 && (f.hawk || !flying));
         if (near.length && !perched && !refuge && !(flying && !near.some((f) => f.hawk))) {
@@ -151,7 +157,8 @@ module.exports = function ROBOT(o) {
       if (perched) {
         const threat = [...g.vets, ...g.cats].some((f) => f.mode !== "flee" && Math.hypot(f.cx - px, f.cy - py) < 6 * 32);
         perchWait = threat ? perchWait + 1 : 0;
-        if (waiting || (threat && perchWait < 600)) { path.length = 0; releaseAll(); g.tick(1 / 60); frames++; continue; }
+        const closeFoe = [...g.vets, ...g.cats].some((f) => f.mode !== "flee" && Math.hypot(f.cx - px, f.cy - py) < 3.5 * 32); // não desce com um inimigo colado no galho
+        if (waiting || (threat && perchWait < 600) || (closeFoe && perchWait < 1800)) { path.length = 0; releaseAll(); g.tick(1 / 60); frames++; continue; }
         if (refuge && idx(pc, pr) === refuge.k) refuge = null;
       } else perchWait = 0;
       if (path.length) {
@@ -172,6 +179,7 @@ module.exports = function ROBOT(o) {
         else stillN = 0;
         lastPos = [px, py];
       }
+      prevInfo = { px, py, pc, pr, flying, perched, refuge: !!refuge, sprint: g.sprinting, sta: +g.stamina.toFixed(2), winded: +g.winded.toFixed(1), chasing: chasers.length, near: [...g.vets.map((f) => ["gato", f]), ...g.cats.map((f) => ["gavião", f])].map(([k, f]) => ({ k, m: f.mode, d: Math.round(Math.hypot(f.cx - px, f.cy - py) / 32 * 10) / 10 })).filter((x) => x.d < 6).sort((a, b) => a.d - b.d) };
       g.tick(1 / 60); frames++;
     }
     releaseAll();
