@@ -14,7 +14,7 @@
 4. Ficar sobre um poleiro alto ou numa copa fechada reduz o risco diante de um gato? E diante de uma ave de rapina? (Liga com P4: o jogo diz que sim para os dois, mas isso é escolha de design.)
 
 ## Palavras-chave de busca
-- inglês: `domestic cat predation on birds`, `free-ranging cats bird predation review`, `outdoor cats garden birds`, `cat predation wildlife meta-analysis`, `raptor predation small birds urban`, `sparrowhawk predation garden birds`, `anti-predator behaviour small birds ground vs aerial predators`, `alarm calls predator type`, `vigilance birds predation risk`.
+- inglês: `domestic cat predation on birds`, `free-ranging cats bird predation review`, `outdoor cats garden birds`, `cat predation wildlife meta-analysis`, `raptor predation small birds urban`, `anti-predator behaviour small birds ground vs aerial predators`, `alarm calls predator type`, `vigilance birds predation risk`.
 - português: `predação de aves por gatos domésticos`, `gatos de vida livre impacto em aves`, `aves de rapina caça de aves pequenas`, `comportamento antipredador de aves`.
 
 ## Tipo de estudo esperado
