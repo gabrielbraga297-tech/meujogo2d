@@ -3829,7 +3829,8 @@
 
   function catAccessory(k, hx, hy, long, low) { // (skin) enfeites do gato inimigo, no sistema do gato (olhando para a direita): coleira com guizo, laço na orelha ou chapéu de festa
     if (k.acc === "bell") { // coleira com guizo no pescoço
-      ctx.fillStyle = k.collar || "#e5533d"; ctx.fillRect(6.4 * long, -3 + low * 0.5 + 3.4, 3.4, 5); ctx.fillStyle = k.bell || "#f2c230"; ctx.beginPath(); ctx.arc(8.1 * long, 7.3 + low * 0.5, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = k.collar || "#e5533d"; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(5.6 * long, -0.6 + low * 0.5); ctx.lineTo(8.6 * long, 4 + low * 0.5); ctx.stroke();
+      ctx.fillStyle = k.bell || "#f2c230"; ctx.beginPath(); ctx.arc(9 * long, 5.6 + low * 0.5, 1.9, 0, Math.PI * 2); ctx.fill();
     } else if (k.acc === "bow") { // laço entre as orelhas
       const bx = hx - 1.6, by = hy - 7.4; ctx.fillStyle = k.collar || "#ff6fa5";
       ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 4.2, by - 2.4); ctx.lineTo(bx - 4.2, by + 2.4); ctx.closePath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 4.2, by - 2.4); ctx.lineTo(bx + 4.2, by + 2.4); ctx.closePath(); ctx.fill();
@@ -3852,9 +3853,9 @@
   PREVIEW.agent = (c2, k, w, h) => stage("agent", k, c2, w, h, 3.6, () => drawVet({ cx: -3, cy: 3, dir: 1, mode: "patrol", leg: 0 }));
   PREVIEW.postman = (c2, k, w, h) => stage("postman", k, c2, w, h, 3.8, () => drawPostman({ cx: -1.5, cy: 3, dir: 1, mode: "patrol", leg: 0, slow: false, hitCool: 0 }));
   PREVIEW.ration = (c2, k, w, h) => stage("ration", k, c2, w, h, 6.4, () => { c2.translate(-8, -9); drawKibble({ x: 0, y: 0 }); });
-  PREVIEW.bone = (c2, k, w, h) => stage("bone", k, c2, w, h, 5.4, () => {
-    c2.save(); c2.translate(0, -7); c2.translate(-8, -8); drawBone({ x: 0, y: 0 }); c2.restore(); // o osso comum, grande
-    for (const [i, kind] of ["gold", "ice", "magnet"].entries()) { c2.save(); c2.translate((i - 1) * 13, 16); c2.scale(0.42, 0.42); c2.translate(-8, -8); drawBone({ x: 0, y: 0, kind }); c2.restore(); } // e três ossos de tipo novo, pequenos (a skin vale em tom sobre tom: a cor do efeito não muda)
+  PREVIEW.bone = (c2, k, w, h) => stage("bone", k, c2, w, h, 4.4, () => {
+    c2.save(); c2.translate(0, -6); c2.translate(-8, -8); drawBone({ x: 0, y: 0 }); c2.restore(); // o osso comum, grande
+    for (const [i, kind] of ["gold", "ice", "magnet"].entries()) { c2.save(); c2.translate((i - 1) * 14, 10); c2.scale(0.42, 0.42); c2.translate(-8, -8); drawBone({ x: 0, y: 0, kind }); c2.restore(); } // e três ossos de tipo novo, pequenos (a skin vale em tom sobre tom: a cor do efeito não muda)
   });
   PREVIEW.ball = (c2, k, w, h) => stage("ball", k, c2, w, h, 3.3, () => { for (let i = 0; i < 3; i++) drawBall({ x: (i - 1) * 21, y: 0, vx: 0, vy: 0, hue: i }); });
   PREVIEW.block = (c2, k, w, h) => stage("block", k, c2, w, h, 1.9, () => {
@@ -3887,11 +3888,11 @@
     const prev = ctx.globalAlpha; if (!open) ctx.globalAlpha = prev * 0.55;
     if (k.deco === "stripes") { ctx.fillStyle = k.mark || "rgba(255,255,255,.28)"; for (let a = 6; a < len - 4; a += 12) R(a, 0, 6, thick); } // listras de toldo
     else if (k.deco === "rainbow") { // faixas de arco-íris nas duas bordas compridas
-      const bw = Math.min(3, thick / 14);
+      const bw = Math.min(3, thick / 16);
       for (let i = 0; i < 5; i++) { ctx.fillStyle = RAINBOW[i]; R(0, i * bw, len, bw + 0.2); R(0, thick - (i + 1) * bw, len, bw + 0.2); }
     } else if (k.deco === "stars") { // estrelinhas espalhadas
       ctx.fillStyle = k.mark || "#ffe066";
-      for (let a = 10; a < len - 6; a += 20) for (const b of [thick * 0.22, thick * 0.78]) { const sx = wide ? ex.x + a : ex.x + b, sy = wide ? ex.y + b : ex.y + a; starPath(sx, sy, 4.2, 1.8); ctx.fill(); }
+      for (let a = 10; a < len - 6; a += 20) for (const b of [thick * 0.14, thick * 0.86]) { const sx = wide ? ex.x + a : ex.x + b, sy = wide ? ex.y + b : ex.y + a; starPath(sx, sy, 3.3, 1.5); ctx.fill(); }
     } else if (k.deco === "frame") { // moldura dourada com cantos brilhantes
       ctx.strokeStyle = k.mark || "#d4a017"; ctx.lineWidth = 3; ctx.strokeRect(ex.x + 1.5, ex.y + 1.5, ex.w - 3, ex.h - 3);
       ctx.fillStyle = k.mark || "#d4a017"; ctx.beginPath(); for (const [dx, dy] of [[4, 4], [ex.w - 4, 4], [4, ex.h - 4], [ex.w - 4, ex.h - 4]]) { ctx.moveTo(ex.x + dx + 3.4, ex.y + dy); ctx.arc(ex.x + dx, ex.y + dy, 3.4, 0, Math.PI * 2); } ctx.fill();
