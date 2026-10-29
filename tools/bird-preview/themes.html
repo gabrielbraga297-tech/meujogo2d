@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia dos ambientes do Passarinho</title>
+<style>
+  body { margin: 0; padding: 12px; background: #1d1f24; color: #e8e8e8; font: 13px system-ui, sans-serif; }
+  #sheet { display: grid; grid-template-columns: repeat(2, max-content); gap: 14px 18px; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 4px; font-weight: 600; }
+  canvas { display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="sheet"></div>
+<script src="../../js/bird-art.js"></script>
+<script src="../../js/bird-themes.js"></script>
+<script src="../../js/bird-themes-1.js"></script>
+<script>
+// o arquivo das Fases 11 a 20 só é carregado se existir (a prévia serve também enquanto ele ainda não foi escrito)
+document.write('<script src="../../js/bird-themes-2.js" onerror="void 0"><\/script>');
+</script>
+<script>
+// Recorte de 14 x 9 tiles de um mapa do Passarinho, na mesma ordem de desenho do jogo: chão em todos os tiles (menos sob "#"), o ninho da saída, depois "#", X, G, M e o vento.
+// O anel de fora é a borda do mapa (g.border). No meio há um bloco de parede de 3 x 2 tiles, uma fileira de muros "M" (que se junta ao bloco), obstáculos X, galhos G, quatro grupos de vento
+// e o ninho da saída (E) na borda de baixo. Os desenhos de 24 px (o passarinho, um gato, uma semente, um fruto, uma minhoca) são só para escala. sim=1 simula a noite (o jogo escurece em volta do passarinho).
+const MAP = [
+  "##############",
+  "#P..M.....>>>#",
+  "#...M..###...#",
+  "#.X.MMMM###G.#",
+  "#...M..###...#",
+  "#G....X..^^..#",
+  "#.<<<..M..^^.#",
+  "#..X...M..v.X#",
+  "####EEE#######",
+];
+const COLS = 14, ROWS = 9, TILE = 32;
+const OFFSET = { 9: [10, 4], 15: [10, 4] }; // deslocamento das coordenadas (muda o sorteio do desenho)
+
+function render(id, opts) {
+  opts = Object.assign({ scale: 1, time: 0, offset: null, birds: true, sim: false, open: true }, opts);
+  const sc = opts.scale, th = BirdThemes.of(id), off = opts.offset || OFFSET[id] || [10, 7];
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(COLS * TILE * sc); cv.height = Math.round(ROWS * TILE * sc);
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(sc, 0, 0, sc, 0, 0);
+  const snap = (v) => Math.round(v * sc) / sc;
+  const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
+  const at = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS ? "#" : MAP[r][c]);
+  const g = {
+    ctx, rect, x: 0, y: 0, c: 0, r: 0, border: false, time: opts.time,
+    solid: (c, r) => at(c - off[0], r - off[1]) === "#",
+    kind: (c, r) => at(c - off[0], r - off[1]),
+    h: (k) => BirdThemes.hash(g.c, g.r, k),
+  };
+  const place = (c, r) => { g.c = c + off[0]; g.r = r + off[1]; g.x = c * TILE; g.y = r * TILE; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1; };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { if (MAP[r][c] === "#") continue; place(c, r); th.floor(g); }
+  BirdArt.drawNest(ctx, 4 * TILE, 8 * TILE, Object.assign({ open: opts.open, w: 96, h: 32, time: opts.time, calm: !opts.time }, th.nest));
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const k = MAP[r][c]; place(c, r);
+    if (k === "#") th.wall(g); else if (k === "X") th.crate(g); else if (k === "G") th.high(g); else if (k === "M") th.muro(g); else if (">v<^".includes(k)) th.wind(g);
+  }
+  if (opts.birds) {
+    const T0 = opts.time || 0.3, calm = !opts.time;
+    BirdArt.drawBird(ctx, { x: 1 * TILE + 4, y: 1 * TILE + 4, w: 24, h: 24, facing: "right", moving: true }, { time: T0, calm });
+    BirdArt.drawBird(ctx, { x: 5 * TILE + 4, y: 1 * TILE + 4, w: 24, h: 24, facing: "right", moving: false }, { time: T0, calm, skin: "branco" });
+    BirdArt.drawBird(ctx, { x: 1 * TILE + 4, y: 5 * TILE + 4 - 0, w: 24, h: 24, facing: "down", moving: false }, { time: T0, calm, safe: true, skin: "preto" });
+    BirdArt.drawBird(ctx, { x: 11 * TILE + 4, y: 3 * TILE + 4, w: 24, h: 24, facing: "left", moving: false }, { time: T0, calm, safe: true, skin: "azul" });
+    BirdArt.drawBird(ctx, { x: 6 * TILE + 4, y: 3 * TILE + 4, w: 24, h: 24, facing: "right", moving: true }, { time: T0, calm, flying: 1, skin: "verde" });
+    BirdArt.drawBird(ctx, { x: 3 * TILE + 4, y: 6 * TILE + 4, w: 24, h: 24, facing: "right", moving: true }, { time: T0, calm, skin: "amarelo" });
+    BirdArt.drawBird(ctx, { x: 7 * TILE + 4, y: 5 * TILE + 4, w: 24, h: 24, facing: "right", moving: true }, { time: T0, calm, skin: "vermelho" });
+    BirdArt.drawFoeCat(ctx, { x: 4 * TILE + 16, y: 4 * TILE + 16, dir: 1, mode: "chase", size: "medium", idx: id }, { time: T0, calm });
+    BirdArt.drawFoeCat(ctx, { x: 9 * TILE + 16, y: 6 * TILE + 16, dir: -1, mode: "patrol", size: "medium", idx: id + 1 }, { time: T0, calm });
+    BirdArt.drawHawk(ctx, { x: 12 * TILE + 16, y: 6 * TILE + 8, dir: -1, mode: "patrol", idx: id }, { time: T0, calm });
+    BirdArt.drawSeed(ctx, { x: 2 * TILE + 8, y: 2 * TILE + 8, variant: 0 }, { time: T0, calm }); BirdArt.drawSeed(ctx, { x: 8 * TILE + 8, y: 3 * TILE + 8, variant: 1 }, { time: T0, calm });
+    BirdArt.drawSeed(ctx, { x: 9 * TILE + 8, y: 5 * TILE + 8, variant: 2 }, { time: T0, calm });
+    ["scare", "gold", "ice", "turbo", "magnet"].forEach((k, i) => BirdArt.drawFruit(ctx, { x: (4 + i) * TILE + 8, y: 7 * TILE + 8 - (i > 2 ? 0 : 0), kind: k }, { time: T0, calm }));
+    BirdArt.drawWorm(ctx, { x: 12 * TILE + 16, y: 2 * TILE + 16, vx: 0, vy: 0, hue: id }, { time: T0, calm });
+    BirdArt.drawWorm(ctx, { x: 10 * TILE + 16, y: 4 * TILE + 16, vx: 0, vy: 0, hue: 1 }, { time: T0, calm, hidden: true });
+    BirdArt.drawPost(ctx, 5 * TILE + 16, 2 * TILE + 16 + 3, { kind: "cat", calm });
+  }
+  if (opts.sim && (th.night || th.dusk)) { // simulação da luz do jogo (só para a prévia): escurece tudo, menos um círculo em volta do passarinho
+    const cx = 1 * TILE + 16, cy = 1 * TILE + 16, rad = th.dusk ? 150 : 90, a = th.dusk ? 0.45 : 0.68, col = th.dusk ? "40,18,60" : "6,10,36";
+    const gr = ctx.createRadialGradient(cx, cy, rad * 0.35, cx, cy, rad);
+    gr.addColorStop(0, "rgba(" + col + ",0)"); gr.addColorStop(1, "rgba(" + col + "," + a + ")");
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, COLS * TILE, ROWS * TILE);
+  }
+  return cv;
+}
+
+function sheet(opts) {
+  const root = document.getElementById("sheet"); root.innerHTML = "";
+  const ids = (opts && opts.ids) || BirdThemes.ids();
+  for (const id of ids) {
+    const th = BirdThemes.of(id), fig = document.createElement("figure"), cap = document.createElement("figcaption");
+    cap.textContent = id + ". " + th.place + (th.night ? " (noite)" : th.dusk ? " (entardecer)" : "");
+    fig.append(cap, render(id, opts)); root.append(fig);
+  }
+}
+function single(id, opts) {
+  const root = document.getElementById("sheet"); root.innerHTML = "";
+  root.style.gridTemplateColumns = "max-content";
+  const fig = document.createElement("figure"); fig.id = "stage"; fig.append(render(id, opts)); root.append(fig);
+}
+window.sheet = sheet; window.single = single; window.render = render;
+const q = new URLSearchParams(location.search);
+if (!q.has("manual")) {
+  const scale = +q.get("scale") || 1, time = +q.get("time") || 0, sim = q.get("sim") === "1";
+  if (q.get("fase")) single(+q.get("fase"), { scale, time, sim }); else sheet({ scale, time, sim });
+}
+</script>
+</body>
+</html>
