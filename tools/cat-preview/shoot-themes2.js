@@ -1,5 +1,5 @@
 // Capturas dos ambientes das Fases 11 a 20 do Gatinho (js/cat-themes-2.js) com Playwright.
-// Uso (com trava de navegador): NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium flock <trava> node tools/cat-preview/shoot-themes2.js <pasta-de-saida> [fases...] [cat]
+// Uso (`flock <arquivo>` é opcional, para não abrir dois navegadores juntos): NODE_PATH=<pasta-do-playwright>/node_modules CHROMIUM_PATH=/caminho/do/chromium flock <arquivo> node tools/cat-preview/shoot-themes2.js <pasta-de-saida> [fases...] [cat]
 // Gera, para cada fase, th-<id>.png (zoom 2) e, para as noturnas (18 e 19), th-<id>-noite.png (com o escurecimento em volta do gatinho). Com "cat" junta th-<id>-cat.png (fileiras de X, T e ~ com todas as variantes).
 // Sem lista de fases, gera também sheet.png (as 10 lado a lado, zoom 1) e catalog.png (as 10 com as fileiras de X, T e ~).
 const { chromium } = require("playwright");

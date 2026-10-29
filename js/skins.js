@@ -2,7 +2,7 @@
 // Uso: window.Skins (navegador) ou require("./js/skins.js") (Node). Não desenha nada: quem desenha é o jogo (js/game.js, js/cat-art.js), lendo os campos visuais da skin em uso.
 //
 // Categoria (slot): { id, game, name, singular, from, player? }
-//   id        letras minúsculas e números ("agent", "ration"...). É também a chave da skin em uso na carteira (records.js: `eq` para "dog", `eqa[slot]` para as outras).
+//   id        de 2 a 12 letras minúsculas, sem números nem hífen ("agent", "ration"...): é o que records.js exige (/^[a-z]{2,12}$/). É também a chave da skin em uso na carteira (records.js: `eq` para "dog", `eqa[slot]` para as outras).
 //   game      o jogo (bichinho) onde o objeto aparece: "dog" | "cat" (| "bird" no futuro). A skin só aparece desenhada nesse jogo.
 //   from      a fase mais baixa, DAQUELE jogo, em que o objeto aparece (e, portanto, a partir da qual a categoria pode ser comprada). Um teste confere com os mapas do jogo.
 //   player    true nas categorias do próprio bichinho ("dog", "cat"): a skin de quem você joga.
@@ -93,10 +93,9 @@
     const k = (items[slotId] || []).find((x) => x.id === id);
     return k && k.from ? Math.max(s.from, k.from) : s.from;
   };
-  // `reached` = a fase mais alta que o jogador alcançou NAQUELE jogo (a próxima depois da última concluída); true se a skin já pode ser comprada
+  // `reached` = a fase mais alta que o jogador alcançou NAQUELE jogo (a próxima depois da última concluída); true se a skin já pode ser comprada.
+  // É a regra que a tela da lojinha (js/game.js) usa; o armazenamento (records.js, gateOf) faz a mesma comparação por conta própria, porque a trava também vale sem a tela.
   const unlocked = (slotId, id, reached) => Number.isInteger(reached) && reached >= fromOf(slotId, id);
-  // a chave da skin na carteira (records.js): o Cachorrinho mantém o id puro, as outras categorias levam o prefixo
-  const ownKey = (slotId, id) => (slotId === "dog" ? id : `${slotId}:${id}`);
 
-  return { MIN_PRICE, GAMES, SLOTS, slot, slotsOf, register, list, get, has, fromOf, unlocked, ownKey, count: (slotId) => (items[slotId] || []).length };
+  return { MIN_PRICE, GAMES, SLOTS, slot, slotsOf, register, list, get, has, fromOf, unlocked, count: (slotId) => (items[slotId] || []).length };
 });

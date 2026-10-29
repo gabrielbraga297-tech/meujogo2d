@@ -1304,7 +1304,7 @@ test("skins por bichinho: a carteira do cachorrinho de dados antigos (sem eqa ne
     assert.strictEqual(got, R.MAX_SLOTS, `no máximo ${R.MAX_SLOTS} categorias com skins por jogador (${got})`);
     assert.strictEqual(st.wallet("c", slots[0]).owned.join(), "x", "ficam as primeiras");
     assert.strictEqual(st.wallet("c", slots[R.MAX_SLOTS]).owned.length, 0, "e as demais saem");
-    assert.ok(Object.keys(st.equippedSkins("c")).length <= R.MAX_SLOTS + 2, "e a skin em uso só vale nas categorias que ficaram");
+    assert.deepStrictEqual(st.equippedSkins("c"), Object.assign({ dog: "", cat: "" }, Object.fromEntries(slots.slice(0, R.MAX_SLOTS).map((s) => [s, "x"]))), "e a skin em uso só vale nas 40 categorias que ficaram (as primeiras), mais dog e cat vazias");
     // limite de skins
     assert.strictEqual(st.wallet("d", "agent").owned.length + st.wallet("d").owned.length, R.MAX_OWNED, "no máximo 200 skins no total");
     assert.strictEqual(st.wallet("d").equipped, "", "a skin em uso que ficou fora do limite não vale");

@@ -1,4 +1,4 @@
-// Quadros fixos do JOGO DO GATINHO para conferir as skins dos objetos (0.19.0, frente C): roda DENTRO da página (index.html + js/cat-levels.js) e devolve o hash de pixels do canvas de cada cena.
+// Quadros fixos do JOGO DO GATINHO para conferir as skins dos objetos (0.19.0): roda DENTRO da página (index.html + js/cat-levels.js) e devolve o hash de pixels do canvas de cada cena.
 // Usado pelo tests/e2e.js (seção "0.19.0 · Skins do Gatinho") e por tools/skin-preview/cat-skins.js. As cenas são sempre as mesmas: semente fixa, cães congelados, o gatinho teletransportado perto de cada objeto
 // e UM quadro desenhado (sem andar o jogo, exceto 1 ms na cena do lugar alto, para o gatinho ficar a salvo em cima dele).
 // Os valores de referência (HASHES_0180_CAT no tests/e2e.js) saíram do código da 0.18.0 (commit de partida ed7e2f7, sem nenhuma skin) com o Chromium desta máquina, viewport 1000×700, com `settle` antes de cada fase.

@@ -10538,18 +10538,9 @@ const PAGE_HELPERS = () => {
     await tp.context().close();
   });
 
-  // ===== Lojinha única (0.19.0): cada agente acrescenta as suas seções SÓ no seu marcador (para as mesclas não brigarem) =====
-  //SKINS-S-NEXT (lojinha, carteira, liberação por fase)
-
-  // ---- ajudas da lojinha única (0.19.0). Os nomes começam com s19 para não colidirem com os das outras seções.
-  // As categorias dos objetos (js/skins-dog.js e js/skins-cat.js) são registradas pelas frentes dos objetos; para estas seções valerem com qualquer catálogo, as páginas abertas por s19Page recebem,
-  // DEPOIS dos arquivos de verdade, 3 skins de teste (t1, t2 e t3: 10, 20 e 30 petscoin) só nas categorias de objeto que ainda estão sem nenhuma skin. Onde o catálogo já tem skins de verdade, nada é acrescentado.
-  const S19_STUB = `\n;(function(){ if (typeof Skins === "undefined") return; for (const s of Skins.SLOTS) if (!s.player && !Skins.count(s.id)) Skins.register(s.id, [1, 2, 3].map((n) => ({ id: "t" + n, name: "Teste " + n, text: "skin de teste " + n, price: 10 * n })), { name: "Padrão de teste" }); })();`;
-  const s19Page = async ({ stub = true, real = true, ...opts } = {}) => {
-    const pg = await newPage({ realCat: real, ...opts });
-    if (stub) await pg.context().route("**/js/skins-cat.js", (route) => route.fulfill({ contentType: "text/javascript", body: fs.readFileSync(path.join(root, "js/skins-cat.js"), "utf8") + S19_STUB }));
-    return pg;
-  };
+  // ===== Lojinha única (0.19.0) =====
+  // ---- ajudas da lojinha única. Os nomes começam com s19 para não colidirem com os das outras seções. As páginas abertas por s19Page recebem o catálogo de verdade (todas as categorias já têm skins registradas em js/skins-dog.js, js/skins-cat.js e js/game.js).
+  const s19Page = async (opts = {}) => newPage({ realCat: true, ...opts });
   // abre a página limpa (jogador "Totó"), dá `treats` petscoin e as fases já concluídas de cada jogo (1 a `dog` no Cachorrinho e 1 a `cat` no Gatinho) e abre a lojinha
   const s19Seed = async (pg, { name = "Totó", treats = 0, dog = 0, cat = 0 } = {}) => {
     await ev(pg, ([name, treats, dog, cat]) => {
@@ -10705,7 +10696,7 @@ const PAGE_HELPERS = () => {
         if (r.ok !== want || (!want && r.error !== "locked")) bad.push(`${s.name} com ${done} concluídas: o armazenamento respondeu ${JSON.stringify(r)}`);
       }
     }
-    ok(bad.length === 0 && gated.length >= 3, `${gated.length} categorias com fase mínima (${gated.map((s) => `${s.name} F${s.from}`).join(", ")}): travam com as fases anteriores, abrem ao concluir a anterior à fase delas${bad.length ? " — " + bad.join("; ") : ""}`);
+    ok(bad.length === 0 && gated.length === 10, `${gated.length} categorias com fase mínima (são 10: 6 do Cachorrinho e 4 do Gatinho; ${gated.map((s) => `${s.name} F${s.from}`).join(", ")}): travam com as fases anteriores, abrem ao concluir a anterior à fase delas${bad.length ? " — " + bad.join("; ") : ""}`);
     // ---- pelo jogo de verdade: concluir a Fase 1 do Cachorrinho libera as categorias da Fase 2 ----
     const f2 = slots.find((s) => s.game === "dog" && s.from === 2 && s.count > 0);
     if (f2) {
@@ -10798,7 +10789,6 @@ const PAGE_HELPERS = () => {
 
     // ---- duas abas: a compra de uma aparece na outra; o clique atrasado é recusado; e a trava vale para a tela velha ----
     const ctx = await browser.newContext({ viewport: { width: 1000, height: 700 }, realCat: true });
-    await ctx.route("**/js/skins-cat.js", (route) => route.fulfill({ contentType: "text/javascript", body: fs.readFileSync(path.join(root, "js/skins-cat.js"), "utf8") + S19_STUB }));
     const P = await ctx.newPage(); watch(P); const Q = await ctx.newPage(); watch(Q);
     await P.addInitScript(() => { try { if (!sessionStorage.getItem("keepSave")) localStorage.removeItem("cachorrinho.save.v1"); } catch { /* sem storage */ } });
     await fresh(P, { name: "Totó" }); await s19Seed(P, { treats: 60, dog: 1 });
@@ -10882,21 +10872,21 @@ const PAGE_HELPERS = () => {
 
   // =====================================================================
   await section("0.19.0 · Lojinha única: a fase `from` de cada categoria é a PRIMEIRA fase do jogo em que o objeto existe (conferido com os mapas de verdade)", async () => {
-    // Sem as skins de teste: vale o catálogo de verdade, só das categorias que já têm skins registradas (js/skins-dog.js e js/skins-cat.js trazem as dos objetos; o bichinho vem de game.js).
+    // Vale o catálogo de verdade (js/skins-dog.js e js/skins-cat.js trazem as dos objetos; o bichinho vem de game.js).
     // Critério de cada categoria, lido das fases montadas do jogo (`__game.builtOf(jogo)[fase]`, a primeira de 1 a 20 que cumpre):
     //  Cachorrinho: dog = sempre (o jogador) · agent = há agentes da carrocinha (vetSpawns) · ration = há rações · exit = há saída · postman = há ossos com poder (os agentes viram carteiros ao pegar o osso: bones > 0 e bonePower > 0)
     //   · bone = há ossos · ball = há bolinhas · block = há blocos ou paredes que se movem (blockDefs) · van = há vans (as 4 caixas "X" de cidade marcadas `van`) · foecat = há gatos inimigos (catSpawns).
     //  Gatinho: cat = sempre · guard = há cães de guarda (vetSpawns) · mouse = há ratinhos (rations) · catexit = há saída · yarn = há novelos (bones) · agile = há camundongos ágeis (balls)
     //   · perch = há lugares altos "T" (high) · tracker = há cães rastreadores (catSpawns: os "R" do mapa).
     // Uma categoria registrada sem critério aqui reprova o teste: quem cria uma categoria nova escreve também o critério dela.
-    const pg = await s19Page({ stub: false });
+    const pg = await s19Page();
     await fresh(pg, { name: "Totó" });
     const res = await ev(pg, () => {
       const crit = {
         dog: { dog: () => true, agent: (b) => b.vetSpawns.length > 0, ration: (b) => b.rations > 0, exit: (b) => b.exitTiles.length > 0, postman: (b) => b.bones > 0 && b.bonePower > 0, bone: (b) => b.bones > 0, ball: (b) => b.balls > 0, block: (b) => b.blockDefs.length > 0, van: (b) => b.solids.some((s) => s.van), foecat: (b) => b.catSpawns.length > 0 },
         cat: { cat: () => true, guard: (b) => b.vetSpawns.length > 0, mouse: (b) => b.rations > 0, catexit: (b) => b.exitTiles.length > 0, yarn: (b) => b.bones > 0, agile: (b) => b.balls > 0, perch: (b) => !!b.high && b.high.some((r) => r.some(Boolean)), tracker: (b) => b.catSpawns.length > 0 },
       };
-      const out = { games: {}, rows: [], noCriterion: [], unregistered: [] };
+      const out = { games: {}, rows: [], noCriterion: [], unregistered: [], total: Skins.SLOTS.length };
       for (const g of ["dog", "cat"]) { const B = __game.builtOf(g); out.games[g] = { levels: Object.keys(B).length, placeholder: Object.values(B).some((b) => b.placeholder) }; }
       for (const s of Skins.SLOTS) {
         if (!Skins.count(s.id)) { out.unregistered.push(s.id); continue; }
@@ -10912,7 +10902,7 @@ const PAGE_HELPERS = () => {
     ok(res.games.dog.levels === 20 && res.games.cat.levels === 20 && !res.games.dog.placeholder && !res.games.cat.placeholder, "(os dois jogos têm as 20 fases de verdade, sem as de teste)");
     ok(res.noCriterion.length === 0, `toda categoria registrada tem o critério de existência escrito neste teste${res.noCriterion.length ? " — faltam: " + res.noCriterion.join(", ") : ""}`);
     const wrong = res.rows.filter((r) => r.first !== r.from);
-    ok(res.rows.length >= 2 && wrong.length === 0, `a fase \`from\` de cada categoria registrada é a primeira fase do jogo em que o objeto aparece (${res.rows.map((r) => `${r.id}: F${r.from}`).join(", ")}; sem catálogo dos objetos só o bichinho)${wrong.length ? " — ERRADAS: " + wrong.map((r) => `${r.id} diz Fase ${r.from}, mas aparece na ${r.first}`).join("; ") : ""}`);
+    ok(res.unregistered.length === 0 && res.total === 18 && res.rows.length === res.total && wrong.length === 0, `a fase \`from\` de cada uma das ${res.total} categorias (todas registradas${res.unregistered.length ? "; sem skins: " + res.unregistered.join(", ") : ""}) é a primeira fase do jogo em que o objeto aparece (${res.rows.map((r) => `${r.id}: F${r.from}`).join(", ")})${wrong.length ? " — ERRADAS: " + wrong.map((r) => `${r.id} diz Fase ${r.from}, mas aparece na ${r.first}`).join("; ") : ""}`);
     const gone = res.rows.filter((r) => !r.onwards);
     ok(gone.length === 0, `e, a partir dessa fase, o objeto aparece em todas as fases seguintes${gone.length ? " — somem em alguma fase: " + gone.map((r) => r.id).join(", ") : ""}`);
     ok(res.rows.every((r) => r.skinFrom.every((f) => f >= r.from && f <= 20)), "nenhuma skin abre antes da categoria dela (e nenhuma passa da Fase 20)");
@@ -10928,18 +10918,82 @@ const PAGE_HELPERS = () => {
     const want = SK.SLOTS.map((s) => [SK.GAMES.find((g) => g.id === s.game).name, s.name, s.id, String(s.from)]);
     ok(JSON.stringify(rows.map((r) => r.slice(0, 4))) === JSON.stringify(want), `a tabela do README lista as ${SK.SLOTS.length} categorias de js/skins.js com o jogo, o nome, a chave e a fase em que libera, na mesma ordem (${rows.map((r) => `${r[2]} F${r[3]}`).join(", ")})`);
     ok(/reachedLevel/.test(sec) && /equippedSkins/.test(sec) && /"locked"/.test(sec) && /eqa/.test(sec) && /byte a byte/.test(sec) && /200 skins/.test(sec) && /40 categorias/.test(sec), "a seção explica a carteira por categoria (equippedSkins, reachedLevel, o erro locked, eqa, o JSON do Cachorrinho idêntico e os limites de 200 skins e 40 categorias)");
-    ok(/0\.16\.1/.test(sec) && /0\.17\.0/.test(sec) && /0\.18\.0/.test(sec) && /apaga/.test(sec), "o README avisa que abas abertas nas versões 0.16.1, 0.17.0 e 0.18.0 apagam o que não conhecem ao regravar a carteira");
-    ok(!/\bE[12]\b|etapa [A-Z0-9]/.test(sec) && !/\b(frente [SDC])\b/i.test(sec), "o texto não traz marcações internas de trabalho (etapas, frentes)");
+    // abas antigas: a 0.16.1 e a 0.17.0 APAGAM as skins das categorias novas; a 0.18.0 as MANTÉM, mas corta a carteira em 60 skins (a frase que separa a 0.18.0 das outras duas)
+    const oldTabs = (txt) => /a 0\.16\.1 e a 0\.17\.0 apagam as skins das categorias novas/.test(txt) && /a 0\.18\.0 as mantém, mas corta a carteira em 60 skins/.test(txt) && /as que passam disso se perdem/.test(txt)
+      && txt.split(/[.;:]\s/).filter((x) => /0\.18\.0/.test(x)).every((x) => !/\bapagam?\b/.test(x)); // (nenhuma frase junta a 0.18.0 com "apagam")
+    const lojaTabs = loja.slice(loja.indexOf("- **Abas antigas:**"), loja.indexOf("## Ideias para depois"));
+    ok(oldTabs(sec) && oldTabs(lojaTabs), "o README e docs/LOJINHA.md avisam das abas antigas: a 0.16.1 e a 0.17.0 apagam as skins das categorias novas, a 0.18.0 as mantém mas corta a carteira em 60 skins");
+    ok(!/\bE[12]\b|etapa [A-Z0-9]/.test(sec), "o texto da seção não traz marcações internas de trabalho (etapas)");
+    ok(![readme, loja].some((t) => /\bfrentes?\s+[SDC]\b|\bfrente dos objetos|\bwip-\d|\bA4\b/i.test(t)), "nem o README nem docs/LOJINHA.md trazem rótulos internos (frente S/D/C, wip, A4)");
     const est = readme.slice(readme.indexOf("## Estrutura"), readme.indexOf("## Testes")), tst = readme.slice(readme.indexOf("## Testes"), readme.indexOf("## Publicar no GitHub Pages"));
     ok(/js\/skins\.js/.test(est) && /js\/skins-dog\.js/.test(est) && /js\/skins-cat\.js/.test(est) && /tests\/skins\.test\.js/.test(est) && /tests\/skins\.test\.js/.test(tst), "a Estrutura e os Testes do README citam js/skins.js, skins-dog.js, skins-cat.js e tests/skins.test.js");
     ok(/Lojinha única/.test(loja) && /reachedLevel/.test(loja) && /equippedSkins/.test(loja) && /locked/.test(loja) && /200 skins/.test(loja) && /Libera ao chegar à Fase/.test(loja), "docs/LOJINHA.md descreve a lojinha única no presente (carteira por categoria, liberação por fase, limites)");
+    // ---- os testes e as ferramentas das skins dos objetos estão documentados (o que fazem e como rodar) ----
+    const tools = ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tools/skin-preview/shoot.js", "tools/skin-preview/cat-skins.js"], FILTERS = ["skins dos objetos do Cachorrinho", "Skins do Gatinho"];
+    const missing = [];
+    for (const [nome, txt] of [["a Estrutura do README", est], ["os Testes do README", tst], ["docs/LOJINHA.md", loja]]) {
+      const want = nome === "a Estrutura do README" ? ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tools/skin-preview/"] : tools; // (a Estrutura lista a pasta das ferramentas; os Testes e a lojinha dizem cada uma e como rodar)
+      for (const f of want) if (!txt.includes(f)) missing.push(`${nome}: ${f}`);
+      if (nome !== "a Estrutura do README") for (const f of FILTERS) if (!txt.includes(`node tests/e2e.js "${f}"`)) missing.push(`${nome}: node tests/e2e.js "${f}"`);
+    }
+    for (const [nome, txt] of [["os Testes do README", tst], ["docs/LOJINHA.md", loja]]) {
+      for (const cmd of ["node tests/skins-dog.test.js", "node tests/skins-cat.test.js", "node tools/skin-preview/shoot.js", "node tools/skin-preview/cat-skins.js"]) if (!txt.includes(cmd)) missing.push(`${nome}: como rodar (${cmd})`);
+      if (!/NODE_PATH/.test(txt) || !/CHROMIUM_PATH/.test(txt)) missing.push(`${nome}: NODE_PATH e CHROMIUM_PATH das ferramentas`);
+    }
+    ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
+    // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
+    const titles = [...fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
+    const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
+    ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
+    // ---- skins de osso: a do osso COMUM; os de ouro, gelo, turbo e ímã mantêm a cor e o brilho do efeito ----
+    const boneSay = (txt) => /osso \**comum/i.test(txt) && /ouro, gelo, turbo e ímã/.test(txt) && /Fases 11 a 20/.test(txt) && /mant[êe]m a cor e o brilho do efeito/.test(txt) && /tom sobre tom/.test(txt) && /para ninguém confundir/.test(txt);
+    ok(boneSay(sec) && boneSay(loja), "o README e docs/LOJINHA.md dizem que a skin de osso muda o osso comum e que ouro, gelo, turbo e ímã (Fases 11 a 20) mantêm a cor e o brilho do efeito, só com o desenho em tom sobre tom");
     ok(/Skins por bichinho/.test(loja) && /Atualização 4/.test(loja) && !/vai ser ampliada|O que vem depois/.test(loja), "e não fala mais da ampliação como futura");
     ok(fs.readFileSync(path.join(root, "index.html"), "utf8").match(/<h1 id="shop-title">([^<]*)<\/h1>/)[1] === "Lojinha de skins" && !/gatinho|cachorrinho/i.test(fs.readFileSync(path.join(root, "index.html"), "utf8").match(/<p id="shop-help"[^>]*>([\s\S]*?)<\/p>/)[1]), "o título e a ajuda da tela (index.html) são gerais: não citam um bichinho só");
   });
 
+  // =====================================================================
+  await section("0.19.0 · Lojinha única: skin com fase própria (campo `from` da skin: o cartão mostra Skin escondida e o bloqueio, a compra é recusada e a skin libera ao alcançar a fase)", async () => {
+    // Nenhuma skin do catálogo usa o campo `from` hoje; o teste intercepta js/skins-dog.js e acrescenta `from: 5` à primeira skin de agente (as skins são congeladas, então a troca é feita no texto do arquivo).
+    const FILE = fs.readFileSync(path.join(root, "js/skins-dog.js"), "utf8"), WANT = 'text: "uniforme azul e colete amarelo", price: 10,';
+    ok(FILE.split(WANT).length === 2 && !/\bfrom:/.test(FILE.replace(/\/\/.*$/gm, "")), "(nenhuma skin do catálogo de verdade usa `from`; a skin de teste é o Agente azul)");
+    const pg = await newPage({ realCat: true });
+    await pg.context().route("**/js/skins-dog.js", (route) => route.fulfill({ contentType: "text/javascript", body: FILE.replace(WANT, WANT + " from: 5,") }));
+    const from = await (async () => { await pg.goto(URL); return ev(pg, () => [Skins.slot("agent").from, Skins.fromOf("agent", "azul"), Skins.fromOf("agent", "laranja"), Skins.unlocked("agent", "azul", 4), Skins.unlocked("agent", "azul", 5)]); })();
+    ok(JSON.stringify(from) === JSON.stringify([1, 5, 1, false, true]), `a categoria Agentes abre na Fase 1 e a skin Agente azul só na 5 (${JSON.stringify(from)})`);
+    const cardOf = (n) => pg.$eval(`#shop-list .shop-card:nth-child(${n})`, (c) => ({ cls: c.className, name: c.querySelector("strong").textContent, sub: c.querySelector(".sub").textContent, btn: c.querySelector("button").textContent, disabled: c.querySelector("button").disabled, canvas: !!c.querySelector("canvas") }));
+    const buy = (id) => ev(pg, (id) => { const r = Records.createStore(localStorage).buySkin("Totó", id, Skins.get("agent", id).price, "agent"); return r.ok ? { ok: true } : r; }, id);
+    // ---- só a Fase 1 alcançada: a categoria abre, a skin não ----
+    await s19Open(pg, { treats: 100 });
+    await s19Tab(pg, "agent");
+    let st = await s19State(pg), c1 = await cardOf(2), c2 = await cardOf(3);
+    ok(st.lockTitle === "" && st.cards === 5 && st.cats.find((c) => c.id === "shop-cat-agent").locked === false, "a categoria Agentes está aberta, com os 5 cartões");
+    ok(/\blocked\b/.test(c1.cls) && c1.name === "Skin escondida" && c1.btn === "Bloqueada" && c1.disabled && !c1.canvas && c1.sub === "\u{1F512} Libera ao chegar à Fase 5 do Cachorrinho", `o cartão da skin com fase própria mostra "${c1.name}", "${c1.sub}" e o botão ${c1.btn} desligado, sem prévia`);
+    ok(!/\blocked\b/.test(c2.cls) && c2.name === "Agente laranja" && c2.btn === "Comprar (14 petscoin)" && !c2.disabled && c2.canvas, "as outras skins da categoria continuam à venda");
+    // ---- a compra é recusada (armazenamento) e forçar o clique na tela não compra nada ----
+    ok((await buy("azul")).error === "locked", "pelo armazenamento a compra da skin com fase própria é recusada com \"locked\"");
+    await ev(pg, () => { const b = document.querySelector("#shop-list .shop-card:nth-child(2) button"); b.disabled = false; b.click(); });
+    const w0 = await ev(pg, () => Records.createStore(localStorage).wallet("Totó", "agent"));
+    ok(w0.treats === 100 && w0.owned.length === 0, `forçar o clique no botão também não compra (saldo ${w0.treats}, compradas ${w0.owned.length})`);
+    // ---- até a Fase 4 alcançada: continua escondida; ao alcançar a Fase 5 libera ----
+    await s19Seed(pg, { dog: 3 }); await s19Reopen(pg); await s19Tab(pg, "agent");
+    c1 = await cardOf(2);
+    ok(c1.name === "Skin escondida" && (await buy("azul")).error === "locked", `com as Fases 1 a 3 concluídas (alcançou a 4) ela continua escondida e bloqueada (${c1.sub})`);
+    await s19Seed(pg, { dog: 4 }); await s19Reopen(pg); await s19Tab(pg, "agent");
+    c1 = await cardOf(2);
+    ok(!/\blocked\b/.test(c1.cls) && c1.name === "Agente azul" && c1.btn === "Comprar (10 petscoin)" && !c1.disabled && c1.canvas, `concluída a Fase 4 (alcançou a 5) a skin libera: ${c1.name}, ${c1.btn}`);
+    await pg.click("#shop-list .shop-card:nth-child(2) button");
+    st = await s19State(pg);
+    ok(st.msg === "Você comprou a skin Agente azul e já está usando! Sobraram 90 petscoin." && st.bal === BAL(90) && (await cardOf(2)).btn === "Em uso", `e dá para comprar: "${st.msg}"`);
+    // ---- outro jogo não libera: o progresso do Gatinho não abre a skin do Cachorrinho ----
+    await s19Open(pg, { treats: 100, cat: 20 });
+    await s19Tab(pg, "agent");
+    ok((await cardOf(2)).name === "Skin escondida" && (await buy("azul")).error === "locked", "as 20 fases do Gatinho concluídas não liberam a skin do Cachorrinho");
+    await pg.context().close();
+  });
+
   // ----------------------------------------------------------------------------------------------------------------------------
-  //SKINS-D-NEXT (skins dos objetos do Cachorrinho)
-  // ===== 0.19.0 · frente D: skins dos objetos do Cachorrinho (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) =====
+  // ===== 0.19.0 · skins dos objetos do Cachorrinho (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) =====
   // Referências (hash do canvas, mapa inteiro na tela, viewport 1000×700, as 20 fases, 3 momentos: depois de andar, com o osso pego e 2 s depois) do código da 0.18.0 (ed7e2f7), ANTES das skins dos objetos, com o Chromium desta máquina
   const SKD_FULL = {"1":"b4248f64 8230d40:p0 f7200178","2":"136ea517 7c604b5c:p1 ee9eefdb","3":"93cd238f 7a2bbbbd:p1 bc602600","4":"8939f69e 101c5a0f:p1 1232111b","5":"c77db851 69dafd49:p1 ad553083","6":"dbe26678 244fd781:p1 da5e87cd","7":"c3d6a48e e4314891:p1 aaa2fa5b","8":"a96d50f4 de8ed80c:p1 afd8f92f","9":"74e63f7e 36565a76:p1 36e8a785","10":"9871def5 211a21b0:p1 71834831","11":"36fc808e 579e9306:p1 cc40871f","12":"ce7870de eb120aa2:p1 aae83c41","13":"ecc5f349 c4aff115:p0 ca775770","14":"1b97731a c42f4c4c:p1 1b083d20","15":"1bead9a6 b928a912:p1 189aea22","16":"42286a8b 4288c983:p0 41d2109d","17":"deb3f752 f24bcb50:p1 74f3d3b4","18":"bee159f6 a6764d1c:p1 d652d441","19":"2d56f844 6873338a:p0 c2900194","20":"fbfb15c9 f041c97a:p1 ed8f7f3c"};
   const SKD_SLOTS = ["agent", "postman", "ration", "bone", "ball", "block", "van", "foecat", "exit"]; // as categorias que valem no Cachorrinho (a catexit vale só no Gatinho: tem a seção dela)
@@ -11058,7 +11112,7 @@ const PAGE_HELPERS = () => {
     const ab = await newPage({ viewport: { width: 1000, height: 700 } });
     await ab.goto(URL);
     const reg = await ev(ab, (slots) => slots.map((s) => [s, Skins.count(s), Skins.list(s)[0].name]), SKD_ALL);
-    ok(reg.length === 10 && reg.every(([, n]) => n >= 3 && n <= 4) && reg.every(([, , name]) => name !== "Padrão"), `no navegador as 10 categorias estão registradas com 3 a 4 skins e a padrão com nome próprio (${reg.map((r) => r[0] + ":" + r[1]).join(", ")})`);
+    ok(reg.length === 10 && reg.every(([, n]) => n === 4) && reg.every(([, , name]) => name !== "Padrão"), `no navegador as 10 categorias estão registradas com exatamente 4 skins (5 com a padrão) e a padrão com nome próprio (${reg.map((r) => r[0] + ":" + r[1]).join(", ")})`);
     const settle = settleOf(ab);
     const got = {};
     for (const id of [1, 4, 11, 20]) {
@@ -11092,22 +11146,36 @@ const PAGE_HELPERS = () => {
       ok(leak.length === 0, `${slot}: nenhuma skin muda a cor de um pixel FORA da caixa dos objetos (${r.res.map((x) => x.outside).join(", ")} px fora; contornos de outros objetos com 1 a 3 pontos de arredondamento: ${r.res.map((x) => x.noise).join(", ")})`);
       ok(r.distinct && r.back, `${slot}: o quadro de cada skin é diferente do padrão e das outras da categoria, e voltar ao padrão devolve o quadro exato`);
     }
-    // os ossos de tipo novo guardam a cor do efeito (a skin só pinta o osso comum e, nos outros, desenha em tom sobre tom)
-    const FILL = { gold: [255, 210, 63], ice: [191, 234, 255], turbo: [255, 159, 67], magnet: [216, 180, 255] };
-    const kinds = await ev(pg, (FILL) => {
-      let found = null;
-      for (let phase = 11; phase <= 20 && !found; phase++) { __skd.setup("bone", { phase }); found = __game.items.find((i) => i.bone && !i.taken && i.kind && i.kind !== "scare"); if (found) found = { phase, kind: found.kind }; }
-      if (!found) return null;
-      const g = __game, it = g.items.find((i) => i.bone && !i.taken && i.kind === found.kind);
-      g.player.x = it.x + 90; g.player.y = it.y - 4; g.drawNow();
-      const v = g.view, k = v.k * v.zoom, cvs = document.getElementById("game"), c = cvs.getContext("2d"), x0 = Math.round((it.x - 6 - v.camX) * k), y0 = Math.round((it.y - 6 - v.camY) * k), w = Math.round(28 * k), h = Math.round(28 * k);
-      const count = () => { const d = c.getImageData(x0, y0, w, h).data; let n = 0; const f = FILL[found.kind]; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - f[0]) <= 14 && Math.abs(d[i + 1] - f[1]) <= 14 && Math.abs(d[i + 2] - f[2]) <= 14) n++; return n; };
-      g.setLook("bone", ""); g.drawNow(); const base = count(), out = [];
-      for (const s of Skins.list("bone").slice(1)) { g.setLook("bone", s.id); g.drawNow(); out.push([s.id, count()]); }
-      g.setLook("bone", "");
-      return { ...found, base, out };
-    }, FILL);
-    ok(kinds && kinds.base > 20 && kinds.out.every(([, n]) => n >= kinds.base * 0.5), `um osso ${kinds && kinds.kind} (Fase ${kinds && kinds.phase}) continua com a cor do efeito em todas as skins de osso: pixels da cor dele ${kinds && kinds.base} no padrão e ${kinds && kinds.out.map((x) => x[0] + ":" + x[1]).join(", ")}`);
+    // os ossos de tipo novo (ouro, gelo, turbo e ímã) guardam a cor do efeito (a skin só pinta o osso comum e, nos outros, desenha em tom sobre tom): para cada um dos 4 tipos, em uma fase que o tem,
+    // a quantidade de pixels nas cores do efeito (a de dentro e a do contorno) com cada skin de osso é praticamente a de sem skin: o desenho da skin é em tom sobre tom, pintado com o contorno do efeito
+    // (medido com as 4 skins: a cor de dentro sozinha cai para 60% a 80% do osso por causa do desenho; somada à do contorno, que é a cor que o desenho usa, fica em 81% a 97% (as bordas suavizadas do desenho não casam com nenhuma das duas cores),
+    // por isso o piso é 75% e, além da contagem, o teste exige que NENHUMA cor própria da skin (dentro, contorno ou desenho) apareça no osso especial)
+    const FILL = { gold: [255, 210, 63], ice: [191, 234, 255], turbo: [255, 159, 67], magnet: [216, 180, 255] }, EDGE = { gold: [184, 134, 11], ice: [79, 159, 208], turbo: [194, 87, 12], magnet: [138, 79, 209] };
+    const kinds = await ev(pg, ([FILL, EDGE]) => {
+      const res = {};
+      for (const kind of Object.keys(FILL)) {
+        let found = null;
+        for (let phase = 11; phase <= 20 && !found; phase++) { __skd.setup("bone", { phase }); const i = __game.items.find((i) => i.bone && !i.taken && i.kind === kind); if (i) found = { phase }; }
+        if (!found) { res[kind] = null; continue; }
+        const g = __game, it = g.items.find((i) => i.bone && !i.taken && i.kind === kind);
+        g.player.x = it.x + 90; g.player.y = it.y - 4; g.drawNow();
+        const v = g.view, k = v.k * v.zoom, c = document.getElementById("game").getContext("2d"), x0 = Math.round((it.x - 6 - v.camX) * k), y0 = Math.round((it.y - 6 - v.camY) * k), w = Math.round(28 * k), h = Math.round(28 * k);
+        const near = (d, i, f) => Math.abs(d[i] - f[0]) <= 14 && Math.abs(d[i + 1] - f[1]) <= 14 && Math.abs(d[i + 2] - f[2]) <= 14;
+        const rgb = (hex) => [1, 3, 5].map((j) => parseInt(hex.slice(j, j + 2), 16));
+        const count = (own = []) => { const d = c.getImageData(x0, y0, w, h).data; let fill = 0, both = 0, foreign = 0; for (let i = 0; i < d.length; i += 4) { const a = near(d, i, FILL[kind]); if (a) fill++; if (a || near(d, i, EDGE[kind])) both++; if (own.some((f) => near(d, i, f))) foreign++; } return { fill, both, foreign }; };
+        const ownOf = (s) => ["fill", "stroke", "mark"].map((f) => s[f]).filter((x) => /^#[0-9a-f]{6}$/i.test(x || "")).map(rgb); // as cores próprias da skin
+        g.setLook("bone", ""); g.drawNow(); const base = count(), out = [];
+        const baseForeign = {};
+        for (const s of Skins.list("bone").slice(1)) { g.setLook("bone", ""); g.drawNow(); baseForeign[s.id] = count(ownOf(s)).foreign; g.setLook("bone", s.id); g.drawNow(); const n = count(ownOf(s)); n.foreign -= baseForeign[s.id]; out.push([s.id, n]); }
+        g.setLook("bone", "");
+        res[kind] = { ...found, base, out };
+      }
+      return res;
+    }, [FILL, EDGE]);
+    for (const kind of ["gold", "ice", "turbo", "magnet"]) {
+      const r = kinds[kind];
+      ok(r && r.base.fill > 20 && r.out.length === 4 && r.out.every(([, n]) => n.both >= r.base.both * 0.75 && n.fill >= r.base.fill * 0.5 && n.foreign <= 2), `o osso ${kind} (Fase ${r && r.phase}) continua com as cores do efeito em todas as 4 skins de osso, sem nenhuma cor própria da skin (pixels de dentro + contorno: ${r && r.base.both} no padrão e ${r && r.out.map((x) => x[0] + ":" + x[1].both).join(", ")}, pelo menos 75%; só de dentro: ${r && r.base.fill} e ${r && r.out.map((x) => x[0] + ":" + x[1].fill).join(", ")}, pelo menos 50%; pixels na cor da skin além dos do padrão: ${r && r.out.map((x) => x[0] + ":" + x[1].foreign).join(", ")}, no máximo 2)`);
+    }
     await pg.context().close();
   });
 
@@ -11253,9 +11321,7 @@ const PAGE_HELPERS = () => {
   });
 
   // ----------------------------------------------------------------------------------------------------------------------------
-  //SKINS-C-NEXT (skins dos objetos do Gatinho)
-
-  // ===== 0.19.0 · Skins dos objetos do Gatinho (frente C: guard, mouse, yarn, agile, perch, tracker) =====
+  // ===== 0.19.0 · Skins dos objetos do Gatinho (guard, mouse, yarn, agile, perch, tracker) =====
   // Quadros fixos (tests/skins-cat-frame.js): semente fixa, cães congelados, o gatinho perto de cada objeto e UM quadro desenhado, viewport 1000×700.
   const SKC = require("./skins-cat-frame.js");
   const HASHES_0180_CAT = { 1: { "spawn": "e5862586", "T": null, "foes": null, "guard": "ef866489", "tracker": null, "mouse": "808cb960", "yarn-scare": null, "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": null }, 3: { "spawn": "4da4c978", "T": "272ec497", "foes": "47e30078", "guard": "e96b7893", "tracker": null, "mouse": "aa794c44", "yarn-scare": "55928bd2", "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": "2f4ebbd6" }, 11: { "spawn": "85bb5b99", "T": "8bb03a87", "foes": "416254fd", "guard": "749e3c04", "tracker": "d5c6b4c4", "mouse": "c6fa3254", "yarn-scare": "d4ec8a8c", "yarn-gold": "c71df266", "yarn-ice": "ef01459f", "yarn-turbo": null, "yarn-magnet": null, "agile": "e453b464" }, 18: { "spawn": "20b18b9", "T": "ba17e919", "foes": "6b112b87", "guard": "bed08ed0", "tracker": "9af57e15", "mouse": "4f7229c6", "yarn-scare": "f5288c64", "yarn-gold": "ce530d13", "yarn-ice": "347f59c7", "yarn-turbo": "ffcf3258", "yarn-magnet": "2cd681c", "agile": "fd6cddd4" }, 20: { "spawn": "30079e8d", "T": "665ea879", "foes": "f8a88c4e", "guard": "f29875be", "tracker": "faec3c8b", "mouse": "2f15d9a1", "yarn-scare": "d6ba7ec8", "yarn-gold": "a4ad3898", "yarn-ice": "9795c0d8", "yarn-turbo": "334a86e3", "yarn-magnet": "4237a5d4", "agile": "2f9b8102" } }; // hash do canvas das Fases 1, 3, 11, 18 e 20 (cenas de SCENES_ALL; null = o objeto não existe na fase) do código da 0.18.0 (commit ed7e2f7, antes de qualquer skin), com o Chromium desta máquina, esperando o leiaute assentar antes de cada fase (SKC.settle)
@@ -11284,6 +11350,8 @@ const PAGE_HELPERS = () => {
   };
 
   await section("0.19.0 · Skins do Gatinho: com TODAS as categorias no padrão o desenho é IDÊNTICO ao da 0.18.0 (hashes de pixels das Fases 1, 3, 11, 18 e 20, gerados no commit de partida)", async () => {
+    const idx = fs.readFileSync(path.join(root, "index.html"), "utf8"), pos = (f) => idx.indexOf(`src="js/${f}"`);
+    ok(pos("skins.js") > 0 && pos("skins.js") < pos("skins-cat.js") && pos("skins-cat.js") > pos("skins-dog.js") && pos("skins-cat.js") < pos("game.js") && pos("cat-art.js") > 0 && pos("cat-art.js") < pos("game.js"), "o index.html carrega js/skins.js e js/skins-cat.js (e js/cat-art.js) antes de js/game.js");
     const pg = await skcPage();
     const got = {};
     for (const id of [1, 3, 11, 18, 20]) got[id] = await skcFrame(pg, { id, scenes: SKC.SCENES_ALL });
@@ -11308,7 +11376,7 @@ const PAGE_HELPERS = () => {
     for (const id of [20, 18]) for (const slot of SKC_SLOTS) {
       const sc = SKC_SCENE[slot], ks = await skcSkins(pg, slot), seen = new Map();
       for (const k of ks) { const h = (await skcFrame(pg, { id, looks: k.id ? { [slot]: k.id } : {}, scenes: [sc] }))[sc]; total++; if (h === null) bad.push(`F${id} ${slot}/${k.id}: cena sem objeto`); else if (seen.has(h)) bad.push(`F${id} ${slot}/${k.id}: igual a ${seen.get(h) || "padrão"}`); else seen.set(h, k.id); }
-      ok(ks.length >= 4 && ks.length <= 5, `${slot}: a padrão e 3 a 4 skins`);
+      ok(ks.length === 5, `${slot}: a padrão e exatamente 4 skins (${ks.length})`);
     }
     ok(bad.length === 0 && total === 60, `${total} quadros (6 categorias × a padrão e cada skin, na Fase 20 de dia e na Fase 18 de noite): cada skin desenha o seu objeto diferente da padrão e das outras${bad.length ? " — problemas: " + bad.join("; ") : ""}`);
     // os 5 poderes de novelo também mudam por skin em cada tipo
@@ -11340,19 +11408,19 @@ const PAGE_HELPERS = () => {
       for (const slot of slots) {
         out[slot] = Skins.list(slot).map((k) => {
           const cv = document.createElement("canvas"); cv.width = 216; cv.height = 156; const c2 = cv.getContext("2d"); c2.fillStyle = "#f4efe4"; c2.fillRect(0, 0, 216, 156);
-          const drew = __game.preview(slot, c2, k.id, 216, 156), d = c2.getImageData(0, 0, 216, 156).data, u = new Uint32Array(d.buffer);
+          const drew = __game.skinPreview(slot, cv, k.id), d = c2.getImageData(0, 0, 216, 156).data, u = new Uint32Array(d.buffer);
           let h = 2166136261 >>> 0, n = 0, x0 = 999, y0 = 999, x1 = -1, y1 = -1;
           for (let i = 0; i < u.length; i++) { h = Math.imul(h ^ u[i], 16777619) >>> 0; if (u[i] !== u[0]) { n++; const x = i % 216, y = (i / 216) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
           return { id: k.id, drew, hash: h.toString(16), n, box: [x0, y0, x1, y1] };
         });
       }
-      out.none = __game.preview("nao-existe", document.createElement("canvas").getContext("2d"), "", 10, 10);
+      out.none = __game.skinPreview("nao-existe", document.createElement("canvas"), "");
       return out;
     }, SKC_SLOTS);
     const probs = [];
     for (const slot of SKC_SLOTS) {
       const rows = res[slot];
-      if (rows.length < 4) probs.push(`${slot}: poucas skins`);
+      if (rows.length !== 5) probs.push(`${slot}: ${rows.length} mostruários (esperados 5: a padrão e 4 skins)`);
       if (new Set(rows.map((r) => r.hash)).size !== rows.length) probs.push(`${slot}: dois mostruários iguais`);
       for (const r of rows) {
         const [x0, y0, x1, y1] = r.box, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
@@ -11465,9 +11533,9 @@ const PAGE_HELPERS = () => {
         for (const s of dogSlots) __game.setLook(s, "");
         return { a, b, seen };
       } finally { Skins.get = realGet; }
-    }, { frame: { id: 20, seed: 12345, looks: {}, scenes: ["spawn", "foes", "guard", "tracker", "mouse", "yarn-scare", "yarn-gold", "agile", "T"] }, dogSlots: ["agent", "ration", "exit", "postman", "bone", "ball", "block", "van", "foecat", "catexit"] });
-    ok(same.seen === Array(10).fill("fake").join(), "(sanidade) as 10 categorias do Cachorrinho aceitaram a skin de mentira em __game.setLook");
-    ok(JSON.stringify(same.a) === JSON.stringify(same.b), `com uma skin de mentira (verde e espalhafatosa) em TODAS as categorias do Cachorrinho, o quadro do Gatinho (Fase 20: início, cães, ratinho, novelos, camundongo e lugar alto) não muda um pixel`);
+    }, { frame: { id: 20, seed: 12345, looks: {}, scenes: ["spawn", "foes", "guard", "tracker", "mouse", "yarn-scare", "yarn-gold", "agile", "T"] }, dogSlots: ["agent", "ration", "exit", "postman", "bone", "ball", "block", "van", "foecat"] });
+    ok(same.seen === Array(9).fill("fake").join(), "(sanidade) as 9 categorias do Cachorrinho aceitaram a skin de mentira em __game.setLook");
+    ok(JSON.stringify(same.a) === JSON.stringify(same.b), `com uma skin de mentira (verde e espalhafatosa) em TODAS as 9 categorias do Cachorrinho (a saída do Gatinho, catexit, é do Gatinho e fica de fora), o quadro do Gatinho (Fase 20: início, cães, ratinho, novelos, camundongo e lugar alto) não muda um pixel`);
     await cp.context().close();
   });
 

@@ -79,5 +79,17 @@ test("o README fala da versão e do CHANGELOG", () => {
   assert.ok(read("CHANGELOG.md").includes(`Versão ${V.number} ·`), `o exemplo do CHANGELOG mostra a versão atual (Versão ${V.number} · ...)`);
 });
 
+test('o exemplo "Versão X.Y.Z · dd/mm/aaaa" do README e do CHANGELOG usa a versão E a data de js/version.js', () => {
+  const [y, m, d] = V.date.split("-"), example = `Versão ${V.number} · ${d}/${m}/${y}`;
+  const readme = read("README.md").split("\n"), log = read("CHANGELOG.md").split("\n");
+  const line = (lines) => lines.find((l) => /por exemplo "Versão/.test(l)); // (README: linha 8; CHANGELOG: linha 3)
+  assert.ok(line(readme) && line(readme).includes(example), `README: esperado "${example}" na frase do exemplo: ${line(readme)}`);
+  assert.ok(line(log) && line(log).includes(example), `CHANGELOG: esperado "${example}" na frase do exemplo: ${line(log)}`);
+  // e nenhum exemplo do tipo "Versão X.Y.Z · dd/mm/aaaa" nos dois arquivos mostra outra versão ou outra data
+  for (const [nome, txt] of [["README", readme.join("\n")], ["CHANGELOG", log.join("\n")]]) {
+    for (const m2 of txt.matchAll(/"Versão (\d+\.\d+\.\d+) · (\d{2}\/\d{2}\/\d{4})"/g)) assert.strictEqual(m2[0], `"${example}"`, `${nome}: exemplo desatualizado ${m2[0]}`);
+  }
+});
+
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de versão passaram");
 process.exit(failed ? 1 : 0);

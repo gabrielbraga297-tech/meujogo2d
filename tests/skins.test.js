@@ -30,7 +30,7 @@ test("cada jogo pronto tem exatamente uma categoria do jogador e ela abre na Fas
   }
 });
 
-test("o Passarinho ainda não tem categorias (chega na Atualização 5)", () => {
+test("o Passarinho ainda não tem categorias (aparece desligado, em breve)", () => {
   assert.strictEqual(Skins.GAMES.find((g) => g.id === "bird").ready, false);
   assert.strictEqual(Skins.slotsOf("bird").length, 0);
 });
@@ -88,10 +88,24 @@ test("register aceita o nome e a frase da skin padrão da categoria", () => {
   assert.strictEqual(Skins.get("bone", "").price, 0);
 });
 
-test("ownKey: o Cachorrinho mantém o id puro; as outras categorias levam o prefixo", () => {
-  assert.strictEqual(Skins.ownKey("dog", "cinza"), "cinza");
-  assert.strictEqual(Skins.ownKey("cat", "cinza"), "cat:cinza");
-  assert.strictEqual(Skins.ownKey("agent", "azul"), "agent:azul");
+test('os exemplos "Fase N do jogo" dos textos de ajuda (index.html e js/profiles.js) batem com a fase de liberação do catálogo', () => {
+  const fs = require("fs"), read = (f) => fs.readFileSync(path.join(__dirname, "..", f), "utf8");
+  const gameName = (id) => Skins.GAMES.find((g) => g.id === id).name;
+  const phrase = (txt, re) => { const m = txt.match(re); assert.ok(m, `não achei ${re} no texto`); return m; };
+  // a ajuda do Cachorrinho (index.html) cita os gatos, a do Gatinho (js/profiles.js) cita os lugares altos
+  const idx = read("index.html"), prof = read("js/profiles.js");
+  const dogHelp = phrase(idx, /\(as dos gatos, por exemplo, só na Fase (\d+) do (\w+)\)/), catHelp = phrase(prof, /\(os lugares altos, por exemplo, só na Fase (\d+) do (\w+)\)/);
+  assert.strictEqual(Number(dogHelp[1]), Skins.slot("foecat").from, `index.html diz Fase ${dogHelp[1]} para os gatos, o catálogo diz ${Skins.slot("foecat").from}`);
+  assert.strictEqual(dogHelp[2], gameName(Skins.slot("foecat").game));
+  assert.strictEqual(Number(catHelp[1]), Skins.slot("perch").from, `js/profiles.js diz Fase ${catHelp[1]} para os lugares altos, o catálogo diz ${Skins.slot("perch").from}`);
+  assert.strictEqual(catHelp[2], gameName(Skins.slot("perch").game));
+  // e não sobra nenhum outro "Fase N do Cachorrinho/Gatinho" sem conferência nesses dois textos
+  assert.strictEqual((idx.match(/Fase \d+ do (Cachorrinho|Gatinho)/g) || []).length, 1, "index.html: um só exemplo de fase");
+  assert.strictEqual((prof.match(/Fase \d+ do (Cachorrinho|Gatinho)/g) || []).length, 1, "js/profiles.js: um só exemplo de fase");
+});
+
+test("a API pública é só o que alguém usa (a chave da skin na carteira, ownKey, é de js/records.js)", () => {
+  assert.deepStrictEqual(Object.keys(Skins).sort(), ["GAMES", "MIN_PRICE", "SLOTS", "count", "fromOf", "get", "has", "list", "register", "slot", "slotsOf", "unlocked"]);
 });
 
 if (failed) { console.log(`\n${failed} teste(s) falharam`); process.exit(1); }

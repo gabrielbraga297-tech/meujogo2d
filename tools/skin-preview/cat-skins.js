@@ -1,6 +1,6 @@
 // Folhas de capturas das SKINS DOS OBJETOS DO GATINHO (0.19.0): todas as skins de cada categoria lado a lado, no mostruário da lojinha (PREVIEW) e dentro do jogo de verdade (index.html + js/cat-levels.js).
-// Uso (sempre com o trinco do navegador, por haver outros agentes):
-//   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium PREVIEW_LOCK=<trinco> node tools/skin-preview/cat-skins.js <pasta-de-saida> [opções]
+// Uso (NODE_PATH e CHROMIUM_PATH como nos testes; PREVIEW_LOCK é opcional):
+//   NODE_PATH=<pasta-do-playwright>/node_modules CHROMIUM_PATH=/caminho/do/chromium PREVIEW_LOCK=<arquivo> node tools/skin-preview/cat-skins.js <pasta-de-saida> [opções]
 // Opções: fase=20 (fase do dia; padrão 20, onde há todos os objetos) · noite=18 (fase noturna; padrão 18) · cats=guard,mouse,yarn,agile,perch,tracker (padrão: todas) · zoom=3 (zoom dos recortes) · vp=1000x700 (tamanho da tela; use 390x780 ou 320x568 para ver como fica no celular) · CALM=1 liga "reduzir movimento".
 // Gera, em <pasta>:
 //   lojinha.png           os mostruários (PREVIEW) de todas as skins de todas as categorias, uma linha por categoria (a padrão primeiro), com o nome embaixo;
@@ -74,7 +74,7 @@ const BUILD = async ({ title, rows, cw, ch }) => {
       const src = await pg.evaluate(({ slot, id }) => {
         const cv = document.createElement("canvas"); cv.width = 216; cv.height = 156; const c2 = cv.getContext("2d");
         c2.fillStyle = "#f4efe4"; c2.fillRect(0, 0, 216, 156); // (um fundo claro, como o cartão da lojinha)
-        return __game.preview(slot, c2, id, 216, 156) ? cv.toDataURL("image/png") : null;
+        return __game.skinPreview(slot, cv, id) ? cv.toDataURL("image/png") : null;
       }, { slot, id: k.id });
       cells.push({ src, label: lab(k) });
     }

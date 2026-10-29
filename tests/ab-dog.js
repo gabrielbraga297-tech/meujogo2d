@@ -1,6 +1,6 @@
 // A/B de pixels do CACHORRINHO (0.18.0): prova que o desenho do cachorrinho não mudou nem um pixel entre duas versões do código.
 // Para cada fase pedida, abre o jogo, joga os mesmos passos com a mesma semente (Math.random e `setRand` trocados por um gerador fixo), desenha UM quadro e devolve o hash do canvas inteiro.
-// Uso:  node tests/ab-dog.js <pasta-do-código> [fases separadas por vírgula, padrão 1,4,11,20]   (CHROMIUM_PATH e NODE_PATH como nos outros testes; use `flock` no trinco do navegador)
+// Uso:  node tests/ab-dog.js <pasta-do-código> [fases separadas por vírgula, padrão 1,4,11,20]   (CHROMIUM_PATH e NODE_PATH como nos outros testes; use `flock` num arquivo de trava se mais de um processo abrir o navegador)
 // Se a pasta tem um js/game.js sem o gancho `drawNow` (código antigo), o script injeta o gancho ao carregar (o gancho só chama draw(): não muda o desenho).
 // O tests/e2e.js usa DOG_HASH e compara com os valores de referência (HASHES_0170), tirados do código da 0.18.0 antes do desenho do Gatinho (commit 40e8f96) com o Chromium desta máquina.
 const path = require("path");

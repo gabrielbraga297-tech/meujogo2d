@@ -1,12 +1,12 @@
-// Capturas das SKINS DOS OBJETOS DO CACHORRINHO (0.19.0, frente D) com o jogo de verdade (index.html) no Playwright.
-// Uso (sempre com o trinco do navegador, por haver outros agentes):
-//   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium PREVIEW_LOCK=<trinco> node tools/skin-preview/shoot.js <pasta-de-saida> [categorias separadas por vírgula] [modo]
+// Capturas das SKINS DOS OBJETOS DO CACHORRINHO (0.19.0) com o jogo de verdade (index.html) no Playwright.
+// Uso (NODE_PATH e CHROMIUM_PATH como nos testes; PREVIEW_LOCK é opcional):
+//   NODE_PATH=<pasta-do-playwright>/node_modules CHROMIUM_PATH=/caminho/do/chromium PREVIEW_LOCK=<arquivo> node tools/skin-preview/shoot.js <pasta-de-saida> [categorias separadas por vírgula] [modo]
 //   categorias: agent, ration, exit, catexit, postman, bone, ball, block, van, foecat (padrão: todas)
 //   modo: "lojinha" (padrão) = o mostruário que a lojinha desenha (PREVIEW de js/game.js, canvas de 216 × 156 como no jogo), todas as skins de cada categoria lado a lado, a padrão primeiro;
 //         "jogo" = o objeto no jogo de verdade (a fase onde ele aparece, com o desenho do canvas do jogo) ampliado 4×, uma linha por categoria, cada skin ao lado das outras;
 //         "tudo" = os dois.
 // Escreve <pasta>/lojinha-<categoria>.png, <pasta>/lojinha-todas.png e <pasta>/jogo-<categoria>.png / jogo-todas.png. Variáveis: ESC (escala dos mostruários, padrão 1.3), ZOOM (ampliação do modo jogo, padrão 4).
-// PREVIEW_LOCK=<arquivo>: o script se reexecuta sob `flock` nesse arquivo (para vários agentes não abrirem o navegador ao mesmo tempo).
+// PREVIEW_LOCK=<arquivo>: o script se reexecuta sob `flock` nesse arquivo (para não abrir dois navegadores ao mesmo tempo).
 const path = require("path");
 const fs = require("fs");
 const os = require("os");

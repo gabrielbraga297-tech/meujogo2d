@@ -2908,7 +2908,7 @@
   // ---------- Lojinha única (0.15.9; ampliada na 0.19.0): petiscos (1 por fase completada = 1 petscoin) por skins de todos os bichinhos e objetos dos jogos ----------
   // Abas por JOGO (Cachorrinho | Gatinho | Passarinho "em breve") e, dentro do jogo, CATEGORIAS (o bichinho, os agentes da carrocinha, as rações...; o catálogo é o js/skins.js). A carteira de petscoin é uma só.
   // Cada categoria libera quando o jogador ALCANÇA a fase em que o objeto aparece NAQUELE jogo (store.reachedLevel); antes disso ela aparece apagada, com cadeado, e não vende (o armazenamento também recusa: "locked").
-  // O mostruário de cada categoria é `PREVIEW[categoria]` (canvas 216 × 156): as do bichinho estão aqui; as dos objetos vêm de js/game.js (frentes dos objetos); sem uma, desenha um mostruário simples com o nome da categoria.
+  // O mostruário de cada categoria é `PREVIEW[categoria]` (canvas 216 × 156): as do bichinho estão aqui; as dos objetos vêm mais abaixo, neste mesmo arquivo (os mostruários das skins dos objetos do Cachorrinho e do Gatinho); sem uma, desenha um mostruário simples com o nome da categoria.
   PREVIEW.dog = (c2, skin, w, h) => withLook("dog", skin, c2, () => { // o cachorrinho adulto, de lado, com a skin
     c2.save(); c2.scale(3.4, 3.4);
     try { drawDog({ x: w / 6.8 - 12, y: h / 6.8 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: skin.id, still: true }); } finally { c2.restore(); }
@@ -2970,7 +2970,7 @@
     }
     catsBar.replaceChildren();
     for (const x of slots) {
-      const locked = reached(x.game) < x.from, on = x.id === slot.id, t = el("button", `shop-tab chip${on ? " on" : ""}${locked ? " locked" : ""}`);
+      const locked = !Skins.unlocked(x.id, "", reached(x.game)), on = x.id === slot.id, t = el("button", `shop-tab chip${on ? " on" : ""}${locked ? " locked" : ""}`);
       t.type = "button"; t.id = `shop-cat-${x.id}`; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", on ? "true" : "false"); t.setAttribute("aria-controls", "shop-list"); t.tabIndex = on ? 0 : -1;
       if (locked) { const ic = el("span", "lock-ico", "\u{1F512}"); ic.setAttribute("aria-hidden", "true"); t.append(ic); }
       t.append(el("span", null, x.name));
@@ -2981,7 +2981,7 @@
     list.setAttribute("aria-labelledby", `shop-cat-${slot.id}`);
     // ---- o painel da categoria aberta ----
     list.replaceChildren();
-    const slotLocked = reached(slot.game) < slot.from;
+    const slotLocked = !Skins.unlocked(slot.id, "", reached(slot.game));
     $("shop-note").textContent = slotLocked ? "" : `Skins para ${slot.singular}.`;
     list.classList.toggle("is-locked", slotLocked);
     if (slotLocked) { // bloqueada: só a frase (o que há dentro fica escondido até chegar à fase)
@@ -2994,7 +2994,7 @@
         const PS = slot.player ? profileOf(slot.game) : null;
         const k = PS && PS.skins && PS.skins[k0.id] ? { ...k0, ...PS.skins[k0.id] } : k0; // (0.18.0) o perfil pode trocar o nome e a frase da skin; o preço e o desenho são do catálogo
         const owned = k.id === "" || (w && w.owned.includes(k.id)), equipped = w ? (w.equipped !== "" && Skins.has(slot.id, w.equipped) ? w.equipped : "") === k.id : k.id === ""; // (uma skin guardada que não existe no catálogo conta como a padrão)
-        const kFrom = Skins.fromOf(slot.id, k.id), kLocked = k.id !== "" && reached(slot.game) < kFrom; // (uma skin pode abrir numa fase mais alta que a da categoria)
+        const kFrom = Skins.fromOf(slot.id, k.id), kLocked = k.id !== "" && !Skins.unlocked(slot.id, k.id, reached(slot.game)); // (uma skin pode abrir numa fase mais alta que a da categoria)
         const card = el("div", `shop-card${equipped ? " equipped" : ""}${kLocked ? " locked" : ""}`), nm = el("strong", null, kLocked ? "Skin escondida" : k.name);
         nm.id = `shop-name-${i}`;
         const b = el("button", owned ? "" : "primary-ish"); b.type = "button"; b.id = `shop-btn-${i}`;
@@ -3539,7 +3539,7 @@
     ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); ctx.fill();
   }
 
-  // ---------- Skins dos objetos do Cachorrinho (0.19.0, frente D): cada desenho lê `lookOf(categoria)` (js/skins-dog.js documenta os campos) e, sem o campo, desenha o visual de sempre (pixel a pixel) ----------
+  // ---------- Skins dos objetos do Cachorrinho (0.19.0): cada desenho lê `lookOf(categoria)` (js/skins-dog.js documenta os campos) e, sem o campo, desenha o visual de sempre (pixel a pixel) ----------
   const RAINBOW = ["#e53935", "#fb8c00", "#fdd835", "#43a047", "#1e88e5"]; // as 5 cores do arco-íris (as mesmas da coleira da skin Arco-íris do cachorrinho)
   function starPath(x, y, ro, ri) { // contorno de uma estrela de 5 pontas centrada em (x, y), ponta para cima (só o caminho: quem chama pinta)
     ctx.beginPath();
@@ -3942,7 +3942,7 @@
     }
   }
 
-  // ---------- Mostruários da lojinha para os objetos do Cachorrinho (0.19.0, frente D): PREVIEW[categoria](c2, skin, w, h) desenha a skin no canvas c2 (w × h), centrada, com o relógio parado (sem balanço) e sem o poder do osso ----------
+  // ---------- Mostruários da lojinha para os objetos do Cachorrinho (0.19.0): PREVIEW[categoria](c2, skin, w, h) desenha a skin no canvas c2 (w × h), centrada, com o relógio parado (sem balanço) e sem o poder do osso ----------
   function stage(slot, k, c2, w, h, scale, fn) { // roda `fn` (desenha com o centro do canvas em (0, 0), `scale` px por pixel do jogo) com a skin `k` da categoria `slot` em uso
     c2.clearRect(0, 0, w, h);
     const t0 = time, p0 = power, th0 = theme;
@@ -4609,8 +4609,6 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
       return true;
     },
     catLevels() { return this.defineCatLevels(window.CatLevels); },
-    // (0.19.0, só para testes e capturas) desenha o mostruário da lojinha de uma categoria (PREVIEW[categoria]) no contexto 2D `c2` de w × h px, com a skin `k` (objeto ou id); false se a categoria não tem mostruário
-    preview(slot, c2, k, w, h) { const f = PREVIEW[slot]; if (!f) return false; f(c2, typeof k === "string" ? Skins.get(slot, k) : k, w, h); return true; },
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 

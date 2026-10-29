@@ -1,5 +1,5 @@
 // Testes das SKINS DOS OBJETOS DO GATINHO (0.19.0), sem navegador. Uso: node tests/skins-cat.test.js
-// Confere o catálogo de js/skins-cat.js (6 categorias: guard, mouse, yarn, agile, perch, tracker: 3 a 4 skins cada, preços de 10 a 30 em escada, nomes e frases em português, campos visuais documentados e válidos)
+// Confere o catálogo de js/skins-cat.js (6 categorias: guard, mouse, yarn, agile, perch, tracker: exatamente 4 skins cada, além da padrão, preços de 10 a 30 em escada, nomes e frases em português, campos visuais documentados e válidos)
 // e o desenho de js/cat-art.js com cada skin (contexto 2D falso e rigoroso, como em tests/cat-art.test.js): o padrão não muda, cada skin desenha diferente, nada passa do tamanho do objeto,
 // os 5 poderes do novelo mantêm a cor-chave e a marquinha, e os ratinhos e camundongos continuam claros (legíveis na noite).
 const assert = require("assert");
@@ -79,19 +79,20 @@ const DRAW = {
 };
 
 // ---------- o catálogo ----------
-test("as 6 categorias do Gatinho estão registradas, com 3 a 4 skins além da padrão", () => {
+test("as 6 categorias do Gatinho estão registradas, cada uma com exatamente 4 skins além da padrão (5 com a padrão)", () => {
   for (const slot of CATS) {
     assert.ok(Skins.slot(slot) && Skins.slot(slot).game === "cat", slot + ": categoria do jogo do Gatinho");
     const n = Skins.count(slot);
-    assert.ok(n >= 3 && n <= 4, `${slot}: ${n} skins (precisa de 3 a 4)`);
+    assert.strictEqual(n, 4, `${slot}: ${n} skins além da padrão (precisam ser 4)`);
+    assert.strictEqual(Skins.list(slot).length, 5, `${slot}: com a padrão são 5`);
     assert.strictEqual(Skins.list(slot)[0].id, "", slot + ": a padrão vem primeiro");
   }
 });
 
-test("só as categorias desta frente foram registradas aqui (a catexit é da outra frente, a cat vem do game.js)", () => {
+test("js/skins-cat.js registra só as 6 categorias dos objetos do Gatinho (a catexit é registrada em js/skins-dog.js, junto com a exit, e a cat vem do game.js)", () => {
   for (const slot of Skins.SLOTS.filter((s) => s.game === "cat").map((s) => s.id)) {
     if (CATS.includes(slot)) continue;
-    assert.strictEqual(Skins.count(slot), 0, `${slot} não é desta frente`);
+    assert.strictEqual(Skins.count(slot), 0, `${slot} não é registrada por js/skins-cat.js`);
   }
 });
 
@@ -217,12 +218,24 @@ test("o desenho é determinístico e com `calm` não depende do tempo, com qualq
   assert.notStrictEqual(rec((c) => CatArt.drawMouse(c, { x: 5, y: 5 }, { time: 0.3, look: sk.mouse })).log, rec((c) => CatArt.drawMouse(c, { x: 5, y: 5 }, { time: 0.9, look: sk.mouse })).log);
 });
 
-test("a skin não muda o tamanho do objeto: a caixa do desenho cresce no máximo o enfeite (hat/laço no alto, lenço embaixo), nunca o corpo", () => {
-  const GROW = { guard: 16, tracker: 12, mouse: 5, agile: 6, yarn: 0.5 }; // px a mais, no máximo, em cada direção (o chapéu de festa é o maior enfeite)
-  for (const slot of Object.keys(GROW)) for (const k of skinsOf(slot)) for (const o of [{}, { mode: "chase" }, { mode: "flee" }, { run: false }]) {
+test("a skin não muda o tamanho do objeto: a caixa do desenho só cresce o enfeite (chapéu, laço ou gorro no alto), nunca o corpo", () => {
+  // px a mais, no máximo, em cada direção, POR ENFEITE (medido nas poses abaixo: chapéu de festa do cão de guarda 10,5; laço do rastreador 2,5; gorrinho do ratinho 4,4; gorro do camundongo 1,3 e laço 2,1).
+  // Toda skin sem um destes enfeites (coleira, lenço, gravata-borboleta, cachecol, faixa, pelagem, estampa do novelo) não pode passar nem de 0,01 do corpo de sempre.
+  const GROW = { guard: { hat: 11 }, tracker: { bow: 3 }, mouse: { cap: 5 }, agile: { cap: 1.5, bow: 2.5 } };
+  const POSES = [{}, { mode: "chase" }, { mode: "flee" }, { mode: "search" }, { frozen: true }, { run: false }, { size: "large", idx: 3 }, { size: "small", idx: 2 }, { variant: 2 }, { kind: "gold" }, { kind: "magnet" }];
+  let widest = 0;
+  for (const slot of ["guard", "tracker", "mouse", "agile", "yarn"]) for (const k of skinsOf(slot)) for (const o of POSES) {
     const a = rec(DRAW[slot](look0(slot), o)).st, b = rec(DRAW[slot](k, o)).st;
-    const g = GROW[slot];
-    assert.ok(b.minX >= a.minX - g && b.maxX <= a.maxX + g && b.minY >= a.minY - g && b.maxY <= a.maxY + g, `${slot}/${k.id} ${JSON.stringify(o)}: caixa [${b.minX.toFixed(1)},${b.maxX.toFixed(1)}]×[${b.minY.toFixed(1)},${b.maxY.toFixed(1)}] contra a padrão [${a.minX.toFixed(1)},${a.maxX.toFixed(1)}]×[${a.minY.toFixed(1)},${a.maxY.toFixed(1)}]`);
+    const g = ((GROW[slot] || {})[k.acc]) || 0, grew = Math.max(a.minX - b.minX, b.maxX - a.maxX, a.minY - b.minY, b.maxY - a.maxY);
+    widest = Math.max(widest, grew);
+    assert.ok(grew <= g + 0.01, `${slot}/${k.id} ${JSON.stringify(o)}: a caixa cresceu ${grew.toFixed(2)} px (o enfeite ${k.acc || "(nenhum)"} aceita ${g}): [${b.minX.toFixed(1)},${b.maxX.toFixed(1)}]×[${b.minY.toFixed(1)},${b.maxY.toFixed(1)}] contra a padrão [${a.minX.toFixed(1)},${a.maxX.toFixed(1)}]×[${a.minY.toFixed(1)},${a.maxY.toFixed(1)}]`);
+  }
+  assert.ok(widest > 10 && widest < 11, `sanidade da medida: o chapéu de festa é o maior enfeite (${widest.toFixed(2)} px)`);
+  // o limite de cada enfeite é apertado de verdade: uma folga de 1 px a menos já reprovaria o enfeite mais largo de cada categoria
+  for (const [slot, acc, lim] of [["guard", "hat", 11], ["tracker", "bow", 3], ["mouse", "cap", 5], ["agile", "bow", 2.5]]) {
+    let m = 0;
+    for (const k of skinsOf(slot).filter((x) => x.acc === acc)) for (const o of POSES) { const a = rec(DRAW[slot](look0(slot), o)).st, b = rec(DRAW[slot](k, o)).st; m = Math.max(m, a.minX - b.minX, b.maxX - a.maxX, a.minY - b.minY, b.maxY - a.maxY); }
+    assert.ok(m > lim - 1, `${slot}/${acc}: o limite ${lim} está folgado demais (o enfeite cresce só ${m.toFixed(2)} px)`);
   }
 });
 

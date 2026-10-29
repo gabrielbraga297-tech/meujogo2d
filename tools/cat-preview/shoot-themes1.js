@@ -1,6 +1,6 @@
 // Capturas dos ambientes das Fases 1 a 10 do Gatinho (js/cat-themes-1.js) com o Playwright.
-// Uso (sempre com o trinco do navegador, por haver outros agentes):
-//   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium flock <trinco> node tools/cat-preview/shoot-themes1.js <pasta-de-saida> [fases, ex.: 1,2,3]
+// Uso (NODE_PATH e CHROMIUM_PATH como nos testes; `flock <arquivo>` é opcional, para não abrir dois navegadores juntos):
+//   NODE_PATH=<pasta-do-playwright>/node_modules CHROMIUM_PATH=/caminho/do/chromium flock <arquivo> node tools/cat-preview/shoot-themes1.js <pasta-de-saida> [fases, ex.: 1,2,3]
 // Gera <pasta>/fase-N.png (recorte 12 x 8 em escala 2, com o gatinho verde de 24 px e as quatro peles para ver o contraste),
 // <pasta>/folha.png (as 10 fases em escala 1) e <pasta>/folha-075.png (as 10 em escala 0,75: o menor tamanho de tile na tela, 24 px).
 const path = require("path");

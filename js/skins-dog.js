@@ -12,7 +12,7 @@
 // ration   (drawKibble: a tigela de ração)    bowl (tigela), band (faixa), kibble (ração), kibbleHi (ração do topo), deco ("dots": bolinhas na tigela | "sparkle": brilhinhos em volta) + mark (a cor dele)
 // bone     (drawBone: o osso)                 fill (cor de dentro), stroke (contorno), pattern ("stripes" | "dots" | "bands" | "stars") + mark (a cor dele; "bands" tem as cores do arco-íris).
 //                                             fill, stroke e mark valem só no osso COMUM; os ossos de tipo novo (ouro, gelo, turbo, ímã) guardam a cor e o brilho do efeito deles e só recebem o desenho da skin, em tom sobre tom.
-// ball     (drawBall: a bolinha)              pattern ("stripes" | "dots" | "star" | "rainbow": no lugar da faixa branca; "rainbow" troca a cor da bolinha por 5 faixas) + mark (a cor do desenho). A cor de cada bolinha (4 tons) continua sendo a de sempre.
+// ball     (drawBall: a bolinha)              pattern ("stripes" | "dots" | "star" | "rainbow": no lugar da faixa branca; "rainbow" troca a cor da bolinha por 5 faixas) + mark (a cor do desenho). Fora o "rainbow", a cor de cada bolinha (4 tons) continua sendo a de sempre.
 // block    (drawMovingBlock, drawMovingWall: blocos e paredes que se movem)   door e wall ([corpo, miolo ou topo, borda]; sem eles vale o do ambiente da fase), warn (os cantos de aviso, amarelos), round (cantos redondos, como pinos),
 //                                             deco ("grain": veios de madeira | "glint": brilhos de gelo | "holes": buracos de queijo) + mark (a cor dele). Os trilhos (e o aviso piscando) são sempre os do ambiente.
 // van      (drawVan: a van da carrocinha)      body (carroceria), eave (beiral), cab (cabine), bars (grade), light (giroflex), stripe (faixa; "rainbow" = arco-íris), deco ("dots" | "hearts": enfeites na faixa de cima do teto) + mark (a cor dele)
@@ -21,6 +21,10 @@
 // exit e catexit (drawExit: a saída; MESMA função e MESMOS campos nos dois jogos, a "exit" vale só no Cachorrinho e a "catexit" só no Gatinho)   open e closed (cor aberta e fechada), inkOpen e inkClosed (cor da palavra SAÍDA),
 //                                             deco ("stripes": listras de toldo | "rainbow": faixas de arco-íris nas bordas | "stars": estrelinhas | "frame": moldura com cantos redondos) + mark (a cor dele).
 //                                             A saída continua verde aberta e vermelha fechada nas skins: o enfeite só acompanha (fica apagado quando ela está fechada).
+//
+// ---- CAMPOS RESERVADOS PARA SKINS FUTURAS ----
+// O desenho já lê estes campos (e o teste os aceita), mas nenhuma skin do catálogo os usa hoje: agent.pole e agent.ring, postman.bag e postman.badge, ball.mark, van.bars e van.light,
+// e exit.inkOpen e exit.inkClosed (catexit também). exit.open e exit.closed também ficam sem uso de propósito: nenhuma skin de saída pode trocar o verde aberto e o vermelho fechado (o teste confere).
 (function () {
   "use strict";
   if (typeof Skins === "undefined") return;
@@ -57,10 +61,10 @@
   ], { name: "Carteiro clássico", text: "o carteiro azul de sempre (grátis)" });
 
   Skins.register("bone", [
-    { id: "listras", name: "Osso de listras", text: "listras vermelhas", price: 10, pattern: "stripes", mark: "#e5533d" },
-    { id: "bolinhas", name: "Osso de bolinhas", text: "osso rosa de bolinhas brancas", price: 15, fill: "#ffc4dc", stroke: "#c25a86", pattern: "dots", mark: "#ffffff" },
-    { id: "arco-iris", name: "Osso arco-íris", text: "faixas de todas as cores", price: 22, fill: "#fffdf5", stroke: "#8e8570", pattern: "bands" },
-    { id: "estrelas", name: "Osso estrelado", text: "azul com estrelinhas amarelas", price: 28, fill: "#5b7fd0", stroke: "#2c4486", pattern: "stars", mark: "#ffe066" },
+    { id: "listras", name: "Osso de listras", text: "listras vermelhas no osso comum", price: 10, pattern: "stripes", mark: "#e5533d" },
+    { id: "bolinhas", name: "Osso de bolinhas", text: "osso comum rosa, de bolinhas brancas", price: 15, fill: "#ffc4dc", stroke: "#c25a86", pattern: "dots", mark: "#ffffff" },
+    { id: "arco-iris", name: "Osso arco-íris", text: "faixas de todas as cores no osso comum", price: 22, fill: "#fffdf5", stroke: "#8e8570", pattern: "bands" },
+    { id: "estrelas", name: "Osso estrelado", text: "osso comum azul, com estrelinhas amarelas", price: 28, fill: "#5b7fd0", stroke: "#2c4486", pattern: "stars", mark: "#ffe066" },
   ], { name: "Osso clássico", text: "o osso de sempre (grátis)" });
 
   Skins.register("ball", [

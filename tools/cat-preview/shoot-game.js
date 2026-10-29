@@ -1,6 +1,6 @@
 // Capturas do JOGO DO GATINHO de verdade (index.html + js/cat-levels.js + CatArt + CatThemes) com o Playwright: abre cada uma das 20 fases reais e enquadra o gatinho em lugares típicos.
-// Uso (sempre com o trinco do navegador, por haver outros agentes):
-//   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium PREVIEW_LOCK=<trinco> node tools/cat-preview/shoot-game.js <pasta-de-saida> [opções]
+// Uso (NODE_PATH e CHROMIUM_PATH como nos testes; PREVIEW_LOCK é opcional):
+//   NODE_PATH=<pasta-do-playwright>/node_modules CHROMIUM_PATH=/caminho/do/chromium PREVIEW_LOCK=<arquivo> node tools/cat-preview/shoot-game.js <pasta-de-saida> [opções]
 // Opções: fases=1,2,3 (padrão: as 20) · telas=1,9,18,20 (fases que saem também no celular em pé e deitado) · tam=desktop,celular,deitado (padrão: desktop;
 //   desktop 1000×700 (folhas de recortes e a tela inteira de TODAS as fases), celular 390×780 em pé com toque e deitado 740×390 com toque: só a tela inteira das fases de `telas`) · escala=1.4 (zoom dos recortes das folhas).
 //   CALM=1 liga "reduzir movimento".

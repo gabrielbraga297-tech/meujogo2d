@@ -1,5 +1,5 @@
 // Testes do catálogo das SKINS DOS OBJETOS DO JOGO DO CACHORRINHO (js/skins-dog.js, 0.19.0), sem navegador. Uso: node tests/skins-dog.test.js
-// Confere: as 10 categorias registradas (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) com 3 a 4 skins cada, ids, preços (10 a 30, escada crescente), nomes e frases em português e sem repetição,
+// Confere: as 10 categorias registradas (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) com exatamente 4 skins cada (5 com a padrão), ids, preços (10 a 30, escada crescente), nomes e frases em português e sem repetição,
 // "from" nunca abaixo do da categoria, só os campos visuais documentados (com o tipo certo), skins diferentes entre si, a saída do Gatinho com os mesmos campos da saída do Cachorrinho e o desenho (js/game.js) lendo cada campo.
 const assert = require("assert");
 const fs = require("fs");
@@ -16,7 +16,7 @@ function test(name, fn) {
   try { fn(); console.log("OK   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n     " + (e && e.message ? e.message.split("\n").slice(0, 5).join("\n     ") : e)); }
 }
 
-const MINE = ["agent", "ration", "exit", "catexit", "postman", "bone", "ball", "block", "van", "foecat"]; // as categorias da frente D
+const MINE = ["agent", "ration", "exit", "catexit", "postman", "bone", "ball", "block", "van", "foecat"]; // as categorias de js/skins-dog.js
 const COLOR = /^(#[0-9a-f]{6}|rgba?\([0-9., ]+\))$/i;
 const col = (v) => typeof v === "string" && COLOR.test(v);
 const pal3 = (v) => Array.isArray(v) && v.length === 3 && v.every(col);
@@ -38,16 +38,16 @@ const META = new Set(["id", "name", "text", "price", "from"]);
 const visual = (k) => Object.fromEntries(Object.entries(k).filter(([f]) => !META.has(f)));
 const mine = (cat) => Skins.list(cat).slice(1); // sem a padrão
 
-test("as 10 categorias da frente D estão registradas, cada uma com 3 ou 4 skins além da padrão", () => {
+test("as 10 categorias dos objetos do Cachorrinho estão registradas, cada uma com exatamente 4 skins além da padrão (5 com a padrão)", () => {
   assert.strictEqual(MINE.length, 10);
   for (const c of MINE) {
     assert.ok(Skins.slot(c), `categoria ${c} não existe em js/skins.js`);
     const n = Skins.count(c);
-    assert.ok(n >= 3 && n <= 4, `${c}: ${n} skins (precisa de 3 a 4)`);
-    assert.strictEqual(Skins.list(c).length, n + 1);
+    assert.strictEqual(n, 4, `${c}: ${n} skins além da padrão (precisam ser 4)`);
+    assert.strictEqual(Skins.list(c).length, 5, `${c}: com a padrão são 5`);
   }
   // nada de categoria do Gatinho nem do cachorrinho neste arquivo
-  for (const c of ["dog", "cat", "guard", "mouse", "yarn", "agile", "perch", "tracker"]) assert.strictEqual(Skins.count(c), 0, `${c} não é desta frente`);
+  for (const c of ["dog", "cat", "guard", "mouse", "yarn", "agile", "perch", "tracker"]) assert.strictEqual(Skins.count(c), 0, `${c} não é de js/skins-dog.js`);
 });
 
 test("cada categoria é do jogo certo: a saída do Gatinho é do jogo cat e as demais do jogo dog", () => {
@@ -158,18 +158,47 @@ test("os ossos de tipo novo guardam a cor do efeito: as skins de osso só pintam
   assert.ok(/plain && k\.fill/.test(body) && /plain && k\.stroke/.test(body), "drawBone só aplica fill e stroke da skin ao osso comum");
 });
 
-test("o desenho (js/game.js) lê cada campo visual de cada categoria com lookOf e cai no visual de sempre sem ele", () => {
-  const LOOK = { agent: "agent", ration: "ration", exit: "exit", catexit: "catexit", postman: "postman", bone: "bone", ball: "ball", block: "block", van: "van", foecat: "foecat" };
-  for (const c of MINE) assert.ok(gameSrc.includes(`lookOf("${LOOK[c]}")`) || (c === "exit" && gameSrc.includes('lookOf(catDraw ? "catexit" : "exit")')) || (c === "catexit" && gameSrc.includes('"catexit"')), `${c}: o desenho não chama lookOf`);
-  const used = (field) => new RegExp(`\\b(k|lk|look)\\.${field}\\b|"${field}"|'${field}'`).test(gameSrc);
-  for (const c of MINE) for (const f of Object.keys(SCHEMA[c])) assert.ok(used(f), `${c}: nenhum desenho lê o campo "${f}"`);
-  // e os campos de skin realmente usados nos catálogos são lidos
-  for (const c of MINE) for (const k of mine(c)) for (const f of Object.keys(visual(k))) assert.ok(used(f), `${c}/${k.id}: campo "${f}" não é lido por nenhum desenho`);
+// O código de cada função de desenho de js/game.js, recortado do "function nome(" até a chave que a fecha (sem os comentários), para conferir o que CADA desenho lê (não o arquivo inteiro).
+function fnSrc(name) {
+  const i = gameSrc.indexOf("function " + name + "(");
+  assert.ok(i >= 0, `js/game.js não tem a função ${name}`);
+  let depth = 0;
+  for (let p = gameSrc.indexOf("{", gameSrc.indexOf(")", i)); p < gameSrc.length; p++) {
+    const c = gameSrc[p], n = gameSrc[p + 1];
+    if (c === "/" && n === "/") { p = gameSrc.indexOf("\n", p); continue; }
+    if (c === "/" && n === "*") { p = gameSrc.indexOf("*/", p) + 1; continue; }
+    if (c === '"' || c === "'" || c === "`") { for (p++; gameSrc[p] !== c; p++) if (gameSrc[p] === "\\") p++; continue; }
+    if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return gameSrc.slice(i, p + 1).replace(/\/\/.*$/gm, "");
+  }
+  assert.fail(`a função ${name} não fecha`);
+}
+// as funções que desenham cada categoria (a primeira é a que chama lookOf; as outras são os ajudantes que recebem a skin)
+const DRAWERS = {
+  agent: ["drawVet"], postman: ["drawPostman", "postmanDeco"], ration: ["drawKibble"], bone: ["drawBone", "bonePattern"], ball: ["drawBall", "ballPattern"], block: ["drawMovingWall", "drawMovingBlock", "blockDeco"],
+  van: ["drawVan", "vanDeco"], foecat: ["drawCat", "catAccessory"], exit: ["drawExitAt", "exitDeco"], catexit: ["drawExitAt", "exitDeco"],
+};
+
+test("o desenho de cada categoria (a função certa de js/game.js) lê cada campo visual com lookOf e cai no visual de sempre sem ele", () => {
+  assert.deepStrictEqual(Object.keys(DRAWERS).sort(), [...MINE].sort(), "toda categoria tem as suas funções de desenho listadas");
+  for (const c of MINE) {
+    if (c === "exit" || c === "catexit") assert.ok(fnSrc("drawExit").includes('lookOf(catDraw ? "catexit" : "exit")'), "drawExit lê a skin de saída do jogo certo");
+    else assert.ok(fnSrc(DRAWERS[c][0]).includes(`lookOf("${c}")`), `${c}: ${DRAWERS[c][0]} não chama lookOf("${c}")`);
+    const code = DRAWERS[c].map(fnSrc).join("\n");
+    const reads = (field) => new RegExp(`\\b(k|lk|look)\\.${field}\\b`).test(code);
+    for (const f of Object.keys(SCHEMA[c])) assert.ok(reads(f), `${c}: as funções de desenho (${DRAWERS[c].join(", ")}) não leem o campo "${f}"`);
+    // e os campos de skin realmente usados nos catálogos são lidos pelo desenho da PRÓPRIA categoria
+    for (const k of mine(c)) for (const f of Object.keys(visual(k))) assert.ok(reads(f), `${c}/${k.id}: o campo "${f}" não é lido pelo desenho de ${c}`);
+  }
+  // sanidade do recorte: o desenho de uma categoria não lê o campo exclusivo de outra
+  assert.ok(!/\b(k|lk|look)\.coats\b/.test(DRAWERS.van.map(fnSrc).join("\n")), "o recorte da van não pode incluir o desenho do gato");
+  assert.ok(fnSrc("drawBone").length < 3000 && fnSrc("drawVet").length < 6000, "o recorte é só a função, não o arquivo inteiro");
 });
 
 test("PREVIEW existe para cada categoria (js/game.js) e o gancho de capturas também", () => {
   for (const c of MINE) assert.ok(new RegExp(`PREVIEW\\.${c}\\s*=`).test(gameSrc) || (/PREVIEW\.exit = exitPreview\("exit"\)/.test(gameSrc) && /PREVIEW\.catexit = exitPreview\("catexit"\)/.test(gameSrc)), `${c}: sem PREVIEW`);
   assert.ok(/skinPreview\(slot, canvas, id\)/.test(gameSrc));
+  assert.ok(!/\bpreview\(slot, c2, k, w, h\)/.test(gameSrc), "só existe o gancho skinPreview (não o preview antigo)");
 });
 
 test("o cabeçalho de js/skins-dog.js documenta cada categoria e cada campo visual", () => {
