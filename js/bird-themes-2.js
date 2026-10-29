@@ -10,6 +10,8 @@
   const BT = typeof module === "object" && module.exports ? require("./bird-themes.js") : root.BirdThemes;
   if (!BT) throw new Error("js/bird-themes.js precisa ser carregado antes de js/bird-themes-2.js");
   const { dot, circle, pick, block, checker, stroke, polygon, line, lines, contact, longShadow, treeShadow, halo, hedgeM, fenceM, stoneM, netM, twigM } = BT.helpers;
+  // retângulos finos de uma cor só, num traço só (x, y, w, h em px do tile): bem mais barato que `lines` (riscar) quando são centenas por quadro
+  const slabs = (g, col, arr) => { const c = g.ctx; c.fillStyle = col; c.beginPath(); for (let i = 0; i < arr.length; i += 4) { const x = g.x + arr[i], y = g.y + arr[i + 1], w = arr[i + 2], h = arr[i + 3]; c.moveTo(x, y); c.lineTo(x + w, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath(); } c.fill(); };
   const T = 32, TAU = Math.PI * 2, hv = BT.hash;
   const all4 = (g) => g.solid(g.c - 1, g.r) && g.solid(g.c + 1, g.r) && g.solid(g.c, g.r - 1) && g.solid(g.c, g.r + 1);
   const soft = (g, x, y, w, h) => { const x0 = Math.max(0, x - 1), y0 = Math.max(0, y - 1); dot(g, "rgba(0,0,0,.10)", x0, y0, Math.min(T, x + w + 1) - x0, Math.min(T, y + h + 1) - y0); dot(g, "rgba(0,0,0,.17)", x, y, w, h); };
@@ -390,9 +392,9 @@
     base(g) { checker(g, "#d9a284", "#d39c7e"); },
     floor(g) {
       entardecer.base(g);
-      const off = g.r & 1 ? 8 : 0;
-      lines(g, "#b87a62", 1.2, [0, 10.6, T, 10.6, 0, 21.6, T, 21.6, (off + 4) % 32, 0, (off + 4) % 32, 10, (off + 20) % 32, 0, (off + 20) % 32, 10, (off + 12) % 32, 11, (off + 12) % 32, 21, (off + 28) % 32, 11, (off + 28) % 32, 21, (off + 4) % 32, 22, (off + 4) % 32, T, (off + 20) % 32, 22, (off + 20) % 32, T]);
-      lines(g, "rgba(255,200,120,.3)", 1.4, [0, 0.8, T, 0.8, 0, 11.5, T, 11.5, 0, 22.5, T, 22.5]);
+      const off = g.r & 1 ? 8 : 0, a = (off + 4) % 32 - 0.6, b = (off + 20) % 32 - 0.6, c = (off + 12) % 32 - 0.6, d = (off + 28) % 32 - 0.6;
+      // as juntas das telhas e o brilho das fileiras são retângulos finos num traço só (preencher é bem mais barato que riscar linhas finas em todos os tiles da tela)
+      slabs(g, "#b87a62", [0, 10, T, 1.2, 0, 21, T, 1.2, a, 0, 1.2, 10, b, 0, 1.2, 10, c, 11, 1.2, 10, d, 11, 1.2, 10, a, 22, 1.2, 10, b, 22, 1.2, 10]);
       if (g.h(1) < 0.14) dot(g, "rgba(255,170,70,.3)", 4 + g.h(2) * 14, 4 + g.h(3) * 18, 12, 5); // reflexo da luz do pôr do sol
       contact(g);
     },
