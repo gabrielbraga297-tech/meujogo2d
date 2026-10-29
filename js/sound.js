@@ -18,10 +18,13 @@
   const KEY = "cachorrinho.som.v1";   // preferência guardada: {"m":0|1 (mudo),"v":volume 0..1}
   const NAMES = Object.freeze(["ration", "bone", "capture", "lifelost", "transform", "postman", "levelup", "life", "gameover", "pick", "bark1", "bark2", "bark3", "meow",
     // 0.18.0 (Gatinho): miados por fase da vida, ronronar, chiado, guincho do ratinho, novelo, cão inimigo, susto e sons de ação
-    "cmeow1", "cmeow2", "cmeow3", "purr", "hiss", "squeak", "yarn", "woof", "growl", "yowl", "splash", "shake", "jump", "dash", "pant"]);
+    "cmeow1", "cmeow2", "cmeow3", "purr", "hiss", "squeak", "yarn", "woof", "growl", "yowl", "splash", "shake", "jump", "dash", "pant",
+    // 0.20.0 (Passarinho): pios por fase da vida, cantiga, bater asas, bicar, minhoca, fruto, voo alto (início e fim), pouso, vento, ameaça do gato, grito do gavião, susto e fôlego vazio
+    "chirp1", "chirp2", "chirp3", "song", "flap", "peck", "worm", "fruit", "soar", "soarend", "landing", "gust", "hiss2", "shriek", "scare", "wheeze"]);
   // Duração máxima de cada som, em segundos (o som audível nunca passa disso).
   const MAX_SECONDS = Object.freeze({ ration: 0.15, bone: 0.5, capture: 0.6, lifelost: 0.7, transform: 0.5, postman: 0.35, levelup: 1.3, life: 0.6, gameover: 1.2, pick: 0.2, bark1: 0.4, bark2: 0.5, bark3: 0.8, meow: 0.45,
-    cmeow1: 0.4, cmeow2: 0.5, cmeow3: 0.8, purr: 1.8, hiss: 0.55, squeak: 0.16, yarn: 0.45, woof: 0.4, growl: 0.6, yowl: 0.4, splash: 0.35, shake: 0.45, jump: 0.18, dash: 0.22, pant: 0.4 });
+    cmeow1: 0.4, cmeow2: 0.5, cmeow3: 0.8, purr: 1.8, hiss: 0.55, squeak: 0.16, yarn: 0.45, woof: 0.4, growl: 0.6, yowl: 0.4, splash: 0.35, shake: 0.45, jump: 0.18, dash: 0.22, pant: 0.4,
+    chirp1: 0.25, chirp2: 0.4, chirp3: 0.6, song: 1.3, flap: 0.3, peck: 0.15, worm: 0.3, fruit: 0.5, soar: 0.65, soarend: 0.5, landing: 0.3, gust: 0.6, hiss2: 0.55, shriek: 0.35, scare: 0.4, wheeze: 0.4 });
   const DEFAULT_VOLUME = 0.35;        // ganho mestre padrão (baixo e agradável)
   const MIN_GAP_MS = 60;              // o mesmo som não repete antes disso
   const MAX_VOICES = 8;               // no máximo 8 sons ao mesmo tempo
@@ -125,7 +128,7 @@
     };
 
     // Nota: oscilador -> (filtro passa-baixa) -> envelope -> (tremolo) -> saída.
-    // o: { at, dur, f, f2 (glissando exponencial até f2), type ("sine"|"triangle"|"square"|"sawtooth"|"pulse"), duty, gain, a, r, sus,
+    // o: { at, dur, f, f2 (glissando exponencial até f2), path (0.20.0: no lugar de f2, vários trechos: [[fração da duração, freq], ...], uma rampa exponencial até cada ponto; um piu que sobe e cai numa só nota), type ("sine"|"triangle"|"square"|"sawtooth"|"pulse"), duty, gain, a, r, sus,
     //      lp/lp2/q (corte do passa-baixa, para onde varre e ressonância), vib: [Hz, profundidade em Hz], trem: [Hz, profundidade 0..1],
     //      to (barramento pulsado de sc.pulsed, em vez da saída) }
     sc.tone = (o) => {
@@ -133,7 +136,8 @@
       const osc = ctx.createOscillator();
       setWave(ctx, osc, o.type || "sine", o.duty);
       osc.frequency.setValueAtTime(o.f, t);
-      if (o.f2 && o.f2 !== o.f) osc.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
+      if (o.path) { for (const [x, f] of o.path) osc.frequency.exponentialRampToValueAtTime(f, t + x * dur); } // caminho de frequência com várias rampas (0.20.0)
+      else if (o.f2 && o.f2 !== o.f) osc.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
       if (o.vib) lfo(ctx, o.vib[0], o.vib[1], osc.frequency, t, dur);
       let node = osc;
       if (o.lp) {
@@ -179,6 +183,13 @@
       sc.end = Math.max(sc.end, o.at + dur);
     };
     return sc;
+  }
+
+  // Nota de passarinho (0.20.0): a fundamental `o` (as opções de sc.tone) mais, para cada [k, ganho] de `parts`, uma senoide em k x a frequência que desliza junto
+  // (k x f -> k x f2); o vibrato, se houver, vai em todas na mesma proporção (os harmônicos acompanham a fundamental, sem ficar desafinados).
+  function bnote(s, o, parts) {
+    s.tone(o);
+    for (const [k, g] of parts) s.tone({ ...o, type: "sine", f: o.f * k, f2: o.f2 && o.f2 * k, path: o.path && o.path.map(([x, f]) => [x, f * k]), vib: o.vib && [o.vib[0], o.vib[1] * k], gain: g, lp: undefined, lp2: undefined });
   }
 
   // ---------- Os sons ----------
@@ -426,11 +437,149 @@
       s.noise({ at: 0, dur: 0.16, type: "bandpass", f: 1500, f2: 1900, q: 0.9, gain: 0.3, a: 0.06, r: 0.06, sus: 1, off: 0.1 });
       s.noise({ at: 0.18, dur: 0.17, type: "bandpass", f: 1700, f2: 1300, q: 0.9, gain: 0.25, a: 0.07, r: 0.07, sus: 1, off: 0.6 });
     },
+
+    // ================= Sons do Passarinho (0.20.0) =================
+    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte (nenhum artigo foi aberto: a rede do ambiente de
+    // desenvolvimento estava bloqueada). São sons genéricos de "passarinho" feitos para soar agradáveis a uma criança; nada muda por skin, só pela fase
+    // da vida (chirp1 filhote -> chirp2 jovem -> chirp3 adulto, como bark1/2/3 do cachorrinho e cmeow1/2/3 do gatinho). Nenhum lembra espécie nenhuma.
+
+    // Pio do filhote (ao completar a fase): "pi-piu" agudo e curtinho. Duas sílabas de senoide: um "pi" que sobe (3000 -> 3800 Hz) e um "piu" que sobe
+    // (3300 -> 4100 Hz) e cai (4100 -> 3100 Hz) com vibrato leve; só um sopro de 2º harmônico, sem ruído.
+    chirp1(s) {
+      bnote(s, { at: 0, dur: 0.06, f: 3000, f2: 3800, type: "sine", gain: 0.5, a: 0.01, r: 0.02, sus: 0.8 }, [[2, 0.03]]);
+      bnote(s, { at: 0.09, dur: 0.15, f: 3300, path: [[0.33, 4100], [1, 3100]], type: "sine", vib: [28, 50], gain: 0.5, a: 0.01, r: 0.06, sus: 0.45 }, [[2, 0.03]]);
+    },
+    // Pio do jovem: "piu-piu" médio. Cada piu sobe (2200 -> 3000 Hz, depois 2400 -> 3200 Hz) e cai (a ~2300 Hz); senoide com 2º harmônico fraco.
+    chirp2(s) {
+      [[0, 2200, 3000, 2300], [0.18, 2400, 3200, 2400]].forEach(([at, f0, top, end]) => {
+        bnote(s, { at, dur: 0.17, f: f0, path: [[0.4, top], [1, end]], type: "sine", vib: [24, 45], gain: 0.5, a: 0.01, r: 0.06, sus: 0.5 }, [[2, 0.08]]);
+      });
+    },
+    // Pio do adulto: "piu-piu-piooo" mais encorpado e mais grave. Fundamental triangular de 1500 Hz que sobe a 2300 Hz e cai a 1300 Hz, com 2º e 3º harmônicos
+    // e vibrato na última; três sílabas, a última mais longa.
+    chirp3(s) {
+      [[0, 0.07, 0.075, 1500, 2100, 1800], [0.15, 0.07, 0.075, 1600, 2200, 1900], [0.3, 0.08, 0.18, 1700, 2300, 1300]].forEach(([at, rise, fall, f0, top, end], i) => {
+        const last = i === 2, dur = rise + fall;
+        bnote(s, { at, dur, f: f0, path: [[rise / dur, top], [1, end]], type: "triangle", vib: last ? [18, 40] : undefined, gain: 0.48, a: 0.012, r: last ? 0.08 : 0.04, sus: last ? 0.4 : 0.6 }, [[2, 0.14], [3, 0.05]]);
+      });
+    },
+
+    // Cantiga ao completar a fase, ~1,2 s: onze notas de senoide alegres em dó maior (como a fanfarra do `levelup`), cada uma com uma "derrapada" curta para
+    // cima (começa um pouco abaixo e sobe ao tom), 2º harmônico fraco; sobe (sol dó mi sol dó'), um gorjeio de quatro notas (lá sol lá sol) e fecha em dó'
+    // longo com vibrato que cai um pouco. Soa bem sozinha ou depois do `levelup`.
+    song(s) {
+      const notes = [["G5", 0, 0.08], ["C6", 0.09, 0.08], ["E6", 0.18, 0.09], ["G6", 0.28, 0.1], ["C7", 0.39, 0.15],
+        ["A6", 0.58, 0.07], ["G6", 0.66, 0.07], ["A6", 0.74, 0.07], ["G6", 0.82, 0.07], ["E6", 0.91, 0.09], ["G6", 1.01, 0.09]];
+      notes.forEach(([n, at, dur]) => {
+        const f = hz(n);
+        s.tone({ at, dur, f: f * 0.93, f2: f * 1.01, type: "sine", gain: 0.5, a: 0.01, r: 0.02, sus: 0.7 });
+        s.tone({ at, dur, f: f * 1.86, f2: f * 2.02, type: "sine", gain: 0.06, a: 0.01, r: 0.02, sus: 0.6 });
+      });
+      s.tone({ at: 1.1, dur: 0.12, f: hz("C7") * 0.96, f2: hz("C7"), type: "sine", gain: 0.5, a: 0.012, r: 0.07, sus: 0.5 });
+      s.tone({ at: 1.1, dur: 0.12, f: hz("C7") * 1.92, f2: hz("C7") * 2, type: "sine", gain: 0.06, a: 0.012, r: 0.07, sus: 0.5 });
+    },
+
+    // ----- Sons de AÇÃO e de pegar coisas (se repetem: discretos) -----
+    // Bater asas (arrancada), ~0,27 s: quatro "fup" de ruído passa-banda (1100 -> 600 Hz, o primeiro mais forte, cada um mais fraco) e um sopro de ar agudo por cima.
+    flap(s) {
+      [0, 0.063, 0.126, 0.189].forEach((at, i) => {
+        s.noise({ at, dur: 0.075, type: "bandpass", f: 1100 - i * 60, f2: 600, q: 0.7, lp: 3200, gain: 0.8 * (1 - i * 0.18), a: 0.012, r: 0.035, sus: 0.15, off: 0.1 + i * 0.17 });
+      });
+      s.noise({ at: 0, dur: 0.26, type: "highpass", f: 2600, lp: 7000, q: 0.6, gain: 0.12, a: 0.03, r: 0.1, sus: 0.6, off: 0.7 });
+    },
+    // Bicar a semente, ~0,12 s: dois "toc-tic" de madeira: batida senoidal que cai (1500 -> 750 Hz, depois 1900 -> 1000 Hz, mais fraca) com um estalo de ruído em cada.
+    peck(s) {
+      s.noise({ at: 0, dur: 0.028, type: "bandpass", f: 3200, q: 1.2, gain: 0.35, a: 0.008, r: 0.012, sus: 0.1, off: 0.12 });
+      s.tone({ at: 0, dur: 0.055, f: 1500, f2: 750, type: "sine", gain: 0.6, a: 0.008, r: 0.02, sus: 0.1 });
+      s.noise({ at: 0.065, dur: 0.024, type: "bandpass", f: 3800, q: 1.2, gain: 0.2, a: 0.008, r: 0.01, sus: 0.1, off: 0.31 });
+      s.tone({ at: 0.065, dur: 0.05, f: 1900, f2: 1000, type: "sine", gain: 0.35, a: 0.008, r: 0.02, sus: 0.1 });
+    },
+    // Puxar a minhoca, ~0,22 s: esticada mole (triangular que cai 520 -> 260 Hz com vibrato largo e um farfalhar de terra) e um "pop" que sobe (300 -> 1000 Hz).
+    worm(s) {
+      s.noise({ at: 0, dur: 0.14, type: "bandpass", f: 900, f2: 500, q: 1, gain: 0.2, a: 0.02, r: 0.05, sus: 0.5, off: 0.3 });
+      s.tone({ at: 0, dur: 0.15, f: 520, f2: 260, type: "triangle", lp: 2200, vib: [20, 80], gain: 0.5, a: 0.02, r: 0.04, sus: 0.7 });
+      s.tone({ at: 0.15, dur: 0.07, f: 300, f2: 1000, type: "sine", gain: 0.45, a: 0.008, r: 0.025, sus: 0.2 });
+      s.noise({ at: 0.15, dur: 0.03, type: "bandpass", f: 1800, q: 1, gain: 0.12, a: 0.005, r: 0.012, sus: 0.1, off: 0.5 });
+    },
+    // Pouso no galho, ~0,23 s: dois baques de asa que acabam (ruído passa-banda 1400 -> 800 Hz), um "tup" senoidal leve (420 -> 240 Hz) e folhas (ruído agudo) que assentam.
+    landing(s) {
+      s.noise({ at: 0, dur: 0.07, type: "bandpass", f: 1400, f2: 800, q: 0.8, gain: 0.45, a: 0.012, r: 0.03, sus: 0.2, off: 0.15 });
+      s.noise({ at: 0.06, dur: 0.06, type: "bandpass", f: 1100, f2: 700, q: 0.8, gain: 0.3, a: 0.012, r: 0.03, sus: 0.2, off: 0.3 });
+      s.tone({ at: 0.11, dur: 0.07, f: 420, f2: 240, type: "sine", gain: 0.4, a: 0.008, r: 0.03, sus: 0.1 });
+      s.noise({ at: 0.11, dur: 0.12, type: "bandpass", f: 4200, f2: 2800, q: 0.7, gain: 0.1, a: 0.02, r: 0.06, sus: 0.3, off: 0.5 });
+    },
+    // Vento, ~0,55 s: "fuuu" que cresce e passa (ruído passa-banda 500 -> 1400 Hz, limitado a 2,6 kHz, de ataque lento) com um corpo grave de ruído (passa-baixa 700 Hz); sem tom (nada de assobio).
+    gust(s) {
+      s.noise({ at: 0, dur: 0.55, type: "bandpass", f: 500, f2: 1400, q: 0.7, lp: 2600, gain: 0.6, a: 0.2, r: 0.25, sus: 0.7, off: 0.2 });
+      s.noise({ at: 0.05, dur: 0.45, type: "lowpass", f: 700, q: 0.7, gain: 0.35, a: 0.2, r: 0.2, sus: 0.7, off: 0.45 });
+    },
+    // Fôlego vazio, ~0,36 s: três sopros curtos e ofegantes de ruído passa-banda (1900 -> 2500 Hz, 2200 -> 2800 Hz e 1700 -> 1300 Hz, o último mais fraco) e um chiado fino
+    // de senoide fraca (1500 -> 1100 Hz) por baixo.
+    wheeze(s) {
+      s.noise({ at: 0, dur: 0.1, type: "bandpass", f: 1900, f2: 2500, q: 0.9, gain: 0.3, a: 0.04, r: 0.04, sus: 1, off: 0.1 });
+      s.noise({ at: 0.12, dur: 0.1, type: "bandpass", f: 2200, f2: 2800, q: 0.9, gain: 0.27, a: 0.04, r: 0.04, sus: 1, off: 0.3 });
+      s.noise({ at: 0.24, dur: 0.12, type: "bandpass", f: 1700, f2: 1300, q: 0.9, gain: 0.22, a: 0.045, r: 0.05, sus: 1, off: 0.55 });
+      s.tone({ at: 0.02, dur: 0.32, f: 1500, f2: 1100, type: "sine", vib: [9, 18], gain: 0.025, a: 0.08, r: 0.1, sus: 1 });
+    },
+
+    // ----- Sons de EVENTO -----
+    // Pegar o fruto (poder), ~0,48 s: harpa brilhante de sinos senoidais subindo (sol si ré sol, em sol maior alto: sol6 si6 ré7 sol7), cada um tocando e apagando devagar,
+    // com 2º harmônico, um corpo triangular de sol5 (para o celular) e um brilho de ruído agudo. Sem onda quadrada nem os tons do `bone`.
+    fruit(s) {
+      [["G6", 0, 0.3], ["B6", 0.06, 0.3], ["D7", 0.12, 0.3], ["G7", 0.18, 0.3]].forEach(([n, at, dur], i) => {
+        const f = hz(n), last = i === 3;
+        s.tone({ at, dur, f, type: "sine", gain: 0.45, a: 0.008, r: 0.12, sus: 0.06 });
+        s.tone({ at, dur, f: f * 2, type: "sine", gain: last ? 0.07 : 0.1, a: 0.008, r: 0.12, sus: 0.04 });
+      });
+      s.tone({ at: 0, dur: 0.3, f: hz("G5"), type: "triangle", gain: 0.25, a: 0.01, r: 0.1, sus: 0.1 });
+      s.noise({ at: 0.17, dur: 0.12, type: "highpass", f: 6000, lp: 10000, q: 0.7, gain: 0.08, a: 0.015, r: 0.06, sus: 0.2, off: 0.5 });
+    },
+    // Início do voo alto, ~0,62 s: o vento sobe (ruído passa-banda 400 -> 2600 Hz, ataque lento) junto de um glissando triangular de duas oitavas (330 -> 1320 Hz, vibrato lento como o bater das
+    // asas, passa-baixa que abre) e, no topo, um "piu" de remate numa só nota (2500 -> 3300 -> 2900 Hz, opção path).
+    soar(s) {
+      s.noise({ at: 0, dur: 0.55, type: "bandpass", f: 400, f2: 2600, q: 1.1, gain: 0.55, a: 0.2, r: 0.2, sus: 0.8, off: 0.1 });
+      s.tone({ at: 0, dur: 0.46, f: 330, f2: 1320, type: "triangle", lp: 1500, lp2: 3200, vib: [7, 14], gain: 0.4, a: 0.05, r: 0.1, sus: 0.8 });
+      s.tone({ at: 0, dur: 0.46, f: 660, f2: 2640, type: "sine", gain: 0.08, a: 0.05, r: 0.1, sus: 0.8 });
+      s.tone({ at: 0.44, dur: 0.18, f: 2500, path: [[0.4, 3300], [1, 2900]], type: "sine", vib: [24, 40], gain: 0.3, a: 0.01, r: 0.06, sus: 0.5 });
+    },
+    // Fim do voo alto, ~0,45 s: o contrário e mais macio. Glissando triangular que desce (1000 -> 350 Hz, passa-baixa que fecha), vento que desce (ruído passa-banda 2400 -> 500 Hz) e um "pof" de ar no fim.
+    soarend(s) {
+      s.noise({ at: 0, dur: 0.4, type: "bandpass", f: 2400, f2: 500, q: 1, gain: 0.4, a: 0.05, r: 0.15, sus: 0.5, off: 0.2 });
+      s.tone({ at: 0, dur: 0.38, f: 1000, f2: 350, type: "triangle", lp: 2800, lp2: 900, vib: [7, 10], gain: 0.34, a: 0.03, r: 0.12, sus: 0.5 });
+      s.tone({ at: 0, dur: 0.38, f: 2000, f2: 700, type: "sine", gain: 0.06, a: 0.03, r: 0.12, sus: 0.5 });
+      s.noise({ at: 0.36, dur: 0.08, type: "lowpass", f: 900, q: 0.7, gain: 0.2, a: 0.012, r: 0.04, sus: 0.2, off: 0.5 });
+    },
+    // Miado de ameaça do gato de quintal, ~0,5 s: agudo e rouco. Um "ssh" de ruído no começo, depois duas serras levemente desafinadas (numa só nota cada) que sobem (700 -> 1300 Hz) e caem (1300 -> 760 Hz)
+    // com tremolo áspero de ~38 Hz (a rouquidão) e ruído por baixo. Diferente do `yowl` (susto, só cai) e dos miados da fase da vida.
+    hiss2(s) {
+      s.noise({ at: 0, dur: 0.14, type: "highpass", f: 2600, lp: 8500, q: 0.7, gain: 0.45, a: 0.01, r: 0.05, sus: 0.3, off: 0.5 });
+      [[0, 1], [22, 0.75]].forEach(([det, g]) => {
+        s.tone({ at: 0.06, dur: 0.43, f: 700 + det, path: [[0.33, 1300 + det * 2], [1, 760 + det]], type: "sawtooth", lp: 3200, q: 2.5, trem: [38, 0.8], gain: 0.28 * g, a: 0.02, r: 0.12, sus: 0.5 });
+      });
+      s.noise({ at: 0.06, dur: 0.4, type: "bandpass", f: 2400, f2: 1500, q: 0.9, gain: 0.18, a: 0.03, r: 0.12, sus: 0.4, off: 0.1 });
+    },
+    // Grito do gavião, ~0,3 s: agudo e curto, sem ser cortante. Sobe rápido (1800 -> 3100 Hz em 0,07 s) e cai (3100 -> 1700 Hz) numa só nota, com vibrato rápido; triangular com uma serra fraca e áspera (tremolo de 45 Hz) e um sopro de ruído.
+    shriek(s) {
+      s.tone({ at: 0, dur: 0.3, f: 1800, path: [[0.23, 3100], [1, 1700]], type: "triangle", vib: [24, 90], gain: 0.3, a: 0.012, r: 0.08, sus: 0.5 });
+      s.tone({ at: 0, dur: 0.3, f: 1820, path: [[0.23, 3140], [1, 1720]], type: "sawtooth", lp: 4200, trem: [45, 0.5], gain: 0.12, a: 0.012, r: 0.08, sus: 0.5 });
+      s.noise({ at: 0, dur: 0.12, type: "bandpass", f: 3500, q: 0.8, gain: 0.1, a: 0.012, r: 0.05, sus: 0.3, off: 0.2 });
+    },
+    // Susto/captura do passarinho (toca junto do `capture`), ~0,34 s: três "pi" assustados que despencam (3500 -> 3000, 3200 -> 2500 e 2900 -> 1800 Hz, vibrato rápido) sobre uma
+    // batida de penas (ruído passa-banda 1800 -> 700 Hz).
+    scare(s) {
+      [[0, 3500, 3000], [0.095, 3200, 2500], [0.19, 2900, 1800]].forEach(([at, f, f2], i) => {
+        const last = i === 2;
+        s.tone({ at, dur: last ? 0.15 : 0.09, f, f2, type: "triangle", vib: [34, 90], gain: 0.4, a: 0.008, r: last ? 0.06 : 0.03, sus: 0.4 });
+        s.tone({ at, dur: last ? 0.15 : 0.09, f: f * 2, f2: f2 * 2, type: "sine", gain: 0.05, a: 0.008, r: 0.03, sus: 0.3 });
+      });
+      s.noise({ at: 0, dur: 0.3, type: "bandpass", f: 1800, f2: 700, q: 0.8, gain: 0.3, a: 0.02, r: 0.12, sus: 0.4, off: 0.4 });
+    },
   };
 
   // Ajuste fino de volume de cada som (para todos soarem com força parecida).
   const LEVEL = Object.freeze({ ration: 0.84, bone: 0.67, capture: 0.79, lifelost: 1.4, transform: 1.07, postman: 1.1, levelup: 1.45, life: 1.35, gameover: 1.46, pick: 1.2, bark1: 1.0, bark2: 1.0, bark3: 1.0, meow: 1.0,
-    cmeow1: 1.4, cmeow2: 1.25, cmeow3: 1.2, purr: 1.3, hiss: 0.9, squeak: 0.7, yarn: 0.7, woof: 1.3, growl: 1.3, yowl: 1.2, splash: 1.1, shake: 1.0, jump: 0.75, dash: 1.2, pant: 1.5 });
+    cmeow1: 1.4, cmeow2: 1.25, cmeow3: 1.2, purr: 1.3, hiss: 0.9, squeak: 0.7, yarn: 0.7, woof: 1.3, growl: 1.3, yowl: 1.2, splash: 1.1, shake: 1.0, jump: 0.75, dash: 1.2, pant: 1.5,
+    chirp1: 0.73, chirp2: 0.67, chirp3: 0.78, song: 0.62, flap: 1.0, peck: 0.75, worm: 0.8, fruit: 0.95, soar: 0.9, soarend: 1.0, landing: 1.0, gust: 1.0, hiss2: 1.65, shriek: 1.25, scare: 1.15, wheeze: 1.25 });
 
   // Agenda o som `name` em `destination` (um nó de um BaseAudioContext qualquer, real ou offline) a partir do instante `t0` (s).
   // Devolve a duração do som em segundos (0 se o nome não existe). Não depende de nenhum estado: pode ser chamada à vontade.
