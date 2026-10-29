@@ -120,6 +120,9 @@
   // (a primeira de cada lista é a padrão: Caramelo e Rajado). As categorias dos objetos de cada jogo são registradas em js/skins-dog.js e js/skins-cat.js.
   Skins.register("dog", SKINS.slice(1), { name: SKINS[0].name, text: SKINS[0].text });
   if (typeof CatArt !== "undefined") Skins.register("cat", CatArt.SKINS.slice(1), { name: CatArt.SKINS[0].name, text: CatArt.SKINS[0].text }); // (sem js/cat-art.js o Gatinho não tem skins nem lojinha: o Cachorrinho continua igual)
+  // ===== PASSARINHO: skins (registro da categoria do jogador) =====
+  if (typeof BirdArt !== "undefined") Skins.register("bird", BirdArt.SKINS.slice(1), { name: BirdArt.SKINS[0].name, text: BirdArt.SKINS[0].text }); // (0.20.0) as 12 skins do passarinho (js/bird-art.js; a primeira, Marrom, é a padrão); as categorias dos objetos do jogo dele estão em js/skins-bird.js. Sem js/bird-art.js o Passarinho não tem skins nem lojinha
+  // ===== fim PASSARINHO: skins (registro) =====
   let skinId = ""; // a skin em uso do jogador atual (0.15.9)
   let catSkin = ""; // a skin em uso do jogador atual no Gatinho (0.18.0): lida da carteira; os testes e as capturas podem trocá-la com `__game.catSkin` (vale até a próxima leitura)
   const refreshSkin = () => {
@@ -4223,6 +4226,40 @@
     if (!CatArt.drawPerch(c2, -16, -16, { look: k })) { if (th) tile(-16, -16, 5, 5, (g) => th.high(g)); else { c2.fillStyle = "#e9dcc2"; c2.fillRect(-13, -12, 24, 22); } }
     CatArt.drawCat(c2, { x: -12, y: -12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true, safe: true });
   });
+  // ===== PASSARINHO: skins (mostruários) =====
+  // Lojinha (0.20.0): os mostruários da categoria do passarinho (`bird`) e das 8 categorias de objetos do jogo do Passarinho (js/skins-bird.js documenta os campos de cada uma). `PREVIEW[categoria](c2, skin, w, h)` desenha a skin no CENTRO do cartão
+  // (w × h px; na lojinha 216 × 156), parada (calm) e com os mesmos desenhos do jogo (BirdArt.*; o chão, o galho e o vento de sempre vêm de BirdThemes), direto no contexto `c2`; quem chama limpa o cartão antes. As sementes mostram os 3 tipos; as minhocas, as 4 cores;
+  // os frutos, os 5 tipos de poder; o poleiro aparece com o passarinho em cima, e o vento, em três tiles de corrente. Sem js/bird-art.js estes mostruários não existem (a lojinha cai no mostruário simples com o nome da categoria).
+  if (typeof BirdArt !== "undefined") {
+    const birdTh = () => (typeof BirdThemes !== "undefined" && BirdThemes.of(3)) || null; // o ambiente da Fase 3 (Horta e cerca, onde aparecem o primeiro galho e o primeiro vento) dá o chão, o galho e o vento de sempre
+    const birdTile = (c2, x, y, c, r, kind, look, fn) => fn({ ctx: c2, x, y, c, r, free: true, border: false, time: 0, look, rect: (a, b, cw, ch) => c2.fillRect(a, b, cw, ch), h: (n) => BirdThemes.hash(c, r, n), solid: () => false, kind: () => kind, mass: () => 0 });
+    const birdFloor = (c2, th, x, y, c, r, look) => { if (th) birdTile(c2, x, y, c, r, ".", look, (g) => th.floor(g)); else { c2.fillStyle = (c + r) % 2 ? "#bcd49a" : "#c6dba6"; c2.fillRect(x, y, 32, 32); } }; // (sem BirdThemes: um chão neutro de dois tons de verde-claro)
+    PREVIEW.bird = (c2, skin, w, h) => { // o passarinho adulto, de lado, com a skin do catálogo do passarinho
+      c2.save(); c2.scale(3.8, 3.8);
+      try { BirdArt.drawBird(c2, { x: w / 7.6 - 12, y: h / 7.6 - 14, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: skin.id, still: true, calm: true }); } finally { c2.restore(); }
+    };
+    PREVIEW.seed = (c2, k, w, h) => previewAt(c2, w, h, 3.4, 0, 0, () => { for (let i = 0; i < 3; i++) BirdArt.drawSeed(c2, { x: (i - 1) * 20 - 8, y: -8, variant: i }, { calm: true, look: k }); });
+    PREVIEW.stray = (c2, k, w, h) => previewAt(c2, w, h, 2.8, 0, 0, () => { for (const [i, x, y] of [[0, -19, 3], [1, 19, -3]]) BirdArt.drawFoeCat(c2, { x, y, dir: 1, mode: "patrol", size: "medium", idx: i }, { calm: true, look: k }); }); // (dois gatos: quem tem pelagens mostra duas)
+    PREVIEW.birdexit = (c2, k, w, h) => previewAt(c2, w, h, 2.1, 0, 0, () => BirdArt.drawNest(c2, -48, -18, { open: true, w: 96, h: 36, calm: true, look: k })); // (o ninho aberto, com os ovinhos; as cores do anel, dos gravetos e da palha são as de sempre)
+    PREVIEW.berry = (c2, k, w, h) => previewAt(c2, w, h, 2.3, 0, 0, () => { for (const [i, kind] of ["scare", "gold", "ice", "turbo", "magnet"].entries()) BirdArt.drawFruit(c2, { x: (i < 3 ? (i - 1) * 31 : (i - 3.5) * 31) - 8, y: (i < 3 ? -15 : 15) - 8, kind }, { calm: true, look: k }); }); // (3 em cima e 2 embaixo: os 5 tipos de poder)
+    PREVIEW.bug = (c2, k, w, h) => previewAt(c2, w, h, 3.6, 0, 0, () => { for (let i = 0; i < 4; i++) BirdArt.drawWorm(c2, { x: (i % 2 ? 1 : -1) * 16, y: i < 2 ? -14 : 10, vx: 1, vy: 0, hue: i }, { calm: true, r: 8, look: k }); }); // (as 4 cores, todas olhando para a direita: `vx` pequeno só escolhe o lado, ela fica parada)
+    PREVIEW.roost = (c2, k, w, h) => previewAt(c2, w, h, 3, 0, 0, () => {
+      const th = birdTh();
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) birdFloor(c2, th, -48 + 32 * i, -48 + 32 * j, 4 + i, 4 + j);
+      if (!BirdArt.drawRoost(c2, -16, -16, { look: k })) { if (th) birdTile(c2, -16, -16, 5, 5, "G", null, (g) => th.high(g)); else BirdArt.drawRoost(c2, -16, -16, { look: { style: "branch" } }); } // (a skin padrão mostra o galho do ambiente)
+      BirdArt.drawBird(c2, { x: -12, y: -17, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true, safe: true });
+    });
+    PREVIEW.gust = (c2, k, w, h) => previewAt(c2, w, h, 2.2, 0, 0, () => { // três tiles de corrente para a direita (o vento do ambiente, com as fitas e a setinha da skin)
+      const th = birdTh();
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 3; i++) {
+        const x = -48 + 32 * i, y = -32 + 32 * j;
+        if (th) birdTile(c2, x, y, 4 + i, 4 + j, ">", k, (g) => th.wind(g));
+        else { birdFloor(c2, null, x, y, 4 + i, 4 + j); BirdArt.drawFx(c2, "gust", x + 16, y + 16, 0.5, { calm: true, dx: 1, dy: 0 }); } // (sem BirdThemes: só as fitas de sempre)
+      }
+    });
+    PREVIEW.hawk = (c2, k, w, h) => previewAt(c2, w, h, 2.3, 0, -8, () => { for (const [i, x, y] of [[0, -22, 1], [1, 22, -1]]) BirdArt.drawHawk(c2, { x, y, dir: 1, mode: "patrol", idx: i }, { calm: true, look: k }); });
+  }
+  // ===== fim PASSARINHO: skins (mostruários) =====
   // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
   // Barato: o halo é uma imagem pequena (um gradiente radial pintado uma vez, só com o desenho do degradê) esticada sobre o quadrado em volta do gatinho, e o resto do campo é um retângulo liso por quadro (quatro faixas): o gradiente do tamanho da tela inteira custava mais.
   let nightImg = null, duskImg = null, glowImg = null, glowKey = "";

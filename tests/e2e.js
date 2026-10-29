@@ -10701,7 +10701,7 @@ const PAGE_HELPERS = () => {
     await s19Tab(pg, "tracker"); st = await s19State(pg);
     ok(st.lockTitle === "Libera ao chegar à Fase 11 do Gatinho" && /Você está na Fase 1 do Gatinho/.test(st.lockSub), `o bloqueio de um objeto do Gatinho cita o Gatinho (${st.lockTitle})`);
     // ---- cada categoria libera exatamente na fase em que o objeto aparece (alcançou N = concluiu N−1) ----
-    const gated = slots.filter((s) => !s.player && s.from > 1 && s.count > 0), bad = [];
+    const gated = slots.filter((s) => !s.player && s.from > 1 && s.count > 0 && s.game !== "bird"), bad = []; // (o Passarinho abre em página própria: a liberação das categorias dele é conferida em tests/e2e-bird-skins.js, "as categorias abrem na fase `from`")
     for (const s of gated) {
       for (const done of [s.from - 2, s.from - 1]) {
         await s19Open(pg, { treats: 100, [s.game]: done });
@@ -10895,13 +10895,20 @@ const PAGE_HELPERS = () => {
     //   · bone = há ossos · ball = há bolinhas · block = há blocos ou paredes que se movem (blockDefs) · van = há vans (as 4 caixas "X" de cidade marcadas `van`) · foecat = há gatos inimigos (catSpawns).
     //  Gatinho: cat = sempre · guard = há cães de guarda (vetSpawns) · mouse = há ratinhos (rations) · catexit = há saída · yarn = há novelos (bones) · agile = há camundongos ágeis (balls)
     //   · perch = há lugares altos "T" (high) · tracker = há cães rastreadores (catSpawns: os "R" do mapa).
+    //  Passarinho (0.20.0): bird = sempre · seed = há sementes (seeds > 0) · stray = há gatos de jardim (cats > 0) · birdexit = há saída (o "E" do mapa) · berry = há frutos (fruits > 0) · bug = há minhocas (worms > 0)
+    //   · roost = há galhos G (special.G > 0) · gust = há vento (special.wind > 0) · hawk = há gaviões (hawks > 0). Os critérios leem os DADOS dos mapas (js/bird-levels.js, as 20 definições): enquanto o motor do Passarinho
+    //   não monta as fases em `__game.builtOf("bird")` este é o critério; com o motor, trocar `birdB` pelas fases montadas (`__game.builtOf("bird")[fase]`) e os campos deles. O vento é o único objeto que SOME de algumas fases
+    //   depois da primeira vez: de propósito, as Fases 5 e 18 não têm correntes (BIRD_GAPS), e só essas.
     // Uma categoria registrada sem critério aqui reprova o teste: quem cria uma categoria nova escreve também o critério dela.
     const pg = await s19Page();
     await fresh(pg, { name: "Totó" });
-    const res = await ev(pg, () => {
+    const birdB = Object.fromEntries(require(path.join(root, "js/bird-levels.js")).map((l) => [l.id, { ...l, map: l.map.join("") }])); // (as 20 fases do Passarinho, os dados dos mapas; ver o critério acima)
+    const BIRD_GAPS = { gust: [5, 18] };
+    const res = await ev(pg, ([birdB, BIRD_GAPS]) => {
       const crit = {
         dog: { dog: () => true, agent: (b) => b.vetSpawns.length > 0, ration: (b) => b.rations > 0, exit: (b) => b.exitTiles.length > 0, postman: (b) => b.bones > 0 && b.bonePower > 0, bone: (b) => b.bones > 0, ball: (b) => b.balls > 0, block: (b) => b.blockDefs.length > 0, van: (b) => b.solids.some((s) => s.van), foecat: (b) => b.catSpawns.length > 0 },
         cat: { cat: () => true, guard: (b) => b.vetSpawns.length > 0, mouse: (b) => b.rations > 0, catexit: (b) => b.exitTiles.length > 0, yarn: (b) => b.bones > 0, agile: (b) => b.balls > 0, perch: (b) => !!b.high && b.high.some((r) => r.some(Boolean)), tracker: (b) => b.catSpawns.length > 0 },
+        bird: { bird: () => true, seed: (b) => b.seeds > 0, stray: (b) => b.cats > 0, birdexit: (b) => b.map.includes("E"), berry: (b) => b.fruits > 0, bug: (b) => b.worms > 0, roost: (b) => b.special.G > 0, gust: (b) => b.special.wind > 0, hawk: (b) => b.hawks > 0 },
       };
       const out = { games: {}, rows: [], noCriterion: [], unregistered: [], total: Skins.SLOTS.length };
       for (const g of ["dog", "cat"]) { const B = __game.builtOf(g); out.games[g] = { levels: Object.keys(B).length, placeholder: Object.values(B).some((b) => b.placeholder) }; }
@@ -10909,19 +10916,19 @@ const PAGE_HELPERS = () => {
         if (!Skins.count(s.id)) { out.unregistered.push(s.id); continue; }
         const f = crit[s.game] && crit[s.game][s.id];
         if (!f) { out.noCriterion.push(s.id); continue; }
-        const B = __game.builtOf(s.game);
-        let first = 0, all = 0;
-        for (let id = 1; id <= 20; id++) if (f(B[id])) { if (!first) first = id; all++; }
-        out.rows.push({ id: s.id, game: s.game, name: s.name, from: s.from, first, onwards: all === 21 - first, skinFrom: Skins.list(s.id).map((k) => Skins.fromOf(s.id, k.id)) });
+        const B = s.game === "bird" ? birdB : __game.builtOf(s.game);
+        let first = 0, all = 0; const missing = [];
+        for (let id = 1; id <= 20; id++) { if (f(B[id])) { if (!first) first = id; all++; } else if (first) missing.push(id); }
+        out.rows.push({ id: s.id, game: s.game, name: s.name, from: s.from, first, onwards: missing.join() === (BIRD_GAPS[s.id] || []).join(), missing, skinFrom: Skins.list(s.id).map((k) => Skins.fromOf(s.id, k.id)) });
       }
       return out;
-    });
+    }, [birdB, BIRD_GAPS]);
     ok(res.games.dog.levels === 20 && res.games.cat.levels === 20 && !res.games.dog.placeholder && !res.games.cat.placeholder, "(os dois jogos têm as 20 fases de verdade, sem as de teste)");
     ok(res.noCriterion.length === 0, `toda categoria registrada tem o critério de existência escrito neste teste${res.noCriterion.length ? " — faltam: " + res.noCriterion.join(", ") : ""}`);
     const wrong = res.rows.filter((r) => r.first !== r.from);
-    ok(res.unregistered.length === 0 && res.total === 18 && res.rows.length === res.total && wrong.length === 0, `a fase \`from\` de cada uma das ${res.total} categorias (todas registradas${res.unregistered.length ? "; sem skins: " + res.unregistered.join(", ") : ""}) é a primeira fase do jogo em que o objeto aparece (${res.rows.map((r) => `${r.id}: F${r.from}`).join(", ")})${wrong.length ? " — ERRADAS: " + wrong.map((r) => `${r.id} diz Fase ${r.from}, mas aparece na ${r.first}`).join("; ") : ""}`);
+    ok(res.unregistered.length === 0 && res.total === 27 && res.rows.length === res.total && wrong.length === 0, `a fase \`from\` de cada uma das ${res.total} categorias (todas registradas${res.unregistered.length ? "; sem skins: " + res.unregistered.join(", ") : ""}) é a primeira fase do jogo em que o objeto aparece (${res.rows.map((r) => `${r.id}: F${r.from}`).join(", ")})${wrong.length ? " — ERRADAS: " + wrong.map((r) => `${r.id} diz Fase ${r.from}, mas aparece na ${r.first}`).join("; ") : ""}`);
     const gone = res.rows.filter((r) => !r.onwards);
-    ok(gone.length === 0, `e, a partir dessa fase, o objeto aparece em todas as fases seguintes${gone.length ? " — somem em alguma fase: " + gone.map((r) => r.id).join(", ") : ""}`);
+    ok(gone.length === 0, `e, a partir dessa fase, o objeto aparece em todas as fases seguintes (só o vento falta nas Fases 5 e 18, de propósito)${gone.length ? " — somem em alguma fase: " + gone.map((r) => `${r.id} (${r.missing.join(",")})`).join(", ") : ""}`);
     ok(res.rows.every((r) => r.skinFrom.every((f) => f >= r.from && f <= 20)), "nenhuma skin abre antes da categoria dela (e nenhuma passa da Fase 20)");
     await pg.context().close();
   });
@@ -10959,7 +10966,7 @@ const PAGE_HELPERS = () => {
     }
     ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tests/wiring.test.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
     // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
-    const titles = [...fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
+    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-bird-.+\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
     const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
     ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
     // ---- a trava do armazenamento: o que ela protege e o que não protege (a conta local não é segurança de verdade) ----

@@ -1,5 +1,5 @@
 // Testes de "fiação" (sem navegador): confere o que liga as peças da lojinha única sem rodar o jogo. Uso: node tests/wiring.test.js
-//  - index.html carrega os scripts na ordem em que um precisa do outro (js/skins.js antes de js/skins-dog.js e js/skins-cat.js, e tudo isso, mais js/records.js e js/cat-art.js, antes de js/game.js);
+//  - index.html carrega os scripts na ordem em que um precisa do outro (js/skins.js antes de js/skins-dog.js, js/skins-cat.js e js/skins-bird.js, e tudo isso, mais js/records.js, js/cat-art.js e js/bird-art.js, antes de js/game.js);
 //  - a tela da lojinha (renderShop em js/game.js) sempre passa o JOGO da categoria ao progresso (store.reachedLevel(jogador, jogo)) e decide o bloqueio com Skins.unlocked:
 //    esquecer o jogo faria o progresso do Cachorrinho liberar categorias do Gatinho (e o contrário) sem que nenhum teste de Node notasse.
 const assert = require("assert");
@@ -29,15 +29,17 @@ function fnSrc(name) {
   assert.fail(`a função ${name} não fecha`);
 }
 
-test("index.html: js/skins.js vem antes de js/skins-dog.js e js/skins-cat.js, e todos vêm antes de js/game.js (que é o último script)", () => {
+test("index.html: js/skins.js vem antes de js/skins-dog.js, js/skins-cat.js e js/skins-bird.js, e todos vêm antes de js/game.js (que é o último script)", () => {
   const scripts = [...read("index.html").matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map((m) => m[1]);
   const at = (f) => { const i = scripts.indexOf(f); assert.ok(i >= 0, `index.html não carrega ${f}`); return i; };
   assert.strictEqual(new Set(scripts).size, scripts.length, "nenhum script é carregado duas vezes");
   assert.strictEqual(scripts[scripts.length - 1], "js/game.js", "js/game.js é o último");
   assert.ok(at("js/skins.js") < at("js/skins-dog.js"), "skins.js antes de skins-dog.js");
   assert.ok(at("js/skins.js") < at("js/skins-cat.js"), "skins.js antes de skins-cat.js");
-  assert.ok(at("js/skins-dog.js") < at("js/game.js") && at("js/skins-cat.js") < at("js/game.js"), "as skins dos objetos antes de game.js");
-  assert.ok(at("js/records.js") < at("js/game.js") && at("js/cat-art.js") < at("js/game.js"), "records.js e cat-art.js antes de game.js");
+  assert.ok(at("js/skins.js") < at("js/skins-bird.js"), "skins.js antes de skins-bird.js");
+  assert.ok(at("js/skins-dog.js") < at("js/game.js") && at("js/skins-cat.js") < at("js/game.js") && at("js/skins-bird.js") < at("js/game.js"), "as skins dos objetos antes de game.js");
+  assert.ok(at("js/skins-cat.js") < at("js/skins-bird.js"), "a ordem dos arquivos de skins é a dos jogos: Cachorrinho, Gatinho, Passarinho");
+  assert.ok(at("js/records.js") < at("js/game.js") && at("js/cat-art.js") < at("js/game.js") && at("js/bird-art.js") < at("js/game.js"), "records.js, cat-art.js e bird-art.js antes de game.js");
   for (const f of ["js/profiles.js", "js/sound.js", "js/themes.js", "js/version.js"]) assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`);
 });
 
