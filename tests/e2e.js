@@ -108,11 +108,20 @@ const PAGE_HELPERS = () => {
   // (0.18.0) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
+  // (0.20.0) O mesmo vale para o Passarinho: js/bird-levels.js (window.BirdLevels) liga o Passarinho no jogo; as seções antigas o testam "Em breve" (o arquivo é ignorado) e as páginas abertas com `realBird: true` (tests/e2e-bird-*.js)
+  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente provisórios), que valem mesmo que os arquivos de verdade existam; `realBird: "real"` deixa a página carregar os arquivos de verdade.
   const rawNewContext = browser.newContext.bind(browser);
+  const FIX = (n) => fs.readFileSync(path.join(__dirname, "fixtures", n), "utf8");
+  const BIRD_FIXTURES = () => `${FIX("bird-levels-fixture.js")}
+    Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });
+    ${FIX("bird-art-fixture.js")}
+    (() => { let T; Object.defineProperty(window, "Themes", { configurable: true, get: () => T, set: (v) => { if (v && typeof v.of === "function" && !v.__birdWrapped) { const of0 = v.of; v = Object.assign({}, v, { of: (id, animal) => (animal === "bird" && window.__birdThemeFixture ? window.__birdThemeFixture : of0(id, animal)), __birdWrapped: true }); } T = v; } }); })();`;
   browser.newContext = async (o = {}) => {
-    const { realCat, ...opts } = o;
+    const { realCat, realBird, ...opts } = o;
     const c = await rawNewContext(opts);
     if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    if (!realBird) await c.addInitScript(() => { Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    else if (realBird !== "real") await c.addInitScript({ content: BIRD_FIXTURES() });
     return c;
   };
   const errs = [];
@@ -10138,7 +10147,7 @@ const PAGE_HELPERS = () => {
     const cp = await newPage({ realCat: true });
     await fresh(cp, { name: "Totó" });
     const dogHow = await ev(cp, () => document.getElementById("howto-steps").textContent);
-    ok(/O Cachorrinho e o Gatinho já estão prontos \(o Passarinho chega em breve\)\./.test(dogHow) && !/Por enquanto só o Cachorrinho está pronto/.test(dogHow) && !/Gatinho e o Passarinho chegam em breve/.test(dogHow), "o Como jogar do Cachorrinho (na página) diz que o Cachorrinho e o Gatinho já estão prontos e só o Passarinho chega em breve");
+    ok(/O Cachorrinho, o Gatinho e o Passarinho já estão prontos\./.test(dogHow) && !/Por enquanto só o Cachorrinho está pronto/.test(dogHow) && !/Gatinho e o Passarinho chegam em breve/.test(dogHow) && !/o Passarinho chega em breve/.test(dogHow), "o Como jogar do Cachorrinho (na página) diz que o Cachorrinho, o Gatinho e o Passarinho (0.20.0) já estão prontos");
     await ev(cp, () => { __game.setAnimal("cat"); });
     await cp.click("#btn-howto");
     const how = await cp.textContent("#howto-steps");
@@ -11674,6 +11683,10 @@ const PAGE_HELPERS = () => {
 
 
   // ----------------------------------------------------------------------------------------------------------------------------
+  // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por frente (tests/e2e-bird-<frente>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-bird-.+\.js$/.test(n)).sort()) {
+    await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
+  }
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }

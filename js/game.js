@@ -154,6 +154,14 @@
   const SFX_WIN = 0.9, SFX_WIN_MORE = 1.7, SFX_BALL_MORE = 0.15, SFX_HURT = 0.1, SFX_TRANSFORM = 0.3; // atrasos: o miado/latido depois da fanfarra, o ronronar, o 2º som do camundongo, o miado de susto depois da captura, o chiado depois do novelo
   const SFX_WOOF_DOG = 2.5, SFX_WOOF_ALL = 0.4, SFX_JUMP_EVERY = 0.4, SFX_DASH_EVERY = 0.6; // intervalos mínimos (s): latido de cada cão, latido de qualquer cão, pulo, arrancada
   const CAT_REV = 1;                                     // revisão dos mapas do Gatinho (js/cat-levels.js): jogos salvos de outra revisão são descartados com aviso
+  // ===== PASSARINHO: motor =====
+  // Passarinho (0.20.0): mecânicas das fases do passarinho (`birdMode`). ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases do Passarinho; nenhuma fase do Cachorrinho nem do Gatinho liga nenhuma.
+  // VOO ALTO = o poder do fruto comum (`power`, `lv.flight`): ignora os muros `M` (não as paredes `#`), os gatos de quintal não o alcançam (`safe`), os gaviões sim (só o galho `G` os segura). VENTO = empurrão de WIND_SPEED px/s só no voo baixo.
+  const BIRD_REV = 1;                                    // revisão dos mapas do Passarinho (js/bird-levels.js): jogos salvos de outra revisão são descartados com aviso
+  const BIRD_FLIGHT = 10, BIRD_FLIGHT_STEP = 2, BIRD_FLIGHT_WARN = 2; // s do voo alto do fruto comum, s a mais por nível do reforço Fruto poderoso e s finais em que o passarinho pisca (aviso)
+  const WIND_SPEED = 90;                                 // px/s do empurrão de uma corrente de vento (só no voo baixo)
+  const BIRD_WIND = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] }; // as setas do vento no mapa
+  // ===== fim PASSARINHO: motor =====
   // Alcance do "!": o agente liga o "!" assim que o cachorro está a até 2 × (número da fase) quadrados dele, com linha de visão livre:
   // Fase 1 = 2 quadrados, Fase 2 = 4, Fase 3 = 6, Fase 4 = 8 e Fase 5 = 10. As Fases 6 a 10 definem o próprio alcance (11, 12, 13, 14 e 15).
   const alertTilesFor = (levelNumber) => 2 * levelNumber;
@@ -1389,6 +1397,30 @@
       placeholder: false,
     };
   }
+  // ===== PASSARINHO: motor — adaptador dos mapas =====
+  // (0.20.0) ADAPTADOR dos mapas do Passarinho (js/bird-levels.js = window.BirdLevels) para a definição que a buildLevel aceita, no mesmo molde do catDefFrom.
+  // De cada fase do passarinho (c) vêm o que é DELE: id, título, mapa, sementes/frutos/minhocas, tipos de fruto, vidas extras, nota e a velocidade (birdSpeed = dogSpeed do motor). Da fase do CACHORRINHO que ela imita (c.like)
+  // vêm as REGRAS e a DIFICULDADE (como no catDefFrom: os gatos de quintal `V` usam a configuração do agente dessa fase; os gaviões `H`, a dos gatos inimigos dela).
+  // O mapa tem símbolos a mais: `M` muro voável, `G` galho, `>` `<` `^` `v` vento e `H` posto de gavião (a célula vira chão e a posição vai para `cats`, que no Passarinho são só os gaviões).
+  // O voo alto (`flight`) é o poder do fruto comum: só existe se a fase tem frutos "scare" (10 s, mais 2 s por nível do reforço Fruto poderoso). A arrancada é o bater de asas (`sprint`, nas 20 fases) e `refuge` fica sempre ligado (o galho e o voo alto dependem dele).
+  function birdDefFrom(c) {
+    const like = c && LEVELS.find((l) => l.id === c.like);
+    if (!like || !Array.isArray(c.map)) throw new Error(`Fase do Passarinho sem fase do Cachorrinho para copiar as regras: ${c && c.title}`);
+    const hawks = [];
+    const map = c.map.map((row, r) => [...row].map((ch, col) => { if (ch === "H") { hawks.push([col, r]); return "."; } return ch; }).join(""));
+    const count = (ch) => map.reduce((n, row) => n + [...row].filter((x) => x === ch).length, 0);
+    const mix = Array.isArray(c.fruitMix) ? c.fruitMix.slice() : [], flight = c.fruits > 0 && mix.includes("scare");
+    const winds = Object.keys(BIRD_WIND).reduce((n, ch) => n + count(ch), 0);
+    return {
+      id: c.id, title: c.title, map, vets: Array.from({ length: count("V") }, () => like.vets[0]), rations: c.seeds, bones: c.fruits, boneMix: mix, balls: c.worms, extraLives: c.extraLives.slice(), note: c.note, dogSpeed: c.birdSpeed,
+      alertTiles: like.alertTiles, lifePenalty: like.lifePenalty, minPoints: like.minPoints, bonePower: flight ? BIRD_FLIGHT : 0, boneStep: BIRD_FLIGHT_STEP, lifeCap: like.lifeCap, mission: like.mission, missionBonus: like.missionBonus,
+      bonusStep: like.bonusStep, blockEvery: like.blockEvery, crush: like.crush, touchEase: like.touchEase, respawnInPlace: like.respawnInPlace, cat: like.cat,
+      blocks: [], cats: hawks, catMode: true, birdMode: true, like: like.id, place: c.place,
+      sprint: true, water: null, refuge: true, flight: flight ? true : null, wind: winds > 0 ? true : null, night: c.night === true || (c.special || {}).night === true || NIGHT_LEVELS.includes(c.id) ? true : null,
+      placeholder: false,
+    };
+  }
+  // ===== fim PASSARINHO: motor — adaptador =====
 
   // Posição de um bloco que se move: 0 = em `from`, 1 = em `to`. `bt` = segundos de relógio do bloco. Ele fica parado em `from` até `every` s;
   // a partir daí muda de lado a cada `every` s (começa a deslizar em every, 2·every, 3·every...) e leva `slide` s para chegar.
@@ -1435,13 +1467,19 @@
     // (0.18.0) Modo GATO (`def.catMode`, só as fases do Gatinho): três símbolos a mais no mapa. `X` (obstáculo baixo) e `T` (lugar alto) são sólidos para os CÃES e os RASTREADORES (fora do `walk` deles),
     // mas o gatinho (o jogador) os atravessa: não entram em `solids` (só em `lowSolids`, que param as bolinhas); `~` (poça) é chão normal para todos; `R` é o posto de um rastreador.
     const cat = !!def.catMode;
+    // ===== PASSARINHO: motor — buildLevel =====
+    // (0.20.0) Modo PASSARINHO (`def.birdMode`, só as fases do Passarinho; liga também o modo gato): o lugar alto é `G` (no Gatinho é `T`); `M` é um muro voável (sólido para tudo, menos para o voo alto: `high: true`);
+    // `> < ^ v` são correntes de vento (chão normal) e o gavião (`hawkWalk`) anda onde o gato de quintal anda MAIS o `X` (voa por cima), sem atravessar `M`, `#` nem `G`.
+    const bird = !!def.birdMode, HI = bird ? "G" : "T";
+    // ===== fim PASSARINHO: motor — buildLevel =====
     const solids = [], lowSolids = [], exitTiles = [], vetSpawns = [], trackSpawns = [];
     let spawnTile = null;
-    const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X" && !(cat && ch === "T")));
+    const walk = map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "X" && !(cat && ch === HI) && !(bird && ch === "M")));
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const ch = map[r][c];
       if (ch === "#" || (ch === "X" && !cat)) solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch, van: ch === "X" && def.id >= 4 && Math.abs(c - (cols >> 1)) === 3 && Math.abs(r - (rows >> 1)) === 2 }); // nas cidades (Fase 4 em diante) as 4 "caixas" dos cantos do pátio da praça são as vans da carrocinha
-      else if (cat && (ch === "X" || ch === "T")) lowSolids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch });
+      else if (bird && ch === "M") solids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: "m", high: true }); // (Passarinho) muro voável: sólido no voo baixo, o voo alto passa por cima
+      else if (cat && (ch === "X" || ch === HI)) lowSolids.push({ x: c * TILE, y: r * TILE, w: TILE, h: TILE, kind: ch });
       else if (ch === "E") exitTiles.push([c, r]);
       else if (ch === "P") spawnTile = [c, r];
       else if (ch === "V") vetSpawns.push([c, r]);
@@ -1505,13 +1543,16 @@
     const te = def.touchEase; // facilitação opcional para quem joga com o controle de toque: fatores sobre a velocidade dos agentes e do cachorro
     if (te && !(te.vet > 0.5 && te.vet <= 1 && te.dog >= 1 && te.dog <= 1.25)) throw new Error(`Facilitação do toque inválida: ${def.title}`);
     const touchEase = te ? { vet: te.vet, dog: te.dog } : null;
-    const catWalk = cat ? walk : map.map((row) => [...row].map((ch) => ch !== "#")); // o gato pula as caixas "X": para ele, só a parede é obstáculo (0.18.0: o RASTREADOR do Gatinho NÃO pula: anda no mesmo chão dos cães)
+    const hawkWalk = bird ? map.map((row) => [...row].map((ch) => ch !== "#" && ch !== "M" && ch !== "G")) : null; // (Passarinho) o gavião voa por cima do X, mas não atravessa muro, parede nem galho
+    const catWalk = bird ? hawkWalk : cat ? walk : map.map((row) => [...row].map((ch) => ch !== "#")); // o gato pula as caixas "X": para ele, só a parede é obstáculo (0.18.0: o RASTREADOR do Gatinho NÃO pula: anda no mesmo chão dos cães; 0.20.0: no Passarinho `cats` são os gaviões e o chão deles é o hawkWalk)
     const exitDist = new Int16Array(rows * cols).fill(-1); // passos de cada tile até a saída (pelo chão do gato, sem contar os blocos): o gato de número ímpar fecha esse caminho
     { const q = []; for (const [c, r] of exitTiles) { exitDist[r * cols + c] = 0; q.push([c, r]); }
       for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = exitDist[r * cols + c]; for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc >= 0 && nr >= 0 && nc < cols && nr < rows && catWalk[nr][nc] && exitDist[nr * cols + nc] < 0) { exitDist[nr * cols + nc] = d + 1; q.push([nc, nr]); } } } }
     const trackTiles = [...new Map(blockDefs.flatMap((d) => d.track).map((t) => [t + "", t])).values()];
     const waterTiles = []; // poças (`~`): ratinhos, novelos e camundongos nunca nascem nelas
     if (cat) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (map[r][c] === "~") waterTiles.push([c, r]);
+    const windTiles = []; // (Passarinho) as correntes de vento: sementes, frutos e minhocas nunca nascem nelas (o vento as tiraria do lugar de quem as procura)
+    if (bird) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (BIRD_WIND[map[r][c]]) windTiles.push([c, r]);
     // MECÂNICAS por fase (0.18.0): cada fase liga a sua com um campo opcional na definição (LEVELS / CAT_LEVELS / catDefFrom). Ficam DESLIGADAS (null) em todas as fases do Cachorrinho.
     //  - `sprint`: arrancada com fôlego do Gatinho  -> updateSprint (update()) e a barra FÔLEGO do placar (updateHud)
     //  - `water`: poças (`~`) que molham o pelo e deixam o gato lento -> updateWater (update()) e o placar
@@ -1525,6 +1566,13 @@
     const night = def.night ? { darkness: NIGHT_DARK, halo: NIGHT_HALO, ...objOf(def.night) } : null;
     if ((sprint && !(okNum(sprint.factor, 1, 2) && okNum(sprint.drain, 0.05, 5) && okNum(sprint.regen, 0.02, 5) && okNum(sprint.winded, 0, 10))) || (water && !(okNum(water.wet, 0.5, 30) && okNum(water.slow, 0.3, 1))) ||
         (refuge && !okNum(refuge.wait, 0.5, 30)) || (night && !(okNum(night.darkness, 0, 1) && okNum(night.halo, 2, 12)))) throw new Error(`Mecânica do Gatinho inválida: ${def.title}`);
+    // ===== PASSARINHO: motor — buildLevel =====
+    const flight = def.flight ? { warn: BIRD_FLIGHT_WARN } : null, windGrid = bird ? map.map((row) => [...row].map((ch) => BIRD_WIND[ch] || null)) : null, windOn = !!(windGrid && windGrid.some((row) => row.some(Boolean)));
+    if (flight && !(bird && bonePower > 0 && boneMix.includes("scare"))) throw new Error(`Voo alto sem fruto do voo alto: ${def.title}`);
+    if ((def.wind && !windOn) || (windOn && !def.wind)) throw new Error(`Vento inválido: ${def.title}`);
+    const boneStep = def.boneStep ?? REINFORCE_BONE;
+    if (!(boneStep >= 0 && boneStep <= 20)) throw new Error(`Reforço do poder inválido: ${def.title}`);
+    // ===== fim PASSARINHO: motor — buildLevel =====
     const cs = exitTiles.map((t) => t[0]), rs = exitTiles.map((t) => t[1]);
     const x1 = Math.min(...cs), x2 = Math.max(...cs), y1 = Math.min(...rs), y2 = Math.max(...rs);
     return {
@@ -1532,9 +1580,10 @@
       lifePenalty, minPoints, bonePower, crush, touchEase, respawnInPlace: !!def.respawnInPlace, note: def.note || "",
       balls, lifeCap, mission, missionBonus, boneMix, boneMixed: new Set(boneMix).size > 1,
       sprint, water, refuge, night, placeholder: !!def.placeholder, // (mecânicas desligadas (null) nas fases do Cachorrinho; placeholder = fase de teste copiada de outro bichinho)
+      birdMode: bird, flight, wind: windOn ? windGrid : null, hawkWalk, boneStep, // (Passarinho: voo alto, grade do vento [dx, dy] por tile e o chão do gavião; no Cachorrinho e no Gatinho tudo isto fica desligado)
       catMode: cat, lowSolids, waterTiles, place: def.place || "", like: def.like || 0, // (modo gato: obstáculos baixos e lugares altos, poças e o lugar da fase)
-      high: cat ? map.map((row) => [...row].map((ch) => ch === "T")) : null, puddle: cat ? map.map((row) => [...row].map((ch) => ch === "~")) : null, // os lugares altos e as poças, tile a tile
-      floorFree: cat ? map.map((row) => [...row].map((ch) => ch !== "#")) : walk, avoidTiles: waterTiles.length ? trackTiles.concat(waterTiles) : trackTiles, postTiles: cat ? vetSpawns.concat(catSpawns) : vetSpawns, // chão para o desenho, tiles sem itens e postos (os itens ficam longe deles)
+      high: cat ? map.map((row) => [...row].map((ch) => ch === HI)) : null, puddle: cat ? map.map((row) => [...row].map((ch) => ch === "~")) : null, // os lugares altos e as poças, tile a tile
+      floorFree: cat ? map.map((row) => [...row].map((ch) => ch !== "#")) : walk, avoidTiles: waterTiles.length || windTiles.length ? trackTiles.concat(waterTiles, windTiles) : trackTiles, postTiles: cat ? vetSpawns.concat(catSpawns) : vetSpawns, // chão para o desenho, tiles sem itens e postos (os itens ficam longe deles)
       catSpawns, catCfg, catWalk, exitDist, crate: map.map((row) => [...row].map((ch) => ch === "X")),
       ...(cat ? { kinds: map.slice(), mass: wallMasses(map, rows, cols) } : {}), // (Gatinho, desenho: o caractere do mapa em cada tile e o tamanho da mancha de parede)
       blockDefs, blockRange, trackTiles,
@@ -1586,10 +1635,24 @@
     } catch (e) { if (typeof console !== "undefined") console.error(`Mapas do Gatinho inválidos: ${e.message}`); return null; }
   }
   const catReal = catGameFrom(window.CatLevels);
+  // ===== PASSARINHO: motor — o jogo =====
+  // (0.20.0) O Passarinho: se js/bird-levels.js (window.BirdLevels) foi carregado, as 20 fases dele são as convertidas por birdDefFrom (revisão própria BIRD_REV) e ele está PRONTO; sem esse arquivo (ou se alguma fase for inválida)
+  // ele continua "Em breve", sem fases (`ready: false`), exatamente como antes. `defineBirdLevels` (testes) troca as fases por uma lista nesse formato.
+  const BIRD_BLURB_SOON = "Voando alto: vai ter as suas próprias 20 fases.", BIRD_BLURB = "Sementes, frutos, minhocas, gatos e gaviões: 20 fases lá do alto.";
+  function birdGameFrom(list) { // as fases do Passarinho a partir de uma lista no formato de js/bird-levels.js; null se a lista não serve (a falha vai para o console, e os testes a pegam)
+    try {
+      if (!Array.isArray(list) || !list.length) return null; // (js/bird-levels.js traz as 20; os testes podem trazer menos)
+      const defs = list.map(birdDefFrom);
+      defs.forEach(buildLevel); // (confere as 20 já ao carregar)
+      return defs;
+    } catch (e) { if (typeof console !== "undefined") console.error(`Mapas do Passarinho inválidos: ${e.message}`); return null; }
+  }
+  const birdReal = birdGameFrom(window.BirdLevels);
+  // ===== fim PASSARINHO: motor — o jogo =====
   const GAMES = [
     makeGame({ id: "dog", name: "Cachorrinho", emoji: "🐶", blurb: "Rações, ossos, carrocinha e gatos: 20 fases de aventura.", ready: true, rev: MAP_REV, levels: LEVELS }),
     makeGame({ id: "cat", name: "Gatinho", emoji: "🐱", blurb: catReal ? CAT_BLURB : CAT_BLURB_SOON, ready: !!catReal, rev: catReal ? CAT_REV : 2 /* (a cópia das fases do Cachorrinho está na revisão 2 deles; os mapas de verdade do gato têm a revisão deles) */, levels: catReal || CAT_LEVELS }),
-    makeGame({ id: "bird", name: "Passarinho", emoji: "🐦", blurb: "Voando alto: vai ter as suas próprias 20 fases.", ready: false, rev: 1, levels: [] }),
+    makeGame({ id: "bird", name: "Passarinho", emoji: "🐦", blurb: birdReal ? BIRD_BLURB : BIRD_BLURB_SOON, ready: !!birdReal, rev: BIRD_REV, levels: birdReal || [] }), // (0.20.0: com js/bird-levels.js carregado o Passarinho está pronto)
   ];
   const gameOf = (id) => GAMES.find((g) => g.id === id) || null;
   const levelsOf = (id) => (gameOf(id) || gameOf(DEFAULT_ANIMAL)).levels;
@@ -1686,6 +1749,14 @@
   // Desenho do Gatinho (0.18.0): `catDraw` = a partida é do Gatinho e o js/cat-art.js está carregado (aí o gatinho, os cães, os ratinhos, os novelos, os camundongos, os postos e os efeitos são desenhados com CatArt;
   // no Cachorrinho NADA disto roda). `catFx` = efeitos curtos em andamento (splash, shake, dust, hiss, sparkle, wetdrop); o resto são temporizadores de quando soltar um efeito.
   let catDraw = false, catFx = [], dustT = 0, dropT = 0, inPuddle = false, catFloorAll = false;
+  // ===== PASSARINHO: motor — estado =====
+  // (0.20.0) Estado do Passarinho: `birdDraw` = a partida é do Passarinho (fase `birdMode`: o passarinho, os gatos, os gaviões, as sementes... são desenhados com BirdArt, ou com o desenho simples de reserva se ele faltar; no Cachorrinho e no Gatinho NADA disto roda),
+  // `perch` = o centro do passarinho está num galho (G); `safe` (acima) vale o galho OU o voo alto (os gatos não alcançam), mas o gavião só respeita o galho; `windNow` = 0 fora do vento, 1 a favor, -1 contra, 2 de lado ou parado;
+  // `flyAnim` = 0 (voo baixo) a 1 (voo alto), só o desenho da altura; `gustAt` = quando soou o último vento; `flightEndWarned` = o aviso dos últimos segundos do voo alto já foi dado.
+  let birdDraw = false, perch = false, windNow = 0, flyAnim = 0, gustAt = -99, gustFxT = 0, flightEndWarned = false;
+  const flightOn = () => !!lv.flight && power > 0;     // voo alto ligado (o fruto comum do Passarinho)
+  const scaring = () => power > 0 && !lv.flight;       // poder de ASSUSTAR ligado (o osso do Cachorrinho e o novelo do Gatinho; o voo alto do Passarinho não assusta ninguém)
+  // ===== fim PASSARINHO: motor — estado =====
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
@@ -1742,6 +1813,7 @@
     gameAnimal = typeof o.animal === "string" && gameOf(o.animal) && gameOf(o.animal).ready ? o.animal : syncAnimal(); // (0.18.0: o bichinho da partida vem ANTES das fases: elas, o ambiente e o texto são os dele)
     catDraw = gameAnimal === "cat" && typeof CatArt !== "undefined"; catFx = []; dustT = 0; dropT = 0; inPuddle = false;
     levelId = id; lv = builtOf(gameAnimal)[id]; theme = Themes.of(id, gameAnimal); COLS = lv.cols; ROWS = lv.rows; WORLD_W = lv.worldW; WORLD_H = lv.worldH; gamePlayer = typeof o.player === "string" ? o.player : store.player(); gameIsAccount = !!gamePlayer && store.hasAccount(gamePlayer);
+    birdDraw = gameAnimal === "bird" && !!lv.birdMode; // (0.20.0)
     applyGameUi(gameAnimal);
     document.body.classList.toggle("sprint-on", !!lv.sprint); // (o botão "Correr" do toque só aparece nas fases do Gatinho)
     walk = lv.walk; exitRect = lv.exitRect; spawn = lv.spawn; refreshSkin();
@@ -1752,6 +1824,7 @@
     collected = 0; bonesGot = 0; time = 0; invuln = 0; hintTimer = 0; livesLost = 0; power = 0; postmen = 0; goalReached = false; missionSaid = false; fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; balls = []; pickupToastUntil = 0; crushed = false; puffs = []; started = autoStart; startHint = false;
     up = cleanUp(o.upgrades) || noUp(); fleeMap = null; catMap = null; meowAt = -99; woofAt = -99; jumpAt = -99; dashAt = -99; onLow = false;
     stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; darkness = lv.night ? lv.night.darkness : 0; // (mecânicas do Gatinho: cada fase começa com fôlego cheio e pelo seco)
+    perch = false; windNow = 0; flyAnim = 0; gustAt = -99; gustFxT = 0; flightEndWarned = false; // (Passarinho: cada fase começa no voo baixo, fora do vento)
     lives = clamp(Math.round(o.lives ?? START_LIVES), 1, maxLivesNow());
     retries = clamp(Math.round(o.retries ?? 0), 0, MAX_RETRIES);
     player = { x: spawn.x, y: spawn.y, w: 24, h: 24, facing: "right", moving: false };
@@ -1761,7 +1834,7 @@
     });
     cats = (catOverride || lv.catSpawns).map(([c, r], i) => {
       const [cx, cy] = centerOf(c, r);
-      return { cat: true, cfg: lv.catCfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 0.8 + 0.4 * i, think: 0.1, modeT: 0, chaseAge: 0, cool: 1.5, dir: 1, idx: i, goal: null, hold: 0, stuck: 0, from: null, slow: false, hitCool: 0, seen: null, seenDir: [0, 0], searchT: 0, searched: false, pounce: 0, pounceCd: 0, look: i % 4 };
+      return { cat: true, ...(lv.birdMode ? { hawk: true } : {}), cfg: lv.catCfg, sx: cx, sy: cy, cx, cy, mode: "patrol", leg: null, route: [], idle: 0.8 + 0.4 * i, think: 0.1, modeT: 0, chaseAge: 0, cool: 1.5, dir: 1, idx: i, goal: null, hold: 0, stuck: 0, from: null, slow: false, hitCool: 0, seen: null, seenDir: [0, 0], searchT: 0, searched: false, pounce: 0, pounceCd: 0, look: i % 4 }; // (Passarinho: os `cats` são os gaviões, `hawk: true`)
     });
     // rações e ossos: em chão livre, fora dos trilhos dos blocos; os ossos são alguns dos itens sorteados
     items = placeItems(lv.spawnTile, lv.postTiles, lv.exitTiles, lv.rations + lv.bones, lv.avoidTiles).map((t) => tileItem(t, false));
@@ -1872,7 +1945,7 @@
     if (sprintOn) {
       if (!was && time - dashAt >= SFX_DASH_EVERY) { dashAt = time; sfx(P().sfx.dash); } // começou uma arrancada (no máximo uma vez a cada SFX_DASH_EVERY s)
       if (!free) { stamina -= S.drain * dt; if (stamina <= 0) { stamina = 0; winded = S.winded; sfx(P().sfx.pant); } } // o fôlego acabou: o gatinho fica ofegante
-      if (catDraw && (!was || (dustT -= dt) <= 0)) { dustT = 0.17; addCatFx("dust", player.x + player.w / 2, player.y + player.h / 2, player.facing); } // poeirinha da arrancada (ao começar e a cada ~0,17 s)
+      if ((catDraw || birdDraw) && (!was || (dustT -= dt) <= 0)) { dustT = 0.17; addCatFx(birdDraw ? "flap" : "dust", player.x + player.w / 2, player.y + player.h / 2, player.facing); } // poeirinha da arrancada (ao começar e a cada ~0,17 s; no Passarinho, o bater de asas)
     } else stamina = Math.min(1, stamina + S.regen * dt);
   }
   // Pelo molhado: o centro do gatinho numa poça (`~`) define `wet` = lv.water.wet s (renova enquanto ele estiver nela); depois de sair seca devagar. Molhado: ×0,65 de velocidade e sem arrancada. Os cães não se molham.
@@ -1886,7 +1959,7 @@
   // Lugar alto: com o centro do gatinho num tile `T` ele fica A SALVO (nenhum cão nem rastreador o pega); ao descer, não há proteção nenhuma.
   const onHighNow = () => { const [c, r] = dogTileNow(); return !!(lv.high && lv.high[r] && lv.high[r][c]); };
   const onLowNow = () => { const [c, r] = dogTileNow(); return !!(lv.catMode && lv.crate[r] && lv.crate[r][c]); }; // sobre um obstáculo baixo (X): o "pulo suave"
-  const catSpeedFactor = () => (lv.catMode || lv.sprint ? (sprintOn && lv.sprint ? lv.sprint.factor : 1) * (wet > 0 && lv.water ? lv.water.slow : 1) * (onLowNow() ? JUMP_SLOW : 1) : 1);
+  const catSpeedFactor = () => (lv.catMode || lv.sprint ? (sprintOn && lv.sprint ? lv.sprint.factor : 1) * (wet > 0 && lv.water ? lv.water.slow : 1) * (onLowNow() && !lv.birdMode ? JUMP_SLOW : 1) : 1); // (0.20.0: o passarinho passa sobre o X sem perder velocidade)
   // Onde o cão (ou rastreador) espera: o tile alcançável (pelo chão `grid` dele) mais perto de onde o gatinho está, sem nunca pisar no tile dele (T e X ficam fora do chão dos cães).
   // Em cima de um T (a salvo) é o "pé" do lugar alto, pelo tile (e fica guardado até o gatinho mudar de tile). Em cima de um X (sem proteção) é o tile andável cujo centro está mais perto do gatinho
   // DE VERDADE (em pixels, sem guardar: o gatinho pode estar em qualquer ponto do X), para o cão chegar ao lado dele e encostar (LOW_REACH) em vez de ficar parado sem caminho.
@@ -1919,8 +1992,9 @@
   const dogSpeedNow = () => SPEED * lv.dogSpeed * (1 + BONE_SPEED_BONUS * bonesGot) * (1 + REINFORCE_SPEED * up.speed) * (fx.turbo > 0 ? TURBO_FACTOR : 1) * (assist() ? lv.touchEase.dog : 1) * catSpeedFactor(); // px/s: a da fase, mais 10% por osso pego e 5% por reforço de velocidade (Gatinho: ×1,35 na arrancada, ×0,65 molhado, ×0,85 sobre um X)
   function moveAxis(dx, dy) {
     player.x += dx; player.y += dy;
+    const flying = lv.flight && power > 0; // (Passarinho) no voo alto os muros `M` (`high`) ficam abaixo dele: só as paredes `#` seguram
     for (const s of solids) {
-      if (!overlap(player, s)) continue;
+      if (!overlap(player, s) || (flying && s.high)) continue;
       if (dx > 0) player.x = s.x - player.w;
       else if (dx < 0) player.x = s.x + s.w;
       if (dy > 0) player.y = s.y - player.h;
@@ -1959,7 +2033,7 @@
     for (let d = 0; d < dist; d += 8) {
       const [c, r] = tileOf(v.cx + (dx * d) / dist, v.cy + (dy * d) / dist);
       if (c === pc && r === pr) continue;
-      if (!walk[r][c] || dynBlocked.has(r * COLS + c)) return false;
+      if (!(v.hawk ? lv.hawkWalk : walk)[r][c] || dynBlocked.has(r * COLS + c)) return false; // (Passarinho: o gavião voa por cima do X)
     }
     return true;
   }
@@ -2052,7 +2126,7 @@
     if (v.bounce > 0) v.bounce = Math.max(0, v.bounce - dt / 8);
     if (v.mode === "patrol" && v.cool <= 0 && v.think <= 0) {
       v.think = cfg.thinkEvery;
-      if (power <= 0 && !(safe && v.gaveUp) && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; noticeSound(v); } // (Gatinho: quem já desistiu ao pé do lugar alto só volta a perseguir depois que o gatinho descer)
+      if (!scaring() && !(safe && v.gaveUp) && canSee(v) && rand() < cfg.chaseChance) { v.mode = "chase"; v.modeT = cfg.chaseTime; v.chaseAge = 0; noticeSound(v); } // (Gatinho: quem já desistiu ao pé do lugar alto só volta a perseguir depois que o gatinho descer)
     }
     if (lv.refuge) refugeGiveUp(v, dt); // (Gatinho a salvo num lugar alto: o cão espera ao pé dele e desiste)
     if (v.mode === "chase") {
@@ -2214,7 +2288,7 @@
     if (c.pounce > 0) c.pounce -= dt;
     if (c.pounceCd > 0) c.pounceCd -= dt;
     const [ct, cr] = tileOf(c.cx, c.cy), px = player.x + player.w / 2, py = player.y + player.h / 2;
-    if (power <= 0) {
+    if (!scaring()) { // (o voo alto do Passarinho não assusta: os gaviões seguem como sempre; o `safe` que eles veem é só o galho: veja update())
       const sees = canSee(c), heard = (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear - up.stealth;
       if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
       if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
@@ -2334,13 +2408,14 @@
     if (inPlace) Object.assign(player, { moving: false });
     else Object.assign(player, { x: spawn.x, y: spawn.y, facing: "right", moving: false });
     for (const v of vets) {
-      Object.assign(v, { cx: v.sx, cy: v.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
+      Object.assign(v, { cx: v.sx, cy: v.sy, mode: scaring() ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, wait: 0, crowd: 0, tandem: 0, stack: 0, stuck: 0, bounce: 0, slow: false, hitCool: 0, idle: 2, cool: 1.5, modeT: 0, chaseAge: 0, think: v.cfg.thinkEvery });
     }
     for (const c of cats) {
-      Object.assign(c, { cx: c.sx, cy: c.sy, mode: power > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 2.5, modeT: 0, chaseAge: 0, think: c.cfg.thinkEvery, seen: null, pounce: 0, pounceCd: 0 });
+      Object.assign(c, { cx: c.sx, cy: c.sy, mode: scaring() ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, stuck: 0, slow: false, hitCool: 0, idle: 2, cool: 2.5, modeT: 0, chaseAge: 0, think: c.cfg.thinkEvery, seen: null, pounce: 0, pounceCd: 0 });
     }
     invuln = invulnNow();
     stamina = 1; winded = 0; wet = 0; sprintOn = false; safe = false; inPuddle = false; // (Gatinho: renasce com fôlego cheio e pelo seco)
+    perch = false; windNow = 0; if (lv.birdMode && !flightOn()) landSafe(); // (Passarinho: nunca renasce dentro de um muro; o voo alto, se ainda dura, continua)
     return inPlace;
   }
 
@@ -2363,11 +2438,14 @@
   // Pegar outro osso com o poder ligado recomeça a contagem (não soma). Quando acaba, os carteiros voltam a ser agentes.
   function startPower() {
     power = bonePowerNow();
-    for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
-    for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
-    for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
+    if (!lv.flight) { // (Passarinho: o voo alto NÃO põe ninguém para fugir: os gatos esperam ao pé e desistem, os gaviões continuam)
+      for (const v of vets) { v.slow = false; v.hitCool = 0; } // poder novo (ou renovado): todos os carteiros podem ser pegos de novo
+      for (const c of cats) Object.assign(c, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, slow: false, hitCool: 0, pounce: 0 }); // os gatos também fogem (mais rápido e mais esperto que o carteiro)
+      for (const v of vets) { Object.assign(v, { mode: "flee", route: [], goal: null, idle: 0, hold: 0, modeT: 0, chaseAge: 0, bounce: 0 }); } // todos viram carteiros e passam a fugir (o trecho em andamento termina: ele só decide o próximo passo no centro de um tile, senão cortaria a quina de uma parede)
+    }
+    flightEndWarned = false;
     toast(P().say.powerOn(bonePowerNow(), cats.length > 0), 2.6); pickupToastUntil = time + 2.6;
-    addCatFx("hiss", player.x + player.w / 2, player.y + player.h / 2); // (Gatinho) o pelo se eriça: explosãozinha de linhas
+    addCatFx(lv.flight ? "flap" : "hiss", player.x + player.w / 2, player.y + player.h / 2); // (Gatinho) o pelo se eriça: explosãozinha de linhas (Passarinho: as asas se abrem)
   }
   // centro do tile livre mais perto de (x, y): chão, fora de blocos e a mais de VET_GAP de qualquer outro agente (dois não ficam um em cima do outro)
   function freeSpotNear(v, x, y) {
@@ -2479,11 +2557,47 @@
   }
   function endPower() {
     power = 0;
-    for (const c of cats) Object.assign(c, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(c.cool, 2), seen: null, pounce: 0 }); // os gatos voltam a patrulhar
-    for (const v of vets) { Object.assign(v, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(v.cool, 2) }); } // os carteiros voltam a ser agentes (e à velocidade normal); o trecho em andamento termina
+    let landed = false;
+    if (lv.flight) { landed = landSafe(); flightEndWarned = false; sfx(P().sfx.soarEnd); addCatFx(landed ? "land" : "flap", player.x + player.w / 2, player.y + player.h / 2); } // (Passarinho: o voo alto acabou; os gatos e os gaviões não mudam nada. Se ele estava em cima de um muro, pousa no chão livre mais perto, sem perder vida)
+    else {
+      for (const c of cats) Object.assign(c, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(c.cool, 2), seen: null, pounce: 0 }); // os gatos voltam a patrulhar
+      for (const v of vets) { Object.assign(v, { mode: "patrol", route: [], goal: null, idle: 0.3, slow: false, hitCool: 0, cool: Math.max(v.cool, 2) }); } // os carteiros voltam a ser agentes (e à velocidade normal); o trecho em andamento termina
+    }
     invuln = Math.max(invuln, POWER_END_GRACE);
-    toast(P().say.powerOff(cats.length > 0), 2.4);
+    toast(P().say.powerOff(cats.length > 0, landed), 2.4);
   }
+  // ===== PASSARINHO: motor — voo alto, pouso e vento =====
+  // POUSO SEGURO: com o voo alto ligado o passarinho passa por cima dos muros `M`; se o poder acaba (ou o jogo é carregado, ou ele renasce) com o passarinho em cima de um muro, ele "pousa" no tile de chão livre mais perto
+  // (o centro de um tile andável, fora de muros e paredes) sem perder vida. Devolve true se mudou de lugar.
+  function landSafe() {
+    if (!lv.birdMode || flightOn() || !solids.some((s) => s.high && overlap(player, s))) return false; // (com o voo alto ligado ele pode estar em cima de um muro)
+    const [pc, pr] = dogTileNow(), px = player.x + player.w / 2, py = player.y + player.h / 2;
+    let best = null;
+    for (let rad = 2; rad <= 12 && !best; rad += 2) {
+      for (let r = pr - rad; r <= pr + rad; r++) for (let c = pc - rad; c <= pc + rad; c++) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS || !walk[r][c]) continue;
+        const [cx, cy] = centerOf(c, r), box = { x: cx - player.w / 2, y: cy - player.h / 2, w: player.w, h: player.h };
+        if (solids.some((o) => overlap(box, o))) continue;
+        const d = Math.hypot(cx - px, cy - py);
+        if (!best || d < best.d) best = { cx, cy, d };
+      }
+    }
+    if (!best) { player.x = spawn.x; player.y = spawn.y; return true; } // (sem chão livre por perto, o que quase nunca acontece: volta ao início)
+    player.x = best.cx - player.w / 2; player.y = best.cy - player.h / 2;
+    return true;
+  }
+  // VENTO: com o centro do passarinho numa corrente de vento (e no voo baixo) ele é empurrado WIND_SPEED px/s na direção da seta, além do que o jogador anda (a favor soma, contra subtrai; as paredes e os muros ainda o seguram).
+  // `windNow` (para o placar): 1 a favor, -1 contra, 2 de lado ou parado, 0 fora do vento (ou no voo alto: ele está acima do vento).
+  function updateWind(dt, ix, iy) {
+    const [c, r] = dogTileNow(), w = !flightOn() && lv.wind[r] && lv.wind[r][c];
+    if (!w) { windNow = 0; return; }
+    const k = Math.min(dt, 0.05) * WIND_SPEED, dot = ix * w[0] + iy * w[1];
+    moveAxis(w[0] * k, 0); moveAxis(0, w[1] * k);
+    windNow = dot < -0.3 ? -1 : dot > 0.3 ? 1 : 2;
+    if (time - gustAt >= 1.6) { gustAt = time; sfx(P().sfx.gust); } // (o som do vento, no máximo a cada 1,6 s)
+    if ((gustFxT -= dt) <= 0) { gustFxT = 0.45; addCatFx("gust", player.x + player.w / 2, player.y + player.h / 2, player.facing); }
+  }
+  // ===== fim PASSARINHO: motor — voo alto, pouso e vento =====
 
   // ---------- Atualização ----------
   function update(dt) {
@@ -2517,7 +2631,8 @@
     const step = Math.min(dt, 0.05) * dogSpeedNow();
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
-    if (lv.refuge) safe = onHighNow();                // (Gatinho) com o centro num lugar alto ele está a salvo
+    if (lv.wind) updateWind(dt, ix, iy);              // (Passarinho) a corrente de vento o empurra (só no voo baixo; as paredes e os muros ainda o seguram)
+    if (lv.refuge) { perch = onHighNow(); safe = perch || flightOn(); } // (Gatinho) com o centro num lugar alto ele está a salvo; (Passarinho) o galho OU o voo alto: os gatos de quintal não o alcançam
     if (lv.catMode) { const low = onLowNow(); if (low && !onLow && time - jumpAt >= SFX_JUMP_EVERY) { jumpAt = time; sfx(P().sfx.jump); } onLow = low; } // (Gatinho) começou a atravessar um obstáculo baixo (X): o pulo (no máximo uma vez a cada SFX_JUMP_EVERY s)
 
     updateBlocks(dt);
@@ -2541,18 +2656,33 @@
       if (!pointsOk) missionSaid = false;
     }
     if (power > 0 && (power -= dt) <= 0) endPower();
-    if (lv.minPoints && power <= 0 && allCollected() && !exitOpen() && !ballsCanOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
+    if (lv.birdMode) { // (Passarinho) a altura do desenho e o aviso dos últimos segundos do voo alto
+      const target = flightOn() ? 1 : 0;
+      flyAnim = calm ? target : flyAnim + clamp(target - flyAnim, -dt * 5, dt * 5);
+      if (lv.flight && power > 0 && power <= lv.flight.warn && !flightEndWarned) {
+        flightEndWarned = true;
+        if (solids.some((s) => s.high && overlap(player, s)) && time >= pickupToastUntil) toast(P().say.powerEnding(true), 1.8); // (em cima de um muro: o aviso diz que ele vai pousar)
+      }
+    }
+    if (lv.minPoints && !scaring() && allCollected() && !exitOpen() && !ballsCanOpen()) { gameOver("short"); return; } // tudo pego e os pontos não chegam ao mínimo (nem com as bolinhas que sobraram): não há mais como passar, a tentativa acaba
     if (puffs.length) puffs = puffs.filter((f) => (f.t += dt) < 0.8);
     if (catFx.length) stepCatFx(dt);
     if (!freezeVets && fx.ice <= 0) for (const v of vets) updateVet(v, Math.min(dt, 0.05)); // (congelados pelo osso de gelo: não se mexem)
-    if ((!freezeVets || catsThaw) && fx.ice <= 0) for (const c of cats) updateCat(c, Math.min(dt, 0.05));
+    if ((!freezeVets || catsThaw) && fx.ice <= 0) {
+      const keepSafe = safe; if (lv.birdMode) safe = perch; // (Passarinho: os gaviões voam na mesma altura do voo alto: só o galho os segura)
+      for (const c of cats) updateCat(c, Math.min(dt, 0.05));
+      safe = keepSafe;
+    }
     const px = player.x + player.w / 2, py = player.y + player.h / 2, reach = lv.catMode && onLowNow() ? LOW_REACH : 22, touching = (v) => Math.hypot(v.cx - px, v.cy - py) < reach; // (Gatinho: sobre um X os cães o alcançam do tile ao lado)
     const protectedNow = invuln > 0 || fx.shield > 0; // (o escudo do osso de ouro também protege)
     if (invuln > 0) invuln -= dt;
-    if (power > 0) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
+    if (scaring()) { // com o poder do osso, quem encosta num carteiro ganha dele (+100 pontos): o carteiro volta ao centro do mapa, mais lento
       for (const v of vets) if (!v.slow && touching(v)) defeatPostman(v); // cada carteiro só rende pontos uma vez por poder (o atingido fica lento até o poder acabar ou um novo osso)
       for (const c of cats) if (!c.slow && touching(c)) defeatCat(c); // (o gato assustado vale o mesmo: +100 por poder)
-    } else if (!protectedNow && !noCatch && fx.ice <= 0 && !safe && (vets.some(touching) || cats.some(touching))) { loseLife(vets.some(touching) ? undefined : "cat"); return; } // (congelado, o inimigo é inofensivo; Gatinho a salvo num lugar alto: ninguém o pega)
+    } else if (!protectedNow && !noCatch && fx.ice <= 0) { // (congelado, o inimigo é inofensivo; Gatinho a salvo num lugar alto: ninguém o pega)
+      const hitV = !safe && vets.some(touching), hitC = !(lv.birdMode ? perch : safe) && cats.some(touching); // (Passarinho: no voo alto os gatos de quintal não o alcançam, mas o gavião só respeita o galho)
+      if (hitV || hitC) { loseLife(hitV ? undefined : "cat"); return; }
+    }
 
     if (overlap(player, exitRect)) {
       if (exitOpen()) win();
@@ -2694,7 +2824,7 @@
         if (L.boneMixed && sv.fx === undefined && items4.every((it) => it[4] <= 1)) legacyBones = true; else return null;
       }
       const pw = sv.pw === undefined ? 0 : sv.pw, vd = sv.vd === undefined ? L.vetSpawns.map(() => 0) : sv.vd;
-      if (!num(pw, 0, 120) || pw > (L.bonePower ? L.bonePower + REINFORCE_BONE * upv.bone : 0) || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
+      if (!num(pw, 0, 120) || pw > (L.bonePower ? L.bonePower + L.boneStep * upv.bone : 0) || !Array.isArray(vd) || vd.length !== L.vetSpawns.length || !vd.every((x) => x === 0 || x === 1) || (pw === 0 && vd.some((x) => x === 1))) return null;
       let bl = [], ba = [];
       if (L.blockDefs.length) {
         ba = sv.ba === undefined ? L.blockDefs.map((_, i) => i) : sv.ba; // (saves antigos: todas as peças)
@@ -2705,7 +2835,7 @@
       } else if ((sv.bl !== undefined && !(Array.isArray(sv.bl) && sv.bl.length === 0)) || (sv.ba !== undefined && !(Array.isArray(sv.ba) && sv.ba.length === 0))) return null;
       const p = sv.p;
       if (!p || !num(p.x, 0, L.worldW - 24) || !num(p.y, 0, L.worldH - 24) || !["left", "right", "up", "down"].includes(p.f)) return null;
-      if (L.solids.some((o) => overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null; // (quem estiver no lugar de um bloco é empurrado para o lado ao carregar)
+      if (L.solids.some((o) => !(o.high && L.flight && pw > 0) && overlap({ x: p.x, y: p.y, w: 24, h: 24 }, o))) return null; // (quem estiver no lugar de um bloco é empurrado para o lado ao carregar; Passarinho: com o voo alto ligado ele pode estar em cima de um muro `M`, mas nunca de uma parede `#`)
       if (!Array.isArray(sv.vets) || sv.vets.length !== L.vetSpawns.length) return null;
       for (const v of sv.vets) {
         if (!Array.isArray(v) || !num(v[0], 0, L.worldW - 1) || !num(v[1], 0, L.worldH - 1)) return null;
@@ -2772,16 +2902,17 @@
     vets.forEach((v, i) => {
       const [c, r] = tileOf(sv.vets[i][0], sv.vets[i][1]);
       [v.cx, v.cy] = centerOf(c, r); // o agente volta ao centro do tile mais próximo
-      Object.assign(v, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
+      Object.assign(v, { mode: sv.pw > 0 && !lv.flight ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2, modeT: 0, chaseAge: 0, slow: sv.vd[i] === 1, hitCool: 0 });
     });
     cats.forEach((c, i) => {
       if (sv.cats) { const [cc, cr] = tileOf(sv.cats[i][0], sv.cats[i][1]); [c.cx, c.cy] = centerOf(cc, cr); } // o gato volta ao centro do tile mais próximo
-      Object.assign(c, { mode: sv.pw > 0 ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2.5, modeT: 0, chaseAge: 0, slow: sv.cd[i] === 1, hitCool: 0, seen: null });
+      Object.assign(c, { mode: sv.pw > 0 && !lv.flight ? "flee" : "patrol", leg: null, route: [], goal: null, hold: 0, idle: 1, cool: 2.5, modeT: 0, chaseAge: 0, slow: sv.cd[i] === 1, hitCool: 0, seen: null });
     });
     if (sv.bs) balls.forEach((b, i) => { b.x = sv.bs[i][0]; b.y = sv.bs[i][1]; b.taken = sv.bs[i][2] === 1; b.vx = 0; b.vy = 0; });
     power = sv.pw; postmen = sv.pk; fx = { shield: sv.fx[0], ice: sv.fx[1], turbo: sv.fx[2], magnet: sv.fx[3] }; score = runningScore();
-    if (lv.sprint || lv.water) { stamina = sv.sta ?? 1; wet = sv.wet ?? 0; winded = sv.wnd ?? 0; safe = lv.refuge ? onHighNow() : false; inPuddle = !!(lv.puddle && lv.puddle[dogTileNow()[1]] && lv.puddle[dogTileNow()[1]][dogTileNow()[0]]); } // (Gatinho) (jogo carregado não toca nada: quem foi salvo dentro de uma poça já "estava" nela)
+    if (lv.sprint || lv.water) { stamina = sv.sta ?? 1; wet = sv.wet ?? 0; winded = sv.wnd ?? 0; perch = lv.refuge ? onHighNow() : false; safe = perch || flightOn(); inPuddle = !!(lv.puddle && lv.puddle[dogTileNow()[1]] && lv.puddle[dogTileNow()[1]][dogTileNow()[0]]); } // (Gatinho) (jogo carregado não toca nada: quem foi salvo dentro de uma poça já "estava" nela)
     onLow = lv.catMode ? onLowNow() : false;
+    if (lv.birdMode) { landSafe(); flyAnim = flightOn() ? 1 : 0; flightEndWarned = lv.flight && power > 0 && power <= lv.flight.warn; windNow = 0; } // (Passarinho: sem voo alto ninguém começa em cima de um muro; o voo alto que ainda dura continua, e o aviso dos últimos segundos não se repete)
     for (const b of blocks) shoveActors(b.rect); // ninguém começa dentro de um bloco
     everyone().forEach((v, i, all) => { // dois agentes (ou gatos) que estavam no mesmo tile não voltam um em cima do outro
       if (all.some((o, j) => j < i && Math.hypot(o.cx - v.cx, o.cy - v.cy) < VET_GAP)) { const spot = freeSpotNear(v, v.cx, v.cy); v.cx = spot.cx; v.cy = spot.cy; }
@@ -2884,6 +3015,13 @@
         const cv = document.createElement("canvas"); cv.width = 104; cv.height = 88; cv.className = "animal-art";
         const c2 = cv.getContext("2d"); c2.scale(2.4, 2.4);
         try { CatArt.drawCat(c2, { x: 48 / 2.4 - 12, y: 41 / 2.4 - 12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true }); } catch { /* sem desenho: fica o emoji */ }
+        emoji.classList.add("with-art"); emoji.append(cv);
+      }
+      if (g.id === "bird" && g.ready) { // (0.20.0) o Passarinho também aparece desenhado: BirdArt.drawBird, ou o passarinho de reserva se o arquivo faltar
+        const cv = document.createElement("canvas"); cv.width = 104; cv.height = 88; cv.className = "animal-art";
+        const c2 = cv.getContext("2d"); c2.scale(2.4, 2.4);
+        const keep = ctx; ctx = c2;
+        try { const p = { x: 48 / 2.4 - 12, y: 41 / 2.4 - 12, w: 24, h: 24, facing: "right", moving: false }, o = { gr: 1, skin: "", still: true, calm: true }; if (!birdArt("drawBird", c2, p, o)) plainBird(p, o); } catch { /* sem desenho: fica o emoji */ } finally { ctx = keep; }
         emoji.classList.add("with-art"); emoji.append(cv);
       }
       head.append(emoji, el("strong", null, g.name));
@@ -3237,8 +3375,8 @@
   // ---------- (0.18.0) Textos fixos da página que mudam com o bichinho (perfil: ui e hud) ----------
   // O index.html traz o texto do Cachorrinho. Cada alvo abaixo é [id do elemento, "html" ou o atributo]; o perfil troca o conteúdo com `ui.<chave>` (null = fica o que veio no index.html, guardado em UI_ORIG).
   // As do jogo (placar, descrição da tela e do controle) valem para o bichinho da PARTIDA e são aplicadas em reset(); as do menu (Como jogar, ajuda da lojinha...) para o ESCOLHIDO e são aplicadas em renderMenu().
-  const UI_TARGETS = { howto: ["howto-steps", "html"], shopTitle: ["shop-title", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"], pauseHelp: ["pause-help", "html"] };
-  const UI_MENU = ["howto", "shopTitle", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel", "pauseHelp"];
+  const UI_TARGETS = { howto: ["howto-steps", "html"], shopTitle: ["shop-title", "html"], shopHelp: ["shop-help", "html"], scoresHelp: ["scores-help", "html"], nameTip: ["name-tip", "html"], nameStep: ["name-step1", "html"], regHint: ["reg-hint", "html"], canvasLabel: ["game", "aria-label"], padLabel: ["pad", "aria-label"], pauseHelp: ["pause-help", "html"], runLabel: ["btn-run", "html"], runAria: ["btn-run", "aria-label"], runTitle: ["btn-run", "title"] }; // (0.20.0: o botão de toque da arrancada: "Correr" no Gatinho, "Voar" no Passarinho)
+  const UI_MENU = ["howto", "shopTitle", "shopHelp", "scoresHelp", "nameTip", "nameStep", "regHint"], UI_GAME = ["canvasLabel", "padLabel", "pauseHelp", "runLabel", "runAria", "runTitle"];
   const UI_ORIG = {}, TITLE_ORIG = document.title; // (0.18.0: o título da aba também é do bichinho: "Jogo do cachorrinho" / "Jogo do gatinho")
   for (const [k, [id, how]] of Object.entries(UI_TARGETS)) UI_ORIG[k] = how === "html" ? $(id).innerHTML : $(id).getAttribute(how);
   const uiShown = { menu: "", game: "" };
@@ -3261,6 +3399,12 @@
     const h = profileOf(animalId).hud;
     setHudLabel("hud-items", h.prey); setHudLabel("hud-bones", h.power); setHudLabel("hud-balls", h.balls); setHudLabel("hud-power", h.powerBadge);
     $("hud-balls-item").title = h.ballsTitle; $("hud-power-item").title = h.powerTitle;
+    // (0.20.0) o FÔLEGO e o ESTADO do placar: o rótulo e as dicas são do bichinho (o Cachorrinho e o Gatinho têm os textos do index.html: nada muda); o estado é dito de novo na próxima atualização do placar
+    const st = $("hud-stamina"), first = st.firstChild;
+    if (first && first.nodeType === 3 && first.nodeValue !== h.stamina) first.nodeValue = h.stamina;
+    if (st.title !== h.staminaTitle) st.title = h.staminaTitle;
+    if ($("hud-state-item").title !== h.stateTitle) $("hud-state-item").title = h.stateTitle;
+    delete hudCache.cstv; delete hudCache.cstl;
   }
 
   // "Versão 0.3.0 · 07/10/2026" (e "· build abc1234" quando publicado no GitHub Pages): para saber qual versão está aberta.
@@ -3864,7 +4008,7 @@
   // Indicador de perseguição (0.10.0): nas ruas largas o agente liga o "!" de longe, muitas vezes fora da tela (no celular, com zoom, quase sempre).
   // Um agente (ou gato) que persegue o cachorrinho e está fora da tela aparece como um "!" vermelho na borda, do lado em que ele está, com uma pontinha apontando para ele.
   function drawChaseArrows(camX, camY, vw, vh) {
-    if (power > 0 || fx.ice > 0) return; // (com o poder do osso ou o gelo ninguém persegue)
+    if (scaring() || fx.ice > 0) return; // (com o poder do osso ou o gelo ninguém persegue)
     const kk = view.k * view.zoom, m = 16, mt = (16 + (lv.mission ? 36 : 0) + (fx.shield > 0 || fx.ice > 0 || fx.turbo > 0 || fx.magnet > 0 ? 26 : 0)) / kk, ox = player.x + player.w / 2, oy = player.y + player.h / 2; // (a margem de cima deixa a seta fora da faixa da missão e da faixa dos efeitos)
     for (const v of everyone()) { // (0.15.5: os gatos que perseguem também aparecem na borda)
       if (v.mode !== "chase" || (v.cx > camX - 8 && v.cx < camX + vw + 8 && v.cy > camY - 8 && v.cy < camY + vh + 8)) continue; // só os que perseguem e não aparecem na tela
@@ -4035,14 +4179,14 @@
       }
     }
   }
-  const CAT_FX_LEN = { splash: 0.75, shake: 0.7, dust: 0.45, hiss: 0.55, sparkle: 0.6, wetdrop: 0.8 }; // duração (s) de cada efeito curto
-  function addCatFx(kind, x, y, facing) { // solta um efeito curto (só no Gatinho; no máximo 24 ao mesmo tempo)
-    if (!catDraw) return;
+  const CAT_FX_LEN = { splash: 0.75, shake: 0.7, dust: 0.45, hiss: 0.55, sparkle: 0.6, wetdrop: 0.8, flap: 0.4, land: 0.5, gust: 0.7, feather: 0.7, peck: 0.4 }; // duração (s) de cada efeito curto (os últimos cinco são do Passarinho)
+  function addCatFx(kind, x, y, facing) { // solta um efeito curto (só no Gatinho e no Passarinho; no máximo 24 ao mesmo tempo)
+    if (!catDraw && !birdDraw) return;
     if (catFx.length >= 24) catFx.shift();
     catFx.push({ kind, x, y, age: 0, len: CAT_FX_LEN[kind] || 0.6, facing });
   }
   function stepCatFx(dt) { for (const f of catFx) f.age += dt; catFx = catFx.filter((f) => f.age < f.len); }
-  function drawCatFx() { for (const f of catFx) CatArt.drawFx(ctx, f.kind, f.x, f.y, f.age / f.len, { calm, facing: f.facing }); }
+  function drawCatFx() { for (const f of catFx) { if (!birdDraw) CatArt.drawFx(ctx, f.kind, f.x, f.y, f.age / f.len, { calm, facing: f.facing }); else if (!birdArt("drawFx", ctx, f.kind, f.x, f.y, f.age / f.len, { calm, facing: f.facing })) plainFx(f); } } // (no Passarinho os efeitos são de BirdArt.drawFx)
   const catSize = () => (levelId <= 3 ? "small" : levelId <= 12 ? "medium" : "large"); // tamanho dos cães por fase (F1–F3 pequenos, F4–F12 médios, F13–F20 grandes)
   function drawCatFoe(v, kind) { // cão de guarda (`vets`) ou rastreador (`cats`)
     const mode = v.mode === "patrol" && !v.leg && v.idle > 0 ? "idle" : v.mode, frozen = fx.ice > 0, dir = v.dir || 1;
@@ -4097,6 +4241,154 @@
     ctx.setTransform(sx, 0, 0, sx, -camX * sx, -camY * sx);
   }
 
+
+  // ===== PASSARINHO: motor — desenho =====
+  // (0.20.0) Desenho do Passarinho: tudo daqui só roda quando `birdDraw` (a partida é do Passarinho). Os desenhos de verdade são de BirdArt (js/bird-art.js) e os ambientes de BirdThemes (via Themes.of(fase, "bird")), os dois de outras frentes;
+  // se algum faltar (ou der erro), cada peça cai num desenho simples de reserva (formas coloridas) e o jogo continua jogável. `birdArt(nome, ...)` chama BirdArt.nome na hora (nunca guarda a referência) e devolve true se desenhou.
+  const birdFailed = new Set();
+  function birdArt(name, ...a) {
+    const B = typeof BirdArt !== "undefined" ? BirdArt : null;
+    if (!B || typeof B[name] !== "function" || birdFailed.has(name)) return false;
+    try { return B[name](...a) !== false; } catch (e) { birdFailed.add(name); if (typeof console !== "undefined") console.error(`BirdArt.${name}: ${e.message}`); return false; }
+  }
+  const FRUIT_PLAIN = { scare: "#e5533d", gold: "#ffd23f", ice: "#6ec6ff", turbo: "#ff9f43", magnet: "#b57cff" }; // (reserva) a cor de cada tipo de fruto
+  function plainBird(p, o) { // o passarinho de reserva: corpo marrom, asa, bico e olho; maior e elevado no voo alto, com a sombra no chão
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2, fl = o.flying || 0, sc = (0.72 + 0.28 * (o.gr ?? 1)) * (1 + 0.35 * fl), dir = p.facing === "left" ? -1 : 1;
+    ellipse(cx, cy + 10, 10 * (1 - 0.25 * fl), 3.5 * (1 - 0.25 * fl), `rgba(0,0,0,${(0.28 - 0.1 * fl).toFixed(2)})`);
+    if (o.blink) ctx.globalAlpha = 0.35;
+    ctx.save(); ctx.translate(cx, cy - 2 - 15 * fl); ctx.scale(dir * sc, sc);
+    const wing = o.flap || fl > 0.5 ? -5 : 2;
+    ellipse(0, 0, 9, 7, "#8a6a4a"); ellipse(2, 3, 6, 3.5, "#d9c29a"); ellipse(-2, wing, 6, 3.4, "#5b4128");
+    ellipse(7, -4, 4.6, 4.2, "#8a6a4a"); ctx.fillStyle = "#f2b630"; ctx.beginPath(); ctx.moveTo(10.5, -4.5); ctx.lineTo(15, -3); ctx.lineTo(10.5, -1.8); ctx.closePath(); ctx.fill();
+    ellipse(8, -5.4, 1.1, 1.1, "#111");
+    if (o.safe) { ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+  function plainCat(d) { // gato de quintal de reserva
+    const fur = ["#e8903a", "#8d96a6", "#3a3b45", "#efe9df"][d.idx % 4];
+    ellipse(d.x, d.y + 12, 10, 3.5, "rgba(0,0,0,.25)");
+    ctx.save(); ctx.translate(d.x, d.y + 2); ctx.scale(d.dir || 1, 1);
+    ctx.strokeStyle = fur; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(-9, 1); ctx.quadraticCurveTo(-16, -2, -13, -11); ctx.stroke();
+    ellipse(-1, 1, 10.5, 6.2, fur); ellipse(10, -3, 6.4, 5.8, fur);
+    ctx.fillStyle = fur; for (const a of [4, 9]) { ctx.beginPath(); ctx.moveTo(a, -7); ctx.lineTo(a + 2, -13); ctx.lineTo(a + 5, -7); ctx.closePath(); ctx.fill(); }
+    ellipse(12, -4.5, 1.6, 1.6, d.mode === "chase" ? "#ff4d4d" : "#6bd36b");
+    ctx.restore();
+    if (d.frozen) drawIce({ cx: d.x, cy: d.y });
+  }
+  function plainHawk(d) { // gavião de reserva: corpo escuro com as asas abertas e a sombra elíptica no chão
+    ellipse(d.x, d.y + 14, 14, 4.5, "rgba(0,0,0,.3)");
+    ctx.save(); ctx.translate(d.x, d.y - 4); ctx.scale(d.dir || 1, 1);
+    ctx.fillStyle = "#5a3b22"; ctx.beginPath(); ctx.moveTo(-17, 2); ctx.lineTo(-3, -6); ctx.lineTo(0, -12); ctx.lineTo(3, -6); ctx.lineTo(17, 2); ctx.lineTo(4, 3); ctx.lineTo(0, 11); ctx.lineTo(-4, 3); ctx.closePath(); ctx.fill();
+    ellipse(2, -7, 3.6, 3.4, "#e8d6b0"); ctx.fillStyle = "#e2b02c"; ctx.beginPath(); ctx.moveTo(5, -8); ctx.lineTo(9, -6.5); ctx.lineTo(5, -5.5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    if (d.frozen) drawIce({ cx: d.x, cy: d.y - 4 });
+  }
+  function plainFruit(it) { // fruto de reserva: bolinha colorida com folha
+    const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 2);
+    ellipse(cx, cy + 7, 9, 3, "rgba(0,0,0,.25)");
+    if (it.kind && it.kind !== "scare") ellipse(cx, cy, 13, 13, "rgba(255,255,255,.18)");
+    ellipse(cx, cy, 7.5, 7.5, FRUIT_PLAIN[it.kind || "scare"]); ellipse(cx - 2.4, cy - 2.6, 2, 2, "rgba(255,255,255,.7)");
+    ctx.fillStyle = "#3f9a46"; ctx.beginPath(); ctx.ellipse(cx + 3, cy - 8, 4, 2, -0.6, 0, Math.PI * 2); ctx.fill();
+  }
+  function plainSeed(it) { // semente de reserva
+    const cx = it.x + 8, cy = it.y + 8 + (calm ? 0 : Math.sin(time * 4 + it.x) * 1.2);
+    ellipse(cx, cy + 5, 8, 3, "rgba(0,0,0,.22)");
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.5); ellipse(0, 0, 6.5, 3.6, "#c9a15a"); ctx.strokeStyle = "#8a6a30"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.stroke(); ctx.restore();
+  }
+  function plainWorm(b) { // minhoca de reserva: corpinho rosa ondulado
+    const sp = Math.hypot(b.vx, b.vy) > 8 ? time * 12 : 0;
+    ellipse(b.x, b.y + 5, BALL_R, 2.6, "rgba(0,0,0,.22)");
+    ctx.strokeStyle = ["#ef8fa0", "#d98a5b", "#b88adf", "#7cc27a"][b.hue % 4]; ctx.lineWidth = 4.4; ctx.lineCap = "round"; ctx.beginPath();
+    for (let i = 0; i <= 8; i++) { const x = b.x - 8 + i * 2, y = b.y + Math.sin(i * 0.9 + sp) * 2.6; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  function plainPost(x, y, kind) { // posto de reserva: moita (gato de quintal) ou poste com travessa (gavião)
+    if (kind === "hawk") { ctx.fillStyle = "#6b4a2a"; ctx.fillRect(x - 2, y - 6, 4, 18); ctx.fillRect(x - 9, y - 8, 18, 3); }
+    else { ellipse(x, y + 8, 12, 5, "rgba(0,0,0,.22)"); ellipse(x - 4, y + 2, 8, 6, "#3f8a45"); ellipse(x + 4, y + 3, 8, 6, "#4aa150"); }
+  }
+  function plainRoost(g) { // galho de reserva: copa redonda sobre o tronco
+    ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.beginPath(); ctx.ellipse(g.x + 16, g.y + 26, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#6b4a2a"; g.rect(g.x + 13, g.y + 16, 6, 12);
+    ellipse(g.x + 16, g.y + 12, 13, 11, "#2f7d3a"); ellipse(g.x + 12, g.y + 9, 7, 6, "#3f9a46");
+  }
+  function plainMuro(g) { // muro voável de reserva: sebe baixa com um friso claro no alto
+    g.ctx.fillStyle = "#496f3a"; g.rect(g.x, g.y, TILE, TILE); g.ctx.fillStyle = "#5d8a46"; g.rect(g.x, g.y, TILE, 5); g.ctx.fillStyle = "#355428"; g.rect(g.x, g.y + TILE - 4, TILE, 4);
+    g.ctx.fillStyle = "#6fa055"; for (let i = 0; i < 4; i++) g.rect(g.x + 3 + i * 8, g.y + 9 + ((g.c + i) % 2) * 6, 5, 5);
+  }
+  function plainWind(g) { // corrente de vento de reserva: três setinhas que andam na direção do vento (paradas com "reduzir movimento")
+    const ch = catKind(g.c, g.r), w = BIRD_WIND[ch];
+    if (!w) return;
+    const c2 = g.ctx, ph = calm ? 0.3 : (g.time * 0.7 + g.c * 0.13 + g.r * 0.07) % 1;
+    c2.save(); c2.translate(g.x + 16, g.y + 16); c2.rotate(Math.atan2(w[1], w[0])); c2.strokeStyle = "rgba(255,255,255,.55)"; c2.lineWidth = 2; c2.lineCap = "round";
+    for (let i = -1; i <= 1; i++) { const x = ((ph + i * 0.33 + 1.5) % 1) * 24 - 12; c2.beginPath(); c2.moveTo(x - 3, -4); c2.lineTo(x + 2, 0); c2.lineTo(x - 3, 4); c2.stroke(); }
+    c2.restore();
+  }
+  function plainFx(f) { // efeito curto de reserva: um anelzinho que cresce e some
+    const t = f.age / f.len;
+    ctx.strokeStyle = `rgba(255,255,255,${(0.7 * (1 - t)).toFixed(2)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, 6 + t * 12, 0, Math.PI * 2); ctx.stroke();
+  }
+  function plainNest(rect, ex, open) { // ninho de reserva: a saída com a palavra SAÍDA, em tons de palha
+    ctx.fillStyle = open ? "#d6b45a" : "#8a6a4a"; rect(ex.x, ex.y, ex.w, ex.h);
+    ctx.strokeStyle = open ? "#a67c1f" : "#5a4128"; ctx.lineWidth = 2; ctx.strokeRect(ex.x + 2, ex.y + 2, ex.w - 4, ex.h - 4);
+    ctx.fillStyle = open ? "#3b2a07" : "#fff"; ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "center";
+    if (ex.h > ex.w) { ctx.save(); ctx.translate(ex.x + ex.w / 2, ex.y + ex.h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("SAÍDA", 0, 5); ctx.restore(); } else ctx.fillText("SAÍDA", ex.x + ex.w / 2, ex.y + ex.h / 2 + 5);
+  }
+  function drawBirdExit(rect) { // o ninho (a saída): BirdArt.drawNest, uma vez, no centro da saída (o.w e o.h = o tamanho dela); sem ele, o ninho de reserva
+    const ex = exitRect, open = exitOpen(), k = lookOf("birdexit");
+    if (!birdArt("drawNest", ctx, ex.x + ex.w / 2, ex.y + ex.h / 2, { open, look: k, time, calm, w: ex.w, h: ex.h })) plainNest(rect, ex, open);
+  }
+  function drawBirdTiles(c0, c1, r0, r1, rect, g) { // chão em todos os tiles (menos sob `#`) e por cima: parede, muro voável, obstáculo baixo, galho e vento
+    g.kind = catKind; g.mass = catMass; g.time = calm ? 0 : time; g.gustLook = lookOf("gust"); g.roostLook = lookOf("roost"); // (g.gustLook/g.roostLook: as skins do vento e do galho em uso, para o ambiente)
+    const border = (c, r) => c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1, kinds = lv.kinds, roost = lookOf("roost");
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      if (!catFloorAll && kinds[r][c] === "#") continue;
+      g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c]; g.border = border(c, r);
+      theme.floor(g);
+    }
+    drawBirdExit(rect);
+    for (let r = r0; r <= r1; r++) {
+      const row = kinds[r];
+      for (let c = c0; c <= c1; c++) {
+        const ch = row[c];
+        if (ch !== "#" && ch !== "M" && ch !== "X" && ch !== "G" && !BIRD_WIND[ch]) continue;
+        g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = ch !== "#"; g.border = border(c, r);
+        if (ch === "#") theme.wall(g);
+        else if (ch === "M") (theme.muro || plainMuro)(g);
+        else if (ch === "X") theme.crate(g);
+        else if (ch === "G") { if (!birdArt("drawRoost", ctx, g.x, g.y, { look: roost, time, calm })) (theme.roost || theme.high || plainRoost)(g); }
+        else (theme.wind || plainWind)(g);
+      }
+    }
+  }
+  function drawBirdFoe(v, hawk) { // gato de quintal (`vets`) ou gavião (`cats`)
+    const mode = v.mode === "patrol" && !v.leg && v.idle > 0 ? "idle" : v.mode, frozen = fx.ice > 0, d = { x: v.cx, y: v.cy, dir: v.dir || 1, mode, size: catSize(), frozen, slow: false, idx: v.idx, diving: v.pounce > 0 };
+    if (hawk ? !birdArt("drawHawk", ctx, d, { time, calm, look: lookOf("hawk") }) : !birdArt("drawFoeCat", ctx, d, { time, calm, look: lookOf("stray") })) (hawk ? plainHawk : plainCat)(d);
+    if (v.mode === "chase" && !frozen) { // o "!" vermelho de sempre
+      ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("!", v.cx, v.cy - (hawk ? 24 : 22) - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4));
+    }
+  }
+  function drawBirdActors() { // postos, sementes, frutos, minhocas e os inimigos
+    const lkStray = lookOf("stray"), lkHawk = lookOf("hawk"), lkSeed = lookOf("seed"), lkBerry = lookOf("berry"), lkBug = lookOf("bug");
+    for (const v of vets) if (!birdArt("drawPost", ctx, v.sx, v.sy, { kind: "cat", look: lkStray, time, calm })) plainPost(v.sx, v.sy, "cat");
+    for (const c of cats) if (!birdArt("drawPost", ctx, c.sx, c.sy, { kind: "hawk", look: lkHawk, time, calm })) plainPost(c.sx, c.sy, "hawk");
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.taken) continue;
+      if (it.bone) { if (!birdArt("drawFruit", ctx, { x: it.x, y: it.y, kind: it.kind || "scare" }, { time, calm, look: lkBerry })) plainFruit(it); }
+      else if (!birdArt("drawSeed", ctx, { x: it.x, y: it.y, variant: i % 3 }, { time, calm, look: lkSeed })) plainSeed(it);
+    }
+    for (const b of balls) if (!b.taken && !birdArt("drawWorm", ctx, b, { time, calm, r: BALL_R, hidden: false, look: lkBug })) plainWorm(b);
+    for (const v of vets) drawBirdFoe(v, false);
+    for (const c of cats) drawBirdFoe(c, true);
+  }
+  function drawBirdPlayer() { // o passarinho: cresce como o cachorrinho, bate asas na arrancada, sobe e projeta a sombra no voo alto e pisca nos últimos 2 s do voo
+    const ending = flightOn() && power <= BIRD_FLIGHT_WARN, o = { gr: dogGrowth(), skin: lookOf("bird").id || "", look: lookOf("bird"), time, calm, flap: sprintOn, flying: flyAnim, safe: perch, blink: ending && (calm || Math.floor(time * 8) % 2 === 0) };
+    if (flyAnim > 0.02) ellipse(player.x + player.w / 2, player.y + player.h / 2 + 10, 11 * (1 - 0.3 * flyAnim), 3.8 * (1 - 0.3 * flyAnim), `rgba(0,0,0,${(0.3 - 0.08 * flyAnim).toFixed(2)})`); // a sombra no chão, afastada do passarinho
+    if (!birdArt("drawBird", ctx, player, o)) plainBird(player, o);
+  }
+  // ===== fim PASSARINHO: motor — desenho =====
+
   function draw() {
     if (state === "menu" || !solids) return;
     const sx = view.k * view.zoom;
@@ -4116,7 +4408,7 @@
     const c0 = Math.max(0, Math.floor(camX / TILE)), c1 = Math.min(COLS - 1, Math.floor((camX + vw) / TILE)), r0 = Math.max(0, Math.floor(camY / TILE)), r1 = Math.min(ROWS - 1, Math.floor((camY + vh) / TILE));
     // o ambiente da fase (js/themes.js) desenha o chão, as paredes e as "caixas"; as paredes vizinhas se juntam num bloco só
     const g = themeG; g.ctx = ctx; g.rect = rect; g.solid = (c, r) => c < 0 || r < 0 || c >= COLS || r >= ROWS || lv.bld[r][c];
-    if (lv.kinds) drawCatTiles(c0, c1, r0, r1, rect, g); // (fases do Gatinho: os ambientes de js/cat-themes*.js, ou os do Cachorrinho se faltarem: chão em todos os tiles e por cima #, X, T e ~; os obstáculos baixos, lugares altos e poças nunca somem)
+    if (lv.kinds) (birdDraw ? drawBirdTiles : drawCatTiles)(c0, c1, r0, r1, rect, g); // (fases do Gatinho: os ambientes de js/cat-themes*.js, ou os do Cachorrinho se faltarem: chão em todos os tiles e por cima #, X, T e ~; os obstáculos baixos, lugares altos e poças nunca somem)
     else {
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // só os tiles que aparecem na tela
         g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c];
@@ -4145,6 +4437,8 @@
       for (const b of balls) if (!b.taken) CatArt.drawAgileMouse(ctx, b, { time, calm, r: BALL_R, look: lkAgile });
       for (const v of vets) drawCatFoe(v, "guard");
       for (const c of cats) drawCatFoe(c, "tracker");
+    } else if (birdDraw) {
+      drawBirdActors(); // (Passarinho: postos, sementes, frutos, minhocas, gatos de quintal e gaviões)
     } else {
       for (const it of items) if (!it.taken) (it.bone ? drawBone : drawKibble)(it);
       for (const b of balls) if (!b.taken) drawBall(b);
@@ -4157,7 +4451,7 @@
       for (const [dx, dy] of [[-8, -4], [8, -4], [0, 6], [0, -10]]) { ctx.beginPath(); ctx.arc(f.x + dx * (0.6 + f.t * 1.5), f.y + dy * (0.6 + f.t * 1.5), 5 + f.t * 8, 0, Math.PI * 2); ctx.fill(); }
     }
     drawDogFx();
-    if (power > 0) { // aura dourada do poder do osso (pisca nos últimos 5 s)
+    if (power > 0 && !lv.flight) { // aura dourada do poder do osso (pisca nos últimos 5 s; o voo alto do Passarinho tem o desenho dele)
       const fade = calm || power > 5 || Math.floor(time * 6) % 2 === 0; // com "reduzir movimento" a aura não pisca
       if (fade) { ctx.fillStyle = "rgba(255,214,90,.28)"; ctx.beginPath(); ctx.arc(player.x + 12, player.y + 12, 22 + (calm ? 0 : Math.sin(time * 8) * 2), 0, Math.PI * 2); ctx.fill(); }
     }
@@ -4167,6 +4461,11 @@
       drawCatPlayer(); ctx.globalAlpha = 1;
       if (catFx.length) drawCatFx();
       if (lv.night && darkness > 0 && state === "playing") drawNight(sx, camX, camY); // a noite fica por cima do mundo, mas abaixo dos "!" e das setas
+    } else if (birdDraw) {
+      if (blink) ctx.globalAlpha = 0.3; // (proteção depois de perder uma vida: meio transparente no "apagado" do piscar)
+      drawBirdPlayer(); ctx.globalAlpha = 1;
+      if (catFx.length) drawCatFx();
+      if (lv.night && darkness > 0 && state === "playing") drawNight(sx, camX, camY);
     } else if (!blink) drawDog(player);
     drawChaseArrows(camX, camY, vw, vh);
     drawGuideArrows();
@@ -4274,11 +4573,13 @@
         if (hudCache.stm !== mode) { hudCache.stm = mode; hudEl.stamina.classList.toggle("winded", mode === "winded"); hudEl.stamina.classList.toggle("run", mode === "run"); }
       }
       if (any) {
-        const t = [safe ? "A SALVO" : "", wet > 0 ? `MOLHADO ${Math.ceil(wet)} s` : "", winded > 0 && wet <= 0 ? "OFEGANTE" : ""].filter(Boolean).join(" · "); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura. Molhado e ofegante impedem a arrancada do mesmo jeito: com os dois o estado diz só MOLHADO, e a barra FÔLEGO continua vermelha; assim o texto nunca passa de "A SALVO · MOLHADO 6 s")
-        if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", `Estado do gatinho: ${t ? t.toLowerCase() : "normal"}`); }
+        // (0.20.0) o texto do estado e a frase do leitor de tela vêm do perfil do bichinho (hud.state / stateSay / stateAria / stateLive); no Gatinho o resultado é o mesmo de sempre (A SALVO, MOLHADO n s, OFEGANTE), e no Passarinho: VOO ALTO, A SALVO, SEM FÔLEGO, vento
+        const S = { safe: perch, wet, winded, flying: flightOn(), ending: flightOn() && power <= BIRD_FLIGHT_WARN, wind: windNow };
+        const t = hp.hud.state(S); // (vazio = normal: o espaço fica reservado, para o placar não mudar de altura. Gatinho: molhado e ofegante impedem a arrancada do mesmo jeito: com os dois o estado diz só MOLHADO, e a barra FÔLEGO continua vermelha; assim o texto nunca passa de "A SALVO · MOLHADO 6 s")
+        if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", hp.hud.stateAria(t)); }
         // leitor de tela: a região `#hud-state-live` diz o estado quando ele MUDA (a contagem do MOLHADO n s não conta como mudança, senão repetiria a cada segundo); diz também o OFEGANTE que o texto do placar omite enquanto está molhado
-        const parts = [safe ? "a salvo" : "", wet > 0 ? "molhado" : "", winded > 0 ? "ofegante" : ""].filter(Boolean), said = parts.length ? parts.join(", ").replace(/, ([^,]*)$/, " e $1") : "normal";
-        if (hudCache.cstl !== said) { hudCache.cstl = said; hudEl.stateLive.textContent = `Estado do gatinho: ${said}`; }
+        const said = hp.hud.stateSay(S);
+        if (hudCache.cstl !== said) { hudCache.cstl = said; hudEl.stateLive.textContent = hp.hud.stateLive(said); }
       }
     }
     setHud("t", hudEl.time, fmt(time * 1000));
@@ -4623,6 +4924,22 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
       return true;
     },
     catLevels() { return this.defineCatLevels(window.CatLevels); },
+    // ===== PASSARINHO: motor — ganchos de teste =====
+    // (0.20.0) Passarinho: `birdDefFrom(c)` = a conversão de uma fase de js/bird-levels.js; `defineBirdLevels(lista)` = troca as fases do Passarinho por uma lista nesse formato (false se não servir); `birdLevels()` volta às de js/bird-levels.js (se houver).
+    // `perch` = no galho, `flying` = voo alto ligado, `flyAnim` = altura do desenho (0 a 1), `windNow` = 0 fora do vento, 1 a favor, -1 contra, 2 de lado; `birdDraw` = a partida desenha com BirdArt (ou o desenho de reserva).
+    birdDefFrom(c) { return birdDefFrom(c); }, get perch() { return perch; }, get flying() { return flightOn(); }, get flyAnim() { return flyAnim; }, get windNow() { return windNow; }, get birdDraw() { return birdDraw; }, get birdFailed() { return [...birdFailed]; },
+    set power(v) { power = Math.max(0, Number(v) || 0); }, landSafe() { return landSafe(); }, // (só para testes: liga o poder por `v` segundos sem pegar um fruto, e o pouso seguro)
+    defineBirdLevels(list) {
+      const defs = birdGameFrom(list), g = gameOf("bird");
+      if (!defs) return false;
+      g.levels = defs; g.rev = BIRD_REV; g.ready = true; g.blurb = BIRD_BLURB;
+      syncAnimal(true);
+      const screen = document.body.dataset.screen;
+      if (screen === "menu") renderMenu(); else if (screen === "animals") renderAnimals();
+      return true;
+    },
+    birdLevels() { return this.defineBirdLevels(window.BirdLevels); },
+    // ===== fim PASSARINHO: motor — ganchos de teste =====
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
