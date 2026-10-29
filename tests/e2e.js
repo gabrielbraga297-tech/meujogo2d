@@ -10918,6 +10918,24 @@ const PAGE_HELPERS = () => {
     await pg.context().close();
   });
 
+  // =====================================================================
+  await section("0.19.0 · Lojinha única: documentação (README com a tabela das categorias e das fases de liberação, docs/LOJINHA.md, Estrutura e Testes)", async () => {
+    const readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), loja = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8"), SK = require(path.join(root, "js/skins.js"));
+    const sec = readme.slice(readme.indexOf("### Lojinha única"), readme.indexOf("## Os gatos (0.15.5"));
+    ok(sec.length > 1500 && /Atualização 4/.test(sec) && /Cachorrinho \| Gatinho \| Passarinho/.test(sec) && /carteira.*única/i.test(sec) && /Libera ao chegar à Fase/.test(sec), "o README tem a seção Lojinha única (abas por jogo, categorias, carteira única e o texto de bloqueio)");
+    const rows = sec.split("\n").filter((l) => /^\| /.test(l) && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Jogo");
+    const want = SK.SLOTS.map((s) => [SK.GAMES.find((g) => g.id === s.game).name, s.name, s.id, String(s.from)]);
+    ok(JSON.stringify(rows.map((r) => r.slice(0, 4))) === JSON.stringify(want), `a tabela do README lista as ${SK.SLOTS.length} categorias de js/skins.js com o jogo, o nome, a chave e a fase em que libera, na mesma ordem (${rows.map((r) => `${r[2]} F${r[3]}`).join(", ")})`);
+    ok(/reachedLevel/.test(sec) && /equippedSkins/.test(sec) && /"locked"/.test(sec) && /eqa/.test(sec) && /byte a byte/.test(sec) && /200 skins/.test(sec) && /40 categorias/.test(sec), "a seção explica a carteira por categoria (equippedSkins, reachedLevel, o erro locked, eqa, o JSON do Cachorrinho idêntico e os limites de 200 skins e 40 categorias)");
+    ok(/0\.16\.1/.test(sec) && /0\.17\.0/.test(sec) && /0\.18\.0/.test(sec) && /apaga/.test(sec), "o README avisa que abas abertas nas versões 0.16.1, 0.17.0 e 0.18.0 apagam o que não conhecem ao regravar a carteira");
+    ok(!/\bE[12]\b|etapa [A-Z0-9]/.test(sec) && !/\b(frente [SDC])\b/i.test(sec), "o texto não traz marcações internas de trabalho (etapas, frentes)");
+    const est = readme.slice(readme.indexOf("## Estrutura"), readme.indexOf("## Testes")), tst = readme.slice(readme.indexOf("## Testes"), readme.indexOf("## Publicar no GitHub Pages"));
+    ok(/js\/skins\.js/.test(est) && /js\/skins-dog\.js/.test(est) && /js\/skins-cat\.js/.test(est) && /tests\/skins\.test\.js/.test(est) && /tests\/skins\.test\.js/.test(tst), "a Estrutura e os Testes do README citam js/skins.js, skins-dog.js, skins-cat.js e tests/skins.test.js");
+    ok(/Lojinha única/.test(loja) && /reachedLevel/.test(loja) && /equippedSkins/.test(loja) && /locked/.test(loja) && /200 skins/.test(loja) && /Libera ao chegar à Fase/.test(loja), "docs/LOJINHA.md descreve a lojinha única no presente (carteira por categoria, liberação por fase, limites)");
+    ok(/Skins por bichinho/.test(loja) && /Atualização 4/.test(loja) && !/vai ser ampliada|O que vem depois/.test(loja), "e não fala mais da ampliação como futura");
+    ok(fs.readFileSync(path.join(root, "index.html"), "utf8").match(/<h1 id="shop-title">([^<]*)<\/h1>/)[1] === "Lojinha de skins" && !/gatinho|cachorrinho/i.test(fs.readFileSync(path.join(root, "index.html"), "utf8").match(/<p id="shop-help"[^>]*>([\s\S]*?)<\/p>/)[1]), "o título e a ajuda da tela (index.html) são gerais: não citam um bichinho só");
+  });
+
   // ----------------------------------------------------------------------------------------------------------------------------
   //SKINS-D-NEXT (skins dos objetos do Cachorrinho)
 
