@@ -8,7 +8,7 @@
 //   player    true nas categorias do próprio bichinho ("dog", "cat"): a skin de quem você joga.
 // Skin: { id, name, text, price, from?, ...campos visuais }
 //   id        "" é a skin padrão de cada categoria (grátis, sempre de todos); as outras: /^[a-z0-9-]{1,24}$/ e únicas na categoria.
-//   price     petscoin (inteiro >= MIN_PRICE = 10); a padrão custa 0.
+//   price     petscoin (inteiro de MIN_PRICE = 10 a MAX_PRICE = 99999, o saldo máximo de um jogador); a padrão custa 0.
 //   from      (opcional) uma fase ainda mais alta que a da categoria; nunca mais baixa.
 //   outros    campos livres e só visuais (cores, acessórios...): a categoria define quais existem; nenhuma skin muda regra, velocidade, alcance ou pontos.
 // A carteira guarda o que cada skin é com a chave `${slot}:${id}` (o Cachorrinho mantém o id puro, como sempre; o Gatinho é `cat:${id}`).
@@ -17,7 +17,7 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.Skins = api;
 })(typeof self !== "undefined" ? self : this, function () {
-  const MIN_PRICE = 10;
+  const MIN_PRICE = 10, MAX_PRICE = 99999; // (MAX_PRICE = records.js MAX_TREATS: uma skin mais cara que o maior saldo possível nunca poderia ser comprada)
   const GAMES = [
     { id: "dog", name: "Cachorrinho", ready: true },
     { id: "cat", name: "Gatinho", ready: true },
@@ -71,6 +71,7 @@
       if (typeof k.name !== "string" || !k.name.trim()) throw new Error(`${slotId}/${k.id}: sem nome`);
       if (typeof k.text !== "string" || !k.text.trim()) throw new Error(`${slotId}/${k.id}: sem frase`);
       if (!Number.isInteger(k.price) || k.price < MIN_PRICE) throw new Error(`${slotId}/${k.id}: o preço mínimo é ${MIN_PRICE} petscoin`);
+      if (k.price > MAX_PRICE) throw new Error(`${slotId}/${k.id}: o preço máximo é ${MAX_PRICE} petscoin (o saldo máximo de um jogador)`);
       if (k.from !== undefined && (!Number.isInteger(k.from) || k.from < s.from || k.from > 20)) throw new Error(`${slotId}/${k.id}: "from" precisa ser inteiro entre ${s.from} e 20`);
       return Object.freeze({ ...k });
     });
@@ -97,5 +98,5 @@
   // É a regra que a tela da lojinha (js/game.js) usa; o armazenamento (records.js, gateOf) faz a mesma comparação por conta própria, porque a trava também vale sem a tela.
   const unlocked = (slotId, id, reached) => Number.isInteger(reached) && reached >= fromOf(slotId, id);
 
-  return { MIN_PRICE, GAMES, SLOTS, slot, slotsOf, register, list, get, has, fromOf, unlocked, count: (slotId) => (items[slotId] || []).length };
+  return { MIN_PRICE, MAX_PRICE, GAMES, SLOTS, slot, slotsOf, register, list, get, has, fromOf, unlocked, count: (slotId) => (items[slotId] || []).length };
 });

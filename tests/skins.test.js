@@ -57,9 +57,19 @@ test("register: valida categoria, id, nome, frase, preço (mínimo 10) e from", 
   assert.throws(() => Skins.register("agent", [k("a", { text: "" })]), /sem frase/);
   assert.throws(() => Skins.register("agent", [k("a", { price: 9 })]), /preço mínimo/);
   assert.throws(() => Skins.register("agent", [k("a", { price: 10.5 })]), /preço mínimo/);
+  assert.throws(() => Skins.register("agent", [k("a", { price: 100000 })]), /preço máximo é 99999 petscoin/); // mais caro que o maior saldo possível: nunca poderia ser comprada
+  assert.throws(() => Skins.register("agent", [k("a", { price: 1e9 })]), /preço máximo/);
+  assert.throws(() => Skins.register("agent", [k("a", { price: Infinity })]), /preço mínimo/);
+  assert.throws(() => Skins.register("agent", [k("a", { price: "20" })]), /preço mínimo/);
   assert.throws(() => Skins.register("foecat", [k("a", { from: 5 })]), /from/); // nunca mais baixa que a da categoria
   assert.throws(() => Skins.register("foecat", [k("a", { from: 21 })]), /from/);
   assert.strictEqual(Skins.count("agent"), 0); // nada foi registrado pelas tentativas com erro
+});
+
+test("o preço máximo da skin é o saldo máximo da carteira (records.js MAX_TREATS), e o preço de 99999 ainda vale", () => {
+  assert.strictEqual(Skins.MAX_PRICE, require(path.join(__dirname, "../js/records.js")).MAX_TREATS);
+  assert.strictEqual(Skins.MIN_PRICE, require(path.join(__dirname, "../js/records.js")).MIN_SKIN_PRICE);
+  assert.strictEqual(Skins.register("exit", [k("caro", { price: Skins.MAX_PRICE })])[0].price, 99999, "99999 é aceito"); // (a categoria "exit" é só para este teste: depois dela, nada mais registra "exit" neste processo)
 });
 
 test("register guarda as skins congeladas, list põe a padrão primeiro e get cai na padrão", () => {
@@ -105,7 +115,7 @@ test('os exemplos "Fase N do jogo" dos textos de ajuda (index.html e js/profiles
 });
 
 test("a API pública é só o que alguém usa (a chave da skin na carteira, ownKey, é de js/records.js)", () => {
-  assert.deepStrictEqual(Object.keys(Skins).sort(), ["GAMES", "MIN_PRICE", "SLOTS", "count", "fromOf", "get", "has", "list", "register", "slot", "slotsOf", "unlocked"]);
+  assert.deepStrictEqual(Object.keys(Skins).sort(), ["GAMES", "MAX_PRICE", "MIN_PRICE", "SLOTS", "count", "fromOf", "get", "has", "list", "register", "slot", "slotsOf", "unlocked"]);
 });
 
 if (failed) { console.log(`\n${failed} teste(s) falharam`); process.exit(1); }

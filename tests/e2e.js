@@ -10929,22 +10929,25 @@ const PAGE_HELPERS = () => {
     ok(/js\/skins\.js/.test(est) && /js\/skins-dog\.js/.test(est) && /js\/skins-cat\.js/.test(est) && /tests\/skins\.test\.js/.test(est) && /tests\/skins\.test\.js/.test(tst), "a Estrutura e os Testes do README citam js/skins.js, skins-dog.js, skins-cat.js e tests/skins.test.js");
     ok(/Lojinha única/.test(loja) && /reachedLevel/.test(loja) && /equippedSkins/.test(loja) && /locked/.test(loja) && /200 skins/.test(loja) && /Libera ao chegar à Fase/.test(loja), "docs/LOJINHA.md descreve a lojinha única no presente (carteira por categoria, liberação por fase, limites)");
     // ---- os testes e as ferramentas das skins dos objetos estão documentados (o que fazem e como rodar) ----
-    const tools = ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tools/skin-preview/shoot.js", "tools/skin-preview/cat-skins.js"], FILTERS = ["skins dos objetos do Cachorrinho", "Skins do Gatinho"];
+    const tools = ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tests/wiring.test.js", "tools/skin-preview/shoot.js", "tools/skin-preview/cat-skins.js"], FILTERS = ["skins dos objetos do Cachorrinho", "Skins do Gatinho"];
     const missing = [];
     for (const [nome, txt] of [["a Estrutura do README", est], ["os Testes do README", tst], ["docs/LOJINHA.md", loja]]) {
-      const want = nome === "a Estrutura do README" ? ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tools/skin-preview/"] : tools; // (a Estrutura lista a pasta das ferramentas; os Testes e a lojinha dizem cada uma e como rodar)
+      const want = nome === "a Estrutura do README" ? ["tests/skins-dog.test.js", "tests/skins-cat.test.js", "tests/skins-cat-frame.js", "tests/wiring.test.js", "tools/skin-preview/"] : tools; // (a Estrutura lista a pasta das ferramentas; os Testes e a lojinha dizem cada uma e como rodar)
       for (const f of want) if (!txt.includes(f)) missing.push(`${nome}: ${f}`);
       if (nome !== "a Estrutura do README") for (const f of FILTERS) if (!txt.includes(`node tests/e2e.js "${f}"`)) missing.push(`${nome}: node tests/e2e.js "${f}"`);
     }
     for (const [nome, txt] of [["os Testes do README", tst], ["docs/LOJINHA.md", loja]]) {
-      for (const cmd of ["node tests/skins-dog.test.js", "node tests/skins-cat.test.js", "node tools/skin-preview/shoot.js", "node tools/skin-preview/cat-skins.js"]) if (!txt.includes(cmd)) missing.push(`${nome}: como rodar (${cmd})`);
+      for (const cmd of ["node tests/skins-dog.test.js", "node tests/skins-cat.test.js", "node tests/wiring.test.js", "node tools/skin-preview/shoot.js", "node tools/skin-preview/cat-skins.js"]) if (!txt.includes(cmd)) missing.push(`${nome}: como rodar (${cmd})`);
       if (!/NODE_PATH/.test(txt) || !/CHROMIUM_PATH/.test(txt)) missing.push(`${nome}: NODE_PATH e CHROMIUM_PATH das ferramentas`);
     }
-    ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
+    ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tests/wiring.test.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
     // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
     const titles = [...fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
     const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
     ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
+    // ---- a trava do armazenamento: o que ela protege e o que não protege (a conta local não é segurança de verdade) ----
+    const honest = (txt) => /protege contra tela velha, outra aba e engano/.test(txt) && /não é segurança de verdade/.test(txt) && /localStorage/.test(txt) && !/mesmo se alguém chamar a função pelo console/.test(txt);
+    ok(honest(sec) && honest(loja), "o README e docs/LOJINHA.md dizem que a trava do armazenamento protege contra tela velha, outra aba e engano, e que NÃO é segurança de verdade (quem edita o localStorage ou usa o console a burla)");
     // ---- skins de osso: a do osso COMUM; os de ouro, gelo, turbo e ímã mantêm a cor e o brilho do efeito ----
     const boneSay = (txt) => /osso \**comum/i.test(txt) && /ouro, gelo, turbo e ímã/.test(txt) && /Fases 11 a 20/.test(txt) && /mant[êe]m a cor e o brilho do efeito/.test(txt) && /tom sobre tom/.test(txt) && /para ninguém confundir/.test(txt);
     ok(boneSay(sec) && boneSay(loja), "o README e docs/LOJINHA.md dizem que a skin de osso muda o osso comum e que ouro, gelo, turbo e ímã (Fases 11 a 20) mantêm a cor e o brilho do efeito, só com o desenho em tom sobre tom");
