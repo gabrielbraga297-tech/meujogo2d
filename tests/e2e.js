@@ -109,7 +109,7 @@ const PAGE_HELPERS = () => {
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
   // (0.20.0) O mesmo vale para o Passarinho: js/bird-levels.js (window.BirdLevels) liga o Passarinho no jogo; as seções antigas o testam "Em breve" (o arquivo é ignorado) e as páginas abertas com `realBird: true` (tests/e2e-bird-*.js)
-  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente provisórios), que valem mesmo que os arquivos de verdade existam; `realBird: "real"` deixa a página carregar os arquivos de verdade.
+  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente provisórios), que valem mesmo que os arquivos de verdade existam; `realBird: "levels"` põe só as fases (sem BirdArt nem ambiente: o desenho de reserva do motor); `realBird: "real"` deixa a página carregar os arquivos de verdade.
   const rawNewContext = browser.newContext.bind(browser);
   const FIX = (n) => fs.readFileSync(path.join(__dirname, "fixtures", n), "utf8");
   const BIRD_FIXTURES = () => `${FIX("bird-levels-fixture.js")}
@@ -121,6 +121,7 @@ const PAGE_HELPERS = () => {
     const c = await rawNewContext(opts);
     if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
     if (!realBird) await c.addInitScript(() => { Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    else if (realBird === "levels") await c.addInitScript({ content: `${FIX("bird-levels-fixture.js")}\nObject.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });` }); // só as fases das fixtures: sem BirdArt nem ambiente (os desenhos de reserva do motor)
     else if (realBird !== "real") await c.addInitScript({ content: BIRD_FIXTURES() });
     return c;
   };

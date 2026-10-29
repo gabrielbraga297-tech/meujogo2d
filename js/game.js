@@ -1742,7 +1742,7 @@
   let fx = { shield: 0, ice: 0, turbo: 0, magnet: 0 }; // segundos que faltam de cada efeito dos ossos de tipo novo (0.15.7)
   const fxTime = (base) => base + (REINFORCE_BONE / 2) * up.bone; // o reforço Osso poderoso também alonga os efeitos novos (+4 s por nível)
   const invulnNow = () => INVULN + REINFORCE_SHIELD * up.shield;
-  const bonePowerNow = () => (lv.bonePower ? lv.bonePower + REINFORCE_BONE * up.bone : 0);
+  const bonePowerNow = () => (lv.bonePower ? lv.bonePower + lv.boneStep * up.bone : 0); // (boneStep: 8 s por nível no Cachorrinho e no Gatinho; 2 s no voo alto do Passarinho)
   const vetSlowNow = () => 1 - REINFORCE_SLOW * up.slow;
   // Estado das mecânicas do Gatinho (0.18.0; só mudam nas fases que ligam `sprint`, `water`, `refuge` e `night`): fôlego (0 a 1), s ofegante, s de pelo molhado, arrancada em andamento, a salvo num lugar alto, escuridão (0 a 1) e o botão "Correr" do toque
   let stamina = 1, winded = 0, wet = 0, sprintOn = false, safe = false, darkness = 0, runTouch = false;
@@ -2632,7 +2632,7 @@
     moveAxis(ix * step, 0);
     moveAxis(0, iy * step);
     if (lv.wind) updateWind(dt, ix, iy);              // (Passarinho) a corrente de vento o empurra (só no voo baixo; as paredes e os muros ainda o seguram)
-    if (lv.refuge) { perch = onHighNow(); safe = perch || flightOn(); } // (Gatinho) com o centro num lugar alto ele está a salvo; (Passarinho) o galho OU o voo alto: os gatos de quintal não o alcançam
+    if (lv.refuge) { const wasPerch = perch; perch = onHighNow(); safe = perch || flightOn(); if (perch && !wasPerch) sfx(P().sfx.landing); } // (Gatinho) com o centro num lugar alto ele está a salvo; (Passarinho) o galho OU o voo alto: os gatos de quintal não o alcançam (e o pouso no galho tem som: `landing`, vazio no Gatinho)
     if (lv.catMode) { const low = onLowNow(); if (low && !onLow && time - jumpAt >= SFX_JUMP_EVERY) { jumpAt = time; sfx(P().sfx.jump); } onLow = low; } // (Gatinho) começou a atravessar um obstáculo baixo (X): o pulo (no máximo uma vez a cada SFX_JUMP_EVERY s)
 
     updateBlocks(dt);
@@ -3228,7 +3228,7 @@
   function upEffects(u, L = lv, p = P()) { // o que os reforços fazem de verdade (0.15.2: o jogador tem de ver o acréscimo): "+16% de velocidade · 4 vidas no máximo"
     const o = [];
     if (u.speed) o.push(`+${Math.round(REINFORCE_SPEED * 100 * u.speed)}% de velocidade`);
-    if (u.bone) o.push(p.effect.bone(REINFORCE_BONE * u.bone));
+    if (u.bone) o.push(p.effect.bone(L.boneStep * u.bone));
     if (u.heart) o.push(`${capFor(L, u)} vidas no máximo`);
     if (u.shield) o.push(`${INVULN + REINFORCE_SHIELD * u.shield} s de proteção ao perder uma vida`);
     if (u.slow) o.push(p.effect.slow(Math.round(REINFORCE_SLOW * 100 * u.slow)));
