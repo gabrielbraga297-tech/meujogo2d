@@ -12,13 +12,13 @@
     growthStage: (gr) => (gr < 0.34 ? "filhote" : gr < 0.67 ? "jovem" : "adulto"),
     drawBird(ctx, p, o) { note("drawBird", { p: { x: p.x, y: p.y, facing: p.facing }, o: { ...o } }); const cx = p.x + p.w / 2, cy = p.y + p.h / 2 - 14 * (o.flying || 0); ctx.fillStyle = o.blink ? "#ffffff" : "#2a7fff"; ctx.beginPath(); ctx.arc(cx, cy, 9 + 4 * (o.flying || 0), 0, Math.PI * 2); ctx.fill(); },
     drawFoeCat(ctx, d, o) { note("drawFoeCat", { d: { ...d }, o: { ...o } }); ctx.fillStyle = "#ff8a1f"; ctx.fillRect(d.x - 10, d.y - 8, 20, 16); },
-    drawHawk(ctx, d, o) { note("drawHawk", { d: { ...d }, o: { ...o } }); ctx.fillStyle = "#5a2d0c"; ctx.beginPath(); ctx.moveTo(d.x - 15, d.y + 4); ctx.lineTo(d.x, d.y - 10); ctx.lineTo(d.x + 15, d.y + 4); ctx.closePath(); ctx.fill(); },
+    drawHawk(ctx, d, o) { note("drawHawk", { d: { ...d }, o: { ...o } }); calls["hawk:" + d.mode] = (calls["hawk:" + d.mode] || 0) + 1; ctx.fillStyle = "#5a2d0c"; ctx.beginPath(); ctx.moveTo(d.x - 15, d.y + 4); ctx.lineTo(d.x, d.y - 10); ctx.lineTo(d.x + 15, d.y + 4); ctx.closePath(); ctx.fill(); },
     drawSeed(ctx, it, o) { note("drawSeed", { it: { ...it }, o: { ...o } }); ctx.fillStyle = "#d9b45a"; ctx.fillRect(it.x + 3, it.y + 5, 10, 6); },
     drawWorm(ctx, b, o) { note("drawWorm", { b: { x: b.x, y: b.y, vx: b.vx, vy: b.vy, hue: b.hue }, o: { ...o } }); ctx.fillStyle = "#ff6fa5"; ctx.fillRect(b.x - 8, b.y - 3, 16, 6); },
-    drawFruit(ctx, it, o) { note("drawFruit", { it: { ...it }, o: { ...o } }); ctx.fillStyle = BirdArt.FRUIT_KEYS[it.kind] || "#e5533d"; ctx.beginPath(); ctx.arc(it.x + 8, it.y + 8, 7, 0, Math.PI * 2); ctx.fill(); },
+    drawFruit(ctx, it, o) { note("drawFruit", { it: { ...it }, o: { ...o } }); calls["fruit:" + it.kind] = (calls["fruit:" + it.kind] || 0) + 1; ctx.fillStyle = BirdArt.FRUIT_KEYS[it.kind] || "#e5533d"; ctx.beginPath(); ctx.arc(it.x + 8, it.y + 8, 7, 0, Math.PI * 2); ctx.fill(); },
     FRUIT_KEYS: { scare: "#e5533d", gold: "#ffd23f", ice: "#6ec6ff", turbo: "#ff9f43", magnet: "#b57cff" },
     drawRoost(ctx, x, y, o) { note("drawRoost", { x, y, o: { ...o } }); return false; }, // (sem look.style: devolve false e o ambiente desenha o galho)
-    drawPost(ctx, x, y, o) { note("drawPost", { x, y, o: { ...o } }); ctx.fillStyle = o.kind === "hawk" ? "#6b4a2a" : "#3f8a45"; ctx.fillRect(x - 8, y - 8, 16, 16); },
+    drawPost(ctx, x, y, o) { note("drawPost", { x, y, o: { ...o } }); calls["post:" + o.kind] = (calls["post:" + o.kind] || 0) + 1; ctx.fillStyle = o.kind === "hawk" ? "#6b4a2a" : "#3f8a45"; ctx.fillRect(x - 8, y - 8, 16, 16); },
     drawNest(ctx, x, y, o) { note("drawNest", { x, y, o: { ...o } }); ctx.fillStyle = o.open ? "#e0c060" : "#80603a"; ctx.fillRect(x - o.w / 2, y - o.h / 2, o.w, o.h); },
     drawFx(ctx, kind, x, y, t, o) { note("drawFx", { kind, x, y, t }); (calls["fx:" + kind] = (calls["fx:" + kind] || 0) + 1); ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 6 + t * 10, 0, Math.PI * 2); ctx.stroke(); },
   };
