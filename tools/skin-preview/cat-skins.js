@@ -1,7 +1,7 @@
 // Folhas de capturas das SKINS DOS OBJETOS DO GATINHO (0.19.0): todas as skins de cada categoria lado a lado, no mostruário da lojinha (PREVIEW) e dentro do jogo de verdade (index.html + js/cat-levels.js).
 // Uso (sempre com o trinco do navegador, por haver outros agentes):
 //   NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium PREVIEW_LOCK=<trinco> node tools/skin-preview/cat-skins.js <pasta-de-saida> [opções]
-// Opções: fase=20 (fase do dia; padrão 20, onde há todos os objetos) · noite=18 (fase noturna; padrão 18) · cats=guard,mouse,yarn,agile,perch,tracker (padrão: todas) · zoom=3 (zoom dos recortes) · CALM=1 liga "reduzir movimento".
+// Opções: fase=20 (fase do dia; padrão 20, onde há todos os objetos) · noite=18 (fase noturna; padrão 18) · cats=guard,mouse,yarn,agile,perch,tracker (padrão: todas) · zoom=3 (zoom dos recortes) · vp=1000x700 (tamanho da tela; use 390x780 ou 320x568 para ver como fica no celular) · CALM=1 liga "reduzir movimento".
 // Gera, em <pasta>:
 //   lojinha.png           os mostruários (PREVIEW) de todas as skins de todas as categorias, uma linha por categoria (a padrão primeiro), com o nome embaixo;
 //   jogo-<categoria>.png  o objeto dentro do jogo com cada skin, lado a lado: linha de cima no ambiente da fase do dia, linha de baixo na fase noturna (ratinhos e camundongos precisam aparecer no escuro);
@@ -17,11 +17,12 @@ if (process.env.PREVIEW_LOCK && !process.env.PREVIEW_LOCKED) {
 }
 
 const { chromium } = require("playwright");
-const { CAT_FRAME, VIEWPORT } = require(path.join(__dirname, "../../tests/skins-cat-frame.js"));
+const { CAT_FRAME, VIEWPORT, settle } = require(path.join(__dirname, "../../tests/skins-cat-frame.js"));
 const arg = (name, def) => { const a = process.argv.slice(3).find((x) => x.startsWith(name + "=")); return a ? a.slice(name.length + 1) : def; };
 const root = path.resolve(__dirname, "../..");
 const out = path.resolve(process.argv[2] || "skin-preview-out");
 const DAY = Number(arg("fase", 20)), NIGHT = Number(arg("noite", 18)), ZOOM = Number(arg("zoom", 3));
+const VP = /^(\d+)x(\d+)$/.test(arg("vp", "")) ? { width: +arg("vp").split("x")[0], height: +arg("vp").split("x")[1] } : VIEWPORT; // vp=390x780: o tamanho da tela (celular); os recortes saem do canvas na resolução real dessa tela
 const CATS = arg("cats", "guard,mouse,yarn,agile,perch,tracker").split(",");
 const SCENE = { guard: "guard", tracker: "tracker", mouse: "mouse", agile: "agile", yarn: "yarn-scare", perch: "T" }; // em que cena de CAT_FRAME aparece cada categoria
 const TILES = [3.6, 2.4], DX = -36; // recorte em tiles, em volta do objeto; o gatinho fica 36 px à esquerda dele
@@ -52,7 +53,7 @@ const BUILD = async ({ title, rows, cw, ch }) => {
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox"] });
-  const ctx = await browser.newContext({ viewport: VIEWPORT, reducedMotion: process.env.CALM ? "reduce" : "no-preference" });
+  const ctx = await browser.newContext({ viewport: VP, hasTouch: VP.width < 800, reducedMotion: process.env.CALM ? "reduce" : "no-preference" });
   const pg = await ctx.newPage();
   const errs = [];
   pg.on("pageerror", (e) => errs.push(e.message)); pg.on("console", (m) => m.type() === "error" && errs.push(m.text()));
@@ -63,7 +64,7 @@ const BUILD = async ({ title, rows, cw, ch }) => {
   const save = (name, dataUrl) => { fs.writeFileSync(path.join(out, name), Buffer.from(dataUrl.split(",")[1], "base64")); console.log("gerou", path.join(out, name)); };
   const skinsOf = (slot) => pg.evaluate((slot) => Skins.list(slot).map((k) => ({ id: k.id, name: k.name, price: k.price })), slot);
   const lab = (k) => `${k.id || "padrão"}: ${k.name}${k.price ? " · " + k.price : ""}`;
-  const crop = (id, looks, scene) => pg.evaluate((a) => { const r = window.__frame(a); return r[a.scenes[0] + ".png"] || null; }, { id, seed: 12345, looks, scenes: [scene], shots: true, crop: ZOOM, tiles: TILES, focus: true, dx: DX });
+  const crop = async (id, looks, scene) => { await settle(pg, id); return pg.evaluate((a) => { const r = window.__frame(a); return r[a.scenes[0] + ".png"] || null; }, { id, seed: 12345, looks, scenes: [scene], shots: true, crop: ZOOM, tiles: TILES, focus: true, dx: DX }); };
 
   // 1. lojinha: os mostruários (216 × 156, como os cartões)
   const shop = [];
