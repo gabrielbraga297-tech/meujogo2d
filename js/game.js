@@ -2986,7 +2986,7 @@
     list.classList.toggle("is-locked", slotLocked);
     if (slotLocked) { // bloqueada: só a frase (o que há dentro fica escondido até chegar à fase)
       const box = el("div", "shop-locked"), ic = el("span", "lock-ico", "\u{1F512}"); ic.setAttribute("aria-hidden", "true");
-      box.append(ic, el("strong", null, lockText(slot.from, slot.game)), el("span", "sub", `${me ? "Você está" : "Sem nome de usuário você está"} na Fase ${reached(slot.game)} do ${gameName(slot.game)}. Conclua a Fase ${slot.from - 1} para abrir as skins desta categoria.`));
+      box.append(ic, el("strong", null, lockText(slot.from, slot.game)), el("span", "sub", me ? `Você está na Fase ${reached(slot.game)} do ${gameName(slot.game)}. Conclua a Fase ${slot.from - 1} para abrir as skins desta categoria.` : `Sem nome de usuário o progresso não é guardado: escolha um nome no menu e conclua a Fase ${slot.from - 1} do ${gameName(slot.game)} para abrir as skins desta categoria.`));
       list.append(box);
     } else {
       let firstFocus = true;
@@ -3042,7 +3042,8 @@
     if (i < 0 || !tabs.length) return;
     e.preventDefault();
     if (e.repeat) return;
-    tabs[k === "Home" ? 0 : k === "End" ? tabs.length - 1 : (i + (k === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length].click();
+    const t = tabs[k === "Home" ? 0 : k === "End" ? tabs.length - 1 : (i + (k === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+    t.focus(); t.click(); // (o foco vai primeiro para a aba nova: a tela é desenhada de novo e devolve o foco à aba que o tinha)
   }
   $("shop-games").addEventListener("keydown", onShopTabKey); $("shop-cats").addEventListener("keydown", onShopTabKey);
   function openShop() { // abre no bichinho escolhido, na categoria do próprio bichinho
