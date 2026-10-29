@@ -10546,6 +10546,223 @@ const PAGE_HELPERS = () => {
   // ----------------------------------------------------------------------------------------------------------------------------
   //SKINS-C-NEXT (skins dos objetos do Gatinho)
 
+  // ===== 0.19.0 · Skins dos objetos do Gatinho (frente C: guard, mouse, yarn, agile, perch, tracker) =====
+  // Quadros fixos (tests/skins-cat-frame.js): semente fixa, cães congelados, o gatinho perto de cada objeto e UM quadro desenhado, viewport 1000×700.
+  const SKC = require("./skins-cat-frame.js");
+  const HASHES_0180_CAT = { 1: { "spawn": "e5862586", "T": null, "foes": null, "guard": "ef866489", "tracker": null, "mouse": "808cb960", "yarn-scare": null, "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": null }, 3: { "spawn": "4da4c978", "T": "272ec497", "foes": "47e30078", "guard": "e96b7893", "tracker": null, "mouse": "aa794c44", "yarn-scare": "55928bd2", "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": "2f4ebbd6" }, 11: { "spawn": "85bb5b99", "T": "8bb03a87", "foes": "416254fd", "guard": "749e3c04", "tracker": "d5c6b4c4", "mouse": "c6fa3254", "yarn-scare": "d4ec8a8c", "yarn-gold": "c71df266", "yarn-ice": "ef01459f", "yarn-turbo": null, "yarn-magnet": null, "agile": "e453b464" }, 18: { "spawn": "20b18b9", "T": "ba17e919", "foes": "6b112b87", "guard": "bed08ed0", "tracker": "9af57e15", "mouse": "4f7229c6", "yarn-scare": "f5288c64", "yarn-gold": "ce530d13", "yarn-ice": "347f59c7", "yarn-turbo": "ffcf3258", "yarn-magnet": "2cd681c", "agile": "fd6cddd4" }, 20: { "spawn": "30079e8d", "T": "665ea879", "foes": "f8a88c4e", "guard": "f29875be", "tracker": "faec3c8b", "mouse": "2f15d9a1", "yarn-scare": "d6ba7ec8", "yarn-gold": "a4ad3898", "yarn-ice": "9795c0d8", "yarn-turbo": "334a86e3", "yarn-magnet": "4237a5d4", "agile": "2f9b8102" } }; // hash do canvas das Fases 1, 3, 11, 18 e 20 (cenas de SCENES_ALL; null = o objeto não existe na fase) do código da 0.18.0 (commit ed7e2f7, antes de qualquer skin), com o Chromium desta máquina, esperando o leiaute assentar antes de cada fase (SKC.settle)
+  const SKC_SLOTS = ["guard", "mouse", "yarn", "agile", "perch", "tracker"];
+  const SKC_SCENE = { guard: "guard", tracker: "tracker", mouse: "mouse", agile: "agile", yarn: "yarn-scare", perch: "T" }; // a cena em que cada categoria aparece (nas Fases 18 e 20 há todos)
+  const SKC_RAF = (pg) => pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
+  const skcPage = async (viewport = SKC.VIEWPORT, opts = {}) => { const pg = await newPage({ realCat: true, viewport, ...opts }); await pg.goto(URL); await pg.evaluate(() => { localStorage.clear(); }); await pg.reload(); return pg; };
+  const skcFrame = async (pg, a) => { await SKC.settle(pg, a.id); return pg.evaluate(SKC.CAT_FRAME, { seed: 12345, looks: {}, ...a }); };
+  const skcSkins = (pg, slot) => pg.evaluate((slot) => Skins.list(slot).map((k) => ({ id: k.id, name: k.name, price: k.price })), slot);
+  // joga `frames` quadros do Gatinho (cães soltos, entradas fixas), desenhando todo quadro, e devolve o estado do jogo (nada do que a regra decide pode depender da skin)
+  const SKC_RUN = ({ id, seed, looks, frames }) => {
+    const g = window.__game, mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const realRandom = Math.random, press = (k, on) => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k }));
+    Math.random = mul(seed * 7919 + 13); g.setRand(mul(seed));
+    const snap = () => JSON.stringify({ state: g.state, score: g.score, lives: g.lives, time: Math.round(g.time * 1000), power: Math.round(g.power * 1000), collected: g.collected, st: Math.round(g.stamina * 1000), wet: Math.round(g.wet * 1000), safe: g.safe, sprint: g.sprinting, fx: g.catFx.map((f) => [f.kind, Math.round(f.x), Math.round(f.y)]),
+      p: [Math.round(g.player.x * 100), Math.round(g.player.y * 100), g.player.facing], vets: g.vets.map((v) => [Math.round(v.cx), Math.round(v.cy), v.mode]), cats: g.cats.map((v) => [Math.round(v.cx), Math.round(v.cy), v.mode]),
+      balls: g.balls.map((b) => [Math.round(b.x), Math.round(b.y), !!b.taken]), items: g.items.map((i) => !!i.taken) });
+    try {
+      g.setAnimal("cat"); g.autoStart = true; g.start(id);
+      for (const [slot, sk] of Object.entries(looks)) g.setLook(slot, sk);
+      const plan = [["d", 50], ["s", 40], ["a", 30], ["w", 25], ["d", 60], ["s", 20]], trace = [];
+      let n = 0;
+      for (let round = 0; n < frames; round++) for (const [k, len] of plan) { press(k, true); for (let i = 0; i < len && n < frames; i++, n++) { g.tick(1 / 60); g.drawNow(); if (n % 40 === 0) trace.push(snap()); } press(k, false); }
+      return { final: snap(), trace };
+    } finally { Math.random = realRandom; g.setRand(null); for (const slot of Object.keys(looks)) g.setLook(slot, ""); }
+  };
+
+  await section("0.19.0 · Skins do Gatinho: com TODAS as categorias no padrão o desenho é IDÊNTICO ao da 0.18.0 (hashes de pixels das Fases 1, 3, 11, 18 e 20, gerados no commit de partida)", async () => {
+    const pg = await skcPage();
+    const got = {};
+    for (const id of [1, 3, 11, 18, 20]) got[id] = await skcFrame(pg, { id, scenes: SKC.SCENES_ALL });
+    let n = 0; const bad = [];
+    for (const id of [1, 3, 11, 18, 20]) for (const sc of SKC.SCENES_ALL) { const want = HASHES_0180_CAT[id][sc], have = got[id][sc]; if (want !== null) n++; if (want !== have) bad.push(`F${id} ${sc}: ${have} (0.18.0: ${want})`); }
+    ok(n === 44 && bad.length === 0, `${n} quadros (início, lugar alto, 4 cães em 4 modos, cão de guarda, rastreador, ratinho, os 5 novelos e o camundongo ágil, nas Fases 1, 3, 11, 18 e 20) saem IDÊNTICOS aos da 0.18.0${bad.length ? " — diferentes: " + bad.join("; ") : ""}`);
+    // trocar de skin e voltar ao padrão devolve os mesmos pixels (nada fica guardado do desenho anterior)
+    const looks = Object.fromEntries(await Promise.all(SKC_SLOTS.map(async (s) => [s, (await skcSkins(pg, s))[1].id])));
+    const withSkins = await skcFrame(pg, { id: 20, looks, scenes: SKC.SCENES_ALL });
+    const back = await skcFrame(pg, { id: 20, scenes: SKC.SCENES_ALL });
+    ok(SKC.SCENES_ALL.every((sc) => back[sc] === HASHES_0180_CAT[20][sc]), "depois de usar uma skin em cada categoria e voltar ao padrão, o quadro da Fase 20 sai idêntico ao da 0.18.0 de novo");
+    ok(["guard", "tracker", "mouse", "yarn-scare", "yarn-gold", "agile", "T"].every((sc) => withSkins[sc] !== HASHES_0180_CAT[20][sc]), "e com uma skin em cada categoria esses mesmos quadros mudam (o teste não é vazio)");
+    const baseLooks = await ev(pg, (S) => S.map((s) => [s, __game.look(s).id, __game.look(s).price]), SKC_SLOTS);
+    ok(baseLooks.every(([s, id, price]) => id === "" && price === 0), `sem skin escolhida, lookOf de cada categoria do Gatinho é a padrão (id "", preço 0): ${JSON.stringify(baseLooks)}`);
+    await pg.context().close();
+  });
+
+  await section("0.19.0 · Skins do Gatinho: cada skin muda o desenho do seu objeto (dia e noite), diferente do padrão e das outras, e não muda nada do estado do jogo", async () => {
+    const pg = await skcPage();
+    const bad = [];
+    let total = 0;
+    for (const id of [20, 18]) for (const slot of SKC_SLOTS) {
+      const sc = SKC_SCENE[slot], ks = await skcSkins(pg, slot), seen = new Map();
+      for (const k of ks) { const h = (await skcFrame(pg, { id, looks: k.id ? { [slot]: k.id } : {}, scenes: [sc] }))[sc]; total++; if (h === null) bad.push(`F${id} ${slot}/${k.id}: cena sem objeto`); else if (seen.has(h)) bad.push(`F${id} ${slot}/${k.id}: igual a ${seen.get(h) || "padrão"}`); else seen.set(h, k.id); }
+      ok(ks.length >= 4 && ks.length <= 5, `${slot}: a padrão e 3 a 4 skins`);
+    }
+    ok(bad.length === 0 && total === 60, `${total} quadros (6 categorias × a padrão e cada skin, na Fase 20 de dia e na Fase 18 de noite): cada skin desenha o seu objeto diferente da padrão e das outras${bad.length ? " — problemas: " + bad.join("; ") : ""}`);
+    // os 5 poderes de novelo também mudam por skin em cada tipo
+    const yk = await skcSkins(pg, "yarn"), ybad = [];
+    for (const kind of ["scare", "gold", "ice", "turbo", "magnet"]) { const base = (await skcFrame(pg, { id: 20, scenes: ["yarn-" + kind] }))["yarn-" + kind]; for (const k of yk.slice(1)) if ((await skcFrame(pg, { id: 20, looks: { yarn: k.id }, scenes: ["yarn-" + kind] }))["yarn-" + kind] === base) ybad.push(`${kind}/${k.id}`); }
+    ok(ybad.length === 0, `cada skin de novelo muda o desenho dos 5 tipos de poder${ybad.length ? " — sem efeito: " + ybad.join(", ") : ""}`);
+    // o estado do jogo não depende da skin: mesmos passos, mesma semente, com e sem skin em todas as categorias
+    const results = {};
+    for (const id of [3, 11, 20]) {
+      await SKC.settle(pg, id);
+      const none = await pg.evaluate(SKC_RUN, { id, seed: 777 + id, looks: {}, frames: 420 });
+      const looks = Object.fromEntries(await Promise.all(SKC_SLOTS.map(async (s) => [s, (await skcSkins(pg, s)).slice(-1)[0].id])));
+      const all = await pg.evaluate(SKC_RUN, { id, seed: 777 + id, looks, frames: 420 });
+      const looks2 = Object.fromEntries(await Promise.all(SKC_SLOTS.map(async (s) => [s, (await skcSkins(pg, s))[1].id])));
+      const all2 = await pg.evaluate(SKC_RUN, { id, seed: 777 + id, looks: looks2, frames: 420 });
+      results[id] = { same: none.final === all.final && none.final === all2.final, trace: JSON.stringify(none.trace) === JSON.stringify(all.trace) && JSON.stringify(none.trace) === JSON.stringify(all2.trace), moved: JSON.parse(none.final).p, n: none.trace.length };
+    }
+    ok(Object.values(results).every((r) => r.same && r.trace && r.n >= 10), `420 quadros jogados com e sem skin nas 6 categorias (duas escolhas diferentes) deixam o MESMO estado (posições, pontos, vidas, tempo, modos dos cães, camundongos, novelos pegos) em todas as amostras (Fases 3, 11 e 20: ${Object.entries(results).map(([id, r]) => `F${id} ${r.same && r.trace ? "igual" : "DIFERENTE"}`).join(", ")})`);
+    // o tamanho de contato do gatinho e dos cães não muda com skin (a caixa do jogo é a mesma)
+    const box = await ev(pg, (S) => { __game.setAnimal("cat"); __game.autoStart = true; __game.start(20); __game.freezeVets = true; const a = JSON.stringify([__game.player.w, __game.player.h, __game.vets.map((v) => [v.cx, v.cy, v.r ?? v.w ?? 0]), __game.balls.map((b) => [b.x, b.y, b.r ?? 0])]); for (const [s, id] of S) __game.setLook(s, id); const b = JSON.stringify([__game.player.w, __game.player.h, __game.vets.map((v) => [v.cx, v.cy, v.r ?? v.w ?? 0]), __game.balls.map((x) => [x.x, x.y, x.r ?? 0])]); for (const [s] of S) __game.setLook(s, ""); return a === b; }, await Promise.all(SKC_SLOTS.map(async (s) => [s, (await skcSkins(pg, s))[2].id])));
+    ok(box, "trocar as skins não mexe no tamanho do gatinho, nem nas posições e tamanhos de contato dos cães e dos camundongos");
+    await pg.context().close();
+  });
+
+  await section("0.19.0 · Skins do Gatinho: os mostruários da lojinha (PREVIEW) desenham algo, centrado e diferente em cada skin", async () => {
+    const pg = await skcPage();
+    const res = await pg.evaluate((slots) => {
+      const out = {};
+      for (const slot of slots) {
+        out[slot] = Skins.list(slot).map((k) => {
+          const cv = document.createElement("canvas"); cv.width = 216; cv.height = 156; const c2 = cv.getContext("2d"); c2.fillStyle = "#f4efe4"; c2.fillRect(0, 0, 216, 156);
+          const drew = __game.preview(slot, c2, k.id, 216, 156), d = c2.getImageData(0, 0, 216, 156).data, u = new Uint32Array(d.buffer);
+          let h = 2166136261 >>> 0, n = 0, x0 = 999, y0 = 999, x1 = -1, y1 = -1;
+          for (let i = 0; i < u.length; i++) { h = Math.imul(h ^ u[i], 16777619) >>> 0; if (u[i] !== u[0]) { n++; const x = i % 216, y = (i / 216) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+          return { id: k.id, drew, hash: h.toString(16), n, box: [x0, y0, x1, y1] };
+        });
+      }
+      out.none = __game.preview("nao-existe", document.createElement("canvas").getContext("2d"), "", 10, 10);
+      return out;
+    }, SKC_SLOTS);
+    const probs = [];
+    for (const slot of SKC_SLOTS) {
+      const rows = res[slot];
+      if (rows.length < 4) probs.push(`${slot}: poucas skins`);
+      if (new Set(rows.map((r) => r.hash)).size !== rows.length) probs.push(`${slot}: dois mostruários iguais`);
+      for (const r of rows) {
+        const [x0, y0, x1, y1] = r.box, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        if (!r.drew) probs.push(`${slot}/${r.id}: sem mostruário`);
+        else if (r.n < 2500) probs.push(`${slot}/${r.id}: quase vazio (${r.n} px)`);
+        else if (slot === "perch") continue; // (o lugar alto aparece sobre o chão da Casa, que enche o cartão inteiro: só confere que há desenho e que é diferente)
+        else if (x0 < 2 || y0 < 2 || x1 > 213 || y1 > 153) probs.push(`${slot}/${r.id}: encosta na borda do cartão (${r.box})`);
+        else if (Math.abs(cx - 108) > 22 || Math.abs(cy - 78) > 22) probs.push(`${slot}/${r.id}: descentrado (${cx.toFixed(0)},${cy.toFixed(0)})`);
+      }
+    }
+    ok(probs.length === 0 && res.none === false, `PREVIEW das 6 categorias: cada skin (a padrão e as 3 a 4 outras) desenha um mostruário não vazio, centrado no cartão de 216×156 e diferente das outras${probs.length ? " — problemas: " + probs.join("; ") : ""}; uma categoria sem mostruário devolve false`);
+    await pg.context().close();
+  });
+
+  await section("0.19.0 · Skins do Gatinho: `from` de cada categoria é a primeira fase do jogo em que o objeto existe (conferido com as 20 fases montadas)", async () => {
+    const pg = await skcPage();
+    const first = await pg.evaluate(() => {
+      const g = window.__game, out = { guard: 0, tracker: 0, mouse: 0, yarn: 0, agile: 0, perch: 0 };
+      g.setAnimal("cat"); g.autoStart = true;
+      for (let id = 1; id <= 20; id++) {
+        g.start(id); const lv = g.builtOf("cat")[id];
+        const has = { guard: g.vets.length > 0, tracker: g.cats.length > 0, mouse: g.items.some((i) => !i.bone), yarn: g.items.some((i) => i.bone), agile: g.balls.length > 0, perch: lv.kinds.some((row) => row.includes("T")) };
+        for (const k of Object.keys(out)) if (!out[k] && has[k]) out[k] = id;
+      }
+      return { out, from: Object.fromEntries(Object.keys(out).map((k) => [k, Skins.slot(k).from])) };
+    });
+    ok(JSON.stringify(first.out) === JSON.stringify(first.from), `a primeira fase em que cada objeto existe nos mapas montados (${JSON.stringify(first.out)}) é o \`from\` da categoria (${JSON.stringify(first.from)})`);
+    await pg.context().close();
+  });
+
+  await section("0.19.0 · Skins do Gatinho: as cores-chave dos 5 poderes do novelo seguem as mesmas e legíveis com qualquer skin (em vários tamanhos de tela)", async () => {
+    const pg = await skcPage();
+    const r = await pg.evaluate(() => {
+      const KEYS = { scare: ["#ff8f8a", 2], gold: ["#ffd23f", 46], ice: ["#bfeaff", 197], turbo: ["#ff9f43", 29], magnet: ["#cfa8ff", 269] }; // (cor de enchimento de cada poder e o seu matiz em graus; escritos à mão, de propósito)
+      const hue = (r, g, b) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (d < 24) return -1; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; return h < 0 ? h + 360 : h; };
+      const near = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
+      const out = { keysSame: JSON.stringify(Object.fromEntries(Object.keys(KEYS).map((k) => [k, CatArt.YARN_KEYS[k].fill]))) === JSON.stringify(Object.fromEntries(Object.keys(KEYS).map((k) => [k, KEYS[k][0]]))), rows: [] };
+      for (const k of Skins.list("yarn")) for (const kind of Object.keys(KEYS)) for (const sc of [1.4, 1, 0.6, 0.4]) { // sc = a escala do jogo na tela (celular pequeno ≈ 0,4)
+        const cv = document.createElement("canvas"); cv.width = 64; cv.height = 64; const c = cv.getContext("2d", { willReadFrequently: true });
+        c.save(); c.scale(sc, sc); CatArt.drawYarn(c, { x: 32 / sc - 8, y: 32 / sc - 8, kind }, { calm: true, look: k.id ? k : undefined }); c.restore();
+        const d = c.getImageData(0, 0, 64, 64).data, votes = Object.fromEntries(Object.keys(KEYS).map((x) => [x, 0]));
+        let colored = 0;
+        for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 250) continue; const h = hue(d[i], d[i + 1], d[i + 2]); if (h < 0) continue; let best = null, bd = 999; for (const [name, [, hh]] of Object.entries(KEYS)) { const dd = near(h, hh); if (dd < bd) { bd = dd; best = name; } } if (bd <= 11) { votes[best]++; colored++; } }
+        const top = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+        out.rows.push({ skin: k.id || "padrão", kind, sc, win: top[0][0], share: colored ? top[0][1] / colored : 0, colored });
+      }
+      return out;
+    });
+    const bad = r.rows.filter((x) => x.win !== x.kind || x.share < 0.6 || x.colored < 6);
+    ok(r.keysSame, "a tabela de cores-chave de CatArt.YARN_KEYS é a de sempre (comum #ff8f8a, ouro #ffd23f, gelo #bfeaff, turbo #ff9f43, ímã #cfa8ff)");
+    ok(bad.length === 0 && r.rows.length === 5 * 5 * 4, `${r.rows.length} novelos (5 poderes × a padrão e 4 skins × 4 escalas de tela de 0,4 a 1,4): o matiz que domina a bola é sempre o do poder (mais de 60% dos pixels coloridos)${bad.length ? " — falharam: " + bad.slice(0, 8).map((x) => `${x.skin}/${x.kind}@${x.sc}: ${x.win} ${(x.share * 100).toFixed(0)}% (${x.colored} px)`).join("; ") : ""}`);
+    // no jogo: o desenho recebe a skin e os tipos de novelo continuam os mesmos
+    const sp = await ev(pg, () => {
+      const calls = []; const real = CatArt.drawYarn; CatArt.drawYarn = function (c, it, o) { calls.push([it.kind, o && o.look ? o.look.id : null, o && o.look ? Object.keys(o.look).sort().join() : ""]); return real.apply(this, arguments); };
+      try {
+        __game.setAnimal("cat"); __game.autoStart = true; __game.start(20); __game.freezeVets = true; __game.drawNow(); const base = calls.splice(0).map((x) => x[0]).join();
+        __game.setLook("yarn", Skins.list("yarn")[2].id); __game.drawNow(); const sk = calls.splice(0);
+        __game.setLook("yarn", ""); return { base, kinds: sk.map((x) => x[0]).join(), ids: [...new Set(sk.map((x) => x[1]))], fields: [...new Set(sk.map((x) => x[2]))], n: sk.length };
+      } finally { CatArt.drawYarn = real; }
+    });
+    ok(sp.n >= 5 && sp.kinds === sp.base && sp.ids.length === 1 && sp.ids[0] === "bolinhas" && sp.fields.every((f) => !/fill|strand|glow|kind/.test(f)), `no jogo cada novelo é desenhado com a skin em uso (bolinhas) e na mesma ordem e com os mesmos tipos de poder que sem skin (${sp.n} novelos; campos da skin: ${sp.fields})`);
+    await pg.context().close();
+  });
+
+  await section("0.19.0 · Skins do Gatinho: legíveis na noite (Fases 18 e 19) e nos 5 tamanhos de tela, sem erro de JavaScript", async () => {
+    const errs0 = errs.length;
+    const VPS = [{ width: 320, height: 568, hasTouch: true }, { width: 360, height: 640, hasTouch: true }, { width: 390, height: 780, hasTouch: true }, { width: 740, height: 390, hasTouch: true }, { width: 1000, height: 700 }];
+    const bad = []; let frames = 0;
+    for (const vp of VPS) {
+      const pg = await skcPage({ width: vp.width, height: vp.height }, vp.hasTouch ? { hasTouch: true } : {});
+      for (const id of [18, 19, 20]) for (const slot of SKC_SLOTS) {
+        const sc = SKC_SCENE[slot], ks = await skcSkins(pg, slot), base = (await skcFrame(pg, { id, scenes: [sc] }))[sc];
+        if (base === null) continue; // (a Fase 19 pode não ter este objeto na cena)
+        for (const k of ks.slice(1)) { const h = (await skcFrame(pg, { id, looks: { [slot]: k.id }, scenes: [sc] }))[sc]; frames++; if (h === base) bad.push(`${vp.width}x${vp.height} F${id} ${slot}/${k.id}: nada mudou na tela`); }
+      }
+      await pg.context().close();
+    }
+    ok(bad.length === 0 && frames > 150, `${frames} quadros (as 4 skins de cada uma das 6 categorias, nas Fases 18, 19 e 20, em 320×568, 360×640, 390×780, 740×390 e 1000×700): a skin aparece em todos, sem erro${bad.length ? " — problemas: " + bad.slice(0, 6).join("; ") : ""}`);
+    ok(errs.length === errs0, `nenhum erro de JavaScript no console (${errs.length - errs0} novos)`);
+  });
+
+  await section("0.19.0 · Skins do Gatinho: as skins do Gatinho não aparecem no Cachorrinho e as do Cachorrinho não aparecem no Gatinho", async () => {
+    // (a) Cachorrinho com TODAS as skins do Gatinho em uso: o canvas é o mesmo da 0.18.0 e nenhuma função de CatArt é chamada
+    const dp = await newPage({ viewport: { width: 1000, height: 700 } });
+    await dp.goto(URL);
+    const got = {}, calls = {};
+    for (const id of [1, 4, 11, 20]) {
+      await dp.evaluate(DOG_START, id);
+      await dp.evaluate(() => { window.__spy = {}; for (const n of ["drawCat", "drawDog", "drawMouse", "drawAgileMouse", "drawYarn", "drawPost", "drawPerch", "drawFx"]) { const f = CatArt[n]; if (!f.__spied) { const w = function (...a) { window.__spy[n] = (window.__spy[n] || 0) + 1; return f.apply(this, a); }; w.__spied = true; CatArt[n] = w; } } });
+      await dp.evaluate(() => { for (const s of ["guard", "mouse", "yarn", "agile", "perch", "tracker"]) __game.setLook(s, Skins.list(s)[1].id); });
+      await dp.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))));
+      got[id] = await dp.evaluate(DOG_HASH); calls[id] = await dp.evaluate(() => ({ ...window.__spy }));
+    }
+    ok([1, 4, 11, 20].every((id) => got[id].hash === HASHES_0170[id]), `com as 6 skins do Gatinho em uso, o canvas do Cachorrinho nas Fases 1, 4, 11 e 20 é IDÊNTICO ao de sempre (${[1, 4, 11, 20].map((id) => got[id].hash).join(", ")} contra ${Object.values(HASHES_0170).join(", ")})`);
+    ok([1, 4, 11, 20].every((id) => Object.keys(calls[id]).length === 0), `e nenhuma função de CatArt é chamada no jogo do Cachorrinho (${JSON.stringify(calls)})`);
+    const owner = await dp.evaluate(() => ({ cat: ["guard", "mouse", "yarn", "agile", "perch", "tracker"].map((s) => Skins.slot(s).game), dog: Skins.slotsOf("dog").map((s) => s.id).filter((s) => ["guard", "mouse", "yarn", "agile", "perch", "tracker"].includes(s)) }));
+    ok(owner.cat.every((g) => g === "cat") && owner.dog.length === 0, "no catálogo, as 6 categorias pertencem ao jogo do Gatinho e nenhuma está na lista do Cachorrinho");
+    await dp.context().close();
+    // (b) Gatinho com skins de categorias do Cachorrinho (skins de mentira, só para o teste): o quadro não muda
+    const cp = await skcPage();
+    await cp.evaluate(`window.__frameFn = ${SKC.CAT_FRAME.toString()};`);
+    const same = await cp.evaluate(({ frame, dogSlots }) => {
+      const realGet = Skins.get, wild = { id: "fake", name: "x", text: "y", price: 10, collar: "#00ff00", tag: "#00ff00", acc: "hat", pat: "check", style: "castle", c1: "#00ff00", c2: "#ff00ff", top: "#00ff00", face: "#00ff00", coats: [{ fur: "#00ff00", dark: "#00ff00", belly: "#00ff00", ear: "#00ff00", eye: "#00ff00" }] };
+      Skins.get = (slot, id) => (dogSlots.includes(slot) && id === "fake" ? wild : realGet(slot, id));
+      try {
+        const a = window.__frameFn(frame);
+        for (const s of dogSlots) __game.setLook(s, "fake");
+        const seen = dogSlots.map((s) => __game.look(s).id).join();
+        const b = window.__frameFn({ ...frame, looks: {} });
+        for (const s of dogSlots) __game.setLook(s, "");
+        return { a, b, seen };
+      } finally { Skins.get = realGet; }
+    }, { frame: { id: 20, seed: 12345, looks: {}, scenes: ["spawn", "foes", "guard", "tracker", "mouse", "yarn-scare", "yarn-gold", "agile", "T"] }, dogSlots: ["agent", "ration", "exit", "postman", "bone", "ball", "block", "van", "foecat", "catexit"] });
+    ok(same.seen === Array(10).fill("fake").join(), "(sanidade) as 10 categorias do Cachorrinho aceitaram a skin de mentira em __game.setLook");
+    ok(JSON.stringify(same.a) === JSON.stringify(same.b), `com uma skin de mentira (verde e espalhafatosa) em TODAS as categorias do Cachorrinho, o quadro do Gatinho (Fase 20: início, cães, ratinho, novelos, camundongo e lugar alto) não muda um pixel`);
+    await cp.context().close();
+  });
+
+
   // ----------------------------------------------------------------------------------------------------------------------------
   console.log("erros JS:", errs);
   if (errs.length) failed++;

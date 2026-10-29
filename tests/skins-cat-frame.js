@@ -1,7 +1,7 @@
 // Quadros fixos do JOGO DO GATINHO para conferir as skins dos objetos (0.19.0, frente C): roda DENTRO da página (index.html + js/cat-levels.js) e devolve o hash de pixels do canvas de cada cena.
 // Usado pelo tests/e2e.js (seção "0.19.0 · Skins do Gatinho") e por tools/skin-preview/cat-skins.js. As cenas são sempre as mesmas: semente fixa, cães congelados, o gatinho teletransportado perto de cada objeto
 // e UM quadro desenhado (sem andar o jogo, exceto 1 ms na cena do lugar alto, para o gatinho ficar a salvo em cima dele).
-// Os valores de referência (HASHES_0180) saíram do código da 0.18.0 (commit de partida ed7e2f7, sem nenhuma skin) com o Chromium desta máquina, viewport 1000×700.
+// Os valores de referência (HASHES_0180_CAT no tests/e2e.js) saíram do código da 0.18.0 (commit de partida ed7e2f7, sem nenhuma skin) com o Chromium desta máquina, viewport 1000×700, com `settle` antes de cada fase.
 //   CAT_FRAME({ id, seed, looks: { categoria: "idSkin" }, scenes: [...], shots, crop (zoom), tiles: [largura, altura] do recorte, focus (recorte em volta do objeto), dx (distância do gatinho ao objeto, px) })  ->  { cena: hash | null }  (null = o objeto não existe na fase)
 // Cenas: spawn (início), T (em cima do 1º lugar alto), foes (4 cães em 4 modos), guard, tracker, mouse, yarn-scare|gold|ice|turbo|magnet, agile.
 // Com `shots: true` devolve também o recorte PNG (data URL) de cada cena em volta do gatinho (9 × 6 tiles), para as folhas de capturas.
@@ -52,4 +52,12 @@ const CAT_FRAME = ({ id, seed, looks, scenes, shots, crop, tiles: tsz, dx: dxo, 
   return out;
 };
 const SCENES_ALL = ["spawn", "T", "foes", "guard", "tracker", "mouse", "yarn-scare", "yarn-gold", "yarn-ice", "yarn-turbo", "yarn-magnet", "agile"];
-module.exports = { CAT_FRAME, SCENES_ALL, VIEWPORT: { width: 1000, height: 700 } };
+// Do lado do Node: começa a fase e espera o leiaute assentar (a altura do placar muda o tamanho do canvas, e muda de uma fase para outra: sem esperar, o tamanho do quadro depende da pressa da máquina).
+// Só espera quando a fase é outra que a do último quadro desta página.
+async function settle(pg, id) {
+  if (pg.__skcLevel === id) return;
+  await pg.evaluate((id) => { const g = window.__game; g.setAnimal("cat"); g.autoStart = true; g.start(id); }, id);
+  await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 150))))));
+  pg.__skcLevel = id;
+}
+module.exports = { CAT_FRAME, SCENES_ALL, settle, VIEWPORT: { width: 1000, height: 700 } };

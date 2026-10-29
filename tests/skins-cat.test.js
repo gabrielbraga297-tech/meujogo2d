@@ -241,6 +241,15 @@ test("lugares altos: cada estilo cabe no tile de 32×32, tem topo, sombra e cont
   assert.ok(rec(DRAW.perch({ style: "wood", top: "azul" })).lines.length > 10, "cor inválida: usa a de sempre, sem erro");
 });
 
+test("`from` de cada categoria = a primeira fase dos mapas de js/cat-levels.js em que o objeto existe", () => {
+  const LEVELS = require(path.join(__dirname, "../js/cat-levels.js"));
+  const first = (f) => LEVELS.find(f).id, has = (lv, ch) => lv.map.join("").includes(ch);
+  const want = { guard: first((l) => has(l, "V")), tracker: first((l) => has(l, "R")), perch: first((l) => has(l, "T")), mouse: first((l) => l.rations > 0), yarn: first((l) => l.bones > 0), agile: first((l) => l.balls > 0) };
+  for (const slot of CATS) assert.strictEqual(Skins.slot(slot).from, want[slot], `${slot}: from ${Skins.slot(slot).from}, mapas ${want[slot]}`);
+  assert.deepStrictEqual(want, { guard: 1, tracker: 11, perch: 3, mouse: 1, yarn: 2, agile: 2 });
+  for (const slot of CATS) for (const k of skinsOf(slot)) assert.ok(k.from === undefined || k.from >= Skins.slot(slot).from, `${slot}/${k.id}: from`);
+});
+
 test("os 5 poderes do novelo: a cor-chave é a mesma em qualquer skin (e a tabela de cores não muda)", () => {
   const KEYS = { // escrita aqui à mão, de propósito: mudar uma cor-chave em js/cat-art.js quebra este teste
     scare: { fill: "#ff8f8a", strand: "#d94b4b", hi: "#ffd0cc", glow: null }, gold: { fill: "#ffd23f", strand: "#c4900c", hi: "#fff2b0", glow: "rgba(255,210,63,.36)" },
