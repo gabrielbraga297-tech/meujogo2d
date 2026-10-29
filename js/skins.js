@@ -43,7 +43,7 @@
     { id: "yarn", game: "cat", name: "Novelos", singular: "os novelos", from: 2 },
     { id: "agile", game: "cat", name: "Camundongos ágeis", singular: "os camundongos ágeis", from: 2 },
     { id: "perch", game: "cat", name: "Lugares altos", singular: "os lugares altos", from: 3 },
-    { id: "tracker", game: "cat", name: "Gatos rastreadores", singular: "os gatos rastreadores", from: 11 },
+    { id: "tracker", game: "cat", name: "Cães rastreadores", singular: "os cães rastreadores", from: 11 },
   ];
   const slotOf = Object.create(null);
   for (const s of SLOTS) slotOf[s.id] = Object.freeze(s);

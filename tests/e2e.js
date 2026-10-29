@@ -10887,7 +10887,7 @@ const PAGE_HELPERS = () => {
     //  Cachorrinho: dog = sempre (o jogador) · agent = há agentes da carrocinha (vetSpawns) · ration = há rações · exit = há saída · postman = há ossos com poder (os agentes viram carteiros ao pegar o osso: bones > 0 e bonePower > 0)
     //   · bone = há ossos · ball = há bolinhas · block = há blocos ou paredes que se movem (blockDefs) · van = há vans (as 4 caixas "X" de cidade marcadas `van`) · foecat = há gatos inimigos (catSpawns).
     //  Gatinho: cat = sempre · guard = há cães de guarda (vetSpawns) · mouse = há ratinhos (rations) · catexit = há saída · yarn = há novelos (bones) · agile = há camundongos ágeis (balls)
-    //   · perch = há lugares altos "T" (high) · tracker = há gatos rastreadores (catSpawns: os "R" do mapa).
+    //   · perch = há lugares altos "T" (high) · tracker = há cães rastreadores (catSpawns: os "R" do mapa).
     // Uma categoria registrada sem critério aqui reprova o teste: quem cria uma categoria nova escreve também o critério dela.
     const pg = await s19Page({ stub: false });
     await fresh(pg, { name: "Totó" });

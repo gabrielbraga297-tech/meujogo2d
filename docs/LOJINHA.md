@@ -84,7 +84,7 @@ A categoria libera quando o jogador **alcançou a fase em que o objeto aparece p
 | Gatinho | Novelos | yarn | 2 | os novelos |
 | Gatinho | Camundongos ágeis | agile | 2 | os camundongos que disparam |
 | Gatinho | Lugares altos | perch | 3 | árvores, prateleiras e muros em que o gatinho fica a salvo |
-| Gatinho | Gatos rastreadores | tracker | 11 | os rastreadores que seguem o rastro |
+| Gatinho | Cães rastreadores | tracker | 11 | os rastreadores que seguem o rastro |
 
 Um teste de navegador confere cada `from` com os mapas de verdade (a primeira fase do jogo em que o objeto existe, e que ele continua nas seguintes); o critério de cada categoria está escrito no próprio teste (`node tests/e2e.js "Lojinha única: a fase"`). As skins de objeto só mudam o **desenho**: nenhuma muda regra, velocidade, alcance, pontos ou tempo.
 
