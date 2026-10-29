@@ -41,6 +41,18 @@ test("index.html: js/skins.js vem antes de js/skins-dog.js e js/skins-cat.js, e 
   for (const f of ["js/profiles.js", "js/sound.js", "js/themes.js", "js/version.js"]) assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`);
 });
 
+test("index.html: os arquivos do Passarinho vêm na ordem certa (ambientes depois de themes.js e dos do Gatinho; arte depois de cat-art.js e antes de profiles.js; mapas depois dos do Gatinho; tudo antes de game.js)", () => {
+  const scripts = [...read("index.html").matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map((m) => m[1]);
+  const at = (f) => { const i = scripts.indexOf(f); assert.ok(i >= 0, `index.html não carrega ${f}`); return i; };
+  assert.ok(at("js/themes.js") < at("js/bird-themes.js"), "themes.js antes de bird-themes.js");
+  assert.ok(at("js/cat-themes-2.js") < at("js/bird-themes.js"), "os ambientes do Gatinho antes dos do Passarinho");
+  assert.ok(at("js/bird-themes.js") < at("js/bird-themes-1.js") && at("js/bird-themes-1.js") < at("js/bird-themes-2.js"), "o núcleo dos ambientes antes das Fases 1 a 10 e antes das 11 a 20 (eles chamam BirdThemes.register)");
+  assert.ok(at("js/cat-art.js") < at("js/bird-art.js"), "cat-art.js antes de bird-art.js");
+  assert.ok(at("js/bird-art.js") < at("js/profiles.js"), "bird-art.js antes de profiles.js");
+  assert.ok(at("js/cat-levels.js") < at("js/bird-levels.js"), "cat-levels.js antes de bird-levels.js");
+  for (const f of ["js/bird-themes.js", "js/bird-themes-1.js", "js/bird-themes-2.js", "js/bird-art.js", "js/bird-levels.js"]) assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`);
+});
+
 test("js/game.js: a lojinha lê o progresso do JOGO da categoria (store.reachedLevel(jogador, jogo)), nunca o do jogo padrão", () => {
   const calls = [...gameSrc.replace(/\/\/.*$/gm, "").matchAll(/\breachedLevel\(([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ""));
   assert.ok(calls.length >= 1, "o jogo chama reachedLevel");
