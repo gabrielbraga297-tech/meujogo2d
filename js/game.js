@@ -3027,9 +3027,9 @@
       }
       if (g.id === "bird" && g.ready) { // (0.20.0) o Passarinho também aparece desenhado: BirdArt.drawBird, ou o passarinho de reserva se o arquivo faltar
         const cv = document.createElement("canvas"); cv.width = 104; cv.height = 88; cv.className = "animal-art";
-        const c2 = cv.getContext("2d"); c2.scale(2.4, 2.4);
+        const c2 = cv.getContext("2d"); c2.scale(3.2, 3.2); // (o passarinho é menor que o gatinho na caixa de 24 px: um pouco mais ampliado, para o cartão ficar do mesmo tamanho dos outros)
         const keep = ctx; ctx = c2;
-        try { const p = { x: 48 / 2.4 - 12, y: 41 / 2.4 - 12, w: 24, h: 24, facing: "right", moving: false }, o = { gr: 1, skin: "", still: true, calm: true }; if (!birdArt("drawBird", c2, p, o)) plainBird(p, o); } catch { /* sem desenho: fica o emoji */ } finally { ctx = keep; }
+        try { const p = { x: 52 / 3.2 - 12, y: 46 / 3.2 - 12, w: 24, h: 24, facing: "right", moving: false }, o = { gr: 1, skin: "", still: true, calm: true }; if (!birdArt("drawBird", c2, p, o)) plainBird(p, o); } catch { /* sem desenho: fica o emoji */ } finally { ctx = keep; }
         emoji.classList.add("with-art"); emoji.append(cv);
       }
       head.append(emoji, el("strong", null, g.name));
