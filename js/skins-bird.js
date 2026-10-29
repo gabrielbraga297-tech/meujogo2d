@@ -132,7 +132,7 @@
         { fur: "#b8c3d6", dark: "#5a6784", light: "#eef2f9", wing: "#8794ad" },
         { fur: "#d9dee8", dark: "#7b86a0", light: "#ffffff", wing: "#a9b3c8" },
       ] },
-    { id: "cachecol", name: "Cachecol de lã", text: "cachecol vermelho e branco", price: 15, acc: "scarf", c1: "#e8403a", c2: "#ffffff" },
+    { id: "cachecol", name: "Cachecol de lã", text: "cachecol vermelho no pescoço", price: 15, acc: "scarf", c1: "#e8403a", c2: "#ffffff" },
     { id: "festa", name: "Gavião de festa", text: "chapéu de aniversário roxo com pompom", price: 21, acc: "hat", c1: "#7b4fd0", c2: "#ffd24a" },
     { id: "faixa", name: "Faixa de campeão", text: "faixa azul na cabeça", price: 28, acc: "band", c1: "#3f86e0", c2: "#ffffff" },
   ], { name: "Pardo, cinzento e ruivo", text: "os gaviões de sempre (grátis)" });

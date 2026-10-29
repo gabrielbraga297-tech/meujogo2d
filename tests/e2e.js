@@ -10691,7 +10691,7 @@ const PAGE_HELPERS = () => {
     await s19Tab(pg, "tracker"); st = await s19State(pg);
     ok(st.lockTitle === "Libera ao chegar à Fase 11 do Gatinho" && /Você está na Fase 1 do Gatinho/.test(st.lockSub), `o bloqueio de um objeto do Gatinho cita o Gatinho (${st.lockTitle})`);
     // ---- cada categoria libera exatamente na fase em que o objeto aparece (alcançou N = concluiu N−1) ----
-    const gated = slots.filter((s) => !s.player && s.from > 1 && s.count > 0), bad = [];
+    const gated = slots.filter((s) => !s.player && s.from > 1 && s.count > 0 && s.game !== "bird"), bad = []; // (o Passarinho abre em página própria: a liberação das categorias dele é conferida em tests/e2e-bird-skins.js, "as categorias abrem na fase `from`")
     for (const s of gated) {
       for (const done of [s.from - 2, s.from - 1]) {
         await s19Open(pg, { treats: 100, [s.game]: done });
