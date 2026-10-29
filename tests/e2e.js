@@ -6769,7 +6769,9 @@ const PAGE_HELPERS = () => {
     const gotBtn = (cs) => cs.map((c) => [c.btn, c.disabled, c.title]);
     ok(JSON.stringify(gotBtn(cards)) === JSON.stringify(wantBtn(37)), `com 37 petscoin: Caramelo "Em uso"; Comprar ligado até 30 e desligado em Astronauta e Super-cão com "Faltam 3 petscoin" e "Faltam 13 petscoin" (${gotBtn(cards).map((b) => b[0].replace(" petscoin", "")).join(" | ")})`);
     ok(cards.map((c) => c.equipped).join() === "true,false,false,false,false,false,false,false,false", "só o Caramelo está marcado como em uso");
-    ok(await focusName() === "Cinza-prata", `o foco inicial vai para o primeiro botão de comprar que dá (${await focusName()})`);
+    ok(await focusName() === "shop-game-dog", `o foco inicial é a aba do jogo, sempre à vista (${await focusName()}): um "Comprar" lá embaixo podia ficar fora da tela`);
+    await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown"); // (a aba do jogo → a categoria aberta → o primeiro "Comprar" que dá)
+    ok(await focusName() === "Cinza-prata", `↓ duas vezes leva ao primeiro botão de comprar que dá (${await focusName()})`);
 
     // ---- rótulos acessíveis: o nome da skin faz parte do nome do botão ----
     const names = [];
@@ -6852,11 +6854,16 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-shop");
     ok(await msg() === "", "reabrir a lojinha limpa a mensagem");
     const first = await focusName();
-    ok(first === "Arco-íris", `o foco inicial é o primeiro "Comprar" que dá (${first}: Arco-íris custa 25 e as de antes já são suas)`);
+    ok(first === "shop-game-dog", `o foco inicial é a aba do jogo (${first}), sempre à vista: um "Comprar" lá embaixo podia ficar fora da tela e o Enter comprava sem o jogador ver`);
+    await page.keyboard.press("ArrowDown");
+    const chip = await focusName();
+    await page.keyboard.press("ArrowDown");
+    const third = await focusName();
+    await page.focus(cardBtn("arco-iris"));
     await page.keyboard.press("ArrowDown");
     const second = await focusName();
     await page.keyboard.press("ArrowUp");
-    ok(second === "Pirata" && await focusName() === "Arco-íris", `↓ e ↑ andam entre os botões disponíveis (${first} → ${second} → ${await focusName()})`);
+    ok(chip === "shop-cat-dog" && third === "Cinza-prata" && second === "Pirata" && await focusName() === "Arco-íris", `↓ passa pela aba do jogo, pela categoria aberta e entra nos botões ligados (${first} → ${chip} → ${third}); ↓ e ↑ andam entre eles (Arco-íris → ${second} → ${await focusName()}; Arco-íris custa 25 e as de antes já são suas)`);
     const tabs = [await focusName()]; for (let i = 0; i < 4; i++) { await page.keyboard.press("Tab"); tabs.push(await focusName()); }
     ok(tabs.slice(0, 5).join(",") === "Arco-íris,Pirata,Astronauta,Super-cão,btn-shop-back", `Tab passa só pelos botões ligados e termina no Voltar (${tabs.slice(0, 5).join(" → ")})`);
     await page.focus("#btn-shop-back"); await page.keyboard.press("Enter");
@@ -6865,7 +6872,7 @@ const PAGE_HELPERS = () => {
     ok(await page.isVisible("#menu") && await page.isHidden("#shop"), "clicar em Voltar leva ao menu");
     await ev(page, () => { const st = Records.createStore(localStorage); st.buySkin("Totó", "arco-iris", 25); st.buySkin("Totó", "pirata", 30); st.buySkin("Totó", "astronauta", 40); st.buySkin("Totó", "super", 50); });
     await page.click("#btn-shop");
-    ok(await focusName() === "btn-shop-back" || await focusName() === "Voltar", `quando nada dá para comprar o foco inicial vai para o Voltar (${await focusName()})`);
+    ok(await focusName() === "shop-game-dog", `quando nada dá para comprar o foco inicial continua na aba do jogo (${await focusName()})`);
   });
 
   // =====================================================================
@@ -6877,7 +6884,7 @@ const PAGE_HELPERS = () => {
     let cards = await shopCards(page);
     ok(await bal() === "Escolha um nome de usuário no menu para guardar petiscos e comprar skins." && cards.length === 9 && cards.every((c) => c.disabled), "sem nome: a lojinha pede para escolher um nome de usuário e todos os botões ficam desligados");
     ok(cards[0].btn === "Padrão" && cards.slice(1).every((c, i) => c.btn === `${SKIN_SPEC[i + 1][2]} petscoin`), `os cartões mostram o nome, a prévia e o preço (${cards.map((c) => c.btn.replace(" petscoin", "")).join(" | ")})`);
-    ok(await ev(page, () => document.activeElement.id) === "btn-shop-back", "sem nome o foco inicial vai para o Voltar");
+    ok(await ev(page, () => document.activeElement.id) === "shop-game-dog", "sem nome o foco inicial fica na aba do jogo");
     await ev(page, () => { for (const b of document.querySelectorAll("#shop-list button")) { b.disabled = false; b.click(); } }); // força todos os cliques
     const wNo = await ev(page, () => JSON.parse(localStorage.getItem("cachorrinho.v1") || "{}").wallet || {});
     ok(Object.keys(wNo).length === 0 && await ev(page, () => __game.skin) === "", "forçar os cliques sem nome não cria carteira nem muda a skin");
@@ -6889,7 +6896,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-shop");
     cards = await shopCards(page);
     ok(await bal() === BAL(9) && cards[1].disabled && cards[1].title === "Falta 1 petscoin" && cards[2].title === "Faltam 3 petscoin" && cards[8].title === "Faltam 41 petscoin", `com 9 petscoin a Cinza-prata está a 1 de distância ("${cards[1].title}") e o resto diz "Faltam N petscoin" (${cards[2].title}, ${cards[8].title})`);
-    ok(await ev(page, () => document.activeElement.id) === "btn-shop-back", "com 9 petscoin não há o que comprar: o foco inicial vai para o Voltar");
+    ok(await ev(page, () => document.activeElement.id) === "shop-game-dog", "com 9 petscoin não há o que comprar: o foco inicial continua na aba do jogo");
     await page.keyboard.press("Escape");
     await fresh(page); await seedWallet(page, { treats: 11 });
     await page.click("#btn-shop"); await page.click(cardBtn("cinza"));
@@ -10711,7 +10718,7 @@ const PAGE_HELPERS = () => {
     await s19Open(pg, { name: "" });
     st = await s19State(pg);
     ok(st.bal === "Escolha um nome de usuário no menu para guardar petiscos e comprar skins." && st.cards === 9, "sem nome de usuário a lojinha pede um nome e mostra as skins do bichinho");
-    ok(await pg.$$eval("#shop-list button", (bs) => bs.every((b) => b.disabled)) && await s19Active(pg) === "btn-shop-back", "e todos os botões ficam desligados (o foco vai para o Voltar)");
+    ok(await pg.$$eval("#shop-list button", (bs) => bs.every((b) => b.disabled)) && await s19Active(pg) === "shop-game-dog", "e todos os botões ficam desligados (o foco abre na aba do jogo)");
     const lockNoName = slots.find((s) => s.game === "dog" && s.from > 1 && s.count > 0);
     await s19Tab(pg, lockNoName.id); st = await s19State(pg);
     ok(st.lockTitle === LOCK(lockNoName.from, "Cachorrinho") && /^Sem nome de usuário o progresso não é guardado: escolha um nome no menu e conclua a Fase \d+ do Cachorrinho/.test(st.lockSub), `sem nome as categorias de fases mais altas aparecem bloqueadas (${st.lockSub})`);
@@ -10992,6 +10999,129 @@ const PAGE_HELPERS = () => {
     await s19Open(pg, { treats: 100, cat: 20 });
     await s19Tab(pg, "agent");
     ok((await cardOf(2)).name === "Skin escondida" && (await buy("azul")).error === "locked", "as 20 fases do Gatinho concluídas não liberam a skin do Cachorrinho");
+    await pg.context().close();
+  });
+
+  // =====================================================================
+  await section("0.19.0 · Lojinha única: correções da auditoria do navegador (o foco abre à vista e Enter duas vezes não compra, a barra de abas não pula, a lista aparece ao abrir uma aba, nomes acessíveis distintos e abas sem sobreposição em 195 px)", async () => {
+    const pg = await s19Page();
+    const raf = () => ev(pg, () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 80)))));
+    const SIZES = [[320, 568], [360, 640], [390, 780], [568, 320], [1000, 700]];
+    const BOX = () => { // o elemento focado agora, a borda do saldo fixo (sticky, no alto) e o início do Voltar (sticky, no pé)
+      const a = document.activeElement, r = a.getBoundingClientRect(), sh = document.getElementById("shop");
+      return { id: a.id, top: r.top, bottom: r.bottom, left: r.left, right: r.right, W: innerWidth, H: innerHeight, headBottom: sh.querySelector(".shop-head").getBoundingClientRect().bottom, backTop: sh.querySelector(".menu-list").getBoundingClientRect().top };
+    };
+    const inside = (b) => b.top >= b.headBottom - 0.5 && b.bottom <= b.backTop + 0.5 && b.top >= 0 && b.bottom <= b.H && b.left >= 0 && b.right <= b.W;
+    const raw = (b) => `${b.id} ${Math.round(b.top)}..${Math.round(b.bottom)} (saldo até ${Math.round(b.headBottom)}, Voltar desde ${Math.round(b.backTop)}, janela ${b.W}×${b.H})`;
+    // ---- 1) abrir a lojinha pelo teclado: o foco cai na aba do jogo, inteira dentro da janela; Enter duas vezes não compra nada ----
+    const bad1 = [];
+    for (const [w, h] of SIZES) {
+      await pg.setViewportSize({ width: w, height: h });
+      await fresh(pg, { name: "Totó" }); await s19Seed(pg, { treats: 60, dog: 3, cat: 2 });
+      await pg.focus("#btn-shop"); await pg.keyboard.press("Enter"); await raf();
+      const b = await ev(pg, BOX);
+      if (b.id !== "shop-game-dog" || !inside(b)) bad1.push(`${w}×${h}: ${raw(b)}`);
+      await pg.keyboard.press("Enter"); await pg.keyboard.press("Enter"); await raf();
+      const after = await ev(pg, () => ({ w: Records.createStore(localStorage).wallet("Totó"), bal: document.getElementById("shop-balance").textContent, id: document.activeElement.id }));
+      if (after.w.treats !== 60 || after.w.owned.length || after.w.equipped !== "" || after.bal !== BAL(60) || after.id !== "shop-game-dog") bad1.push(`${w}×${h}: depois de Enter+Enter ${JSON.stringify(after)}`);
+      await pg.keyboard.press("Escape");
+    }
+    ok(bad1.length === 0, `ao abrir a lojinha pelo teclado (foco no botão da lojinha + Enter) em 320×568, 360×640, 390×780, 568×320 e 1000×700 o foco cai na aba do jogo aberto, inteira dentro da janela e fora do saldo e do Voltar fixos; Enter duas vezes não compra nada (saldo 60 e nenhuma skin)${bad1.length ? " — problemas: " + bad1.join("; ") : ""}`);
+    // o foco inicial também vale para o Gatinho (abre na aba dele)
+    await pg.setViewportSize({ width: 360, height: 640 });
+    await fresh(pg, { name: "Totó" }); await s19Seed(pg, { treats: 60, dog: 3, cat: 2 });
+    await ev(pg, () => { Records.createStore(localStorage).setAnimal("Totó", "cat"); });
+    await pg.reload(); await ev(pg, PAGE_HELPERS);
+    await pg.focus("#btn-shop"); await pg.keyboard.press("Enter"); await raf();
+    const catFocus = await ev(pg, BOX);
+    ok(catFocus.id === "shop-game-cat" && inside(catFocus), `com o Gatinho escolhido a lojinha abre com o foco na aba dele (${raw(catFocus)})`);
+
+    // ---- 2) a barra de abas não pula ao trocar entre categorias longas e bloqueadas ----
+    const tabsTop = () => ev(pg, () => Math.round(document.getElementById("shop-games").getBoundingClientRect().top + document.getElementById("shop").scrollTop));
+    const jumps = [];
+    for (const [w, h] of [[360, 640], [1000, 700], [320, 568]]) {
+      await pg.setViewportSize({ width: w, height: h });
+      await s19Open(pg, { treats: 60, dog: 3, cat: 2 });
+      const tops = [["início", await tabsTop()]];
+      for (const id of ["foecat", "dog", "foecat", "ration", "van"]) { await s19Tab(pg, id); tops.push([id, await tabsTop()]); }
+      await pg.click("#shop-game-cat"); tops.push(["Gatinho", await tabsTop()]);
+      for (const id of ["tracker", "cat", "tracker", "yarn"]) { await s19Tab(pg, id); tops.push([id, await tabsTop()]); }
+      if (new Set(tops.map((t) => t[1])).size !== 1) jumps.push(`${w}×${h}: ${tops.map((t) => t.join("=")).join(", ")}`);
+    }
+    ok(jumps.length === 0, `a barra de abas fica no mesmo lugar ao alternar entre categorias longas e bloqueadas (e entre os jogos) em 360×640, 1000×700 e 320×568${jumps.length ? " — pulou: " + jumps.join("; ") : ""}`);
+
+    // ---- 3) depois de abrir uma aba o começo da lista aparece, sem tirar o foco da aba ----
+    const FRAME = () => {
+      const a = document.activeElement, r = a.getBoundingClientRect(), sh = document.getElementById("shop"), first = document.getElementById("shop-list").firstElementChild.getBoundingClientRect();
+      const headBottom = sh.querySelector(".shop-head").getBoundingClientRect().bottom, backTop = sh.querySelector(".menu-list").getBoundingClientRect().top;
+      return { id: a.id, chipTop: r.top, chipBottom: r.bottom, headBottom, backTop, firstTop: first.top, shown: Math.min(first.bottom, backTop) - Math.max(first.top, headBottom), H: innerHeight };
+    };
+    const hidden = [];
+    for (const [w, h] of [[320, 568], [568, 320], [360, 640], [390, 780]]) {
+      await pg.setViewportSize({ width: w, height: h });
+      await s19Open(pg, { treats: 60, dog: 3, cat: 2 });
+      for (const [game, id] of [["dog", "ration"], ["dog", "foecat"], ["dog", "agent"], ["cat", "tracker"], ["cat", "cat"]]) {
+        await pg.click(`#shop-game-${game}`); await raf(); await ev(pg, () => { document.getElementById("shop").scrollTop = 0; });
+        await pg.click(`#shop-cat-${id}`); await raf();
+        const f = await ev(pg, FRAME);
+        if (f.id !== `shop-cat-${id}`) hidden.push(`${w}×${h} ${id}: o foco saiu da aba (${f.id})`);
+        if (f.chipTop < f.headBottom - 0.5 || f.chipBottom > f.backTop + 0.5) hidden.push(`${w}×${h} ${id}: a aba focada saiu da área visível (${Math.round(f.chipTop)}..${Math.round(f.chipBottom)}, saldo até ${Math.round(f.headBottom)})`);
+        if (f.shown < 60) hidden.push(`${w}×${h} ${id}: só ${Math.round(f.shown)} px do primeiro cartão aparecem (o resto está abaixo da dobra ou sob o saldo)`);
+      }
+      // abrir a aba de OUTRO jogo também mostra o começo da lista
+      await pg.click("#shop-game-dog"); await raf(); await ev(pg, () => { document.getElementById("shop").scrollTop = 0; });
+      await pg.click("#shop-game-cat"); await raf(); const g2 = await ev(pg, FRAME);
+      if (g2.id !== "shop-game-cat" || g2.shown < 60) hidden.push(`${w}×${h} aba do Gatinho: foco ${g2.id}, ${Math.round(g2.shown)} px do cartão`);
+    }
+    ok(hidden.length === 0, `depois de abrir uma categoria (ou outro jogo) em 320×568, 568×320, 360×640 e 390×780 aparecem pelo menos 60 px do primeiro cartão (ou do aviso de bloqueio) entre o saldo e o Voltar, e o foco continua na aba, à vista${hidden.length ? " — problemas: " + hidden.join("; ") : ""}`);
+    // com o teclado (→ nas categorias) vale o mesmo
+    await pg.setViewportSize({ width: 568, height: 320 });
+    await s19Open(pg, { treats: 60, dog: 3 });
+    await pg.focus("#shop-cat-dog"); await pg.keyboard.press("ArrowRight"); await raf();
+    const kb = await ev(pg, FRAME);
+    ok(kb.id === "shop-cat-agent" && kb.shown >= 60 && kb.chipTop >= kb.headBottom - 0.5, `→ numa categoria também mostra o começo da lista (${Math.round(kb.shown)} px do cartão) e deixa o foco na aba (${kb.id})`);
+
+    // ---- 4) nomes acessíveis distintos: a aba do jogo e a categoria do bichinho não repetem o mesmo nome ----
+    await pg.setViewportSize({ width: 1000, height: 700 });
+    await s19Open(pg, { treats: 60, dog: 3 });
+    const names = async () => ev(pg, () => [...document.querySelectorAll('#shop [role="tab"]')].map((t) => ({ name: t.getAttribute("aria-label") || t.textContent.trim().replace(/\s+/g, " "), text: t.textContent.trim().replace(/\s+/g, " "), id: t.id })));
+    let nm = await names();
+    ok(new Set(nm.map((n) => n.name)).size === nm.length && nm.find((n) => n.id === "shop-game-dog").name === "Cachorrinho" && nm.find((n) => n.id === "shop-cat-dog").name === "O cachorrinho" && nm.find((n) => n.id === "shop-cat-dog").text === "Cachorrinho",
+      `no Cachorrinho nenhum nome de aba se repete para o leitor de tela: a aba do jogo é "Cachorrinho" e a categoria do bichinho é "O cachorrinho" (o texto na tela continua "Cachorrinho"): ${nm.map((n) => n.name).join(" | ")}`);
+    ok(await pg.getByRole("tab", { name: "Cachorrinho", exact: true }).count() === 1 && await pg.getByRole("tab", { name: "O cachorrinho", exact: true, selected: true }).count() === 1 && await pg.getByRole("tabpanel", { name: "O cachorrinho", exact: true }).isVisible(), "o leitor de tela acha uma só aba \"Cachorrinho\", a categoria \"O cachorrinho\" selecionada e o painel com esse nome");
+    await pg.click("#shop-game-cat");
+    nm = await names();
+    ok(new Set(nm.map((n) => n.name)).size === nm.length && nm.find((n) => n.id === "shop-cat-cat").name === "O gatinho" && nm.find((n) => n.id === "shop-cat-cat").text === "Gatinho" && await pg.getByRole("tab", { name: "Gatinho", exact: true }).count() === 1 && await pg.getByRole("tab", { name: "O gatinho", exact: true, selected: true }).count() === 1,
+      `e no Gatinho: a aba do jogo é "Gatinho" e a categoria do bichinho é "O gatinho": ${nm.map((n) => n.name).join(" | ")}`);
+
+    // ---- 5) telas estreitas (zoom de 200% num celular de 390 px = 195 px): as abas dos jogos quebram a linha em vez de se sobrepor; sem rolagem lateral na lojinha ----
+    const NARROW = () => {
+      const sh = document.getElementById("shop"), out = [], rects = (sel) => [...sh.querySelectorAll(sel)].map((e) => [e, e.getBoundingClientRect()]);
+      for (const sel of ["#shop-games .shop-tab", "#shop-cats .shop-tab"]) {
+        const rs = rects(sel);
+        for (let i = 0; i < rs.length; i++) {
+          const [e, a] = rs[i];
+          if (e.scrollWidth > e.clientWidth + 1) out.push(`${e.id}: texto cortado (${e.scrollWidth} > ${e.clientWidth})`);
+          if (a.left < -0.5 || a.right > innerWidth + 0.5) out.push(`${e.id} passa da janela (${a.left.toFixed(0)}..${a.right.toFixed(0)} de ${innerWidth})`);
+          for (let j = i + 1; j < rs.length; j++) { const b = rs[j][1]; if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${e.id} e ${rs[j][0].id} se sobrepõem`); }
+        }
+      }
+      if (sh.scrollWidth > sh.clientWidth) out.push(`rolagem lateral na lojinha (${sh.scrollWidth} > ${sh.clientWidth})`);
+      return { out, rows: new Set(rects("#shop-games .shop-tab").map(([, r]) => Math.round(r.top + sh.scrollTop))).size };
+    };
+    const narrow = [], rowsAt = {};
+    for (const [w, h] of [[195, 390], [240, 480], [280, 653], [300, 600], [320, 568]]) {
+      await pg.setViewportSize({ width: w, height: h });
+      await s19Open(pg, { treats: 60, dog: 3, cat: 2 });
+      for (const game of ["dog", "cat"]) {
+        await pg.click(`#shop-game-${game}`);
+        const r = await ev(pg, NARROW); rowsAt[w] = r.rows;
+        for (const p of r.out) narrow.push(`${w}×${h} ${game}: ${p}`);
+      }
+    }
+    ok(narrow.length === 0, `em 195×390, 240×480, 280×653, 300×600 e 320×568 as abas dos jogos e as categorias não se sobrepõem, não passam da janela, não têm texto cortado e a lojinha não rola para o lado${narrow.length ? " — problemas: " + narrow.slice(0, 8).join("; ") : ""}`);
+    ok(rowsAt[195] > 1 && rowsAt[320] === 1, `abaixo de 300 px as abas dos jogos passam para mais de uma linha (${rowsAt[195]} linhas em 195 px) e a partir de 320 px continuam em uma só (${rowsAt[320]})`);
+    await pg.setViewportSize({ width: 1280, height: 720 });
     await pg.context().close();
   });
 

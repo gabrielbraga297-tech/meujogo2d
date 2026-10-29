@@ -2963,9 +2963,10 @@
     for (const g of Skins.GAMES) {
       const ready = shopGameReady(g.id), on = g.id === shopGame, t = el("button", `shop-tab${on ? " on" : ""}${ready ? "" : " soon"}`);
       t.type = "button"; t.id = `shop-game-${g.id}`; t.setAttribute("role", "tab"); t.setAttribute("aria-selected", on ? "true" : "false"); t.setAttribute("aria-controls", "shop-list"); t.tabIndex = on ? 0 : -1;
+      if (on) t.dataset.autofocus = ""; // o foco abre na aba do jogo aberto: ela está sempre à vista no alto (um botão "Comprar" lá embaixo ficava fora da tela, e Enter comprava sem o jogador ver)
       t.append(el("span", null, gameName(g.id)));
       if (!ready) { t.disabled = true; t.append(el("small", null, "em breve")); t.setAttribute("aria-label", `${gameName(g.id)}: em breve`); }
-      else t.addEventListener("click", () => { if (shopGame !== g.id) { shopGame = g.id; shopSlot = ""; shopMsg = ""; } renderShop(); });
+      else t.addEventListener("click", () => { if (shopGame !== g.id) { shopGame = g.id; shopSlot = ""; shopMsg = ""; } renderShop(); revealShopPanel(); });
       gamesBar.append(t);
     }
     catsBar.replaceChildren();
@@ -2975,7 +2976,8 @@
       if (locked) { const ic = el("span", "lock-ico", "\u{1F512}"); ic.setAttribute("aria-hidden", "true"); t.append(ic); }
       t.append(el("span", null, x.name));
       if (locked) { t.append(el("small", null, `Fase ${x.from}`)); t.setAttribute("aria-label", `${x.name}, bloqueada. ${lockText(x.from, x.game)}`); }
-      t.addEventListener("click", () => { if (shopSlot !== x.id) { shopSlot = x.id; shopMsg = ""; } renderShop(); });
+      else if (x.player) t.setAttribute("aria-label", x.singular.charAt(0).toUpperCase() + x.singular.slice(1)); // "O cachorrinho" / "O gatinho": o texto visível repete o nome da aba do jogo, e o leitor de tela diria "Cachorrinho" duas vezes
+      t.addEventListener("click", () => { if (shopSlot !== x.id) { shopSlot = x.id; shopMsg = ""; } renderShop(); revealShopPanel(); });
       catsBar.append(t);
     }
     list.setAttribute("aria-labelledby", `shop-cat-${slot.id}`);
@@ -3033,6 +3035,18 @@
       const b = list.querySelectorAll("button")[refocus], nm = $(`shop-name-${refocus}`);
       if (b && !b.disabled) b.focus(); else if (nm) { nm.tabIndex = -1; nm.focus(); } else $("btn-shop-back").focus();
     }
+  }
+  // Depois de abrir uma aba (clique, toque ou teclado): se o começo do primeiro cartão ficou abaixo da dobra (ou atrás do Voltar fixo) ou sob o saldo fixo do alto (celular pequeno ou deitado, onde as abas ocupam
+  // boa parte da tela), rola o necessário para mostrar pelo menos o começo dele (até 120 px), sem tirar o foco da aba e sem deixar a aba focada sair da tela por cima.
+  function revealShopPanel() {
+    const sh = $("shop"), first = $("shop-list").firstElementChild, head = sh.querySelector(".shop-head"), back = sh.querySelector(".menu-list"), keep = document.activeElement;
+    if (!first || !head || !back) return;
+    const headH = head.offsetHeight + (parseFloat(getComputedStyle(sh).paddingTop) || 0), backTop = back.getBoundingClientRect().top, fr = first.getBoundingClientRect();
+    let d = fr.top + Math.min(fr.height, 120) - backTop; // > 0: o começo do cartão está abaixo da dobra
+    if (d > 0) {
+      if (keep && keep.getBoundingClientRect && sh.contains(keep)) d = Math.min(d, keep.getBoundingClientRect().top - headH); // a aba focada continua à vista
+      if (d > 0) sh.scrollTop += d;
+    } else if (fr.top < headH) sh.scrollTop += fr.top - headH - 6; // o cartão ficou sob o saldo fixo: sobe até ele aparecer
   }
   // as setas ← → (e Início/Fim) andam entre as abas e abrem a que recebeu o foco
   function onShopTabKey(e) {

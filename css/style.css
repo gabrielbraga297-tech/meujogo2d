@@ -252,6 +252,10 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 .shop-locked .sub { font-size: .9em; color: var(--muted); }
 .shop-card.locked { opacity: .65; border-style: dashed; }
 #shop-games .shop-tab { flex: 1 1 auto; }
+@media (max-width: 300px) { /* zoom de 200% num celular de 390 px = 195 px: as abas dos jogos passam para a linha de baixo em vez de se sobrepor */
+  #shop-games { flex-wrap: wrap; }
+  #shop-games .shop-tab { flex: 1 1 7em; }
+}
 @media (max-width: 380px) {
   .shop-tabs { gap: 4px; }
   .shop-tab { padding: 4px 10px; font-size: 14px; }
@@ -271,6 +275,7 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 #shop .shop-head { position: sticky; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 6px 0; background: var(--bg); }
 #shop .shop-head p:empty { display: none; }
 #shop { scroll-padding-top: 90px; scroll-padding-bottom: 76px; }
+#shop .panel { margin-block: 0 auto; } /* a lojinha fica alinhada ao topo: com o painel centrado, a barra de abas pulava ao trocar entre uma categoria longa e uma bloqueada (curta) */
 #shop .menu-list { position: sticky; bottom: 0; z-index: 1; padding: 8px 0 2px; background: linear-gradient(to bottom, rgba(10, 12, 18, 0), rgba(10, 12, 18, .96) 30%); }
 .level-list { display: flex; flex-direction: column; gap: 10px; }
 .level-list button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 20px; text-align: center; }
