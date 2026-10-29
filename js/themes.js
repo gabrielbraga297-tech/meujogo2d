@@ -766,14 +766,17 @@
   };
 
   const BY_ID = { 1: quintal, 2: campo, 3: casa, 4: rua, 5: condominio, 6: praca, 7: parque, 8: feira, 9: praia, 10: central, 11: beco, 12: petshop, 13: fazenda, 14: bosque, 15: lago, 16: mercadao, 17: estacionamento, 18: telhados, 19: estacao, 20: fortaleza };
-  // (0.18.0) Ambientes por bichinho: `of(id, animal)`. O Cachorrinho tem os 20 de cima; um bichinho SEM ambientes próprios (o Passarinho, por enquanto) usa os do Cachorrinho, e sem o 2º argumento
+  // (0.18.0) Ambientes por bichinho: `of(id, animal)`. O Cachorrinho tem os 20 de cima; um bichinho SEM ambientes próprios usa os do Cachorrinho, e sem o 2º argumento
   // (ou com "dog") a resposta é exatamente a de sempre. Para dar ambientes próprios a outro bichinho, registre aqui `BY_ANIMAL.bird = { 1: ..., 2: ... }` (os que faltarem usam o do Cachorrinho daquela fase). O Gatinho não passa por aqui: os 20 ambientes dele vêm de CatThemes (abaixo).
   const BY_ANIMAL = { dog: BY_ID };
   // Fases sem ambiente próprio (de 21 em diante, se um dia existirem) usam o da Rua do bairro.
   // (0.18.0) O Gatinho tem os 20 ambientes dele em js/cat-themes*.js (window.CatThemes, carregado antes do js/game.js): `of(id, "cat")` devolve o de CatThemes; se o arquivo faltar (ou não tiver a fase), cai no do Cachorrinho.
   const catTheme = (id) => { const CT = typeof CatThemes !== "undefined" ? CatThemes : null; return CT && Number.isInteger(id) && id >= 1 && id <= 20 ? CT.of(id) : null; };
+  // (0.20.0) O Passarinho tem os 20 ambientes dele em js/bird-themes*.js (window.BirdThemes, carregado antes do js/game.js): `of(id, "bird")` devolve o de BirdThemes; sem o arquivo (ou no Node, sem BirdThemes) cai no do Cachorrinho.
+  const birdTheme = (id) => { const BT = typeof BirdThemes !== "undefined" ? BirdThemes : null; return BT && Number.isInteger(id) && id >= 1 && id <= 20 ? BT.of(id) : null; };
   const of = (id, animal) => {
     if (animal === "cat") { const ct = catTheme(id); if (ct) return ct; }
+    else if (animal === "bird") { const bt = birdTheme(id); if (bt) return bt; }
     const own = animal !== undefined && animal !== "dog" && Object.prototype.hasOwnProperty.call(BY_ANIMAL, animal) ? BY_ANIMAL[animal] : null;
     return (own && own[id]) || BY_ID[id] || rua;
   };
