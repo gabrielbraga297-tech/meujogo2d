@@ -101,7 +101,7 @@ const strict = (target, allowed, what) => new Proxy(target, {
   get(t, p) { if (typeof p === "symbol") return undefined; if (!allowed.has(p)) throw new Error(`${what}: leitura de "${String(p)}" não permitida`); const v = Reflect.get(t, p, t); return typeof v === "function" ? v.bind(t) : v; },
   set(t, p, v) { if (!allowed.has(p)) throw new Error(`${what}: escrita em "${String(p)}" não permitida`); return Reflect.set(t, p, v, t); },
 });
-const G_ALLOWED = new Set(["ctx", "rect", "x", "y", "c", "r", "h", "solid", "kind", "border", "time", "mass"]); // (mass: opcional, só o jogo o passa)
+const G_ALLOWED = new Set(["ctx", "rect", "x", "y", "c", "r", "h", "solid", "kind", "border", "time", "mass", "look"]); // (mass: opcional, só o jogo o passa)
 
 // o terreno de teste é uma função pura da posição (como no jogo): `mode` escolhe o desenho do terreno em volta do tile
 function kindFn(mode) {
@@ -112,13 +112,14 @@ function kindFn(mode) {
   return (c, r) => { const v = BT.hash(c * 3 + 1, r * 5 + 2, 99); return v < 0.3 ? "#" : v < 0.4 ? "M" : v < 0.48 ? "X" : v < 0.55 ? "G" : v < 0.61 ? ">" : v < 0.65 ? "<" : v < 0.69 ? "^" : v < 0.73 ? "v" : v < 0.76 ? "~" : "."; };
 }
 // opts: { c, r, border, mode, kind (função de terreno), time, noKind (sem g.kind), raster }
-function drawTile(th, what, { c, r, border = false, mode = "random", kind, time, noKind = false, raster = false, mass }) {
+function drawTile(th, what, { c, r, border = false, mode = "random", kind, time, noKind = false, raster = false, mass, look }) {
   const rs = raster ? new Raster() : null, ctx = new FakeCtx(rs); ctx.ox = c * T; ctx.oy = r * T;
   const sp = strict(ctx, CTX_ALLOWED, "ctx"), kf = kind || kindFn(mode);
   const target = { ctx: sp, rect: (x, y, w, h) => sp.fillRect(x, y, w, h), x: c * T, y: r * T, c, r, border, solid: (cc, rr) => kf(cc, rr) === "#", h: (k) => BT.hash(c, r, k) };
   if (!noKind) target.kind = kf;
   if (mass) target.mass = mass;
   if (time !== undefined) target.time = time;
+  if (look) target.look = look;
   th[what](strict(target, G_ALLOWED, "g"));
   return ctx;
 }
@@ -313,6 +314,14 @@ function pure(fn) {
         assert.ok(a[0].startsWith(flo.slice(0, 400)), `fase ${id}: o vento deveria começar pelo chão do ambiente`);
         const raster = paint(id, "wind", windTile(">", { time: 0.9, raster: true })).raster, base = paint(id, "floor", windTile(">", { time: 0.9, raster: true })).raster;
         assert.ok(raster.diff(base, 14) >= 0.05, `fase ${id}: o vento quase não aparece sobre o chão (${(100 * raster.diff(base, 14)).toFixed(1)}%)`);
+      }
+    });
+    test("vento com skin (g.look, categoria \"gust\"): sem g.look ou com campos vazios ou inválidos é o de sempre; c1, c2 e style mudam o desenho e continuam dentro do tile", () => {
+      for (const id of IDS) for (const ch of WINDS) {
+        const base = paint(id, "wind", windTile(ch, { time: 0.7 })).ops.join("|");
+        for (const lk of [{}, { c1: "azul" }, { style: "xx" }, { c1: 5 }, null]) assert.strictEqual(paint(id, "wind", windTile(ch, { time: 0.7, look: lk })).ops.join("|"), base, JSON.stringify(lk));
+        const seen = new Set([base]);
+        for (const lk of [{ c1: "#ff3366" }, { c2: "#33ff66" }, { style: "dashes" }, { style: "puffs", c1: "#3366ff" }]) { const r = paint(id, "wind", windTile(ch, { time: 0.7, look: lk })); const l = r.ops.join("|"); assert.ok(!seen.has(l), `fase ${id} ${ch}: ${JSON.stringify(lk)} igual a outro`); seen.add(l); assert.ok(r.ops.filter((o) => PAINT.test(o)).length <= MAX_OPS); for (const [x0, y0, x1, y1] of r.boxes) assert.ok(Math.max(-x0, -y0, x1 - T, y1 - T) <= 1e-6, `fase ${id} ${ch} ${JSON.stringify(lk)} sai do tile`); }
       }
     });
     test("os ambientes só tocam no que o contrato permite: leituras de g.free, g.night ou ctx.save, cor não definida e Math.random são recusadas pelo contexto falso", () => {

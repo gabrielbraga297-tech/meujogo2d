@@ -8,7 +8,7 @@
   "use strict";
   const BT = typeof module === "object" && module.exports ? require("./bird-themes.js") : root.BirdThemes;
   if (!BT) throw new Error("js/bird-themes.js precisa ser carregado antes de js/bird-themes-1.js");
-  const { dot, circle, pick, shadowBox, shadowDisc, block, checker, kindAt, stroke, polygon, line, contact, longShadow, treeShadow, halo, hedgeM, fenceM, stalkM, railM, lineM } = BT.helpers;
+  const { dot, circle, pick, shadowBox, shadowDisc, block, checker, kindAt, stroke, polygon, line, lines, contact, longShadow, treeShadow, halo, hedgeM, fenceM, stalkM, railM, lineM } = BT.helpers;
   const T = 32, TAU = Math.PI * 2, hv = BT.hash;
   const all4 = (g) => g.solid(g.c - 1, g.r) && g.solid(g.c + 1, g.r) && g.solid(g.c, g.r - 1) && g.solid(g.c, g.r + 1); // parede cercada de parede (miolo do bloco)
   const soft = (g, x, y, w, h) => { const x0 = Math.max(0, x - 1), y0 = Math.max(0, y - 1); dot(g, "rgba(0,0,0,.10)", x0, y0, Math.min(T, x + w + 1) - x0, Math.min(T, y + h + 1) - y0); dot(g, "rgba(0,0,0,.17)", x, y, w, h); }; // sombra curta e suave de um objeto baixo
@@ -178,8 +178,8 @@
     floor(g) {
       telhados.base(g);
       const off = g.r & 1 ? 8 : 0;
-      dot(g, "#677aa0", 0, 10, T, 1.2); dot(g, "#677aa0", 0, 21, T, 1.2); dot(g, "rgba(255,255,255,.18)", 0, 0, T, 1.4);
-      dot(g, "#677aa0", (off + 4) % 16, 0, 1, 10); dot(g, "#677aa0", (off + 20) % 32, 0, 1, 10); dot(g, "#677aa0", (off + 12) % 32, 11, 1, 10); dot(g, "#677aa0", (off + 28) % 32, 11, 1, 10); dot(g, "#677aa0", (off + 4) % 32, 22, 1, 10); dot(g, "#677aa0", (off + 20) % 32, 22, 1, 10);
+      lines(g, "#677aa0", 1.2, [0, 10.6, T, 10.6, 0, 21.6, T, 21.6, (off + 4) % 16, 0, (off + 4) % 16, 10, (off + 20) % 32, 0, (off + 20) % 32, 10, (off + 12) % 32, 11, (off + 12) % 32, 21, (off + 28) % 32, 11, (off + 28) % 32, 21, (off + 4) % 32, 22, (off + 4) % 32, T, (off + 20) % 32, 22, (off + 20) % 32, T]);
+      dot(g, "rgba(255,255,255,.18)", 0, 0, T, 1.4);
       if (g.h(1) < 0.12) dot(g, "#8fb08a", 6 + ((g.h(2) * 18) | 0), 12 + ((g.h(3) * 8) | 0), 5, 3); // musgo na telha
       contact(g);
     },
@@ -230,7 +230,7 @@
     floor(g) {
       praca.base(g);
       const o = g.r & 1 ? 8 : 0;
-      dot(g, "#bfb69f", 0, 15, T, 1); dot(g, "#bfb69f", 0, T - 1, T, 1); dot(g, "#bfb69f", (o + 8) % 32, 0, 1, 15); dot(g, "#bfb69f", (o + 24) % 32, 0, 1, 15); dot(g, "#bfb69f", (o + 16) % 32, 16, 1, 15);
+      lines(g, "#bfb69f", 1, [0, 15.5, T, 15.5, 0, 31.5, T, 31.5, (o + 8) % 32 + 0.5, 0, (o + 8) % 32 + 0.5, 15, (o + 24) % 32 + 0.5, 0, (o + 24) % 32 + 0.5, 15, (o + 16) % 32 + 0.5, 16, (o + 16) % 32 + 0.5, 31]);
       if (g.h(1) < 0.2) dot(g, "rgba(255,255,255,.35)", 3 + ((g.h(2) * 20) | 0), 3 + ((g.h(3) * 10) | 0), 6, 2);
       if (g.h(4) > 0.94) { circle(g, "#7fbf5a", 16, 16, 2.4); circle(g, "#ff9ec4", 17, 15, 1.4); } // florzinha que brotou entre as pedras
       contact(g);

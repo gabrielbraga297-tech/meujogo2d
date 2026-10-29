@@ -15,6 +15,7 @@
 //   g.h(k)                     número de 0 a 1 sempre igual para o mesmo tile e o mesmo k (sem piscar)       g.solid(c, r)  true se o tile é parede ou está fora do mapa
 //   g.kind(c, r)               o caractere do mapa no tile ("#", ".", "M", "X", "G", ">", "<", "^", "v", "E", "P", "V", "H"; "#" fora do mapa)      g.border  true no anel de fora do mapa
 //   g.mass(c, r)               (opcional, só no jogo) quantos tiles tem a mancha de paredes daquele tile      g.time  segundos de jogo (0 quando "reduzir movimento")
+//   g.look                     (opcional, só em wind(g)) a skin em uso da categoria "gust" (Ventos) da lojinha: c1 (cor das fitas), c2 (cor da setinha), style ("ribbons" | "dashes" | "puffs"); sem ela, o vento de sempre
 // Um tema é { id, place (nome do lugar), blurb (frase curta), night (true: fase noturna; Fases 18 e 19), dusk (true: o entardecer da Fase 18, a luz laranja que escurece), halo (cor do halo em volta do passarinho
 //             nas fases noturnas), nest: { rim, twig, lining } (cores do ninho da saída, para BirdArt.drawNest), mover: { wall: [3 cores], door: [3 cores] }, rail: [2 cores] (blocos e trilhos que se movem),
 //             floor(g), wall(g), muro(g), crate(g), high(g), wind(g) ou wind: { tint, rgb } (o registro monta a função: o chão + as fitas), water(g) (opcional) }.
@@ -59,6 +60,8 @@
     for (let i = 2; i < pts.length; i += 2) ctx.lineTo(g.x + pts[i], g.y + pts[i + 1]);
     ctx.closePath(); ctx.fill();
   };
+  // várias linhas de uma cor só num traço só (barato): arr = [x1, y1, x2, y2, x1, y1, x2, y2...] em px do tile
+  const lines = (g, col, lw, arr) => { const c = g.ctx; c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); for (let i = 0; i < arr.length; i += 4) { c.moveTo(g.x + arr[i], g.y + arr[i + 1]); c.lineTo(g.x + arr[i + 2], g.y + arr[i + 3]); } c.stroke(); };
   const line = (g, col, lw, x1, y1, x2, y2) => { const c = g.ctx; c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); c.moveTo(g.x + x1, g.y + y1); c.lineTo(g.x + x2, g.y + y2); c.stroke(); };
   // sombra de contato das paredes do norte e do oeste: dá profundidade ao chão junto das paredes
   function contact(g, col) {
@@ -233,18 +236,27 @@
   // ---------------------------------------------------------------------------------------------------------------------------------
   // VENTO: o chão do ambiente por baixo, um véu bem leve e fitas de ar que correm na direção da seta (só se mexem com g.time; paradas com 0) e uma setinha fixa para quem não vê o movimento.
   // o = { tint: cor do véu, rgb: "r,g,b" das fitas }
+  // Skin da lojinha (categoria "gust", opcional): o jogo põe g.look = a skin em uso antes de chamar wind(g); campos: c1 (cor das fitas), c2 (cor da setinha) e style ("ribbons" fitas | "dashes" traços curtos | "puffs" bolinhas);
+  // sem g.look (ou sem campos válidos) o desenho é exatamente o de sempre.
+  const rgbCache = Object.create(null);
+  const hexRgb = (h) => { if (typeof h !== "string" || !/^#[0-9a-f]{6}$/i.test(h)) return null; const k = h.toLowerCase(); return rgbCache[k] || (rgbCache[k] = parseInt(k.slice(1, 3), 16) + "," + parseInt(k.slice(3, 5), 16) + "," + parseInt(k.slice(5, 7), 16)); };
   function windOverlay(g, o) {
-    const ctx = g.ctx, ch = g.kind ? g.kind(g.c, g.r) : ">", t = g.time || 0;
+    const ctx = g.ctx, ch = g.kind ? g.kind(g.c, g.r) : ">", t = g.time || 0, lk = g.look && typeof g.look === "object" ? g.look : null;
     const dx = ch === ">" ? 1 : ch === "<" ? -1 : 0, dy = ch === "v" ? 1 : ch === "^" ? -1 : 0, ax = dx || dy ? dx : 1, ay = dx || dy ? dy : 0, nx = -ay, ny = ax;
+    const rgb = (lk && hexRgb(lk.c1)) || o.rgb, rgb2 = (lk && hexRgb(lk.c2)) || (lk && hexRgb(lk.c1)) || o.rgb, style = lk && (lk.style === "dashes" || lk.style === "puffs") ? lk.style : "ribbons";
     dot(g, o.tint, 0, 0, T, T);
     for (let k = 0; k < 3; k++) {
-      const ph = (t * 0.55 + k * 0.33 + g.h(40 + k) * 0.25) % 1, a1 = Math.max(-14, -22 + ph * 44 - 10), a2 = Math.min(14, -22 + ph * 44), u = (k - 1) * 8 + (g.h(44 + k) - 0.5) * 3;
+      const ph = (t * 0.55 + k * 0.33 + g.h(40 + k) * 0.25) % 1, a2 = Math.min(14, -22 + ph * 44), len = style === "dashes" ? 5 : 10, a1 = Math.max(-14, a2 - len), u = (k - 1) * 8 + (g.h(44 + k) - 0.5) * 3;
       if (a2 - a1 < 3) continue;
       const al = 0.25 + 0.6 * Math.sin(PI * ph);
+      if (style === "puffs") { // bolinhas que correm, a maior na frente
+        for (let i = 0; i < 3; i++) { const a = Math.max(-13, Math.min(13, a2 - i * 3.6)), px = 16 + ax * a + nx * u, py = 16 + ay * a + ny * u; ctx.fillStyle = "rgba(0,40,70," + (al * 0.3 * (1 - i * 0.25)).toFixed(2) + ")"; ctx.beginPath(); ctx.arc(g.x + px, g.y + py + 0.8, 2.6 - i * 0.5, 0, TAU); ctx.fill(); ctx.fillStyle = "rgba(" + rgb + "," + (al * (1 - i * 0.25)).toFixed(2) + ")"; ctx.beginPath(); ctx.arc(g.x + px, g.y + py, 2.1 - i * 0.45, 0, TAU); ctx.fill(); }
+        continue;
+      }
       ctx.beginPath();
-      for (let i = 0; i <= 3; i++) { const a = a1 + ((a2 - a1) * i) / 3, w = Math.sin(a * 0.45 + t * 3 + k) * 1.8, px = 16 + ax * a + nx * (u + w), py = 16 + ay * a + ny * (u + w); if (i) ctx.lineTo(g.x + px, g.y + py); else ctx.moveTo(g.x + px, g.y + py); }
+      for (let i = 0; i <= 3; i++) { const a = a1 + ((a2 - a1) * i) / 3, w = style === "dashes" ? 0 : Math.sin(a * 0.45 + t * 3 + k) * 1.8, px = 16 + ax * a + nx * (u + w), py = 16 + ay * a + ny * (u + w); if (i) ctx.lineTo(g.x + px, g.y + py); else ctx.moveTo(g.x + px, g.y + py); }
       ctx.strokeStyle = "rgba(0,40,70," + (al * 0.3).toFixed(2) + ")"; ctx.lineWidth = 3.4; ctx.stroke(); // (um contorno escuro e leve: as fitas aparecem também sobre chão claro)
-      ctx.strokeStyle = "rgba(" + o.rgb + "," + al.toFixed(2) + ")"; ctx.lineWidth = 1.7; ctx.stroke();
+      ctx.strokeStyle = "rgba(" + rgb + "," + al.toFixed(2) + ")"; ctx.lineWidth = 1.7; ctx.stroke();
     }
     // setinha fixa no meio (a direção, sem animação)
     ctx.beginPath();
@@ -252,7 +264,7 @@
     ctx.fillStyle = "rgba(0,40,70,.26)"; ctx.fill();
     ctx.beginPath();
     ctx.moveTo(g.x + 16 + ax * 6, g.y + 16 + ay * 6); ctx.lineTo(g.x + 16 - ax * 2 + nx * 4.5, g.y + 16 - ay * 2 + ny * 4.5); ctx.lineTo(g.x + 16 - ax * 2 - nx * 4.5, g.y + 16 - ay * 2 - ny * 4.5); ctx.closePath();
-    ctx.fillStyle = "rgba(" + o.rgb + ",.7)"; ctx.fill();
+    ctx.fillStyle = "rgba(" + rgb2 + ",.7)"; ctx.fill();
   }
   // água rasa de segurança (os mapas do Passarinho não têm "~"): ondinhas que usam g.time
   function waterDefault(g, base, edge) {
@@ -282,6 +294,6 @@
   const of = (id) => REG[id] || REG[1] || null;
   return {
     register, of, ids: () => Object.keys(REG).map(Number).sort((a, b) => a - b), hash, TILE: T,
-    helpers: { checker, dot, circle, pick, shadowBox, shadowDisc, block, kindAt, stroke, polygon, line, contact, longShadow, treeShadow, halo, topLight, joins, hedgeM, fenceM, stalkM, stoneM, railM, lineM, netM, twigM, windOverlay },
+    helpers: { checker, dot, circle, pick, shadowBox, shadowDisc, block, kindAt, stroke, polygon, line, lines, contact, longShadow, treeShadow, halo, topLight, joins, hedgeM, fenceM, stalkM, stoneM, railM, lineM, netM, twigM, windOverlay },
   };
 });

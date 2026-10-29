@@ -9,7 +9,7 @@
   "use strict";
   const BT = typeof module === "object" && module.exports ? require("./bird-themes.js") : root.BirdThemes;
   if (!BT) throw new Error("js/bird-themes.js precisa ser carregado antes de js/bird-themes-2.js");
-  const { dot, circle, pick, block, checker, stroke, polygon, line, contact, longShadow, treeShadow, halo, hedgeM, fenceM, stoneM, netM, twigM } = BT.helpers;
+  const { dot, circle, pick, block, checker, stroke, polygon, line, lines, contact, longShadow, treeShadow, halo, hedgeM, fenceM, stoneM, netM, twigM } = BT.helpers;
   const T = 32, TAU = Math.PI * 2, hv = BT.hash;
   const all4 = (g) => g.solid(g.c - 1, g.r) && g.solid(g.c + 1, g.r) && g.solid(g.c, g.r - 1) && g.solid(g.c, g.r + 1);
   const soft = (g, x, y, w, h) => { const x0 = Math.max(0, x - 1), y0 = Math.max(0, y - 1); dot(g, "rgba(0,0,0,.10)", x0, y0, Math.min(T, x + w + 1) - x0, Math.min(T, y + h + 1) - y0); dot(g, "rgba(0,0,0,.17)", x, y, w, h); };
@@ -288,9 +288,9 @@
     base(g) { checker(g, "#c2d6e2", "#bbcfdc"); },
     floor(g) {
       pescadores.base(g);
-      dot(g, "#9db4c4", 0, 10, T, 1.2); dot(g, "#9db4c4", 0, 21, T, 1.2); dot(g, "rgba(255,255,255,.4)", 0, 0, T, 1.4);
-      const o = g.c & 1 ? 12 : 4; dot(g, "#9db4c4", o, 0, 1, 10); dot(g, "#9db4c4", (o + 14) % 32, 11, 1, 10); dot(g, "#9db4c4", o, 22, 1, 10);
-      dot(g, "#6a7e8e", o + 2, 3, 1.4, 1.4); dot(g, "#6a7e8e", (o + 16) % 32, 14, 1.4, 1.4); dot(g, "#6a7e8e", o + 2, 26, 1.4, 1.4);
+      const o = g.c & 1 ? 12 : 4;
+      lines(g, "#9db4c4", 1.2, [0, 10.6, T, 10.6, 0, 21.6, T, 21.6, o, 0, o, 10, (o + 14) % 32, 11, (o + 14) % 32, 21, o, 22, o, T]); dot(g, "rgba(255,255,255,.4)", 0, 0, T, 1.4);
+      lines(g, "#6a7e8e", 1.6, [o + 2, 3.6, o + 3.4, 3.6, (o + 16) % 32, 14.6, (o + 16) % 32 + 1.4, 14.6, o + 2, 26.6, o + 3.4, 26.6]);
       if (g.h(1) < 0.1) { circle(g, "#d9b888", 8 + g.h(2) * 16, 8 + g.h(3) * 16, 3.4); circle(g, "#b4946a", 8 + g.h(2) * 16, 8 + g.h(3) * 16, 1.8); } // rolo de corda
       contact(g);
     },
@@ -391,8 +391,8 @@
     floor(g) {
       entardecer.base(g);
       const off = g.r & 1 ? 8 : 0;
-      dot(g, "#b87a62", 0, 10, T, 1.2); dot(g, "#b87a62", 0, 21, T, 1.2); dot(g, "rgba(255,200,120,.35)", 0, 0, T, 1.6); dot(g, "rgba(255,200,120,.2)", 0, 11, T, 1); dot(g, "rgba(255,200,120,.2)", 0, 22, T, 1);
-      dot(g, "#b87a62", (off + 4) % 32, 0, 1, 10); dot(g, "#b87a62", (off + 20) % 32, 0, 1, 10); dot(g, "#b87a62", (off + 12) % 32, 11, 1, 10); dot(g, "#b87a62", (off + 28) % 32, 11, 1, 10); dot(g, "#b87a62", (off + 4) % 32, 22, 1, 10); dot(g, "#b87a62", (off + 20) % 32, 22, 1, 10);
+      lines(g, "#b87a62", 1.2, [0, 10.6, T, 10.6, 0, 21.6, T, 21.6, (off + 4) % 32, 0, (off + 4) % 32, 10, (off + 20) % 32, 0, (off + 20) % 32, 10, (off + 12) % 32, 11, (off + 12) % 32, 21, (off + 28) % 32, 11, (off + 28) % 32, 21, (off + 4) % 32, 22, (off + 4) % 32, T, (off + 20) % 32, 22, (off + 20) % 32, T]);
+      lines(g, "rgba(255,200,120,.3)", 1.4, [0, 0.8, T, 0.8, 0, 11.5, T, 11.5, 0, 22.5, T, 22.5]);
       if (g.h(1) < 0.14) dot(g, "rgba(255,170,70,.3)", 4 + g.h(2) * 14, 4 + g.h(3) * 18, 12, 5); // reflexo da luz do pôr do sol
       contact(g);
     },
@@ -511,7 +511,7 @@
       g.ctx.lineWidth = 1.6; g.ctx.strokeStyle = "#3e2814"; g.ctx.beginPath(); for (let i = 0; i < 4; i++) { const x = 8 + g.h(14 + i) * 14, y = 6 + i * 7 + g.h(18 + i) * 3; g.ctx.moveTo(g.x + x, g.y + y); g.ctx.lineTo(g.x + Math.max(0.5, x - 11), g.y + Math.min(31, y + 2 + g.h(22 + i) * 4)); } g.ctx.stroke();
       if (g.h(3) < 0.25) { dot(g, "#fff7e8", 6 + g.h(4) * 16, 8 + g.h(5) * 14, 6, 1.6); dot(g, "#ffffff", 7 + g.h(4) * 16, 7 + g.h(5) * 14, 3, 1); }
     },
-    muro(g) { twigM(g, ninho.base, { dark: "#6a4426", a: "#c09058", b: "#8a5e34" }); },
+    muro(g) { twigM(g, ninho.base, { dark: "#8a5e34", a: "#dcb47c", b: "#a8743e" }); },
     crate(g) {
       const v = g.h(4);
       if (v < 0.4) { // ovo enorme de bolinhas
