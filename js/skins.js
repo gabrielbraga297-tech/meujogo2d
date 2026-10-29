@@ -21,7 +21,7 @@
   const GAMES = [
     { id: "dog", name: "Cachorrinho", ready: true },
     { id: "cat", name: "Gatinho", ready: true },
-    { id: "bird", name: "Passarinho", ready: false },
+    { id: "bird", name: "Passarinho", ready: true },
   ];
   const SLOTS = [
     // ----- jogo do Cachorrinho -----
@@ -44,6 +44,16 @@
     { id: "agile", game: "cat", name: "Camundongos ágeis", singular: "os camundongos ágeis", from: 2 },
     { id: "perch", game: "cat", name: "Lugares altos", singular: "os lugares altos", from: 3 },
     { id: "tracker", game: "cat", name: "Cães rastreadores", singular: "os cães rastreadores", from: 11 },
+    // ----- jogo do Passarinho (0.20.0) -----
+    { id: "bird", game: "bird", name: "Passarinho", singular: "o passarinho", from: 1, player: true },
+    { id: "seed", game: "bird", name: "Sementes", singular: "as sementes", from: 1 },
+    { id: "stray", game: "bird", name: "Gatos de jardim", singular: "os gatos de jardim", from: 1 },
+    { id: "birdexit", game: "bird", name: "Ninho (saída)", singular: "o ninho da saída", from: 1 },
+    { id: "berry", game: "bird", name: "Frutos", singular: "os frutos", from: 2 },
+    { id: "bug", game: "bird", name: "Minhocas", singular: "as minhocas", from: 2 },
+    { id: "roost", game: "bird", name: "Poleiros", singular: "os poleiros", from: 3 },
+    { id: "gust", game: "bird", name: "Ventos", singular: "os ventos", from: 3 },
+    { id: "hawk", game: "bird", name: "Gaviões", singular: "os gaviões", from: 11 },
   ];
   const slotOf = Object.create(null);
   for (const s of SLOTS) slotOf[s.id] = Object.freeze(s);

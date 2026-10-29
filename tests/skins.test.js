@@ -30,9 +30,43 @@ test("cada jogo pronto tem exatamente uma categoria do jogador e ela abre na Fas
   }
 });
 
-test("o Passarinho ainda não tem categorias (aparece desligado, em breve)", () => {
-  assert.strictEqual(Skins.GAMES.find((g) => g.id === "bird").ready, false);
-  assert.strictEqual(Skins.slotsOf("bird").length, 0);
+test("o Passarinho agora é um jogo pronto do catálogo: 9 categorias (a do jogador e 8 de objetos), com o jogador abrindo na Fase 1 e o ranking de fases de cada objeto", () => {
+  assert.strictEqual(Skins.GAMES.find((g) => g.id === "bird").ready, true);
+  assert.deepStrictEqual(Skins.slotsOf("bird").map((s) => [s.id, s.from]), [["bird", 1], ["seed", 1], ["stray", 1], ["birdexit", 1], ["berry", 2], ["bug", 2], ["roost", 3], ["gust", 3], ["hawk", 11]]);
+  assert.deepStrictEqual(Skins.slotsOf("bird").filter((s) => s.player).map((s) => s.id), ["bird"]);
+  assert.strictEqual(Skins.SLOTS.length, 27, "10 do Cachorrinho, 8 do Gatinho e 9 do Passarinho");
+  assert.deepStrictEqual(Skins.GAMES.map((g) => Skins.slotsOf(g.id).length), [10, 8, 9]);
+  assert.ok(!Skins.unlocked("hawk", "", 10) && Skins.unlocked("hawk", "", 11), "os gaviões só a partir da Fase 11 do Passarinho");
+  assert.ok(!Skins.unlocked("berry", "", 1) && Skins.unlocked("berry", "", 2) && !Skins.unlocked("roost", "", 2) && Skins.unlocked("gust", "", 3));
+});
+
+test("a skin do Passarinho entra na carteira com a chave `bird:` e as outras categorias do jogo com a própria chave (ownKey de js/records.js)", () => {
+  const R = require(path.join(__dirname, "../js/records.js")), mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
+  const st = R.createStore(mem());
+  st.setPlayer("Totó"); st.addTreats("Totó", 500);
+  for (let n = 1; n <= 10; n++) st.game("bird").completeLevel("Totó", n); // (alcançou a Fase 11 do Passarinho)
+  assert.strictEqual(st.reachedLevel("Totó", "bird"), 11);
+  assert.strictEqual(st.reachedLevel("Totó", "dog"), 1, "o progresso é de cada jogo");
+  const bought = st.buySkin("Totó", "amarelo", 10, "bird");
+  assert.ok(bought.ok && bought.wallet.treats === 490 && bought.wallet.owned.join() === "amarelo", "comprou a skin Amarelo do passarinho por 10 petscoin");
+  assert.deepStrictEqual(st.wallet("Totó", "bird").owned, ["amarelo"]);
+  assert.deepStrictEqual(st.wallet("Totó").owned, [], "o Cachorrinho não recebe a skin do Passarinho");
+  assert.deepStrictEqual(st.wallet("Totó", "cat").owned, []);
+  st.equipSkin("Totó", "amarelo", "bird");
+  assert.strictEqual(st.equippedSkin("Totó", "bird"), "amarelo");
+  assert.strictEqual(st.equippedSkin("Totó", "dog"), "");
+  assert.ok(st.buySkin("Totó", "x", 12, "hawk").ok === true, "os gaviões, a partir da Fase 11 do Passarinho");
+  const poor = R.createStore(mem()); poor.setPlayer("Bia"); poor.addTreats("Bia", 500);
+  assert.deepStrictEqual(poor.buySkin("Bia", "x", 12, "hawk"), { ok: false, error: "locked" }, "sem chegar à Fase 11 do Passarinho a categoria dos gaviões está travada");
+  for (let n = 1; n <= 10; n++) poor.game("dog").completeLevel("Bia", n);
+  assert.deepStrictEqual(poor.buySkin("Bia", "x", 12, "hawk"), { ok: false, error: "locked" }, "e o progresso do Cachorrinho não libera");
+});
+
+test("os limites da carteira (200 skins e 40 categorias por jogador) comportam o catálogo inteiro: 126 skins pagas em 27 categorias", () => {
+  const R = require(path.join(__dirname, "../js/records.js"));
+  assert.strictEqual(R.MAX_OWNED, 200);
+  assert.strictEqual(R.MAX_SLOTS, 40);
+  assert.ok(126 <= R.MAX_OWNED && Skins.SLOTS.length <= R.MAX_SLOTS, "8 + 36 do Cachorrinho, 11 + 28 do Gatinho e 11 + 32 do Passarinho (a contagem de verdade está em tests/skins-bird.test.js)");
 });
 
 test("liberação por fase do jogo: gatos só a partir da Fase 11, vans da 4, blocos da 3", () => {
