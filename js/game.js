@@ -2866,6 +2866,7 @@
         }
       }
       if (!Array.isArray(cd) || cd.length !== nCats || !cd.every((x) => x === 0 || x === 1) || (pw === 0 && cd.some((x) => x === 1))) return null;
+      if (L.birdMode && (cd.some((x) => x === 1) || vd.some((x) => x === 1) || pk > 0)) return null; // (Passarinho: o voo alto não assusta ninguém, então não há gato nem gavião "assustado" nem pontos por isso)
       let cx = {}; // Gatinho (0.18.0): fôlego, pelo molhado e ofegante; um jogo salvo sem estes campos carrega com os valores de sempre (fôlego cheio, pelo seco)
       if (L.sprint || L.water) {
         const sta = sv.sta === undefined ? 1 : sv.sta, wt = sv.wet === undefined ? 0 : sv.wet, wd = sv.wnd === undefined ? 0 : sv.wnd;

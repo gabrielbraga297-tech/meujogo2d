@@ -610,7 +610,7 @@ module.exports = async function (T) {
       const out = {}, kinds = ["scare", "gold", "ice", "turbo", "magnet"];
       for (const k of kinds) {
         __b.start(1); __game.freezeVets = true; __game.sound.reset();
-        for (const it of __game.items) if (!it.bone) { it.x = -900; it.y = -900; }
+        for (const it of __game.items) { if (!it.bone) { it.x = -900; it.y = -900; } it.life = false; } // (sem vida extra escondida: o aviso dela cobriria o do fruto)
         __game.balls = [];
         __b.fruit(k);
         out[k] = { fx: __game.fx, power: __game.power, toast: document.getElementById("toast").textContent, snd: __game.sounds.map((e) => e.name).join(",") };
@@ -647,6 +647,149 @@ module.exports = async function (T) {
     // arte: os 5 tipos de fruto e a semente são pedidos a BirdArt com o contrato
     const art = await ev(pg, () => { __b.start(1); __game.drawNow(); const C = window.BirdArt.__calls, L = window.BirdArt.__last; return { kinds: ["scare", "gold", "ice", "turbo", "magnet"].map((k) => C["fruit:" + k] || 0), seed: L.drawSeed && L.drawSeed.it, seedLook: L.drawSeed && !!L.drawSeed.o.look }; });
     ok(art.kinds.every((n) => n > 0) && art.seed && "variant" in art.seed && art.seedLook, `os 5 tipos de fruto (${art.kinds}) e as sementes são desenhados por BirdArt (drawFruit com kind, drawSeed com variant)`);
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+    await pg.context().close();
+  });
+
+  // =====================================================================================================================================================================
+  const SNAP = () => { const st = Records.createStore(localStorage), g = st.game("bird").loadGame("Totó"); return g && g.snap; };
+  await section("0.20.0 · Passarinho (motor): jogo salvo (voo alto sobre um muro, galho e vento: salvar, pausar e continuar; jogos adulterados; o do Cachorrinho não ganha campos)", async () => {
+    const pg = await open();
+    const e0 = errs0();
+    // ---- 1. voo alto em cima de um muro ----
+    const a = await ev(pg, (SNAP) => {
+      eval(`window.__snap = ${SNAP}`);
+      __b.start(4); __game.noCatch = true; __b.at(8, 4); __game.power = 8; __b.run(2);
+      const ok1 = __game.save(), snap = __snap();
+      return { ok: ok1, keys: Object.keys(snap).join(","), pw: snap.pw, mz: snap.mz, l: snap.l, cats: snap.cats.length, parse: __game.parseSave(snap, "bird"), size: JSON.stringify(snap).length, p: snap.p };
+    }, SNAP.toString());
+    ok(a.ok && a.parse && a.mz === 1 && a.l === 4 && a.cats === 2 && near(a.pw, 7.97, 0.05), `salvou o jogo da Fase 4 com o voo alto ligado (${a.pw} s) sobre um muro e o jogo salvo vale (revisão ${a.mz}, ${a.cats} gaviões, ${a.size} bytes)`);
+    ok(/,sta,wet,wnd/.test(a.keys) && /,cats,cd/.test(a.keys) && !/bird|flight|perch|wind/i.test(a.keys), `os campos do salvo do Passarinho são os do Gatinho (fôlego, gaviões): ${a.keys}`);
+    // pausa, menu, continuar
+    await pg.click("#btn-pause"); await pg.click("#btn-pause-menu");
+    ok(await pg.isVisible("#btn-continue") && /Fase 4 ·.*sementes.*frutos/.test(await pg.textContent("#menu-save")), `o menu mostra o jogo salvo com as palavras do passarinho ("${await pg.textContent("#menu-save")}")`);
+    await pg.click("#btn-continue");
+    const c = await ev(pg, () => {
+      const lv = __b.lv(), p = __game.player, over = lv.solids.some((s) => s.high && s.x < p.x + 24 && s.x + s.w > p.x && s.y < p.y + 24 && s.y + s.h > p.y);
+      const o = { state: __game.state, over, flying: __game.flying, power: __game.power, safe: __game.safe, lives: __game.lives };
+      __game.noCatch = true; const f = __b.run(60 * 9, []); const q = __game.player;
+      o.end = { flying: __game.flying, over: lv.solids.some((s) => s.high && s.x < q.x + 24 && s.x + s.w > q.x && s.y < q.y + 24 && s.y + s.h > q.y), lives: __game.lives, state: __game.state, tile: __b.tile() };
+      return o;
+    });
+    ok(c.state === "playing" && c.over && c.flying && near(c.power, 7.97, 0.4) && c.safe, `continuar: o passarinho volta em cima do muro, ainda em voo alto (${c.power.toFixed(2)} s)`);
+    ok(!c.end.flying && !c.end.over && c.end.lives === c.lives && c.end.state === "playing", `e quando o voo acaba ele pousa em chão livre (tile ${c.end.tile}) sem perder vida`);
+    // ---- 2. no galho e 3. no vento ----
+    const g2 = await ev(pg, (SNAP) => {
+      eval(`window.__snap = ${SNAP}`);
+      __b.start(4); __game.noCatch = true; __b.at(5, 6); __b.run(2); const perchSaved = __game.perch; __game.save();
+      return perchSaved;
+    }, SNAP.toString());
+    await pg.click("#btn-pause"); await pg.click("#btn-pause-menu"); await pg.click("#btn-continue");
+    const g3 = await ev(pg, () => { __b.run(2); return { perch: __game.perch, safe: __game.safe, tile: __b.tile() }; });
+    ok(g2 && g3.perch && g3.safe && g3.tile + "" === "5,6", "salvar e continuar em cima de um galho: ele continua no galho e a salvo");
+    await ev(pg, () => { __b.start(4); __game.noCatch = true; __b.at(4, 3); __b.run(2); __game.save(); });
+    await pg.click("#btn-pause"); await pg.click("#btn-pause-menu"); await pg.click("#btn-continue");
+    const w = await ev(pg, () => { const x0 = __game.player.x; __game.noCatch = true; __b.run(30); return { dx: __game.player.x - x0, wind: __game.windNow }; });
+    ok(near(w.dx, 45, 1.5), `salvar e continuar numa corrente de vento: o empurrão continua (${w.dx.toFixed(1)} px em 0,5 s)`);
+    // ---- jogos adulterados ----
+    const t = await ev(pg, () => {
+      __b.start(4); __game.noCatch = true; __b.at(8, 4); __game.power = 8; __b.run(2); __game.save();
+      const snap = JSON.parse(JSON.stringify(Records.createStore(localStorage).game("bird").loadGame("Totó").snap)), out = {};
+      const ps = (fn, a = "bird") => { const c = JSON.parse(JSON.stringify(snap)); fn(c); return __game.parseSave(c, a); };
+      const center = (c, r) => [c * 32 + 16, r * 32 + 16];
+      out.base = ps(() => {});
+      out.noPower = ps((c) => { c.pw = 0; });                                                  // em cima do muro sem o voo alto
+      out.inWall = ps((c) => { c.p.x = 4; c.p.y = 4 * 32 + 4; });                               // dentro da parede da borda, com o voo alto
+      out.pwMax = [ps((c) => { c.pw = 10; }), ps((c) => { c.pw = 10.5; })];                     // o máximo da fase sem reforço é 10 s
+      out.pwUp = [ps((c) => { c.up[1] = 1; c.pw = 12; }), ps((c) => { c.up[1] = 1; c.pw = 12.5; })]; // com o Fruto poderoso 1, 12 s
+      out.hawkOnM = ps((c) => { c.cats[0] = center(8, 4); });
+      out.hawkOnX = ps((c) => { c.cats[0] = center(11, 8); });                                  // o gavião voa por cima do X
+      out.catOnX = ps((c) => { c.vets[0] = center(11, 8); });                                   // o gato de quintal não
+      out.catOnM = ps((c) => { c.vets[0] = center(8, 4); });
+      out.catsLen = ps((c) => { c.cats.pop(); });
+      out.scared = ps((c) => { c.cd = [1, 0]; }) || ps((c) => { c.vd = [1]; }) || ps((c) => { c.pk = 2; });
+      out.mz = ps((c) => { c.mz = 99; });
+      out.level = ps((c) => { c.l = 99; });
+      out.asDog = ps(() => {}, "dog");
+      out.items = ps((c) => { c.items.pop(); });
+      out.itemOnM = ps((c) => { c.items[0][0] = 8; c.items[0][1] = 4; });                       // um item sobre o muro
+      out.itemOnX = ps((c) => { c.items[0][0] = 11; c.items[0][1] = 8; });
+      out.itemOnWind = ps((c) => { c.items[0][0] = 4; c.items[0][1] = 3; });                     // (item em tile de vento: chão andável, o motor não sorteia ali mas o arquivo aceita)
+      return out;
+    });
+    ok(t.base && !t.noPower && !t.inWall && t.pwMax[0] && !t.pwMax[1] && t.pwUp[0] && !t.pwUp[1], `jogo adulterado: sobre o muro só vale com o voo alto (${t.base}/${t.noPower}), nunca dentro de parede (${t.inWall}), o voo alto não passa do máximo da fase (10 s: ${t.pwMax}; com o reforço: ${t.pwUp})`);
+    ok(t.hawkOnM === false && t.hawkOnX === true && t.catOnX === false && t.catOnM === false && t.catsLen === false, `o gavião salvo sobre um muro é recusado, sobre um X vale; o gato de quintal sobre X ou muro é recusado (${t.hawkOnM}, ${t.hawkOnX}, ${t.catOnX}, ${t.catOnM}); lista de gaviões errada (${t.catsLen})`);
+    ok(t.scared === false && t.mz === false && t.level === false && t.asDog === false && t.items === false && t.itemOnM === false && t.itemOnX === false, `ninguém "assustado" no salvo do Passarinho, revisão errada, fase inexistente, lido como Cachorrinho e itens fora do lugar são recusados (itemOnWind ${t.itemOnWind})`);
+    // revisão errada no armazenamento: o jogo salvo é descartado com aviso (só do Passarinho)
+    await pg.click("#btn-pause"); await pg.click("#btn-pause-menu"); // (pausar também salva: o jogo salvo é adulterado DEPOIS)
+    await ev(pg, () => { const st = Records.createStore(localStorage), g = st.game("bird"), sv = g.loadGame("Totó"); sv.snap.mz = 99; g.saveGame("Totó", sv.snap); __game.setAnimal("bird"); });
+    ok(await pg.isHidden("#btn-continue") && /outros mapas/.test(await pg.textContent("#menu-save")), "um jogo salvo de outra revisão dos mapas some do menu com o aviso de sempre");
+    // ---- o Cachorrinho: o jogo salvo NÃO ganha campo nenhum ----
+    const d = await ev(pg, () => {
+      const out = {}, st = Records.createStore(localStorage);
+      __game.setAnimal("bird"); __game.start(3); __game.freezeVets = true; __game.save(); // (um jogo salvo do Passarinho, para ver que o Cachorrinho não o apaga)
+      for (const id of [2, 11]) { __game.setAnimal("dog"); __game.start(id); __game.freezeVets = true; __game.save(); out[id] = Object.keys(st.game("dog").loadGame("Totó").snap).join(","); }
+      out.birdKept = st.game("bird").loadGame("Totó") !== null;
+      return out;
+    });
+    ok(d[2] === "v,mz,l,time,lives,lost,rs,invuln,up,items,p,vets,bl,ba,pw,vd,pk,bs" && d[11] === "v,mz,l,time,lives,lost,rs,invuln,up,items,p,vets,bl,ba,pw,vd,pk,bs,cats,cd", `o jogo salvo do Cachorrinho tem exatamente os campos de sempre (Fase 2: ${d[2]}; Fase 11: ${d[11]})`);
+    ok(d.birdKept, "e jogar o Cachorrinho não apaga o jogo salvo do Passarinho (cada um tem o seu)");
+    // tamanho: dentro do limite de 20000 bytes por jogo, mesmo na fase maior das fixtures
+    const sz = await ev(pg, () => { __game.setAnimal("bird"); __game.start(5); __game.freezeVets = true; __game.save(); return JSON.stringify(Records.createStore(localStorage).game("bird").loadGame("Totó").snap).length; });
+    ok(sz < 20000, `o jogo salvo da Fase 5 das fixtures tem ${sz} bytes (limite 20000)`);
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+    await pg.context().close();
+  });
+
+  // =====================================================================================================================================================================
+  const ROBOT = (id) => { // roda dentro da página: joga a fase `id` até a vitória andando de verdade (teclado), pelo caminho mais curto até cada semente e fruto e depois até o ninho (ignora as minhocas)
+    const g = window.__game, lv = g.builtOf("bird")[id], cols = lv.cols, rows = lv.rows;
+    const pass = (c, r) => lv.kinds[r][c] !== "#" && lv.kinds[r][c] !== "M"; // (voo baixo: o X e o galho o passarinho atravessa)
+    const press = window.__b.press, keys = { d: false, a: false, s: false, w: false };
+    const set = (k, on) => { if (keys[k] !== on) { keys[k] = on; press(k, on); } };
+    const bfs = (from, isGoal) => { const prev = new Map([[from[1] * cols + from[0], null]]), q = [from]; for (let i = 0; i < q.length; i++) { const [c, r] = q[i]; if (isGoal(c, r)) { const out = []; for (let k = r * cols + c; prev.get(k) !== null; k = prev.get(k)[1] * cols + prev.get(k)[0]) out.unshift([k % cols, Math.floor(k / cols)]); return out; } for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc < 0 || nr < 0 || nc >= cols || nr >= rows || !pass(nc, nr) || prev.has(nr * cols + nc)) continue; prev.set(nr * cols + nc, [c, r]); q.push([nc, nr]); } } return null; };
+    let frames = 0, picked = 0;
+    while (g.state === "playing" && frames < 60000) {
+      const p = g.player, t = [Math.floor((p.x + 12) / 32), Math.floor((p.y + 12) / 32)];
+      const left = g.items.filter((i) => !i.taken), goalSet = new Set(left.map((i) => `${Math.floor((i.x + 8) / 32)},${Math.floor((i.y + 8) / 32)}`));
+      const e = g.exit, inExit = (c, r) => c * 32 >= e.x && c * 32 < e.x + e.w && r * 32 >= e.y && r * 32 < e.y + e.h;
+      const path = left.length ? bfs(t, (c, r) => goalSet.has(`${c},${r}`)) : bfs(t, inExit);
+      const next = path && path[0] ? path[0] : t, tx = next[0] * 32 + 16, ty = next[1] * 32 + 16, dx = tx - (p.x + 12), dy = ty - (p.y + 12);
+      set("d", dx > 3); set("a", dx < -3); set("s", dy > 3); set("w", dy < -3);
+      if (!path || !path.length) { for (const k of "dasw") set(k, false); if (left.length === 0) { const ex = e.x + e.w / 2 - (p.x + 12), ey = e.y + e.h / 2 - (p.y + 12); set("d", ex > 3); set("a", ex < -3); set("s", ey > 3); set("w", ey < -3); } }
+      g.tick(1 / 60); frames++;
+    }
+    for (const k of "dasw") set(k, false);
+    return { state: g.state, frames, lives: g.lives, collected: g.collected, bones: g.bonesGot, time: g.time };
+  };
+  await section("0.20.0 · Passarinho (motor): um robô joga as 5 fases das fixtures até a vitória (muros, galhos, vento, gaviões, missão, reforços, pontos e progresso só do Passarinho)", async () => {
+    const pg = await open();
+    const e0 = errs0();
+    await ev(pg, () => { __b.start(1); });
+    const res = [];
+    for (let id = 1; id <= 5; id++) {
+      const r = await ev(pg, ROBOT, id);
+      res.push(r);
+      ok(r.state === "won" && r.frames < 20000, `Fase ${id}: o robô chega ao ninho e vence (${r.frames} quadros, ${r.time.toFixed(1)} s, ${r.collected} sementes, ${r.bones} frutos, ${r.lives} vidas)`);
+      if (r.state !== "won") break;
+      const w = await pg.evaluate(() => ({ title: document.getElementById("win-title").textContent, pts: document.getElementById("win-points").textContent, brk: document.getElementById("win-breakdown").textContent, extra: document.getElementById("win-extra").textContent, nextShown: !document.getElementById("btn-next").classList.contains("hidden"), treat: document.getElementById("win-treat").textContent }));
+      ok(w.title === `Fase ${id} concluída!` && Number(w.pts) > 0 && /^Sementes: \d+/.test(w.brk) && (id === 5 ? /Parabéns! Você completou as 5 fases!/.test(w.extra) && !w.nextShown : w.nextShown && /Você leva \d+ vidas? para a Fase /.test(w.extra)), `Fase ${id}: tela de vitória do passarinho ("${w.brk.slice(0, 70)}…")`);
+      if (id < 5) {
+        await pg.click("#btn-next");
+        ok(await pg.isVisible("#reinforce"), `Fase ${id}: a vitória abre a escolha de reforço`);
+        const names = await pg.$$eval("#reinforce-list button", (bs) => bs.map((b) => b.querySelector("strong").textContent));
+        ok(names.every((n) => ["Asas fortes", "Fruto poderoso", "Penas grossas"].includes(n)), `os reforços têm os nomes do passarinho (${names.join(", ")})`);
+        await pg.click(id === 1 ? '#reinforce-list button[data-id="bone"]' : '#reinforce-list button[data-id="shield"]'); await pg.click("#btn-reinforce-go");
+        ok(await ev(pg, (n) => __game.state === "playing" && __game.level === n && __game.gameAnimal === "bird", id + 1), `Fase ${id + 1} começou (do Passarinho)`);
+        if (id === 1) ok(await ev(pg, () => __game.upgrades.bone === 1 && __game.carriedLives >= 1), "o reforço Fruto poderoso foi com ele para a fase seguinte");
+      }
+    }
+    // pontos, progresso e petscoin: do Passarinho, sem mexer no Cachorrinho
+    const st = await ev(pg, () => { const s = Records.createStore(localStorage), b = s.game("bird"), d = s.game("dog"); return { bird: b.progress("Totó").completed, birdTotal: b.totalScore("Totó", [1, 2, 3, 4, 5]), dogDone: d.progress("Totó").completed, dogTotal: d.totalScore("Totó", [1, 2, 3, 4, 5]), treats: s.wallet("Totó").treats }; });
+    ok(st.bird.join() === "1,2,3,4,5" && st.birdTotal > 0 && st.dogDone.length === 0 && st.dogTotal === 0 && st.treats === 5, `as 5 fases ficam concluídas só no Passarinho (${st.bird}), com ${st.birdTotal} pontos; o Cachorrinho continua sem nada e a carteira (única) ganhou 5 petscoin`);
+    // a fase seguinte só abre concluindo a anterior, dentro do Passarinho
+    await pg.click("#btn-win-menu");
+    ok(/Fases concluídas: 5\/5/.test(await pg.textContent("#menu-progress")), "o menu do Passarinho mostra 5/5 fases concluídas");
     ok(errs.length === e0, "nenhum erro de JavaScript");
     await pg.context().close();
   });
