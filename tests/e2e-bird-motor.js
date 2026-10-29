@@ -905,4 +905,71 @@ module.exports = async function (T) {
     await bp2.context().close();
     ok(errs.length === e0, "nenhum erro de JavaScript");
   });
+
+  // =====================================================================================================================================================================
+  await section("0.20.0 · Passarinho (motor): renascer em cima de um muro em pleno voo alto (Fase de renascer no lugar) e o pouso depois", async () => {
+    const e0 = errs0();
+    const pg = await open({}, [mini(room((g) => { for (let r = 1; r <= 7; r++) g[r][6] = "M"; g[3][9] = "H"; }), { like: 9, seeds: 2, fruits: 1, fruitMix: ["scare"] })]);
+    const r = await ev(pg, () => {
+      __b.start(1); __b.park(); __game.freezeVets = false; __game.noCatch = false; __game.invuln = 0;
+      const h = __game.cats[0]; __b.at(6, 3); __game.power = 6;
+      h.cx = 6 * 32 + 16; h.cy = 3 * 32 + 16; h.mode = "chase"; h.modeT = 99; h.cool = 0; h.leg = null;
+      __b.run(10);
+      const lv = __b.lv(), over = () => lv.solids.some((s) => s.high && s.x < __game.player.x + 24 && s.x + s.w > __game.player.x && s.y < __game.player.y + 24 && s.y + s.h > __game.player.y);
+      const o = { lives: __game.lives, toast: document.getElementById("toast").textContent, flying: __game.flying, over: over(), tile: __b.tile(), respawnInPlace: lv.respawnInPlace };
+      __game.power = 0.04; __game.freezeVets = true; __b.run(5);
+      o.after = { over: over(), flying: __game.flying, lives: __game.lives, tile: __b.tile() };
+      return o;
+    });
+    ok(r.respawnInPlace && r.lives === 2 && /Renasceu aqui/.test(r.toast), `o gavião pega o passarinho em pleno voo alto: ele perde 1 vida e renasce onde estava (${r.lives} vidas; "${r.toast.slice(0, 60)}…")`);
+    ok(r.flying && r.over && r.tile + "" === "6,3", "e o voo alto continua: ele segue em cima do muro (renascer no lugar não o joga para dentro nem para fora)");
+    ok(!r.after.over && !r.after.flying && r.after.lives === 2, `quando o voo acaba ele pousa em chão livre (${r.after.tile}) sem perder outra vida`);
+    // sem voo alto, nunca renasce dentro de um muro: o pouso seguro roda no respawn (o ponto de renascer no lugar de um muro é empurrado para o chão livre)
+    const q = await ev(pg, () => { __b.start(1); __b.park(); __b.at(6, 3); __game.power = 0; const moved = __game.landSafe(); const lv = __b.lv(), p = __game.player; return { moved, over: lv.solids.some((s) => s.high && s.x < p.x + 24 && s.x + s.w > p.x && s.y < p.y + 24 && s.y + s.h > p.y) }; });
+    ok(q.moved && !q.over, "sem o voo alto, quem estiver dentro de um muro é posto no chão livre mais perto (nunca fica preso)");
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+    await pg.context().close();
+  });
+
+  await section("0.20.0 · Passarinho (motor): textos do jogo (Como jogar, ajuda da pausa, crescimento, lista de fases, pontuações, derrota) são do passarinho; os do Cachorrinho não mudam", async () => {
+    const e0 = errs0();
+    const pg = await open();
+    await ev(pg, () => { const st = Records.createStore(localStorage), b = st.game("bird"); for (const l of [1, 2, 3]) b.completeLevel("Totó", l); __game.setAnimal("bird"); });
+    await pg.click("#btn-howto");
+    const how = await pg.textContent("#howto-steps");
+    ok(/Gaviões \(a partir da Fase 11\):/.test(how) && /Voo baixo e muros:/.test(how) && /botão Voar/.test(how) && !/carrocinha|cachorrinho/i.test(how), "o Como jogar do menu do Passarinho é o dele (gaviões, muros, galhos, ventos, botão Voar)");
+    await pg.click("#btn-howto-back");
+    await pg.click("#btn-scores");
+    ok(/Pontuações do Passarinho/.test(await pg.textContent("#scores-title")) && /100 por semente/.test(await pg.textContent("#scores-help")), "as pontuações dizem Passarinho e a soma tem sementes, frutos e minhocas");
+    await pg.click("#btn-scores-back");
+    await pg.click("#btn-start");
+    const lv = await pg.$$eval("#levels-list button", (bs) => bs.map((b) => b.textContent.replace(/\s+/g, " ").trim()));
+    ok(lv.length === 5 && /^Fase 4 · .*1 gato e 2 gaviões/.test(lv[3]) && /^Fase 1 · .*1 gato ·/.test(lv[0]) && /bloqueada/.test(lv[4]), `a lista de fases usa as palavras do passarinho ("${lv[3].slice(0, 90)}…")`);
+    await pg.click("#levels-list button >> nth=3");
+    await ev(pg, () => { __game.freezeVets = true; });
+    await pg.click("#btn-pause");
+    ok(/botão Voar/.test(await pg.textContent("#pause-help")) && /^Passarinho: filhote\./.test(await pg.textContent("#pause-up")) && /Jogo pausado/.test(await pg.textContent("#pause-title")), `a pausa diz como bater asas e o crescimento do passarinho ("${(await pg.textContent("#pause-up")).trim()}")`);
+    await pg.click("#btn-resume");
+    // derrota: o texto da lista de itens
+    const lose = await ev(pg, () => { __game.setLives(1); __game.noCatch = false; __game.freezeVets = false; __game.invuln = 0; const v = __game.vets[0]; v.cx = __game.player.x + 12; v.cy = __game.player.y + 12; v.mode = "chase"; v.modeT = 99; __game.tick(0.02); return { state: __game.state, title: document.getElementById("lose-title").textContent, text: document.getElementById("lose-text").textContent, lead: document.getElementById("lose-lead").textContent }; });
+    ok(lose.state === "lost" && lose.title === "Um gato pegou o passarinho!" && /^Sementes pegas: 0\/10 · Frutos: 0\/3 · Pontos: -200 \(mínimo 800\)$/.test(lose.text), `a derrota diz "${lose.title}" e "${lose.text}"`);
+    // __game.levelsOf("bird") e a tela de nome
+    const sm = await ev(pg, () => { const L = __game.levelsOf("bird"); return { n: L.length, hawks: L[3].cats.length, vets: L[3].vets.length, maps: L.every((l) => Array.isArray(l.map) && l.map.length > 7) }; });
+    ok(sm.n === 5 && sm.hawks === 2 && sm.vets === 1 && sm.maps, "__game.levelsOf(\"bird\") resume as fases (gaviões em `cats`, gatos de quintal em `vets`)");
+    await pg.click("#btn-lose-menu");
+    await pg.click("#btn-name");
+    ok(/passarinho/.test(await pg.textContent("#name-tip")) && /passarinho/.test(await pg.textContent("#name-step1")), "a tela do nome sugere o nome de um passarinho");
+    await pg.click("#btn-name-back");
+    // o Cachorrinho: tudo como era
+    await ev(pg, () => { __game.setAnimal("dog"); });
+    await pg.click("#btn-howto");
+    const dh = await pg.textContent("#howto-steps");
+    ok(/Cuidado com a carrocinha!/.test(dh) && !/passarinho/i.test(dh) || /Passarinho já estão prontos|o Passarinho/.test(dh), "o Como jogar do Cachorrinho continua o dele");
+    await pg.click("#btn-howto-back");
+    await ev(pg, () => { __game.start(1); __game.freezeVets = true; });
+    await pg.click("#btn-pause");
+    ok(/Teclado: setas ou WASD movem/.test(await pg.textContent("#pause-help")) && !/Voar|asas/.test(await pg.textContent("#pause-help")) && /^Cachorrinho: filhote\./.test(await pg.textContent("#pause-up")), "a pausa do Cachorrinho continua a de sempre");
+    ok(errs.length === e0, "nenhum erro de JavaScript");
+    await pg.context().close();
+  });
 };
