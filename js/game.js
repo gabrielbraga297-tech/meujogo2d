@@ -3794,8 +3794,10 @@
   PREVIEW.agile = (c2, k, w, h) => previewAt(c2, w, h, 2.7, 0, 0, () => { for (let i = 0; i < 4; i++) CatArt.drawAgileMouse(c2, { x: (i - 1.5) * 19, y: 0, vx: i % 2 ? 0 : 60, vy: 0, hue: i }, { calm: true, r: 8, look: k }); });
   PREVIEW.yarn = (c2, k, w, h) => previewAt(c2, w, h, 2.3, 0, 0, () => { for (const [i, kind] of ["scare", "gold", "ice", "turbo", "magnet"].entries()) CatArt.drawYarn(c2, { x: (i < 3 ? (i - 1) * 31 : (i - 3.5) * 31) - 8, y: (i < 3 ? -15 : 15) - 8, kind }, { calm: true, look: k }); }); // (3 em cima e 2 embaixo: os 5 tipos de poder, sem os brilhos se misturarem)
   PREVIEW.perch = (c2, k, w, h) => previewAt(c2, w, h, 3, 0, 0, () => {
-    c2.fillStyle = "#c9b99a"; c2.fillRect(-24, -24, 48, 48); c2.fillStyle = "#bfae8d"; c2.fillRect(-24, -24, 24, 24); c2.fillRect(0, 0, 24, 24); // um pedaço de chão xadrez
-    if (!CatArt.drawPerch(c2, -16, -16, { look: k })) { c2.fillStyle = "rgba(0,0,0,.16)"; c2.fillRect(-10, -8, 24, 24); c2.fillStyle = "#e9dcc2"; c2.fillRect(-13, -12, 24, 22); c2.strokeStyle = "rgba(60,40,20,.5)"; c2.lineWidth = 1; c2.strokeRect(-12.5, -11.5, 23, 21); } // (a padrão: o lugar alto muda com o ambiente; aqui, uma caixa simples)
+    const th = typeof CatThemes !== "undefined" ? CatThemes.of(1) : null; // o chão da Casa (Fase 1) em volta; a skin padrão mostra o lugar alto dessa casa
+    const tile = (x, y, c, r, fn) => { const g = { ctx: c2, x, y, c, r, free: true, border: false, time: 0, rect: (a, b, cw, ch) => c2.fillRect(a, b, cw, ch), h: (n) => CatThemes.hash(c, r, n), solid: () => false, kind: () => ".", mass: () => 0 }; fn(g); };
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { if (th) tile(-48 + 32 * i, -48 + 32 * j, 4 + i, 4 + j, (g) => th.floor(g)); else { c2.fillStyle = (i + j) % 2 ? "#bfae8d" : "#c9b99a"; c2.fillRect(-48 + 32 * i, -48 + 32 * j, 32, 32); } }
+    if (!CatArt.drawPerch(c2, -16, -16, { look: k })) { if (th) tile(-16, -16, 5, 5, (g) => th.high(g)); else { c2.fillStyle = "#e9dcc2"; c2.fillRect(-13, -12, 24, 22); } }
     CatArt.drawCat(c2, { x: -12, y: -12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true, safe: true });
   });
   // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
