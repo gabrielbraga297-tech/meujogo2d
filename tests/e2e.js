@@ -108,11 +108,21 @@ const PAGE_HELPERS = () => {
   // (0.18.0) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
+  // (0.20.0) O mesmo vale para o Passarinho: js/bird-levels.js (window.BirdLevels) liga o Passarinho no jogo; as seções antigas o testam "Em breve" (o arquivo é ignorado) e as páginas abertas com `realBird: true` (tests/e2e-bird-*.js)
+  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente provisórios), que valem mesmo que os arquivos de verdade existam; `realBird: "levels"` põe só as fases (sem BirdArt nem ambiente: o desenho de reserva do motor); `realBird: "real"` deixa a página carregar os arquivos de verdade.
   const rawNewContext = browser.newContext.bind(browser);
+  const FIX = (n) => fs.readFileSync(path.join(__dirname, "fixtures", n), "utf8");
+  const BIRD_FIXTURES = () => `${FIX("bird-levels-fixture.js")}
+    Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });
+    ${FIX("bird-art-fixture.js")}
+    (() => { let T; Object.defineProperty(window, "Themes", { configurable: true, get: () => T, set: (v) => { if (v && typeof v.of === "function" && !v.__birdWrapped) { const of0 = v.of; v = Object.assign({}, v, { of: (id, animal) => (animal === "bird" && window.__birdThemeFixture ? window.__birdThemeFixture : of0(id, animal)), __birdWrapped: true }); } T = v; } }); })();`;
   browser.newContext = async (o = {}) => {
-    const { realCat, ...opts } = o;
+    const { realCat, realBird, ...opts } = o;
     const c = await rawNewContext(opts);
     if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    if (!realBird) await c.addInitScript(() => { Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => undefined, set: () => {} }); });
+    else if (realBird === "levels") await c.addInitScript({ content: `${FIX("bird-levels-fixture.js")}\nObject.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });` }); // só as fases das fixtures: sem BirdArt nem ambiente (os desenhos de reserva do motor)
+    else if (realBird !== "real") await c.addInitScript({ content: BIRD_FIXTURES() });
     return c;
   };
   const errs = [];
@@ -8583,8 +8593,8 @@ const PAGE_HELPERS = () => {
     ok(fx.dog === 20 && fx.cat === 20 && fx.bird === 0 && fx.unk && fx.sep && fx.catPh && !fx.dogPh, `builtOf: 20 fases montadas do Cachorrinho e 20 do Gatinho (objetos separados, as do gato marcadas placeholder), 0 do Passarinho e um bichinho que não existe usa as do Cachorrinho (${JSON.stringify(fx)})`);
     ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,1,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
     // ---- o perfil de cada bichinho (a tabela completa está em tests/profiles.test.js) ----
-    const pr = await ev(page, () => ({ dog: __game.profile.id, bird: __game.profileOf("bird").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === CatThemes.of(7) && Themes.of(7, "cat") !== Themes.of(7), themeBird: Themes.of(7, "bird") === Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) }));
-    ok(pr.dog === "dog" && pr.bird === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeBird && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); sem perfil próprio o Passarinho usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0) e os do Passarinho os do Cachorrinho");
+    const pr = await ev(page, () => ({ dog: __game.profile.id, bird: __game.profileOf("bird").id, birdPrey: __game.profileOf("bird").noun.prey.many, unknown: __game.profileOf("fish").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === CatThemes.of(7) && Themes.of(7, "cat") !== Themes.of(7), themeBird: Themes.of(7, "bird") === Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) }));
+    ok(pr.dog === "dog" && pr.bird === "bird" && pr.birdPrey === "sementes" && pr.unknown === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeBird && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); o Passarinho tem o perfil dele (0.20.0) e um bichinho sem perfil usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0) e os do Passarinho (sem os arquivos de ambiente) os do Cachorrinho");
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     ok(/## Perfis por bichinho \(0\.18\.0\)/.test(readme) && /js\/profiles\.js/.test(readme) && /builtOf\(bichinho\)/.test(readme) && /Como o Passarinho entra/.test(readme) && /`sprint`/.test(readme) && /`water`/.test(readme) && /`refuge`/.test(readme) && /Themes\.of\(fase, bichinho\)/.test(readme) && /DEFAULT_ANIMAL/.test(readme), "o README tem a seção Perfis por bichinho (0.18.0): fases por bichinho, perfil de textos, ganchos, como o Passarinho entra e a pendência do bichinho sem nome");
     ok(!/const DEFAULT_ANIMAL = "dog"/.test(src) && /const DEFAULT_ANIMAL = Records\.DEFAULT_ANIMAL;/.test(src) && !/const BUILT\b/.test(src), "js/game.js usa o DEFAULT_ANIMAL de js/records.js e não tem mais o BUILT do Cachorrinho");
@@ -10138,7 +10148,7 @@ const PAGE_HELPERS = () => {
     const cp = await newPage({ realCat: true });
     await fresh(cp, { name: "Totó" });
     const dogHow = await ev(cp, () => document.getElementById("howto-steps").textContent);
-    ok(/O Cachorrinho e o Gatinho já estão prontos \(o Passarinho chega em breve\)\./.test(dogHow) && !/Por enquanto só o Cachorrinho está pronto/.test(dogHow) && !/Gatinho e o Passarinho chegam em breve/.test(dogHow), "o Como jogar do Cachorrinho (na página) diz que o Cachorrinho e o Gatinho já estão prontos e só o Passarinho chega em breve");
+    ok(/O Cachorrinho, o Gatinho e o Passarinho já estão prontos\./.test(dogHow) && !/Por enquanto só o Cachorrinho está pronto/.test(dogHow) && !/Gatinho e o Passarinho chegam em breve/.test(dogHow) && !/o Passarinho chega em breve/.test(dogHow), "o Como jogar do Cachorrinho (na página) diz que o Cachorrinho, o Gatinho e o Passarinho (0.20.0) já estão prontos");
     await ev(cp, () => { __game.setAnimal("cat"); });
     await cp.click("#btn-howto");
     const how = await cp.textContent("#howto-steps");
@@ -11674,6 +11684,10 @@ const PAGE_HELPERS = () => {
 
 
   // ----------------------------------------------------------------------------------------------------------------------------
+  // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por frente (tests/e2e-bird-<frente>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-bird-.+\.js$/.test(n)).sort()) {
+    await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
+  }
   console.log("erros JS:", errs);
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }

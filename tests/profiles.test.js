@@ -12,18 +12,20 @@ function test(name, fn) {
   try { fn(); console.log("OK   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n     " + (e && e.stack ? e.stack.split("\n").slice(0, 3).join("\n     ") : e)); }
 }
 
-const dog = Profiles.PROFILES.dog, cat = Profiles.PROFILES.cat;
+const dog = Profiles.PROFILES.dog, cat = Profiles.PROFILES.cat, bird = Profiles.PROFILES.bird;
 
-test("o registro tem o Cachorrinho e o Gatinho; um bichinho sem perfil (o Passarinho, por enquanto) usa o do Cachorrinho", () => {
-  assert.deepStrictEqual(Object.keys(Profiles.PROFILES), ["dog", "cat"]);
+test("o registro tem o Cachorrinho, o Gatinho e o Passarinho; um bichinho sem perfil usa o do Cachorrinho", () => {
+  assert.deepStrictEqual(Object.keys(Profiles.PROFILES), ["dog", "cat", "bird"]);
   assert.strictEqual(Profiles.of("dog"), dog);
   assert.strictEqual(Profiles.of("cat"), cat);
-  assert.strictEqual(Profiles.of("bird"), dog);
+  assert.strictEqual(Profiles.of("bird"), bird);
+  assert.strictEqual(Profiles.of("fish"), dog);
   assert.strictEqual(Profiles.of("constructor"), dog);
   assert.strictEqual(Profiles.of("__proto__"), dog);
   assert.strictEqual(Profiles.of(undefined), dog);
   assert.strictEqual(dog.id, "dog");
   assert.strictEqual(cat.id, "cat");
+  assert.strictEqual(bird.id, "bird");
 });
 
 // ---------- o Cachorrinho: a tabela de frases-chave (os textos de hoje, copiados do código da 0.17.0) ----------
@@ -111,8 +113,8 @@ test("Cachorrinho: placar (RAÇÕES, OSSOS, BOLINHAS, PODER), sons e textos fixo
   assert.strictEqual(h.powerOn(25), "Poder do osso: 25 segundos");
   assert.strictEqual(h.powerOff, "Poder do osso: desligado");
   assert.deepStrictEqual(dog.sfx, { ration: "ration", bone: "bone", capture: "capture", transform: "transform", beat: "postman", win: { filhote: "bark1", jovem: "bark2", adulto: "bark3" }, alert2: "meow",
-    ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "" }); // (0.18.0: os sons de sempre; os campos novos do Gatinho ficam vazios = nenhum som novo no Cachorrinho)
-  for (const k of ["ballMore", "alert", "hurt", "winMore", "splash", "shake", "jump", "dash", "pant"]) assert.strictEqual(dog.sfx[k], "", "o Cachorrinho não toca som novo: sfx." + k);
+    ball: "pick", ballMore: "", alert: "", alert2Every: 4, alert2Near: 0, hurt: "", winMore: "", splash: "", shake: "", jump: "", dash: "", pant: "", soarEnd: "", landing: "", gust: "" }); // (0.18.0: os sons de sempre; os campos novos do Gatinho e do Passarinho ficam vazios = nenhum som novo no Cachorrinho)
+  for (const k of ["ballMore", "alert", "hurt", "winMore", "splash", "shake", "jump", "dash", "pant", "soarEnd", "landing", "gust"]) assert.strictEqual(dog.sfx[k], "", "o Cachorrinho não toca som novo: sfx." + k);
   assert.strictEqual(dog.ui.shopTitle, null);
   assert.strictEqual(dog.shop.preview("Dálmata"), "Prévia da skin Dálmata");
   assert.strictEqual(dog.shop.inUse("Dálmata"), "Skin em uso: Dálmata.");
@@ -121,6 +123,10 @@ test("Cachorrinho: placar (RAÇÕES, OSSOS, BOLINHAS, PODER), sons e textos fixo
   assert.strictEqual(dog.shop.bought("Dálmata", 5), "Você comprou a skin Dálmata e já está usando! Sobraram 5 petscoin.");
   assert.strictEqual(dog.skins, null);
   assert.ok(Object.values(dog.ui).every((v) => v === null), "o Cachorrinho usa o texto que já está no index.html");
+  // (0.20.0) o FÔLEGO e o ESTADO do placar: o Cachorrinho não tem (fica escondido) e as chaves dele são as mesmas do Gatinho (os textos que já estavam no index.html: nada muda no DOM)
+  assert.strictEqual(dog.hud.stamina, "FÔLEGO");
+  assert.strictEqual(dog.hud.state({ safe: true, wet: 3, winded: 1 }), "", "o Cachorrinho nunca mostra estado");
+  assert.strictEqual(dog.say.powerEnding(true), "");
 });
 
 test("Cachorrinho: os textos fixos do perfil estão mesmo no index.html e no js/game.js da 0.18.0 (nada foi perdido na troca)", () => {
@@ -138,7 +144,9 @@ test("Gatinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins
   assert.deepStrictEqual(extra.filter((k) => !k.startsWith("skins.") && !k.startsWith("ui.")), [], "sobram no Gatinho: " + extra.join(", "));
   for (const k of Object.keys(a)) if (k in b && !NULLABLE(k)) assert.strictEqual(b[k], a[k], `tipo diferente em ${k}: ${a[k]} × ${b[k]}`);
   // tudo o que o Cachorrinho tem como texto fixo (ui.*), o Gatinho também tem (e como texto, não null); a exceção é a lojinha: ela é única (0.19.0), com o título e a ajuda do index.html para todos
-  for (const k of Object.keys(dog.ui)) if (k !== "shopTitle" && k !== "shopHelp") assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
+  // (0.20.0: o botão de toque da arrancada, runLabel/runAria/runTitle, é "Correr" no index.html: o Gatinho também o deixa como está)
+  for (const k of Object.keys(dog.ui)) if (k !== "shopTitle" && k !== "shopHelp" && !/^run/.test(k)) assert.strictEqual(typeof cat.ui[k], "string", "ui." + k + " do Gatinho");
+  for (const k of ["runLabel", "runAria", "runTitle"]) assert.strictEqual(cat.ui[k], null, "ui." + k + " do Gatinho é o do index.html");
   assert.strictEqual(dog.ui.shopTitle, null); assert.strictEqual(dog.ui.shopHelp, null);
   // (0.18.0) as skins do Gatinho vêm de CatArt.SKINS (12 skins), não do catálogo do Cachorrinho: o perfil não troca nome nem frase
   assert.strictEqual(cat.skins, null);
@@ -164,7 +172,7 @@ test("Gatinho: substantivos do gato (ratinho, novelo, cão, cão afugentado) e s
   assert.strictEqual(cat.say.foes(6, 1, false), "6 cães e 1 rastreador");
   // os sons do Gatinho, pelo contrato do README ("Sons do Gatinho")
   assert.deepStrictEqual(cat.sfx, { ration: "squeak", bone: "yarn", capture: "capture", transform: "hiss", beat: "postman", win: { filhote: "cmeow1", jovem: "cmeow2", adulto: "cmeow3" }, alert2: "growl",
-    ball: "squeak", ballMore: "purr", alert: "woof", alert2Every: 3, alert2Near: 8, hurt: "yowl", winMore: "purr", splash: "splash", shake: "shake", jump: "jump", dash: "dash", pant: "pant" });
+    ball: "squeak", ballMore: "purr", alert: "woof", alert2Every: 3, alert2Near: 8, hurt: "yowl", winMore: "purr", splash: "splash", shake: "shake", jump: "jump", dash: "dash", pant: "pant", soarEnd: "", landing: "", gust: "" });
   assert.strictEqual(cat.sfx.alert2, "growl", "o rastreador do Gatinho rosna (não mia) ao começar a perseguir");
   assert.strictEqual(cat.shop.preview("Preto"), "Prévia da skin Preto do gatinho");
   assert.strictEqual(cat.shop.inUse("Preto"), "Skin do gatinho em uso: Preto.");
@@ -199,7 +207,9 @@ test("Gatinho: as frases do Gatinho são diferentes das do Cachorrinho (só as n
   const same = allStrings(cat).map(([w, t]) => [w.replace(/^cat\./, ""), t]).filter(([w, t]) => d.get(w) === t).map(([w]) => w);
   // as únicas frases iguais são as neutras (sem substantivo de bichinho): as bolinhas, as vidas, a proteção, o turbo e os nomes dos sons que ainda são os mesmos
   const allowed = new Set(["noun.ball.one", "noun.ball.many", "reinforce.life.name", "reinforce.life.text", "reinforce.heart.name", "reinforce.heart.text", "reinforce.shield.name", "reinforce.shield.text", "fx.turbo()", "say.ballGot()", "say.winBalls()",
-    "lose.short", "hud.balls", "hud.powerBadge", "hud.ballsTitle", "sfx.ration", "sfx.bone", "sfx.capture", "sfx.transform", "sfx.beat", "sfx.alert2"]);
+    "lose.short", "hud.balls", "hud.powerBadge", "hud.ballsTitle", "sfx.ration", "sfx.bone", "sfx.capture", "sfx.transform", "sfx.beat", "sfx.alert2",
+    // (0.20.0) o FÔLEGO e o ESTADO do placar e o aviso do voo alto: o Cachorrinho (que não os mostra) guarda os mesmos textos do index.html que o Gatinho usa; o aviso do voo alto é vazio nos dois
+    "hud.stamina", "hud.staminaTitle", "hud.stateTitle", "hud.state()", "hud.stateAria()", "hud.stateLive()", "hud.stateSay()", "say.powerEnding()", "sfx.soarEnd", "sfx.landing", "sfx.gust"]);
   assert.deepStrictEqual([...new Set(same)].filter((w) => !allowed.has(w)), []);
   // e o que importa: os textos principais mudaram de verdade
   for (const [a, b] of [[cat.hud.prey, dog.hud.prey], [cat.hud.power, dog.hud.power], [cat.lose.foe, dog.lose.foe], [cat.say.beat(100), dog.say.beat(100)], [cat.say.powerOn(30), dog.say.powerOn(30)], [cat.say.needAll(true), dog.say.needAll(true)], [cat.boneLabel.scare, dog.boneLabel.scare], [cat.ui.howto, fs.readFileSync(path.join(__dirname, "../index.html"), "utf8")]]) assert.notStrictEqual(a, b);
@@ -235,8 +245,121 @@ test("Gatinho: a ajuda da pausa (ui.pauseHelp) e a dica do FÔLEGO falam de Shif
 
 test("Como jogar do Cachorrinho (index.html): diz que o Cachorrinho e o Gatinho já estão prontos (e não mais que só o Cachorrinho está pronto)", () => {
   const html = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
-  assert.ok(html.includes("O <strong>Cachorrinho</strong> e o <strong>Gatinho</strong> já estão prontos (o Passarinho chega em breve)."));
-  assert.ok(!/Por enquanto só o <strong>Cachorrinho<\/strong> está pronto/.test(html) && !/Gatinho e o Passarinho chegam em breve/.test(html), "a frase antiga (falsa desde a 0.18.0) voltou");
+  assert.ok(html.includes("O <strong>Cachorrinho</strong>, o <strong>Gatinho</strong> e o <strong>Passarinho</strong> já estão prontos."), "o Como jogar diz que os três bichinhos estão prontos (0.20.0)");
+  assert.ok(!/Por enquanto só o <strong>Cachorrinho<\/strong> está pronto/.test(html) && !/Gatinho e o Passarinho chegam em breve/.test(html) && !/o Passarinho chega em breve/.test(html), "a frase antiga (falsa desde a 0.18.0 e a 0.20.0) voltou");
+});
+
+// ---------- o Passarinho (0.20.0) ----------
+test("Passarinho: tem as MESMAS chaves e tipos do Cachorrinho (só noun.foe2, skins e ui.* podem ser nulos) e os mesmos ids de reforço", () => {
+  const a = Profiles.shape(dog), b = Profiles.shape(bird);
+  const missing = Object.keys(a).filter((k) => !(k in b) && !Object.keys(b).some((x) => NULLABLE(k) && (k.startsWith(x + ".") || x.startsWith(k + "."))) && ![...Object.keys(b)].some((x) => k.startsWith(x + ".") && b[x] === "null"));
+  assert.deepStrictEqual(missing, [], "faltam no Passarinho: " + missing.join(", "));
+  const extra = Object.keys(b).filter((k) => !(k in a) && !(a[k.split(".").slice(0, k.split(".").length - 1).join(".")] === "null"));
+  assert.deepStrictEqual(extra.filter((k) => !k.startsWith("skins.") && !k.startsWith("ui.")), [], "sobram no Passarinho: " + extra.join(", "));
+  for (const k of Object.keys(a)) if (k in b && !NULLABLE(k)) assert.strictEqual(b[k], a[k], `tipo diferente em ${k}: ${a[k]} × ${b[k]}`);
+  for (const k of Object.keys(dog.ui)) if (k !== "shopTitle" && k !== "shopHelp") assert.strictEqual(typeof bird.ui[k], "string", "ui." + k + " do Passarinho");
+  assert.strictEqual(bird.ui.shopTitle, null, "a lojinha é única: o título é o do index.html");
+  assert.strictEqual(bird.ui.shopHelp, null);
+  assert.strictEqual(bird.skins, null);
+  assert.deepStrictEqual(Object.keys(bird.reinforce), Object.keys(dog.reinforce));
+  for (const v of Object.values(bird.reinforce)) assert.ok(v.name && v.text);
+  assert.deepStrictEqual(Object.values(bird.reinforce).map((r) => r.name), ["Asas fortes", "Fruto poderoso", "Vida extra", "Coração maior", "Penas grossas", "Gatos lentos", "Voo silencioso", "Olhar atento", "Chamado de semente"]);
+});
+
+test("Passarinho: substantivos (semente, fruto, minhoca, gato de quintal, gavião) e o placar", () => {
+  const n = bird.noun;
+  assert.deepStrictEqual([n.self.one, n.self.cap, n.prey.one, n.prey.many, n.power.one, n.power.many, n.ball.one, n.ball.many], ["passarinho", "Passarinho", "semente", "sementes", "fruto", "frutos", "minhoca", "minhocas"]);
+  assert.deepStrictEqual([n.foe.one, n.foe.many, n.foe.shortOne, n.foe.shortMany, n.foe2.one, n.foe2.many], ["gato de quintal", "gatos de quintal", "gato", "gatos", "gavião", "gaviões"]);
+  assert.deepStrictEqual([bird.hud.prey, bird.hud.power, bird.hud.balls], ["SEMENTES", "FRUTOS", "MINHOCAS"]);
+  assert.deepStrictEqual(bird.boneLabel, { scare: "Fruto do voo alto", gold: "Fruto dourado", ice: "Fruto de ar frio", turbo: "Fruto de rajada", magnet: "Fruto ímã" });
+  assert.strictEqual(bird.say.ballGot(50, 1, 3), "Minhoca! +50 pontos (1/3)");
+  assert.strictEqual(bird.say.foes(5, 0, false), "5 gatos");
+  assert.strictEqual(bird.say.foes(1, 2, true), "1 gato e 2 gaviões");
+  assert.strictEqual(bird.say.foes(6, 1, false), "6 gatos e 1 gavião");
+  assert.strictEqual(bird.say.saved("Fase 2", "0:05,0", 3, 7, 1, 2, 3), "Fase 2 · 0:05,0 · 3/7 sementes · 1/2 frutos · 3 vidas");
+  assert.strictEqual(bird.say.pauseGrowth("jovem"), "Passarinho: jovem.");
+  assert.strictEqual(bird.say.needAll(true), "Pegue todas as sementes e todos os frutos antes de entrar no ninho!");
+  assert.strictEqual(bird.lose.foe, "Um gato pegou o passarinho!");
+  assert.strictEqual(bird.lose.foe2, "Um gavião pegou o passarinho!");
+  assert.strictEqual(bird.lose.stats(3, 7, 1, 2, 120, 0), "Sementes pegas: 3/7 · Frutos: 1/2 · Pontos: 120");
+  assert.strictEqual(bird.mission.bones(5), "pegar todos os 5 frutos");
+  assert.strictEqual(bird.mission.rations(34, 46), "pegar 34 das 46 sementes");
+  assert.strictEqual(bird.fx.turbo(8, 40), "+40% de velocidade e bater de asas sem cansar por 8 s!");
+  assert.strictEqual(bird.fx.ice(6), "gatos e gaviões congelados por 6 s!");
+  assert.strictEqual(bird.effect.bone(4), "+4 s de voo alto");
+  assert.strictEqual(bird.shop.bought("Azul", 1), "Você comprou a skin Azul para o passarinho e já está usando! Sobrou 1 petscoin.");
+  assert.strictEqual(bird.ui.docTitle, "Jogo do passarinho");
+  assert.deepStrictEqual([bird.ui.runLabel, /bater/.test(bird.ui.runAria), /Voar/.test(bird.ui.runTitle)], ["Voar", true, true]);
+});
+
+test("Passarinho: o voo alto não assusta ninguém (a frase do poder fala de voo, muros e gaviões) e o estado do placar usa as palavras certas", () => {
+  assert.ok(/Voo alto por 10 s/.test(bird.say.powerOn(10, false)) && /muros/.test(bird.say.powerOn(10, false)) && !/gaviões/.test(bird.say.powerOn(10, false)));
+  assert.ok(/gaviões/.test(bird.say.powerOn(10, true)));
+  assert.strictEqual(bird.say.powerShort(12), "Voo alto por 12 s!");
+  assert.ok(/pousou/.test(bird.say.powerOff(false, true)) && /voltou a voar baixo/.test(bird.say.powerOff(false, false)));
+  assert.ok(/pousar/.test(bird.say.powerEnding(true)));
+  assert.strictEqual(bird.hud.powerOn(7), "Voo alto: 7 segundos");
+  const st = bird.hud.state;
+  assert.strictEqual(st({}), "");
+  assert.strictEqual(st({ safe: true }), "A SALVO");
+  assert.strictEqual(st({ flying: true }), "VOO ALTO");
+  assert.strictEqual(st({ flying: true, ending: true }), "VOO ACABANDO");
+  assert.strictEqual(st({ winded: 1 }), "SEM FÔLEGO");
+  assert.strictEqual(st({ wind: -1 }), "CONTRA O VENTO");
+  assert.strictEqual(st({ wind: 1 }), "A FAVOR DO VENTO");
+  assert.strictEqual(st({ wind: 2 }), "NO VENTO");
+  assert.strictEqual(st({ safe: true, flying: true, winded: 2, wind: -1 }), "VOO ALTO", "o voo alto vence o resto (um estado só: o placar nunca cresce)");
+  assert.strictEqual(st({ safe: true, winded: 2, wind: -1 }), "A SALVO");
+  assert.strictEqual(st({ winded: 2, wind: -1 }), "SEM FÔLEGO");
+  for (const s of [{ flying: true, ending: true }, { wind: 1 }, { wind: -1 }, { safe: true }, { winded: 1 }]) assert.ok(st(s).length <= 19, "cabe no espaço reservado do placar (19 larguras): " + st(s));
+  assert.strictEqual(bird.hud.stateAria("A SALVO"), "Estado do passarinho: a salvo");
+  assert.strictEqual(bird.hud.stateAria(""), "Estado do passarinho: normal");
+  assert.strictEqual(bird.hud.stateLive(bird.hud.stateSay({ flying: true, ending: true })), "Estado do passarinho: voo alto acabando");
+  assert.strictEqual(bird.hud.stateSay({}), "normal");
+  // o Gatinho continua dizendo o que sempre disse (o texto foi do game.js para o perfil)
+  assert.strictEqual(cat.hud.state({ safe: true, wet: 6, winded: 0 }), "A SALVO · MOLHADO 6 s");
+  assert.strictEqual(cat.hud.state({ safe: false, wet: 0, winded: 1 }), "OFEGANTE");
+  assert.strictEqual(cat.hud.state({ safe: true, wet: 2.2, winded: 1 }), "A SALVO · MOLHADO 3 s");
+  assert.strictEqual(cat.hud.state({ safe: false, wet: 0, winded: 0 }), "");
+  assert.strictEqual(cat.hud.stateSay({ safe: true, wet: 1, winded: 1 }), "a salvo, molhado e ofegante");
+  assert.strictEqual(cat.hud.stateSay({ safe: false, wet: 1, winded: 0 }), "molhado");
+  assert.strictEqual(cat.hud.stateSay({}), "normal");
+  assert.strictEqual(cat.hud.stateAria("A SALVO"), "Estado do gatinho: a salvo");
+  assert.strictEqual(cat.hud.stateLive("normal"), "Estado do gatinho: normal");
+});
+
+test("Passarinho: sons do contrato (peck, fruit, worm, soar/soarend, landing, flap, gust, wheeze, chirp1-3, song, hiss2, shriek, scare) e o que o Cachorrinho e o Gatinho tocam não mudou", () => {
+  assert.deepStrictEqual(bird.sfx, { ration: "peck", bone: "fruit", capture: "scare", transform: "soar", beat: "", win: { filhote: "chirp1", jovem: "chirp2", adulto: "chirp3" }, alert2: "shriek",
+    ball: "worm", ballMore: "", alert: "hiss2", alert2Every: 3, alert2Near: 0, hurt: "", winMore: "song", splash: "", shake: "", jump: "", dash: "flap", pant: "wheeze", soarEnd: "soarend", landing: "landing", gust: "gust" });
+});
+
+test("Passarinho: nenhuma frase fala de cachorro, ração, osso, carrocinha, carteiro, agente, novelo, ratinho, camundongo ou cão (as palavras dos outros bichinhos)", () => {
+  const bad = allStrings(bird).filter(([where, t]) => !where.includes(".sfx.") && /cachorr|\bra[çc](ão|ões|ao|oes)\b|\bossos?\b|carroc|carteir|agentes?\b|latir|\blate\b|bark|novelo|ratinho|camundongo|bolinha|\bcães?\b|gatinho/i.test(t));
+  assert.deepStrictEqual(bad, []);
+});
+
+test("Passarinho: as frases do Passarinho são diferentes das do Cachorrinho e do Gatinho (só as neutras podem ser iguais)", () => {
+  const d = new Map(allStrings(dog).map(([w, t]) => [w.replace(/^dog\./, ""), t])), c = new Map(allStrings(cat).map(([w, t]) => [w.replace(/^cat\./, ""), t]));
+  const same = allStrings(bird).map(([w, t]) => [w.replace(/^bird\./, ""), t]).filter(([w, t]) => d.get(w) === t || c.get(w) === t).map(([w]) => w);
+  const allowed = new Set(["reinforce.life.name", "reinforce.life.text", "reinforce.heart.name", "reinforce.heart.text", "reinforce.shield.text", "lose.short", "hud.powerBadge", "hud.stamina", "sfx.alert2Every", "say.winScared()", "say.beat()", "say.beat2()",
+    "hud.state()", "hud.stateSay()", "ui.shopTitle", "ui.shopHelp", "sfx.hurt", "sfx.beat", "sfx.winMore", "sfx.splash", "sfx.shake", "sfx.jump", "sfx.ballMore", "say.pauseGrowth()"]);
+  assert.deepStrictEqual([...new Set(same)].filter((w) => !allowed.has(w) && !/^sfx\./.test(w)), []);
+  for (const [a, b2] of [[bird.hud.prey, dog.hud.prey], [bird.hud.prey, cat.hud.prey], [bird.lose.foe, cat.lose.foe], [bird.say.needAll(true), cat.say.needAll(true)], [bird.boneLabel.scare, cat.boneLabel.scare], [bird.ui.howto, cat.ui.howto], [bird.ui.pauseHelp, cat.ui.pauseHelp]]) assert.notStrictEqual(a, b2);
+});
+
+test("Passarinho: o Como jogar tem o mesmo roteiro do Gatinho e explica as mecânicas novas (bater asas, muros, galhos, vento, fruto e voo alto, gaviões)", () => {
+  const steps = (bird.ui.howto.match(/<li><strong>([^<]+)<\/strong>/g) || []).map((x) => x.replace(/<[^>]+>/g, ""));
+  for (const h of ["Objetivo:", "Mover:", "Cuidado com os gatos!", "Vidas:", "Sem vidas?", "Pontuação:", "Salvar:", "Pausar:", "Teclado:", "Controle (gamepad):", "Pontuações:", "Conta (opcional):", "Missão (a partir da Fase 11):", "Minhocas (a partir da Fase 2):",
+    "Gaviões (a partir da Fase 11):", "Bater asas:", "Voo baixo e muros:", "Galhos:", "Ventos:", "Fruto e voo alto:", "Reforços:", "Crescer:", "Bichinhos:", "Petiscos e skins:"]) assert.ok(steps.includes(h), "falta no Como jogar do Passarinho: " + h);
+  const how = bird.ui.howto.replace(/<[^>]+>/g, "");
+  for (const re of [/Shift/, /Espaço/, /\bA\b.*\bRB\b.*\bRT\b/, /botão Voar/, /FÔLEGO/, /SEM FÔLEGO/, /sem cansar/, /muros/, /paredes/, /cercas baixas, pedras e arbustos/, /A SALVO/, /4 s/, /correntes de vento/, /CONTRA O VENTO/, /VOO ALTO/, /10 segundos/, /pisca/, /pousa/, /sem perder vida/, /gaviões/, /não protege/, /minhocas/, /fruto de rajada/, /fruto de ar frio/, /fruto dourado/, /fruto ímã/, /filhote/, /jovem/, /adulto/, /ninho/]) assert.ok(re.test(how), "falta no Como jogar do Passarinho: " + re);
+  assert.ok(!/blocos?\b/i.test(how), "as fases do passarinho não têm blocos que se movem");
+  assert.ok(/passarinho/.test(bird.ui.nameTip) && /passarinho/.test(bird.ui.canvasLabel) && /passarinho/.test(bird.ui.padLabel) && /semente/.test(bird.ui.scoresHelp) && /50 por minhoca/.test(bird.ui.scoresHelp));
+  for (const re of [/Shift/, /Espaço/, /A, RB ou RT/, /botão Voar/, /Esc ou P/, /Ctrl\+S/, /Start/]) assert.ok(re.test(bird.ui.pauseHelp), "falta na ajuda da pausa do Passarinho: " + re);
+  assert.ok(/Shift/.test(bird.hud.staminaTitle) && /botão Voar/.test(bird.hud.staminaTitle) && /A, RB ou RT/.test(bird.hud.staminaTitle) && /bater asas/.test(bird.hud.staminaTitle));
+  assert.ok(/A SALVO/.test(bird.hud.stateTitle) && /VOO ALTO/.test(bird.hud.stateTitle) && /VENTO/.test(bird.hud.stateTitle) && /SEM FÔLEGO/.test(bird.hud.stateTitle));
+  // honestidade: o texto do jogo é escolha de design; nada de espécie nem de fato científico
+  assert.ok(!/estudo|cientista|pesquisa|espécie|comprovad|biolog/i.test(bird.ui.howto + bird.ui.canvasLabel), "o Passarinho é genérico e o jogo não afirma nada científico");
 });
 
 // ---------- ambientes por bichinho ----------
