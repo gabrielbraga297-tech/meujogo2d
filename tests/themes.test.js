@@ -331,5 +331,20 @@ test("os ambientes só tocam em g.ctx e g.rect: g.ctx.save/restore/fillText/clip
   assert.throws(() => pure(() => drawTile(th4, "floor", { c: 1, r: 1 })), /Math\.random/);
 });
 
+test("Themes.of(id, 'bird') devolve o ambiente do Passarinho quando js/bird-themes*.js está carregado (BirdThemes) e cai no do Cachorrinho quando não; os outros bichinhos não mudam", () => {
+  const before = { dog: [], cat: [] };
+  for (let id = 1; id <= 21; id++) { before.dog.push(Themes.of(id, "dog")); before.cat.push(Themes.of(id, "cat")); assert.strictEqual(Themes.of(id, "bird"), Themes.of(id), "sem BirdThemes o Passarinho usa o ambiente do Cachorrinho (fase " + id + ")"); }
+  const BT = require("../js/bird-themes.js"); require("../js/bird-themes-1.js"); require("../js/bird-themes-2.js");
+  globalThis.BirdThemes = BT;
+  try {
+    for (let id = 1; id <= 20; id++) { const t = Themes.of(id, "bird"); assert.strictEqual(t, BT.of(id)); assert.notStrictEqual(t, Themes.of(id)); assert.strictEqual(t.id, id); }
+    assert.strictEqual(Themes.of(5, "bird").place, "Praça da vila");
+    assert.strictEqual(Themes.of(21, "bird"), Themes.of(21), "fase 21 (que não existe no Passarinho) cai no Cachorrinho");
+    assert.strictEqual(Themes.of(0, "bird"), Themes.of(0)); assert.strictEqual(Themes.of(2.5, "bird"), Themes.of(2.5));
+    for (let id = 1; id <= 21; id++) { assert.strictEqual(Themes.of(id, "dog"), before.dog[id - 1]); assert.strictEqual(Themes.of(id, "cat"), before.cat[id - 1]); assert.strictEqual(Themes.of(id), before.dog[id - 1]); }
+  } finally { delete globalThis.BirdThemes; }
+  assert.strictEqual(Themes.of(5, "bird"), Themes.of(5));
+});
+
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
 process.exit(failed ? 1 : 0);
