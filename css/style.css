@@ -264,7 +264,8 @@ button.linky { background: transparent; color: var(--gold); text-decoration: und
 }
 @media (max-height: 520px) {
   .shop-tab { padding: 4px 12px; font-size: 14px; }
-  #shop-games .shop-tab { font-size: 15px; }
+  #shop-games .shop-tab { flex-direction: row; gap: 0 6px; font-size: 15px; } /* celular deitado: "Passarinho em breve" numa linha só, para sobrar mais lugar para as skins */
+  .shop-tabs { gap: 4px; }
 }
 /* (0.16.0) o saldo e o aviso da compra ficam no alto e o Voltar no fim da tela, à vista mesmo com a lista longa (celular de tela baixa) */
 #shop .shop-head { position: sticky; top: 0; z-index: 1; display: flex; flex-direction: column; gap: 4px; padding: 6px 0; background: var(--bg); }

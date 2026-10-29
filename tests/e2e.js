@@ -10816,6 +10816,7 @@ const PAGE_HELPERS = () => {
     // a aba A apaga a conta: a tela velha da B ainda tem o botão, mas a categoria voltou a ser bloqueada
     const oldQ3 = await Q.evaluateHandle(() => document.querySelector("#shop-list .shop-card:nth-child(3) button"));
     await ev(P, () => { Records.createStore(localStorage).deleteAccount("Totó"); });
+    await Q.waitForFunction(() => document.getElementById("shop-balance").textContent === "Escolha um nome de usuário no menu para guardar petiscos e comprar skins.", null, { timeout: 5000 }).catch(() => {}); // (o navegador leva alguns milissegundos para repassar o que uma aba gravou às outras)
     await oldQ3.evaluate((b) => { b.disabled = false; b.click(); });
     const qm = (await s19State(Q)).msg;
     ok(qm === "Esta skin ainda está bloqueada: libera ao chegar à Fase 2 do Cachorrinho." && (await ev(Q, () => Records.createStore(localStorage).wallet("Totó").owned.length)) === 0, `a tela velha não compra o que a carteira recusa (sem progresso nem saldo): "${qm}"`);
