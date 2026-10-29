@@ -555,7 +555,7 @@
         const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" });
         w.t = Math.min(MAX_TREATS, w.t + n);
         save();
-        return this.wallet(name);
+        return this.wallet(k);
       },
       // compra uma skin: o preço tem de ser de pelo menos MIN_SKIN_PRICE; { ok:false, error } se faltam petiscos ("funds"), já tem ("owned"), a categoria ainda está bloqueada ("locked") ou o pedido é inválido ("invalid")
       // (`slot`: a categoria dona da skin; o preço mínimo e a carteira de petscoin são os mesmos.)
@@ -566,14 +566,14 @@
         if (!k || !isAnimal(slot) || !isSkinId(id) || !Number.isInteger(price) || price < MIN_SKIN_PRICE || price > MAX_TREATS) return { ok: false, error: "invalid" };
         const gate = gateOf(slot, id, opts);
         if (gate === null) return { ok: false, error: "invalid" };
-        if (gate && this.reachedLevel(name, gate.game) < gate.from) return { ok: false, error: "locked" };
+        if (gate && this.reachedLevel(k, gate.game) < gate.from) return { ok: false, error: "locked" }; // (a chave do jogador, não o nome cru: "Totó!!" é o mesmo jogador que "Totó" e tem o progresso dele)
         const w = data.wallet[k] || (data.wallet[k] = { t: 0, own: [], eq: "" }), key = ownKey(slot, id);
         if (w.own.includes(key)) return { ok: false, error: "owned" };
         if (w.t < price) return { ok: false, error: "funds" };
         if (w.own.length >= MAX_OWNED || (!w.own.some((x) => slotOfKey(x) === slot) && new Set(w.own.map(slotOfKey)).size >= MAX_SLOTS)) return { ok: false, error: "invalid" };
         w.t -= price; w.own = [...w.own, key];
         save();
-        return { ok: true, wallet: this.wallet(name, slot) };
+        return { ok: true, wallet: this.wallet(k, slot) };
       },
       // usa uma skin que já é do jogador ("" = a padrão) na categoria
       equipSkin(name, id, slot = DEFAULT_ANIMAL) {
@@ -587,7 +587,7 @@
           else if (w.eqa) { delete w.eqa[slot]; if (!Object.keys(w.eqa).length) delete w.eqa; }
         }
         save();
-        return this.wallet(name, slot);
+        return this.wallet(k, slot);
       },
 
     };

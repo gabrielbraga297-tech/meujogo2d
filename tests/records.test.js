@@ -1359,6 +1359,73 @@ test("skins por bichinho: a carteira do cachorrinho de dados antigos (sem eqa ne
     assert.deepStrictEqual(st.wallet("Totó", "agent"), { treats: 490, owned: ["azul"], equipped: "" });
     assert.deepStrictEqual(st.equippedSkins("Totó"), { dog: "", cat: "" });
   });
+
+  test("a trava usa o jogador de verdade, não o texto cru do nome: 'Totó!!', 'TOTÓ' e ' Totó ' são o mesmo jogador que 'Totó' e têm o progresso dele", () => {
+    const st = R.createStore(memStorage());
+    st.setPlayer("Totó"); rich(st, 200); done(st, "dog", 5); // alcançou a Fase 5 do Cachorrinho
+    for (const [nome, id] of [["Totó!!", "madeira"], ["TOTÓ", "gelo"], ["  Totó ", "queijo"], ["toto", "montar"]]) {
+      const r = st.buySkin(nome, id, 10, "block"); // block abre na Fase 3
+      assert.ok(r.ok, `buySkin(${JSON.stringify(nome)}) não pode dar locked: ${JSON.stringify(r)}`);
+      assert.strictEqual(r.wallet.owned.slice(-1)[0], id, `e a carteira devolvida é a do jogador (${JSON.stringify(r.wallet)})`);
+    }
+    assert.deepStrictEqual(st.wallet("Totó", "block"), { treats: 160, owned: ["madeira", "gelo", "queijo", "montar"], equipped: "" });
+    assert.strictEqual(st.addTreats("Totó!!", 5).treats, 165, "addTreats com o nome 'Totó!!' devolve a carteira do jogador");
+    assert.strictEqual(st.equipSkin("Totó!!", "gelo", "block").equipped, "gelo", "equipSkin devolve a carteira do jogador");
+    // e a trava continua valendo para o mesmo jogador escrito de outro jeito
+    const f = R.createStore(memStorage()); f.setPlayer("Totó"); rich(f, 50); done(f, "dog", 1); // alcançou a 2: block (Fase 3) ainda trava
+    assert.deepStrictEqual(f.buySkin("Totó!!", "madeira", 10, "block"), { ok: false, error: "locked" });
+    assert.deepStrictEqual(f.buySkin("TOTÓ", "madeira", 10, "block"), { ok: false, error: "locked" });
+  });
+
+  test("a trava vem ANTES de 'já tem' e de 'sem saldo': quem já tem a skin e pede de novo com uma fase mais alta do que alcançou recebe locked, não owned", () => {
+    const st = R.createStore(memStorage());
+    st.setPlayer("Totó"); rich(st); done(st, "dog", 4); // alcançou a Fase 5
+    assert.ok(st.buySkin("Totó", "azul", 10, "van").ok, "compra a van azul (a van abre na Fase 4)");
+    assert.deepStrictEqual(st.buySkin("Totó", "azul", 10, "van"), { ok: false, error: "owned" }, "sem opções: já tem");
+    assert.deepStrictEqual(st.buySkin("Totó", "azul", 10, "van", { game: "dog", from: 9 }), { ok: false, error: "locked" }, "pedindo a Fase 9 (que não alcançou): locked vem antes de owned");
+    assert.deepStrictEqual(st.buySkin("Totó", "azul", 10, "van", { game: "dog", from: 5 }), { ok: false, error: "owned" }, "pedindo a Fase 5 (que alcançou): owned");
+    const pobre = R.createStore(memStorage()); pobre.setPlayer("Totó"); done(pobre, "dog", 4);
+    assert.deepStrictEqual(pobre.buySkin("Totó", "azul", 10, "van", { game: "dog", from: 9 }), { ok: false, error: "locked" }, "sem saldo e sem a fase: locked vem antes de funds");
+    assert.deepStrictEqual(pobre.buySkin("Totó", "azul", 10, "van"), { ok: false, error: "funds" }, "com a fase e sem saldo: funds");
+  });
+
+  test("o mapa das skins em uso não tem protótipo: 'constructor' e 'prototype' são categorias comuns e nunca devolvem funções nativas (nem logo depois de usar, nem depois de recarregar)", () => {
+    const mem = memStorage(), st = R.createStore(mem);
+    st.setPlayer("Totó"); rich(st); done(st, "dog", 3);
+    assert.ok(st.buySkin("Totó", "azul", 10, "agent").ok && st.equipSkin("Totó", "azul", "agent"), "uma skin em uso cria o mapa eqa");
+    const recarregada = R.createStore(mem); // a leitura do que foi gravado (o mapa é refeito ao carregar)
+    for (const [nome, s] of [["a mesma loja", st], ["a loja recarregada", recarregada]]) {
+      for (const slot of ["constructor", "prototype", "valueof", "tostring", "hasownproperty"]) {
+        const w = s.wallet("Totó", slot);
+        assert.strictEqual(typeof w.equipped, "string", `${nome}: wallet('Totó', '${slot}').equipped é ${typeof w.equipped}`);
+        assert.strictEqual(w.equipped, "", `${nome}: ${slot}`);
+        assert.strictEqual(s.equippedSkin("Totó", slot), "", `${nome}: equippedSkin(${slot})`);
+      }
+      assert.deepStrictEqual(s.equippedSkins("Totó", ["constructor", "prototype", "agent"]), { constructor: "", prototype: "", agent: "azul" }, `${nome}: equippedSkins com categorias de nome perigoso`);
+      assert.deepStrictEqual(s.equippedSkins("Totó"), { dog: "", cat: "", agent: "azul" }, `${nome}: o resultado só tem as categorias que existem`);
+    }
+    // usar uma skin de uma categoria chamada 'constructor' também é uma categoria como as outras
+    assert.ok(st.buySkin("Totó", "x", 10, "constructor").ok && st.equipSkin("Totó", "x", "constructor").equipped === "x");
+    assert.strictEqual(st.wallet("Totó", "prototype").equipped, "");
+    assert.strictEqual(R.createStore(mem).wallet("Totó", "constructor").equipped, "x", "e volta igual depois de recarregar");
+  });
+
+  test("mais de 40 categorias: as que passam do limite saem, mas as skins seguintes de categorias JÁ aceitas continuam valendo depois do corte", () => {
+    const slots = Array.from({ length: 45 }, (_, i) => "k" + "abcdefghijklmnopqrstuvwxyz"[i % 26] + "abcdefghijklmnopqrstuvwxyz"[(i / 26) | 0]); // 45 categorias válidas e diferentes (kaa, kba, ...)
+    const mem = memStorage(); R.createStore(mem).setPlayer("Totó");
+    rewrite(mem, (raw) => {
+      raw.wallet = { h: { t: 5, own: [...slots.slice(0, 40).map((s) => s + ":x"), slots[40] + ":x", slots[41] + ":x", slots[0] + ":y", slots[39] + ":y", slots[42] + ":y", slots[1] + ":z"], eq: "", eqa: { [slots[0]]: "y", [slots[41]]: "x" } } };
+    });
+    const st = R.createStore(mem);
+    assert.deepStrictEqual(st.wallet("h", slots[0]).owned, ["x", "y"], "a 1ª categoria (aceita) fica com a skin que vem DEPOIS do corte");
+    assert.deepStrictEqual(st.wallet("h", slots[39]).owned, ["x", "y"], "a 40ª, a última aceita, também");
+    assert.deepStrictEqual(st.wallet("h", slots[1]).owned, ["x", "z"], "e a 2ª recebe a skin que vem por último na lista");
+    for (const s of slots.slice(40)) assert.deepStrictEqual(st.wallet("h", s).owned, [], `a categoria ${s} passou do limite e sai, com todas as skins dela`);
+    assert.strictEqual(st.equippedSkin("h", slots[0]), "y", "a skin em uso de uma categoria aceita vale");
+    assert.strictEqual(st.equippedSkin("h", slots[41]), "", "e a de uma categoria que saiu, não");
+    const total = slots.reduce((n, s) => n + st.wallet("h", s).owned.length, 0);
+    assert.strictEqual(total, 40 + 3, `ficam as 40 primeiras skins das categorias aceitas e as 3 que vêm depois (${total})`);
+  });
 }
 
 Promise.all(pending).then(() => {
