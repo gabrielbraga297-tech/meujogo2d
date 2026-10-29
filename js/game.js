@@ -3904,7 +3904,7 @@
   const catMass = (c, r) => (c < 1 || r < 1 || c >= COLS - 1 || r >= ROWS - 1 ? 0 : lv.mass[r * COLS + c]);
   function drawCatTiles(c0, c1, r0, r1, rect, g) {
     g.kind = catKind; g.mass = catMass; g.time = calm ? 0 : time;
-    const border = (c, r) => c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1, kinds = lv.kinds;
+    const border = (c, r) => c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1, kinds = lv.kinds, perch = lookOf("perch"); // (perch: a skin do lugar alto em uso; sem ela cada ambiente desenha o seu)
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { // 1º o chão em todos os tiles (menos sob as paredes, que o cobrem por inteiro)
       if (!catFloorAll && kinds[r][c] === "#") continue; // (a parede cobre o tile inteiro: o chão por baixo dela não aparece, então não gasta tempo; `catFloorAll` desliga isto nos testes e o quadro sai IDÊNTICO nas 20 fases)
       g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = lv.floorFree[r][c]; g.border = border(c, r);
@@ -3917,7 +3917,7 @@
         const ch = row[c];
         if (ch !== "#" && ch !== "X" && ch !== "T" && ch !== "~") continue;
         g.x = c * TILE; g.y = r * TILE; g.c = c; g.r = r; g.free = ch !== "#"; g.border = border(c, r);
-        if (ch === "#") theme.wall(g); else if (ch === "X") theme.crate(g); else if (ch === "T") (theme.high || theme.crate)(g);
+        if (ch === "#") theme.wall(g); else if (ch === "X") theme.crate(g); else if (ch === "T") { if (!(perch.style && CatArt.drawPerch(ctx, g.x, g.y, { look: perch }))) (theme.high || theme.crate)(g); }
         else if (theme.water) theme.water(g); else { ctx.fillStyle = "rgba(70,140,210,.62)"; rect(g.x, g.y, TILE, TILE); } // (sem o ambiente do Gatinho, uma poça simples)
       }
     }
@@ -3933,7 +3933,7 @@
   const catSize = () => (levelId <= 3 ? "small" : levelId <= 12 ? "medium" : "large"); // tamanho dos cães por fase (F1–F3 pequenos, F4–F12 médios, F13–F20 grandes)
   function drawCatFoe(v, kind) { // cão de guarda (`vets`) ou rastreador (`cats`)
     const mode = v.mode === "patrol" && !v.leg && v.idle > 0 ? "idle" : v.mode, frozen = fx.ice > 0, dir = v.dir || 1;
-    CatArt.drawDog(ctx, { x: v.cx, y: v.cy, dir, mode, kind, size: catSize(), frozen, slow: !!v.slow, idx: v.idx }, { time, calm });
+    CatArt.drawDog(ctx, { x: v.cx, y: v.cy, dir, mode, kind, size: catSize(), frozen, slow: !!v.slow, idx: v.idx }, { time, calm, look: lookOf(kind) }); // (a categoria da skin tem o mesmo nome do tipo do cão: guard ou tracker)
     if (v.mode === "chase" && !frozen) { // o "!" vermelho de sempre
       ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 26px system-ui, sans-serif"; ctx.textAlign = "center";
       ctx.fillText("!", v.cx, v.cy - 22 - (calm ? 0 : Math.abs(Math.sin(time * 12)) * 4)); // (um pouco mais perto da cabeça do cão do que o do agente, que é mais alto)
@@ -3943,6 +3943,21 @@
     // a skin em uso do gatinho (a da carteira do jogador; só visual)
     CatArt.drawCat(ctx, player, { gr: dogGrowth(), skin: catSkin, time, calm, wet: lv.water ? clamp(wet / lv.water.wet, 0, 1) : 0, sprint: sprintOn, safe, hiss: power > 0 });
   }
+  // ---------- Lojinha (0.19.0): mostruários das categorias de objetos do Gatinho. `PREVIEW[categoria](c2, skin, w, h)` desenha a skin no CENTRO do cartão (w × h px; na lojinha 216 × 156), parada (calm) e com os mesmos desenhos do jogo
+  // (CatArt.*), direto no contexto `c2`; quem chama limpa o cartão antes. Os novelos mostram os 5 tipos de poder; os ratinhos, as 3 pelagens; os camundongos, as 4 cores; o lugar alto aparece com o gatinho em cima. ----------
+  const previewAt = (c2, w, h, s, cx, cy, fn) => { c2.save(); c2.translate(w / 2 - cx * s, h / 2 - cy * s); c2.scale(s, s); try { fn(); } finally { c2.restore(); } }; // (cx, cy: o ponto do desenho que fica no centro do cartão, em px do jogo)
+  PREVIEW.guard = (c2, k, w, h) => previewAt(c2, w, h, 3.9, 2, -3, () => CatArt.drawDog(c2, { x: 0, y: 0, dir: 1, mode: "patrol", kind: "guard", size: "medium", idx: 0 }, { calm: true, look: k }));
+  PREVIEW.tracker = (c2, k, w, h) => previewAt(c2, w, h, 3.9, 3, -3, () => CatArt.drawDog(c2, { x: 0, y: 0, dir: 1, mode: "patrol", kind: "tracker", size: "medium", idx: 0 }, { calm: true, look: k }));
+  PREVIEW.mouse = (c2, k, w, h) => previewAt(c2, w, h, 2.2, 12, 7, () => { for (const [i, x] of [-26, 4, 34].entries()) CatArt.drawMouse(c2, { x, y: 0, variant: i }, { calm: true, look: k }); }); // (x e y escolhidos para os 3 olharem para a direita)
+  PREVIEW.agile = (c2, k, w, h) => previewAt(c2, w, h, 2.2, -4, 0, () => { for (let i = 0; i < 4; i++) CatArt.drawAgileMouse(c2, { x: (i - 1.5) * 19, y: 0, vx: i % 2 ? 0 : 60, vy: 0, hue: i }, { calm: true, r: 8, look: k }); });
+  PREVIEW.yarn = (c2, k, w, h) => previewAt(c2, w, h, 2.3, 0, 0, () => { for (const [i, kind] of ["scare", "gold", "ice", "turbo", "magnet"].entries()) CatArt.drawYarn(c2, { x: (i < 3 ? (i - 1) * 31 : (i - 3.5) * 31) - 8, y: (i < 3 ? -15 : 15) - 8, kind }, { calm: true, look: k }); }); // (3 em cima e 2 embaixo: os 5 tipos de poder, sem os brilhos se misturarem)
+  PREVIEW.perch = (c2, k, w, h) => previewAt(c2, w, h, 3, 0, 0, () => {
+    const th = typeof CatThemes !== "undefined" ? CatThemes.of(1) : null; // o chão da Casa (Fase 1) em volta; a skin padrão mostra o lugar alto dessa casa
+    const tile = (x, y, c, r, fn) => { const g = { ctx: c2, x, y, c, r, free: true, border: false, time: 0, rect: (a, b, cw, ch) => c2.fillRect(a, b, cw, ch), h: (n) => CatThemes.hash(c, r, n), solid: () => false, kind: () => ".", mass: () => 0 }; fn(g); };
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { if (th) tile(-48 + 32 * i, -48 + 32 * j, 4 + i, 4 + j, (g) => th.floor(g)); else { c2.fillStyle = (i + j) % 2 ? "#bfae8d" : "#c9b99a"; c2.fillRect(-48 + 32 * i, -48 + 32 * j, 32, 32); } }
+    if (!CatArt.drawPerch(c2, -16, -16, { look: k })) { if (th) tile(-16, -16, 5, 5, (g) => th.high(g)); else { c2.fillStyle = "#e9dcc2"; c2.fillRect(-13, -12, 24, 22); } }
+    CatArt.drawCat(c2, { x: -12, y: -12, w: 24, h: 24, facing: "right", moving: false }, { gr: 1, skin: "", still: true, calm: true, safe: true });
+  });
   // Noite (Fases 18 e 19): escurece o campo com um halo suave de `lv.night.halo` tiles em volta do gatinho; o escuro nunca chega a 100% (os cães e camundongos longe do halo seguem visíveis).
   // Barato: o halo é uma imagem pequena (um gradiente radial pintado uma vez, só com o desenho do degradê) esticada sobre o quadrado em volta do gatinho, e o resto do campo é um retângulo liso por quadro (quatro faixas): o gradiente do tamanho da tela inteira custava mais.
   let nightImg = null;
@@ -4012,8 +4027,9 @@
     if (catDraw) { // Gatinho: postos dos cães (casinha / almofada), ratinhos, novelos, camundongos ágeis e os cães com CatArt
       for (const v of vets) CatArt.drawPost(ctx, v.sx, v.sy, { kind: "guard" });
       for (const c of cats) CatArt.drawPost(ctx, c.sx, c.sy, { kind: "tracker" });
-      for (let i = 0; i < items.length; i++) { const it = items[i]; if (it.taken) continue; if (it.bone) CatArt.drawYarn(ctx, it, { time, calm }); else CatArt.drawMouse(ctx, { x: it.x, y: it.y, variant: i % 3 }, { time, calm }); }
-      for (const b of balls) if (!b.taken) CatArt.drawAgileMouse(ctx, b, { time, calm, r: BALL_R });
+      const lkYarn = lookOf("yarn"), lkMouse = lookOf("mouse"), lkAgile = lookOf("agile"); // (as skins da lojinha em uso; sem skin, os desenhos de sempre)
+      for (let i = 0; i < items.length; i++) { const it = items[i]; if (it.taken) continue; if (it.bone) CatArt.drawYarn(ctx, it, { time, calm, look: lkYarn }); else CatArt.drawMouse(ctx, { x: it.x, y: it.y, variant: i % 3 }, { time, calm, look: lkMouse }); }
+      for (const b of balls) if (!b.taken) CatArt.drawAgileMouse(ctx, b, { time, calm, r: BALL_R, look: lkAgile });
       for (const v of vets) drawCatFoe(v, "guard");
       for (const c of cats) drawCatFoe(c, "tracker");
     } else {
@@ -4494,6 +4510,8 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
       return true;
     },
     catLevels() { return this.defineCatLevels(window.CatLevels); },
+    // (0.19.0, só para testes e capturas) desenha o mostruário da lojinha de uma categoria (PREVIEW[categoria]) no contexto 2D `c2` de w × h px, com a skin `k` (objeto ou id); false se a categoria não tem mostruário
+    preview(slot, c2, k, w, h) { const f = PREVIEW[slot]; if (!f) return false; f(c2, typeof k === "string" ? Skins.get(slot, k) : k, w, h); return true; },
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
