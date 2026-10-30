@@ -1611,6 +1611,13 @@
   // Efeitos sonoros (sintetizados na hora, sem arquivos): o navegador só libera o som depois do primeiro gesto do jogador; a preferência (mudo/volume) fica em "cachorrinho.som.v1".
   const sound = Sound.create({ storage: safeStorage() });
   sound.bindUnlock();
+  // ===== MÚSICA: integração =====
+  // (0.21.0) Músicas tema: o menu e cada fase de cada bichinho têm a sua, sintetizadas na hora (js/music.js; as receitas ficam em js/music-dog.js, js/music-cat.js e js/music-bird.js).
+  // A música usa o contexto de áudio, o volume e o mudo do `sound` e só começa depois do primeiro gesto; a preferência do botão Música fica em "cachorrinho.musica.v1".
+  // Ela nunca pode derrubar o jogo: sem o módulo, sem Web Audio ou se algo falhar, o jogo segue mudo (toda chamada passa por `mus`, que não deixa erro nenhum escapar).
+  const music = (() => { try { return typeof Music !== "undefined" && Music && typeof Music.create === "function" ? Music.create({ sound, storage: safeStorage() }) : null; } catch { return null; } })();
+  const mus = (fn) => { if (!music) return; try { fn(music); } catch { /* a música nunca derruba o jogo */ } };
+  // ===== fim MÚSICA: integração =====
   const board = Board.create({ store, levels: LEVEL_IDS, config: window.GAME_CONFIG || {} }); // (o ranking compartilhado é só do Cachorrinho: veja js/board.js)
 
   // ---------- (0.17.0) Os bichinhos: cada um tem o SEU jogo de 20 fases ----------
@@ -2436,6 +2443,7 @@
     if (why !== "crush") { sfx(P().sfx.capture); sfx(P().sfx.hurt, SFX_HURT); } // o agente da carrocinha pegou o cachorrinho (Gatinho: logo depois, o miado de susto)
     if (lives <= 0) { gameOver(why); return; }
     sound.play("lifelost", { delay: why === "crush" ? 0 : 0.5 }); // depois do som da captura
+    mus((m) => m.duck(0.3, 0.8)); // ===== MÚSICA: integração ===== a música abaixa por 0,8 s para os sons da captura e da vida perdida aparecerem
     const inPlace = respawn();
     relocateItems();
     const what = why === "crush" ? "Esmagado por um bloco!" : "Perdeu uma vida!";
@@ -2711,6 +2719,31 @@
   // ---------- Estados e telas ----------
   const SCREENS = ["menu", "animals", "levels", "shop", "howto", "scores", "name", "register", "login", "forgot", "confirm", "pause", "win", "reinforce", "lose"].map($);
 
+  // ===== MÚSICA: integração =====
+  // O que toca em cada situação. musicSync() roda ao fim de setState e de showScreen, compara o que deve soar com o que já foi pedido e só age quando muda:
+  //   menu e telas fora da partida (Escolha seu bichinho, fases anteriores, lojinha, Como jogar, pontuações, nome e conta) → tema "menu";
+  //   jogando a Fase N do bichinho da partida → "dog<N>", "cat<N>" ou "bird<N>"; pausa → o mesmo tema, abafado a 25%;
+  //   vitória (inclusive a escolha de reforço e as pontuações abertas dela) → some em 0,5 s; derrota → some em 0,4 s;
+  //   recomeçar a mesma fase depois de vitória ou derrota recomeça o tema do começo. Fase sem tema registrado fica em silêncio (o tema anterior não continua).
+  let musicKey = ""; // o último pedido feito à música: "menu", "play:<tema>", "pause:<tema>", "won" ou "lost"
+  function musicSync() {
+    mus((m) => {
+      const id = `${gameAnimal}${levelId}`;
+      const key = state === "playing" ? "play:" + id : state === "paused" ? "pause:" + id : state === "won" ? "won" : state === "lost" ? "lost" : "menu";
+      if (key === musicKey) return;
+      const prev = musicKey;
+      musicKey = key;
+      if (key === "won") { m.stop(0.5); return; }
+      if (key === "lost") { m.stop(0.4); return; }
+      if (key === "pause:" + id) { if (!m.play(id)) m.stop(0.5); m.setDuck(0.25); return; }
+      if (m.paused && !document.hidden) m.resume(); // (a janela voltou ao jogo sem o evento de foco: a música não fica presa na pausa)
+      m.setDuck(1);
+      const restart = state === "playing" && (prev === "won" || prev === "lost");
+      if (!m.play(state === "playing" ? id : "menu", restart ? { restart: true } : undefined)) m.stop(0.5);
+    });
+  }
+  // ===== fim MÚSICA: integração =====
+
   function setState(s) {
     state = s;
     document.body.dataset.state = s;
@@ -2719,6 +2752,7 @@
       if (s === "paused" || s === "won" || s === "lost") for (const id of [padPointer, runPointer]) if (id !== null) fingersOnOpen.add(id); // (havia um dedo apoiado no controle ou no Correr quando a tela abriu: veja `fingersOnOpen`)
       clearTouch();
     }
+    musicSync(); // ===== MÚSICA: integração =====
   }
 
   let screenSeq = 0; // muda a cada troca de tela: serve para ignorar respostas atrasadas (cadastro/entrada) de uma tela que o jogador já deixou
@@ -2739,6 +2773,7 @@
       const f = el.hasAttribute("data-scroll") ? el : [...el.querySelectorAll("[data-autofocus]")].find(visible) || [...el.querySelectorAll("button, input")].find(visible);
       if (f) { f.focus({ preventScroll: true }); if (f !== el && (id === "levels" || id === "animals") && f.scrollIntoView) f.scrollIntoView({ block: "nearest" }); } // a lista de fases mostra o botão focado, mesmo abaixo da dobra
     }
+    musicSync(); // ===== MÚSICA: integração =====
   }
 
   let toastTop = false; // (Passarinho) o aviso de abertura da fase subiu para o alto do campo porque cobriria o passarinho (veja positionStartToast)
@@ -4836,6 +4871,7 @@
     const k = keyName(e);
     if (k === "Escape") { if (!e.repeat) onEscape(); return; } // segurar a tecla não fica pausando e continuando
     if (k === "m" && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { toggleSound(); return; } // M liga e desliga o som (não atrapalha quem digita nome ou senha)
+    if (k === "n" && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { toggleMusic(); return; } // ===== MÚSICA: integração ===== N liga e desliga a música (como o M, não atrapalha quem digita nome ou senha)
     if (k === "p" && !e.repeat && state === "paused") { resumeGame(); return; }
     if (state === "playing") {
       keys[k] = true;
@@ -4915,9 +4951,26 @@
     icon.querySelector(".snd-on").hidden = off; icon.querySelector(".snd-off").hidden = !off;
     const b = $("btn-sound-pause"); b.textContent = label; b.setAttribute("aria-pressed", off ? "false" : "true");
   }
-  function toggleSound() { const off = sound.toggleMuted(); renderSound(); if (!off) sound.play("pick"); } // ao ligar, um toque de confirmação
+  function toggleSound() { const off = sound.toggleMuted(); renderSound(); mus((m) => m.tick()); /* ===== MÚSICA: integração ===== a música segue o mudo na hora */ if (!off) sound.play("pick"); } // ao ligar, um toque de confirmação
   renderSound();
   on("btn-sound", toggleSound); on("btn-sound-pause", toggleSound);
+  // ===== MÚSICA: integração =====
+  // O botão Música (no canto do menu e na pausa; tecla N) liga e desliga só a música, sem mexer nos efeitos; ligada por padrão. Sem o módulo de música os dois botões ficam escondidos.
+  function renderMusic() {
+    const has = !!music, isOn = has && music.isEnabled(), label = isOn ? "Música: ligada" : "Música: desligada";
+    const icon = $("btn-music"); icon.classList.toggle("hidden", !has); icon.setAttribute("aria-pressed", isOn ? "true" : "false"); icon.setAttribute("aria-label", label); icon.title = `${label} (tecla N)`;
+    icon.querySelector(".mus-on").hidden = !isOn; icon.querySelector(".mus-off").hidden = isOn;
+    const b = $("btn-music-pause"); b.classList.toggle("hidden", !has); b.textContent = label; b.setAttribute("aria-pressed", isOn ? "true" : "false");
+  }
+  function toggleMusic() { mus((m) => m.toggleEnabled()); renderMusic(); }
+  renderMusic();
+  on("btn-music", toggleMusic); on("btn-music-pause", toggleMusic);
+  // aba escondida ou janela sem foco: a música para (o jogo já pausa); ao voltar, recomeça do compasso em que estava
+  if (document.hidden) mus((m) => m.pause());
+  document.addEventListener("visibilitychange", () => { mus((m) => (document.hidden ? m.pause() : m.resume())); });
+  window.addEventListener("blur", () => { mus((m) => m.pause()); });
+  window.addEventListener("focus", () => { if (!document.hidden) mus((m) => m.resume()); });
+  // ===== fim MÚSICA: integração =====
   on("btn-start", () => { levelsMode = "play"; requestNewGame(); });
   on("btn-replay", () => { levelsMode = "replay"; requestNewGame(); });
   on("btn-continue", continueGame);
@@ -4984,6 +5037,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get growth() { return dogGrowth(); }, get stage() { return dogStage(dogGrowth()); },
     get theme() { return { place: theme.place, blurb: theme.blurb, rail: theme.rail.slice() }; },
     get sounds() { return sound.events; }, get sound() { return sound; }, // os pedidos de som (nome, quando, se tocou) e o tocador, para os testes
+    get music() { return music; }, get musicKey() { return musicKey; }, // ===== MÚSICA: integração ===== o tocador das músicas tema (current, state, events, isEnabled...) e o último pedido feito a ele, para os testes
     get alertTiles() { return lv.alertTiles; }, get power() { return power; }, get minPoints() { return lv.minPoints; }, get lifePenalty() { return lv.lifePenalty; }, get dogSpeed() { return dogSpeedNow(); }, get assist() { return assist(); }, get started() { return started; }, set autoStart(v) { autoStart = !!v; }, set touchInput(v) { touchInput = !!v; }, get postmen() { return postmen; }, set allBlocks(v) { allBlocks = !!v; }, get bonesGot() { return bonesGot; }, get blocks() { return blocks.map((b) => ({ i: b.i, x: b.rect.x, y: b.rect.y, bt: b.bt, def: { ...b.d } })); }, get blockTiles() { return [...dynBlocked]; },
     get lives() { return lives; }, get livesLost() { return livesLost; }, get retries() { return retries; }, get maxLives() { return maxLivesNow(); }, get upgrades() { return { ...up }; }, get nextUpgrades() { return nextUp && { ...nextUp }; }, get chosenReinforce() { return chosenReinforce; }, get carriedLives() { return carriedLives; },
     get level() { return levelId; }, get time() { return time; }, get invuln() { return invuln; }, get view() { return view; },
