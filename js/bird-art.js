@@ -104,9 +104,6 @@
       c.beginPath(); c.moveTo(cx + cos(a - hw) * rx, cy + sin(a - hw) * ry); c.lineTo(cx + cos(a) * (rx + L), cy + sin(a) * (ry + L)); c.lineTo(cx + cos(a + hw) * rx, cy + sin(a + hw) * ry); c.closePath(); c.fill(); c.stroke();
     }
   }
-  function drop(c, x, y, r, ang, fill) { // gotinha/folhinha alongada na direção `ang`
-    c.fillStyle = fill; c.beginPath(); c.ellipse(x, y, pos(r) * 0.62, pos(r), ang - PI / 2, 0, TAU); c.fill();
-  }
   function leaf(c, x, y, len, ang, fill, vein) { // folhinha: elipse pontuda a partir de (x, y) na direção `ang`, com nervura
     c.fillStyle = fill; c.beginPath(); c.ellipse(x + cos(ang) * len / 2, y + sin(ang) * len / 2, pos(len) / 2, pos(len) * 0.27, ang, 0, TAU); c.fill();
     c.strokeStyle = LINE; c.lineWidth = 0.6; c.stroke();

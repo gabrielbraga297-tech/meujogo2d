@@ -13,7 +13,6 @@
   // retângulos finos de uma cor só, num traço só (x, y, w, h em px do tile): bem mais barato que `lines` (riscar) quando são centenas por quadro
   const slabs = (g, col, arr) => { const c = g.ctx; c.fillStyle = col; c.beginPath(); for (let i = 0; i < arr.length; i += 4) { const x = g.x + arr[i], y = g.y + arr[i + 1], w = arr[i + 2], h = arr[i + 3]; c.moveTo(x, y); c.lineTo(x + w, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath(); } c.fill(); };
   const T = 32, TAU = Math.PI * 2, hv = BT.hash;
-  const all4 = (g) => g.solid(g.c - 1, g.r) && g.solid(g.c + 1, g.r) && g.solid(g.c, g.r - 1) && g.solid(g.c, g.r + 1);
   const soft = (g, x, y, w, h) => { const x0 = Math.max(0, x - 1), y0 = Math.max(0, y - 1); dot(g, "rgba(0,0,0,.10)", x0, y0, Math.min(T, x + w + 1) - x0, Math.min(T, y + h + 1) - y0); dot(g, "rgba(0,0,0,.17)", x, y, w, h); };
   const softDisc = (g, cx, cy, rad) => { const k = rad + 1.5, x = Math.min(T - k, Math.max(k, cx)), y = Math.min(T - k, Math.max(k, cy)); circle(g, "rgba(0,0,0,.10)", x, y, k); circle(g, "rgba(0,0,0,.17)", x, y, rad); };
   // mar ou rio em volta do mapa: água em faixas com espuma que se mexe devagar (parada com g.time = 0); `col` = [fundo, topo claro, espuma "r,g,b"]
