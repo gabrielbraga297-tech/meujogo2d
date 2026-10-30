@@ -337,7 +337,7 @@
       powerShort: (s) => `Voo alto por ${s} s!`,
       powerEnding: (onWall) => (onWall ? "O voo alto está acabando: o passarinho vai pousar no chão livre mais perto!" : "O voo alto está acabando!"),
       powerOff: (hasFoe2, landed) => (landed ? "O voo alto acabou: o passarinho pousou no chão livre mais perto!" : "O voo alto acabou: o passarinho voltou a voar baixo!"),
-      beat: (pts) => `Você espantou o gato! +${pts} pontos`,   // (o voo alto não espanta nem rende pontos: estas duas frases só existem porque o motor sempre tem uma)
+      beat: (pts) => `Você espantou o gato! +${pts} pontos`,   // (o Passarinho não usa estas duas frases: o voo alto não espanta nem rende pontos; elas só existem porque o motor sempre tem uma)
       beat2: (pts) => `Você espantou o gato! +${pts} pontos`,
       needAll: (hasPower) => (hasPower ? "Pegue todas as sementes e todos os frutos antes de entrar no ninho!" : "Pegue todas as sementes antes de entrar no ninho!"),
       ballGot: (pts, got, total) => `Minhoca! +${pts} pontos (${got}/${total})`,
@@ -346,11 +346,11 @@
       pauseGrowth: (stage) => `Passarinho: ${stage}.`,
       winPrey: (pts) => `Sementes: ${pts}`,
       winPower: (pts) => ` + frutos: ${pts}`,
-      winScared: (hasFoe2, pts) => ` + gatos: ${pts}`,
+      winScared: (hasFoe2, pts) => ` + gatos: ${pts}`,   // (o Passarinho não usa: ninguém é afugentado, então a soma da vitória nunca tem esta parcela)
       winBalls: (pts) => ` + minhocas: ${pts}`,
     },
     lose: {
-      crush: "O bloco esmagou o passarinho!",
+      crush: "O bloco esmagou o passarinho!",   // (o Passarinho não usa: as fases dele não têm blocos que esmagam)
       foe: "Um gato pegou o passarinho!",
       foe2: "Um gavião pegou o passarinho!",
       short: "Os pontos não bastaram!",
@@ -399,7 +399,7 @@
         `<li><strong>Fruto e voo alto:</strong> ao pegar um <strong>fruto</strong> (o comum) o passarinho ganha o <strong>VOO ALTO</strong> por 10 segundos: ele fica maior, com a sombra longe no chão, <strong>passa por cima dos muros</strong> (mas não das paredes) e os gatos <strong>não o alcançam</strong>: eles esperam embaixo e desistem. Ninguém é espantado e não há pontos por isso. Nos últimos 2 segundos o passarinho <strong>pisca</strong> e o placar avisa; se o voo alto acabar com o passarinho em cima de um muro, ele <strong>pousa</strong> no chão livre mais perto, sem perder vida. Voar por cima dos muros não pula a fase: a saída continua pedindo os pontos e a missão.</li>`,
         `<li><strong>Missão (a partir da Fase 11):</strong> além dos pontos mínimos, cada fase tem uma <strong>missão</strong> (pegar todos os frutos e/ou pegar um número de sementes). Ela aparece numa faixa no alto do jogo, e a saída só abre com a missão cumprida, que ainda dá <strong>pontos extras</strong>.</li>`,
         `<li><strong>Frutos de cores diferentes (a partir da Fase 11):</strong> o <strong>fruto dourado</strong> dá um escudo (nada pega o passarinho), o <strong>fruto de ar frio</strong> congela os gatos e os gaviões, o <strong>fruto de rajada</strong> deixa o passarinho mais rápido e sem cansar ao bater asas, e o <strong>fruto ímã</strong> puxa as sementes que estão perto. Os efeitos aparecem numa faixa no alto do jogo.</li>`,
-        `<li><strong>Minhocas (a partir da Fase 2):</strong> passarinho adora minhoca! As <strong>minhocas</strong> espalhadas pela fase valem <strong>50 pontos</strong> cada, mas <strong>disparam</strong> quando você chega perto (e batem nas paredes e nos obstáculos): voe atrás e encoste nelas. Elas não são obrigatórias para abrir a saída.</li>`,
+        `<li><strong>Minhocas (a partir da Fase 2):</strong> minhocas são um petisco bom de pegar! As <strong>minhocas</strong> espalhadas pela fase valem <strong>50 pontos</strong> cada, mas <strong>disparam</strong> quando você chega perto (e batem nas paredes e nos obstáculos): voe atrás e encoste nelas. Elas não são obrigatórias para abrir a saída.</li>`,
         `<li><strong>Petiscos e skins:</strong> cada fase que você completa dá <strong>1 petisco</strong> (= 1 <strong>petscoin</strong>), guardado no seu nome de usuário. Na <strong>Lojinha de skins</strong>, no menu, troque petiscos por skins (a partir de 10 petscoin): para o passarinho (cores, tapa-olho de pirata, capacete de astronauta...) e também para os objetos do jogo, como os gatos de quintal, as sementes e os frutos. A lojinha é uma só, com uma aba para cada jogo, e <strong>cada categoria abre quando você chega à fase em que ela aparece</strong>. As skins só mudam o desenho.</li>`,
         `<li><strong>Bichinhos:</strong> no menu, toque em <strong>Bichinho</strong> para escolher com quem jogar. <strong>Cada bichinho tem as suas próprias 20 fases</strong>, com pontos, recordes, ranking, progresso e jogo salvo só dele: jogar um não mexe nos outros. <strong>Dentro de um bichinho a fase seguinte só abre quando você conclui a anterior</strong>. A <strong>lojinha de skins</strong>, os <strong>petscoin</strong>, o nome de usuário e a conta são de todos os bichinhos.</li>`,
         `<li><strong>Reforços:</strong> ao vencer uma fase você escolhe <strong>1 reforço</strong> entre <strong>3 opções sorteadas</strong> (de um conjunto de 6: asas fortes, fruto poderoso, vida extra, coração maior, penas grossas ou gatos lentos; a partir da Fase 11 entram mais 3: voo silencioso, olhar atento e chamado de semente). Ele fica com você nas fases seguintes; a próxima fase só começa depois da escolha. Começar uma fase pelo menu ou jogá-la de novo começa sem reforços.</li>`,
