@@ -485,6 +485,39 @@ sfx(P().sfx.winMore, SFX_WIN_MORE);      // a cantiga, SFX_WIN_MORE = 1,7 s depo
 
 **Limites honestos.** (1) Nada aqui foi verificado em artigo, e **ninguém ouviu** os sons no jogo: só foram medidos e olhados em espectrograma (ouvir é o teste que falta; o dono deve julgar se os pios e o grito soam bem e não cansam). (2) Os pios, o grito e o susto ficam na faixa de **3 a 4 kHz**, onde o ouvido é mais sensível, e o alto-falante de celular reproduz bem: se cansarem, basta baixar o `LEVEL` deles. (3) O `peck`, o `flap` e o `gust` podem tocar muitas vezes por fase: ficam mais baixos que os de evento e dependem dos intervalos mínimos do jogo (0,6 s entre dois bater de asas, 1,6 s entre dois ventos); só ouvindo se saberá se incomodam. (4) O ganho agregado dos testes é uma medida de projeto que ignora filtros; o volume de verdade é o da tabela acima, e o `worm` (centroide baixo) fica 4,5 dB abaixo do RMS na ponderação A.
 
+## Músicas tema (0.21.0)
+O menu tem uma música e cada fase de cada bichinho tem a sua: **61 temas** (o do menu e 20 de cada um dos três bichinhos). Como os efeitos sonoros, todas são **sintetizadas na hora** com a Web Audio API (osciladores, filtros, envelopes e ruído): não há arquivo de áudio, biblioteca nem rede. Cada tema é uma **receita** (tom, modo, andamento, compasso, progressão de acordes, motivo, instrumentos e camadas) escrita em `js/music-dog.js`, `js/music-cat.js` e `js/music-bird.js`; o gerador de `js/music.js` a transforma numa partitura **determinística** (sem números aleatórios do sistema e sem relógio: a mesma receita dá sempre as mesmas notas) e o tocador a agenda em laço, de 40 a 100 s. As melodias são originais, nascem do motivo e da semente de cada receita, e nenhuma reproduz uma melodia conhecida. O contrato do motor e como compor uma receita estão em `docs/MUSICA.md`.
+
+**O que toca quando** (`musicSync()` em `js/game.js`, chamada ao fim de `setState` e de `showScreen`; só age quando a situação muda):
+
+| Situação | Música |
+|---|---|
+| Menu e as telas fora da partida (Escolha seu bichinho, Jogar fases anteriores, Lojinha, Como jogar, Pontuações, nome e conta) | o tema `menu` (as telas do menu não o reiniciam) |
+| Jogando a Fase N do Cachorrinho, do Gatinho ou do Passarinho | `dog<N>`, `cat<N>` ou `bird<N>` (laço contínuo; trocar de fase troca de tema com 0,7 s de transição); o bichinho é o da partida, não o escolhido no menu |
+| Pausa (Esc, P, botão de pausa) | o mesmo tema, **abafado a 25%**, sem reiniciar; continuar volta ao volume |
+| Perder uma vida | abaixa a 30% por 0,8 s e volta sozinha (para os sons da captura e da vida perdida aparecerem) |
+| Vitória, escolha de reforço e as Pontuações abertas da vitória | some em 0,5 s e fica em silêncio; a próxima fase começa o tema novo; **Jogar novamente** recomeça o tema do começo |
+| Derrota (acabaram as vidas) | some em 0,4 s; **Tentar novamente** recomeça o tema do começo |
+| Janela sem foco ou aba escondida | a música para (o jogo já pausa) e volta do começo do compasso em que estava |
+| Fase sem tema registrado | silêncio (o tema da tela anterior não continua) |
+
+A música só começa depois do **primeiro gesto** do jogador (o mesmo `unlock` dos efeitos); antes disso o pedido fica guardado. Ela usa o contexto de áudio, o volume e o **mudo** do `js/sound.js`: com *Som: desligado* (tecla **M**) nada toca, e o barramento da música fica em 0,45 do volume dos efeitos. **Nunca derruba o jogo**: sem Web Audio, sem o módulo ou com qualquer falha do tocador, o jogo segue mudo e sem erro (toda chamada passa por um `try/catch` na fronteira, como o `sfx`).
+
+**Botão Música** (0.21.0): liga e desliga **só a música**, sem mexer nos efeitos. Fica no menu inicial (um ícone de nota de 44 × 44 px no canto de cima à esquerda, em frente ao ícone de som, que fica à direita) e na pausa (o botão *Música: ligada* / *Música: desligada*, depois do *Som*); a tecla **N** faz o mesmo e não atrapalha quem digita nome ou senha. Texto, `aria-pressed` e `aria-label` seguem o botão de som. A preferência fica em `cachorrinho.musica.v1` (`{"on":1}` ou `{"on":0}`), **ligada por padrão**, separada da do som (`cachorrinho.som.v1`). Sem o módulo de música os dois botões ficam escondidos.
+
+**Tabela dos temas** (gerada por `node tools/music-table.js` a partir das receitas registradas e conferida por `node tests/music-table.test.js`; para regerar depois de mudar uma receita: `node tools/music-table.js --write`):
+
+<!-- music-table:inicio -->
+| Tema | Bichinho | Lugar | Tom e modo | Andamento (bpm) | Compasso | Forma | Solo | Baixo | Percussão | Laço (s) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| menu | Menu | Menu | Fá maior | 104 | 4/4 | ABAB | marimba / flauta / contrabaixo pizzicato | contrabaixo pizzicato (pizz) | bloco de madeira (steady) | 73,8 |
+| dog1 | Cachorrinho | Quintal | Sol mixolídio | 116 | 4/4 | AABA | xilofone | baixo (rootfifth) | bumbo macio + bloco de madeira (polka) | 66,2 |
+| cat1 | Gatinho | Sala de estar | Ré dórico | 92 | 4/4 | AABA | celesta | contrabaixo pizzicato (pizz) | escova (brush2) | 83,5 |
+| bird1 | Passarinho | Jardim florido | Mi pentatônica maior | 76 | 6/8 | AABA | flauta | baixo senoidal (waltz) | — | 50,5 |
+<!-- music-table:fim -->
+
+**O que foi medido, e o que não foi.** Nenhuma pessoa ouviu as músicas durante o desenvolvimento: o ambiente em que o jogo foi feito não tem ouvido humano nem placa de som. Só foram medidas propriedades: (1) em Node, por receita (`tests/music-<bichinho>.test.js` e `tests/music-rig.js`), a estrutura da partitura (todas as notas dentro da escala do modo, melodia em no máximo 2 oitavas por instrumento, duração do laço de 40 a 100 s, o último compasso leva de volta ao começo, no máximo 14 vozes ao mesmo tempo, nenhum valor não finito, todo oscilador com início e fim) e, entre temas, que ninguém repete (tom, modo, andamento, solo, baixo) e que o andamento sobe com a fase; (2) num `OfflineAudioContext` real do Chromium (`tools/music-render/render.js`, que sai com código 1 se um limite falhar), o pico (no máximo 0,9), o nível RMS (entre −26 e −18 dBFS, a mesma faixa para todos os temas), o componente contínuo (DC), o maior trecho mudo e o salto de nível na emenda do laço; (3) num `AudioContext` real do Chromium (`tools/music-render/live.js`), que o tocador começa, troca de tema, abafa, pausa e silencia. Os WAVs gravados por `tools/music-render/render.js` existem para o dono ouvir. Se uma música combina com a fase, se o volume cansa ou se a melodia fica na cabeça são perguntas que só ouvindo se responde, e ainda não foram respondidas. A integração com o jogo é conferida no navegador (`node tests/e2e.js "música:"`) com um `AudioContext` de mentira, que registra os ganhos do barramento, e com o real do Chromium; só o Chromium foi usado (Firefox e Safari não foram testados). Os números de volume, andamento, instrumentos e forma são **escolhas de design**, sem fonte.
+
 ## Vidas
 Você começa com **3 vidas** (corações vermelhos no placar, logo depois dos pontos) e pode ter de **1 a 5** (até 8 com o reforço *Coração maior*; **a partir da Fase 11 o máximo sobe até 10**, veja *Missões e mais vidas*); as vidas são **cumulativas**:
 
@@ -572,6 +605,7 @@ Se o jogo for publicado como página (artifact) no Claude **e** `sharedRanking` 
 - **Jogar fases anteriores** (depois de concluir alguma fase): repete as fases já vencidas para melhorar o recorde de cada uma
 - **Lojinha de skins** (0.15.9): troque os petscoin (1 por fase completada) por skins. A lojinha é única (veja *Lojinha única*): uma aba por jogo e, em cada jogo, uma aba por categoria (27 no total: o bichinho e os objetos das fases), cada uma liberada só depois que o jogador alcança a fase em que o objeto aparece; o saldo fica no alto e o botão Voltar fica sempre à vista
 - **Como jogar**
+- **Música** (0.21.0): o ícone de nota no canto de cima à esquerda liga e desliga a música (tecla **N**); o ícone de som, no canto da direita, liga e desliga todo o som (tecla **M**). Veja *Músicas tema (0.21.0)*
 - **Pontuações:** suas pontuações (só você) e o ranking do jogo (todos), do bichinho escolhido (*Pontuações do Cachorrinho*)
 - **Escolher nome de usuário:** o nome pode ser o de um cachorrinho (ex.: Totó). Ele fica salvo para as próximas vezes. Ali também dá para **Criar conta** (com senha) e **Entrar**.
 
@@ -882,6 +916,7 @@ O jogo aceita **teclado**, **controle (gamepad)** e **toque**, e dá para mistur
 | Pausar / continuar | **Esc** ou **P** | **Start** | botão de pausa no placar |
 | Salvar | **Ctrl+S** (ou **Cmd+S**) | **Y** | botão de disquete no placar ou **Salvar jogo** na pausa |
 | Som | **M** liga e desliga | — | botão **Som** no menu e na pausa |
+| Música | **N** liga e desliga (só a música) | — | botão **Música** no menu e na pausa |
 | Menus | **↑ ↓** (ou **Tab**) escolhem, **Enter**/**Espaço** confirmam, **Esc** volta | direcional ou analógico escolhem, **A** confirma, **B** volta | tocar nos botões |
 
 **Controle:** funciona com a maioria dos controles (Xbox, PlayStation, Switch Pro, genéricos), por cabo ou Bluetooth, nos navegadores que têm a *Gamepad API* (Chrome e Edge; Firefox e Safari também a têm, mas **só testei com um controle simulado no Chromium**, não com um controle de verdade). Conecte o controle e **aperte um botão** (o navegador só o reconhece depois disso); o jogo avisa "Controle conectado". Controles fora do padrão usam só o analógico esquerdo e os botões A, B e Start (na arrancada do Gatinho e no bater de asas do Passarinho, só o A). Campos de texto (nome, senha) ainda precisam do teclado.
@@ -927,6 +962,11 @@ tools/catmaze/        gerador dos 20 mapas do Gatinho (Python: gen_cat.py, cat_c
 tools/birdmaze/       gerador dos 20 mapas do Passarinho (Python: gen_bird.py, bird_core.py, bird_styles.py, render_bird_preview.py), a análise deles em JavaScript (bird_analysis.js, bird_sim.js) e readme_table.js, que gera a tabela das fases do Passarinho do README
 tools/citymaze/       gerador dos labirintos de cidade (Python): gen_citymaze.py (configuração das Fases 1 a 20), apply_citymaze.py (Fases 1 a 10), apply_levels11_20.py (Fases 11 a 20) e maps/map1.json … map20.json (os mapas que estão no jogo; o teste confere paredes iguais)
 js/sound.js           efeitos sonoros sintetizados com a Web Audio API, sem arquivos de áudio (testável sozinho)
+js/music.js           músicas tema sintetizadas com a Web Audio API: gerador determinístico das receitas, instrumentos, tocador (laço, transição, abafar, pausa, mudo, preferência) e os temas `menu`, `dog1`, `cat1` e `bird1` de exemplo (testável sozinho)
+js/music-dog.js       as 20 receitas das músicas do Cachorrinho (dog1 a dog20), registradas com Music.register; js/music-cat.js (cat1 a cat20) e js/music-bird.js (bird1 a bird20), do mesmo jeito
+docs/MUSICA.md        contrato do motor de música: receita, instrumentos, partitura, tocador, conferências e como compor um tema
+tools/music-render/   render real das músicas no Chromium (render.js: WAVs e medidas; calibrate.js: cada instrumento; live.js: o tocador num AudioContext real) e analyze.js, as medidas
+tools/music-table.js  gera a tabela dos temas do README a partir das receitas registradas (`--write` atualiza o README)
 js/records.js         nome, contas, pontuação, melhores pontuações, progresso e jogo salvo, de cada bichinho (store.game(bichinho)), e a carteira de petscoin com as skins por categoria e a trava por fase (testável sozinho)
 js/config.js          configuração (ranking compartilhado em stand by: sharedRanking e endereço do servidor)
 js/board.js           ranking compartilhado entre aparelhos (REST / banco do Claude), em stand by, com validação (testável sozinho)
@@ -936,13 +976,16 @@ tests/records.test.js testes unitários das pontuações e melhores pontuações
 tests/accounts.test.js testes unitários do cadastro e da entrada (Node)
 tests/board.test.js   testes unitários do ranking compartilhado, com servidor de mentira (Node)
 tests/sound.test.js   testes unitários dos efeitos sonoros (Node, com um áudio de mentira) 
+tests/music.test.js   testes do motor de música (Node, com um áudio de mentira): contrato, gerador, render, Sound.audio/onUnlock e o tocador; tests/music-rig.js não é um teste: o AudioContext de mentira rigoroso e as conferências de uma receita
+tests/music-dog.test.js testes das receitas das músicas do Cachorrinho (Node): estrutura, escala, laço, andamento por fase e temas distintos; tests/music-cat.test.js e tests/music-bird.test.js, o mesmo para o Gatinho e o Passarinho
+tests/music-table.test.js confere a tabela dos temas do README com a gerada por tools/music-table.js (Node)
 tests/themes.test.js  testes unitários dos ambientes das fases (Node)
 tests/profiles.test.js testes unitários dos perfis por bichinho (Node): o Cachorrinho com os textos de sempre, o Gatinho com as mesmas chaves
 tests/skins.test.js   testes unitários do catálogo da lojinha: categorias, fase de liberação, registro das skins (Node)
 tests/skins-dog.test.js testes unitários das skins dos objetos do Cachorrinho (Node): as 10 categorias de js/skins-dog.js, preços, textos, campos visuais e o desenho (js/game.js) lendo cada campo
 tests/skins-cat.test.js testes unitários das skins dos objetos do Gatinho (Node, com um ctx de mentira): as 6 categorias de js/skins-cat.js, preços, textos, campos visuais, o desenho de js/cat-art.js com cada skin, as cores-chave dos novelos e os ratinhos claros na noite
 tests/skins-cat-frame.js quadros fixos do jogo do Gatinho (não é um teste: roda dentro da página e devolve o hash de pixels de cada cena; usado pelo e2e e por tools/skin-preview/cat-skins.js)
-tests/wiring.test.js  testes de fiação (Node): a ordem dos scripts do index.html, a lojinha de js/game.js passando o jogo da categoria ao progresso (reachedLevel) e usando Skins.unlocked, e o contrato js/game.js -> BirdArt (toda função e todo campo que o jogo passa à arte do Passarinho existe e é lido)
+tests/wiring.test.js  testes de fiação (Node): a ordem dos scripts do index.html (js/music.js depois de js/sound.js e antes de js/game.js), o contrato js/game.js -> Music (todo método chamado existe no tocador; musicSync decide o tema de cada estado), a lojinha de js/game.js passando o jogo da categoria ao progresso (reachedLevel) e usando Skins.unlocked, e o contrato js/game.js -> BirdArt (toda função e todo campo que o jogo passa à arte do Passarinho existe e é lido)
 tests/engine.test.js  testes do motor do Passarinho (Node, ~13 s, sem navegador): roda o js/game.js de verdade com um DOM de mentira e confere as invariantes (nunca fora do mundo nem dentro de parede, o passo não atravessa muro de 1 tile a 20 fps, pouso em chão livre, vento, gato e gavião contra o voo alto, jogo salvo adulterado recusado, pontos e saída)
 tests/engine-rig.js   não é um teste: o DOM de mentira, o carregador dos scripts de js/ e os ajudantes (teclas, cliques, Continuar) que o tests/engine.test.js usa
 tests/cat-art.test.js testes unitários dos desenhos do Gatinho (Node, com um ctx de mentira)
@@ -954,6 +997,7 @@ tests/bird-art.test.js testes unitários dos desenhos do Passarinho (Node, com u
 tests/bird-themes-1.test.js testes dos ambientes do Passarinho, Fases 1 a 10 (Node); tests/bird-themes-2.test.js, Fases 11 a 20; tests/bird-themes-harness.js não é um teste: é o ctx de mentira que os dois usam
 tests/bird-table.test.js confere a tabela das fases do Passarinho do README com js/bird-levels.js e com a tabela do Gatinho (Node)
 tests/skins-bird.test.js testes unitários das skins dos objetos do Passarinho (Node, com um ctx de mentira)
+tests/e2e-music.js    seções "música:" do e2e (carregadas pelo tests/e2e.js): o tema de cada situação, abafar, parar, recomeçar, mudo, botão Música e tecla N, aba escondida, sem Web Audio, falhas do tocador, o AudioContext real e o tamanho dos botões
 tests/e2e-bird-*.js   seções do e2e do Passarinho, uma por assunto (carregadas pelo tests/e2e.js): motor, integração, skins e a tabela das fases; tests/fixtures/ tem as 5 fases e o BirdArt de teste que as do motor usam
 tests/bird-robot-page.js o robô que joga as fases do Passarinho no navegador, andando de verdade até a vitória (função de página, usada por tests/e2e-bird-integracao.js)
 tests/bird-words.js   a lista de espécies e raças que o Passarinho não pode usar (a mesma em tests/honesty.test.js e tests/bird-art.test.js)
@@ -976,6 +1020,9 @@ node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
 node tests/sound.test.js
+node tests/music.test.js        # o motor das músicas tema (contrato, gerador, render e tocador, com um áudio de mentira)
+node tests/music-dog.test.js    # as receitas das músicas do Cachorrinho (estrutura, escala, laço, andamento); tests/music-cat.test.js e tests/music-bird.test.js, o mesmo para os outros
+node tests/music-table.test.js  # a tabela dos temas do README confere com as receitas (para regerar: node tools/music-table.js --write)
 node tests/themes.test.js
 node tests/profiles.test.js
 node tests/skins.test.js        # o catálogo da lojinha única (categorias, fase de liberação, registro das skins)
@@ -1003,6 +1050,7 @@ node tests/e2e.js "Skins do Gatinho"                   # as skins dos objetos do
 node tests/e2e.js "Skins do Passarinho"                # as skins do Passarinho no navegador (tests/e2e-bird-skins.js: mostruários, lojinha, liberação por fase e o desenho em jogo)
 node tests/e2e.js "Passarinho (integração)"            # o Passarinho com os arquivos de verdade juntos (tests/e2e-bird-integracao.js): as 20 fases montam, capturas, o robô joga as 20 fases, jogo salvo, telas, desempenho, sons e textos
 node tests/e2e.js "Passarinho (faixas)"                # as faixas do placar do Passarinho: nomes dos efeitos (Ar frio, Rajada) e os avisos do leitor de tela no vento (tests/e2e-bird-faixas.js)
+node tests/e2e.js "música:"                             # a música no jogo (tests/e2e-music.js): tema por situação, abafar, parar, recomeçar, mudo, botão Música e tecla N, aba escondida, sem Web Audio, AudioContext real e tamanhos de tela
 node tests/e2e.js "Passarinho (aviso)"                 # o aviso de abertura da fase não cobre o passarinho em 10 tamanhos de tela (tests/e2e-bird-aviso.js)
 node tests/e2e.js "Passarinho (motor)"                 # o motor do Passarinho no navegador (tests/e2e-bird-*.js): voo alto, galho, gavião, vento, minhocas, frutos, jogo salvo, telas e isolamento do Cachorrinho e do Gatinho
 node tests/e2e.js "tabela das fases do Passarinho"     # a tabela das fases do Passarinho do README contra as fases montadas no navegador

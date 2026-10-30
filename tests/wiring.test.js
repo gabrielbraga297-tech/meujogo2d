@@ -2,6 +2,7 @@
 //  - index.html carrega os scripts na ordem em que um precisa do outro (js/skins.js antes de js/skins-dog.js, js/skins-cat.js e js/skins-bird.js, e tudo isso, mais js/records.js, js/cat-art.js e js/bird-art.js, antes de js/game.js);
 //  - a tela da lojinha (renderShop em js/game.js) sempre passa o JOGO da categoria ao progresso (store.reachedLevel(jogador, jogo)) e decide o bloqueio com Skins.unlocked:
 //    esquecer o jogo faria o progresso do Cachorrinho liberar categorias do Gatinho (e o contrário) sem que nenhum teste de Node notasse.
+//  - (0.21.0) a música: js/music.js depois de js/sound.js e antes dos arquivos dos temas e de js/game.js; todo método do tocador que js/game.js chama existe em Music.create; e o musicSync() do jogo escolhe o tema, o abafado e a parada de cada estado.
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -146,6 +147,96 @@ test("game.js: o birdArt avisa UMA vez por nome (console.warn) quando BirdArt.no
   assert.strictEqual(birdArt("drawBird", 1), true);
   assert.strictEqual(warns.length, 2, `um aviso por nome que falta (drawHawk, drawSeed), nenhum para o que existe: ${JSON.stringify(warns)}`);
   assert.ok(/drawHawk/.test(warns[0]) && /drawSeed/.test(warns[1]));
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// A música (0.21.0): o contrato js/game.js -> js/music.js. Um nome de método trocado só apareceria como "o jogo fica mudo", porque toda chamada passa por um try/catch (mus) que nunca deixa o erro escapar.
+const Music = require(path.join(__dirname, "../js/music.js"));
+const gameCode = gameSrc.replace(/\/\/.*$/gm, ""); // (sem comentários de linha; nenhuma das strings do jogo que importam aqui tem "//")
+// o texto de cada chamada mus((m) => ...) de js/game.js, da abertura ao parêntese que a fecha
+function musCalls() {
+  const out = [];
+  for (const m of gameCode.matchAll(/\bmus\(\(m\) =>/g)) {
+    let depth = 0, p = m.index + 3;
+    for (; p < gameCode.length; p++) { const c = gameCode[p]; if (c === "(") depth++; else if (c === ")" && --depth === 0) break; }
+    out.push(gameCode.slice(m.index, p + 1));
+  }
+  return out;
+}
+
+test("index.html: js/music.js vem depois de js/sound.js, depois dele vêm js/music-dog.js, js/music-cat.js e js/music-bird.js (nessa ordem), e tudo antes de js/game.js", () => {
+  const scripts = [...read("index.html").matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map((m) => m[1]);
+  const at = (f) => { const i = scripts.indexOf(f); assert.ok(i >= 0, `index.html não carrega ${f}`); return i; };
+  assert.ok(at("js/sound.js") < at("js/music.js"), "sound.js antes de music.js");
+  assert.ok(at("js/music.js") < at("js/music-dog.js") && at("js/music-dog.js") < at("js/music-cat.js") && at("js/music-cat.js") < at("js/music-bird.js"), "music.js, e depois os temas do Cachorrinho, do Gatinho e do Passarinho");
+  for (const f of ["js/music.js", "js/music-dog.js", "js/music-cat.js", "js/music-bird.js"]) { assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`); assert.ok(fs.existsSync(path.join(__dirname, "..", f)), `${f} existe (senão a página dá 404)`); }
+  assert.strictEqual(scripts[scripts.length - 1], "js/game.js");
+});
+
+test("js/game.js cria o tocador com Music.create({ sound, storage }) logo depois do Sound, e toda chamada a ele passa por mus(), que não deixa erro nenhum escapar (nem a falta do módulo)", () => {
+  assert.ok(/const sound = Sound\.create\([^;]*;\s*sound\.bindUnlock\(\);\s*const music = \(\(\) => \{ try \{ return typeof Music !== "undefined" && Music && typeof Music\.create === "function" \? Music\.create\(\{ sound, storage: safeStorage\(\) \}\) : null; \} catch \{ return null; \} \}\)\(\);/.test(gameSrc.replace(/\/\/[^\n]*/g, "")), "const music = Music.create({ sound, storage: safeStorage() }) dentro de um try/catch, logo depois de sound.bindUnlock()");
+  assert.ok(/const mus = \(fn\) => \{ if \(!music\) return; try \{ fn\(music\); \} catch \{[^}]*\} \};/.test(gameCode), "mus(fn) chama fn(music) dentro de try/catch e não faz nada sem music");
+  const outside = gameCode.replace(/const mus = [^\n]*\n/, "").split("\n").filter((l) => /\bmusic\.\w+\(/.test(l) && !/\bmus\(\(m\)/.test(l) && !/function (renderMusic|toggleMusic)/.test(l));
+  const bad = outside.filter((l) => !/(const has = !!music, isOn = has && music\.isEnabled\(\)|get music\(\))/.test(l));
+  assert.deepStrictEqual(bad, [], "chamada direta a music.x() fora do mus(): " + bad.join(" | "));
+});
+
+test("js/game.js -> Music: todo método que o jogo chama no tocador existe em Music.create (play, stop, duck, setDuck, pause, resume, toggleEnabled, isEnabled, tick...)", () => {
+  const api = Music.create({}), calls = musCalls();
+  assert.ok(calls.length >= 8, `o jogo chama o tocador em pelo menos 8 pontos (achou ${calls.length})`);
+  const used = new Set();
+  for (const c of calls) for (const m of c.matchAll(/\bm\.(\w+)/g)) used.add(m[1]);
+  for (const m of gameCode.matchAll(/\bmusic\.(\w+)/g)) used.add(m[1]);
+  const missing = [...used].filter((n) => !(n in api));
+  assert.deepStrictEqual(missing, [], `game.js usa music.${missing.join(", music.")}, que Music.create não tem (o jogo ficaria mudo em silêncio). Os que existem: ${Object.keys(api).join(", ")}`);
+  for (const n of ["play", "stop", "duck", "setDuck", "pause", "resume", "toggleEnabled", "isEnabled", "tick"]) { assert.ok(used.has(n), `o jogo deveria usar music.${n}`); assert.strictEqual(typeof api[n], "function", `music.${n} é função`); }
+  assert.strictEqual(typeof Music.create({}).play("tema que não existe"), "boolean", "play devolve true/false (o jogo usa o false para silenciar a fase sem tema)");
+});
+
+test("js/game.js: setState e showScreen terminam chamando musicSync(); perder uma vida abaixa a música (0,3 por 0,8 s); o botão de som manda a música conferir o mudo; a tecla N, o botão e a aba escondida estão ligados", () => {
+  for (const f of ["setState", "showScreen"]) assert.ok(/musicSync\(\);\s*\}$/.test(fnSrc(f).replace(/\s+$/, "")), `${f} termina com musicSync()`);
+  assert.ok(/m\.duck\(0\.3, 0\.8\)/.test(fnSrc("loseLife")) && /sound\.play\("lifelost"/.test(fnSrc("loseLife")), "loseLife pede duck(0.3, 0.8)");
+  assert.ok(!/m\.duck\(/.test(fnSrc("gameOver")), "a derrota não pede o abafado curto (só parar)");
+  assert.ok(/m\.tick\(\)/.test(fnSrc("toggleSound")), "toggleSound manda a música conferir o mudo na hora");
+  assert.ok(/m\.toggleEnabled\(\)/.test(fnSrc("toggleMusic")) && /renderMusic\(\)/.test(fnSrc("toggleMusic")), "toggleMusic liga e desliga a preferência e redesenha os botões");
+  assert.ok(/k === "n" && !e\.repeat && !\(e\.target instanceof HTMLInputElement\) && !\(e\.target instanceof HTMLTextAreaElement\)\) \{ toggleMusic\(\); return; \}/.test(gameCode), "a tecla N chama toggleMusic (sem repetir e sem atrapalhar quem digita)");
+  assert.ok(/on\("btn-music", toggleMusic\); on\("btn-music-pause", toggleMusic\);/.test(gameCode), "os dois botões chamam toggleMusic");
+  assert.ok(/visibilitychange", \(\) => \{ mus\(\(m\) => \(document\.hidden \? m\.pause\(\) : m\.resume\(\)\)\); \}\)/.test(gameCode), "a aba escondida pausa a música e voltar a retoma");
+  assert.ok(/addEventListener\("blur", \(\) => \{ mus\(\(m\) => m\.pause\(\)\); \}\)/.test(gameCode) && /addEventListener\("focus", \(\) => \{ if \(!document\.hidden\) mus\(\(m\) => m\.resume\(\)\); \}\)/.test(gameCode), "a janela sem foco pausa a música e o foco a retoma");
+  assert.ok(/get music\(\) \{ return music; \}/.test(gameCode), "__game.music expõe o tocador para os testes");
+  const html = read("index.html");
+  for (const id of ["btn-music", "btn-music-pause"]) assert.ok(html.includes(`id="${id}"`), `o index.html tem #${id}`);
+  const open = (gameSrc.match(/^\s*\/\/ ===== MÚSICA: integração =====\s*$/gm) || []).length, close = (gameSrc.match(/^\s*\/\/ ===== fim MÚSICA: integração =====\s*$/gm) || []).length;
+  assert.ok(open >= 3 && open === close, `as regiões de bloco de js/game.js abrem e fecham (${open} e ${close})`);
+});
+
+test("musicSync() decide o tema de cada estado (rodando o código de js/game.js com um tocador de mentira): menu, fase, pausa, vitória, derrota, recomeço e fase sem tema", () => {
+  const body = fnSrc("musicSync");
+  const log = [], known = new Set(["menu", "dog1", "dog3", "dog4", "cat2", "bird20"]), fake = { paused: false, play(id, o) { log.push(o === undefined ? ["play", id] : ["play", id, o]); return known.has(id); }, stop(f) { log.push(["stop", f]); }, setDuck(l) { log.push(["setDuck", l]); }, resume() { log.push(["resume"]); this.paused = false; } };
+  const doc = { hidden: false };
+  const make = new Function("mus", "document", `let state = "menu", gameAnimal = "dog", levelId = 1, musicKey = "";\n${body}\nreturn { sync: musicSync, set(s, a, l) { state = s; gameAnimal = a; levelId = l; }, get key() { return musicKey; } };`);
+  const g = make((fn) => fn(fake), doc);
+  const step = (s, a, l) => { log.length = 0; g.set(s, a, l); g.sync(); return JSON.stringify(log); };
+  assert.strictEqual(step("menu", "dog", 1), '[["setDuck",1],["play","menu"]]', "menu: abafado 1 e tema menu");
+  assert.strictEqual(step("menu", "dog", 1), "[]", "o mesmo pedido de novo não faz nada (não reinicia o tema)");
+  assert.strictEqual(step("playing", "dog", 3), '[["setDuck",1],["play","dog3"]]', "jogando a Fase 3 do Cachorrinho: dog3");
+  assert.strictEqual(step("playing", "dog", 3), "[]");
+  assert.strictEqual(step("paused", "dog", 3), '[["play","dog3"],["setDuck",0.25]]', "pausa: o mesmo tema, abafado a 0,25");
+  assert.strictEqual(step("playing", "dog", 3), '[["setDuck",1],["play","dog3"]]', "continuar: sem abafar e sem restart");
+  assert.strictEqual(step("won", "dog", 3), '[["stop",0.5]]', "vitória: stop(0,5)");
+  assert.strictEqual(step("won", "dog", 3), "[]", "tela de reforços e pontuações da vitória: nada de novo");
+  assert.strictEqual(step("playing", "dog", 4), '[["setDuck",1],["play","dog4",{"restart":true}]]', "a próxima fase começa depois da vitória: restart");
+  assert.strictEqual(step("lost", "dog", 4), '[["stop",0.4]]', "derrota: stop(0,4)");
+  assert.strictEqual(step("playing", "dog", 4), '[["setDuck",1],["play","dog4",{"restart":true}]]', "Tentar novamente: restart");
+  assert.strictEqual(step("paused", "dog", 4), '[["play","dog4"],["setDuck",0.25]]');
+  assert.strictEqual(step("menu", "dog", 4), '[["setDuck",1],["play","menu"]]', "da pausa direto para o menu: sem abafar e sem restart");
+  assert.strictEqual(step("playing", "cat", 2), '[["setDuck",1],["play","cat2"]]', "o tema é o do bichinho da partida (gameAnimal), não o do menu");
+  assert.strictEqual(step("playing", "bird", 20), '[["setDuck",1],["play","bird20"]]');
+  assert.strictEqual(step("playing", "bird", 7), '[["setDuck",1],["play","bird7"],["stop",0.5]]', "fase sem tema registrado: a música anterior não continua (stop)");
+  fake.paused = true; doc.hidden = false;
+  assert.strictEqual(step("playing", "cat", 2), '[["resume"],["setDuck",1],["play","cat2"]]', "se a música ficou pausada e a aba está visível, começar a fase a retoma");
+  fake.paused = true; doc.hidden = true;
+  assert.ok(!step("menu", "dog", 1).includes("resume"), "com a aba escondida não retoma");
 });
 
 if (failed) { console.log(`\n${failed} teste(s) falharam`); process.exit(1); }

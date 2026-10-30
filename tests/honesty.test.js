@@ -11,6 +11,10 @@
 //     "Skins do Passarinho", a tabela e a biologia), a PRIMEIRA entrada do CHANGELOG (a do topo, seja qual for), docs/LOJINHA.md, docs/PASSARINHO-DESENHO.md, docs/pesquisa-passarinho/, todas as frases do perfil `bird` de js/profiles.js
 //     (as funções são chamadas com argumentos de exemplo), os nomes e frases das skins (BirdArt.SKINS e as categorias do Passarinho de js/skins-bird.js) e o texto do código de js/skins-bird.js e do bloco `bird` de js/profiles.js.
 //     Uma negação só vale se estiver COLADA à afirmação (até 30 letras antes, na mesma oração): "Nada aqui foi verificado; nenhum estudo mostra isso" passa, "Nenhum artigo foi aberto, mas estudos mostram isso" não.
+// Músicas tema (0.21.0): ninguém ouviu as músicas (o ambiente de desenvolvimento não tem ouvido humano nem placa de som). Só foram medidas propriedades (escala, laço, pico, RMS, emenda...).
+//  7. nenhum texto que o dono ou o jogador lê (a seção "Músicas tema (0.21.0)" e as linhas do README que falam de música, o item "Música:" do Como jogar e a ajuda da pausa, a primeira entrada do CHANGELOG se falar de música,
+//     docs/MUSICA.md, os comentários de js/music*.js e de tools/music-render/ e de tools/music-table.js) afirma que a música "soa bem", é "agradável", "bonita", que "foi ouvida" ou que "fica boa";
+//  8. a seção do README diz que nenhuma pessoa ouviu as músicas, que só foram medidas propriedades e que ouvir é o teste que falta; e nem ela nem os textos do jogo trazem rótulo interno de trabalho.
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -264,6 +268,61 @@ test("os detectores pegam as frases de redator desatento e deixam passar os cont
   const internal = (w) => new RegExp(INTERNAL.source, INTERNAL.flags).test(w);
   for (const w of ["as frentes de trabalho", "a frente de mapas", "wip", "agentes de arte", "as fixtures do motor", "um agente de teste"]) assert.ok(internal(w), "rótulo interno não pego: " + w);
   for (const w of ["tests/fixtures/ tem as 5 fases", "`tests/fixtures`", "agentes da carrocinha", "o tile à frente de cada seta", "de frente, de costas e de lado", "os pés ficam na frente"]) assert.ok(!internal(w), "falso positivo de rótulo: " + w);
+});
+
+// ======================================================= Músicas tema (0.21.0) =======================================================
+const MUSIC_SECTION = "Músicas tema (0.21.0)";
+const QUALITY = [
+  /\bsoa(?:m)?\s+(?:muito\s+)?(?:bem|bom|boa|lindamente|agrad\p{L}*|natural\p{L}*)/giu,
+  /\bagrad[aá]ve(?:l|is)\b/giu,
+  /\b(?:bonit[ao]s?|lind[ao]s?|gostos[ao]s?|delicios[ao]s?|encantador\p{L}*)(?!\p{L})/giu,
+  /\b(?:foi|foram|já foi|já foram|ficou|ficaram) (?:ouvid[oa]s?|escutad[oa]s?|aprovad[oa]s?)\b/giu,
+  /\b(?:ouvi|ouvimos|escutei|escutamos) (?:as |os |a |o )?(?:música|músicas|tema|temas)\b/giu,
+  /\bfica(?:m)? (?:bem|boa|bom|bonit[ao]s?)\b/giu,
+  /\b(?:ficou|ficaram) (?:ótim|boa|bom|bem)\p{L}*/giu,
+];
+// os textos de música: [nome, texto, confereRótulosInternos]
+const musicTexts = () => {
+  const readme = read("README.md"), out = [], sec = section(readme, MUSIC_SECTION);
+  if (sec) out.push({ name: `README.md, seção "${MUSIC_SECTION}"`, text: sec, internal: true });
+  const lines = readme.split("\n").filter((l) => /músic/i.test(l) && !sec.includes(l));
+  if (lines.length) out.push({ name: "README.md, as outras linhas que falam de música (Menu, Controles, Estrutura, Testes)", text: lines.join("\n"), internal: false });
+  const li = (read("index.html").match(/<li><strong>Música:<\/strong>[\s\S]*?<\/li>/) || [""])[0], help = (read("index.html").match(/<p id="pause-help"[^>]*>([\s\S]*?)<\/p>/) || [0, ""])[1];
+  out.push({ name: 'index.html, item "Música:" do Como jogar e ajuda da pausa', text: li + "\n" + help, internal: true });
+  const prof = read("js/profiles.js").split("\n").filter((l) => /<strong>Música:<\/strong>|pauseHelp: .*música/.test(l));
+  out.push({ name: "js/profiles.js, textos de música do Gatinho e do Passarinho", text: prof.join("\n"), internal: true });
+  const top = topChangelog(); if (top && /músic/i.test(top)) out.push({ name: "CHANGELOG.md, primeira entrada (fala de música)", text: top, internal: true });
+  out.push({ name: "docs/MUSICA.md", text: read("docs/MUSICA.md"), internal: false });
+  for (const f of ["js/music.js", "js/music-dog.js", "js/music-cat.js", "js/music-bird.js", "tools/music-table.js", ...list("tools/music-render", /\.js$/)]) if (fs.existsSync(path.join(root, f))) out.push({ name: f, text: read(f), internal: false });
+  return out;
+};
+
+test("Músicas tema: o README tem a seção, e ela diz que nenhuma pessoa ouviu as músicas, que só foram medidas propriedades e que ouvir é o que falta", () => {
+  const sec = section(read("README.md"), MUSIC_SECTION);
+  assert.ok(sec, `falta a seção "${MUSIC_SECTION}" no README`);
+  assert.ok(/nenhuma pessoa ouviu as músicas durante o desenvolvimento/i.test(sec), "deve dizer: nenhuma pessoa ouviu as músicas durante o desenvolvimento");
+  assert.ok(/só foram medidas propriedades/i.test(sec) && /só ouvindo se responde/i.test(sec), "deve dizer que só foram medidas propriedades e que o resto só ouvindo se responde");
+  assert.ok(/WAVs/.test(sec) && /dono ouvir/.test(sec), "deve dizer que os WAVs existem para o dono ouvir");
+  assert.ok(/escolhas de design/i.test(sec), "os números de volume, andamento, instrumentos e forma são escolhas de design");
+});
+
+test("Músicas tema: nenhum texto de música diz que ela soa bem, é agradável, bonita, foi ouvida ou fica boa (README, Como jogar, pausa, CHANGELOG do topo, docs/MUSICA.md e os comentários dos arquivos de música)", () => {
+  const bad = [], texts = musicTexts();
+  assert.ok(texts.length >= 8, `há textos de música para conferir (achou ${texts.length})`);
+  for (const { name, text } of texts) text.split("\n").forEach((line, i) => { for (const re of QUALITY) for (const m of line.matchAll(re)) if (!negated(line, m.index)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 100)}..."`); });
+  assert.deepStrictEqual(bad, [], "afirmação de qualidade que ninguém verificou (ninguém ouviu):\n     " + bad.join("\n     "));
+});
+
+test("Músicas tema: nenhum rótulo interno de trabalho (A5, A6, frente, wip, agente de ..., scratchpad, coordenador) no README, no Como jogar, na ajuda da pausa e nas frases do perfil", () => {
+  const bad = [];
+  for (const { name, text, internal } of musicTexts()) if (internal) text.split("\n").forEach((line, i) => { for (const m of line.matchAll(INTERNAL)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`); for (const m of line.matchAll(/\bA6\b/g)) bad.push(`${name}:${i + 1}: "${m[0]}"`); });
+  assert.deepStrictEqual(bad, [], "rótulo interno:\n     " + bad.join("\n     "));
+});
+
+test("Músicas tema: o detector pega as frases de redator desatento e deixa passar as negações coladas", () => {
+  const caught = (line) => { let hit = false; for (const re of QUALITY) for (const m of line.matchAll(re)) if (!negated(line, m.index)) hit = true; return hit; };
+  for (const line of ["A música da Fase 3 soa bem.", "Todas as músicas foram ouvidas e aprovadas.", "É uma melodia agradável e bonita.", "A música fica boa no celular.", "Nenhuma pessoa ouviu, mas a música soa muito bem."]) assert.ok(caught(line), "não pegou: " + line);
+  for (const line of ["Nenhuma pessoa ouviu as músicas durante o desenvolvimento.", "A ferramenta não mede se soa bem: só que toca.", "Ninguém ouviu: nada aqui diz que é agradável.", "Os WAVs existem para o dono ouvir."]) assert.ok(!caught(line), "pegou um controle legítimo: " + line);
 });
 
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de honestidade passaram");
