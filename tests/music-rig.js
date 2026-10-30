@@ -166,6 +166,9 @@ function checkRender(score, label = "") {
     if (ev[0].v !== 0 || ev[ev.length - 1].v !== 0) bad2++;
   }
   if (bad2) fail(`${bad2} envelope(s) que não começam e terminam em 0 ou fora de ordem`);
+  // antes do 1º evento o ganho padrão do navegador é 1: um ganho de nota que não nasce em 0 deixa passar a 1ª amostra de uma fonte que começa um pouco antes do evento (clique)
+  const loud = ctx.nodes.filter((n) => n.kind === "gain" && n.gain.events.length && n.gain.value !== 0).length;
+  if (loud) fail(`${loud} ganho(s) de nota nascem com valor diferente de 0 (a 1ª amostra passaria inteira: clique)`);
   const perEvent = ctx.nodes.length / Math.max(1, score.events.length);
   if (perEvent > 30) fail(`nós demais por nota (${perEvent.toFixed(1)})`);
   return fails;

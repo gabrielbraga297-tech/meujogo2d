@@ -799,6 +799,7 @@
       if (o.f2 && o.f2 !== o.f) osc.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
       if (o.vib) {
         const l = ctx.createOscillator(), d = ctx.createGain();
+        d.gain.value = 0;
         l.type = "sine";
         l.frequency.setValueAtTime(o.vib[0], t);
         d.gain.setValueAtTime(0, t);
@@ -815,6 +816,7 @@
         node.connect(f); node = f;
       }
       const g = ctx.createGain();
+      g.gain.value = 0; // antes do primeiro evento o ganho padrão é 1: sem isto a 1ª amostra de uma nota que começa fora da grade passa inteira (clique)
       envelope(g.gain, t, dur, o.gain ?? 0.5, a, r, o.sus ?? 0.05);
       node.connect(g); g.connect(dest);
       osc.start(t); osc.stop(t + dur + 0.02);
@@ -822,6 +824,7 @@
     kit.noise = (o) => {
       const t = o.at, dur = o.dur, a = Math.min(o.a ?? 0.01, dur * 0.4), r = Math.min(o.r ?? 0.03, dur * 0.5);
       const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      g.gain.value = 0;
       src.buffer = noiseBuffer(ctx);
       f.type = o.type || "bandpass"; f.Q.value = o.q ?? 1;
       f.frequency.setValueAtTime(o.f, t);
@@ -944,6 +947,7 @@
     } },
     crickets: { life: (d) => d, play(k, at, d, L, f, g, e) { // um oscilador agudo ligado e desligado em pulsos, num só ganho
       const ctx = k.ctx, o = ctx.createOscillator(), gn = ctx.createGain(), n = clamp(Math.round(L / 0.17), 2, 8);
+      gn.gain.value = 0;
       o.type = "sine";
       o.frequency.setValueAtTime(4300, at);
       gn.gain.setValueAtTime(0, at);
