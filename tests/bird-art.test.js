@@ -99,11 +99,12 @@ test("não lançam erro com `o` vazio, sem parâmetros ou com valores esquisitos
 });
 
 test("o desenho só usa o que o canvas simples tem, com números finitos, cores válidas e save/restore fechados", () => { // (o rec/ctx falso já lança nesses casos; aqui varre muitos pedidos)
-  let n = 0;
+  let n = 0, fewest = Infinity;
   for (const d of DIRS) for (const gr of [0, 0.2, 0.5, 0.9, 1]) for (const skin of BirdArt.SKINS.map((s) => s.id)) for (const mv of [false, true]) {
-    for (const o of [{ gr, skin }, { gr, skin, flap: true, flying: 0 }, { gr, skin, flying: 1, blink: true }, { gr, skin, safe: true }, { gr, skin, flying: 0.4, calm: true, still: true }]) { rec(bird({ facing: d, moving: mv }, Object.assign({ time: 1.7 }, o))); n++; }
+    for (const o of [{ gr, skin }, { gr, skin, flap: true, flying: 0 }, { gr, skin, flying: 1, blink: true }, { gr, skin, safe: true }, { gr, skin, flying: 0.4, calm: true, still: true }]) { fewest = Math.min(fewest, rec(bird({ facing: d, moving: mv }, Object.assign({ time: 1.7 }, o))).st.calls); n++; }
   }
-  assert.ok(n > 1000);
+  assert.strictEqual(n, DIRS.length * 5 * BirdArt.SKINS.length * 2 * 5, "o varrido não rodou todos os pedidos");
+  assert.ok(fewest > 20, `todo passarinho desenha de verdade (o que menos desenhou fez ${fewest} chamadas)`);
   for (const mode of MODES) for (const size of ["small", "medium", "large"]) for (let idx = 0; idx < 5; idx++) for (const x of [{}, { frozen: true }, { slow: true }, { dir: -1 }]) { rec(foe(Object.assign({ mode, size, idx }, x), { time: 2.2 })); rec(hawk(Object.assign({ mode, idx }, x), { time: 2.2 })); n += 2; }
   for (const x of [{}, { diving: true }, { diving: true, frozen: true }]) for (let idx = 0; idx < 3; idx++) rec(hawk(Object.assign({ idx }, x), { time: 0.9 }));
 });
@@ -262,7 +263,10 @@ test("voo alto: o sprite fica maior e MAIS ALTO e a sombra fica no chão (por ba
   const a1 = rec(bird({}, { flying: 1, blink: true, time: 0.05 })).log, a2 = rec(bird({}, { flying: 1, blink: true, time: 0.15 })).log;
   assert.notStrictEqual(a1, a2, "o aviso do fim do voo deveria piscar");
   assert.notStrictEqual(a1, rec(bird({}, { flying: 1, time: 0.05 })).log, "o aviso difere do voo normal no mesmo instante");
-  assert.ok(rec(bird({}, { flying: 1, blink: true, calm: true })).st.maxAlpha < 1 || /=globalAlpha:0\.\d+/.test(rec(bird({}, { flying: 1, blink: true, calm: true })).log), "com calm o aviso é um esmaecido constante");
+  const c1 = rec(bird({}, { flying: 1, blink: true, calm: true, time: 0.05 })), c2 = rec(bird({}, { flying: 1, blink: true, calm: true, time: 0.15 }));
+  assert.strictEqual(c1.log, c2.log, "com calm o aviso não pisca: o desenho é o mesmo em qualquer instante");
+  assert.ok(c1.st.maxAlpha > 0 && c1.st.maxAlpha < 1, `com calm o aviso é um esmaecido constante (alpha ${c1.st.maxAlpha})`);
+  assert.notStrictEqual(c1.log, rec(bird({}, { flying: 1, calm: true, time: 0.05 })).log, "com calm o aviso ainda difere do voo normal");
 });
 
 test("a salvo: um pouco maior e a sombra mais longe", () => {
@@ -272,13 +276,13 @@ test("a salvo: um pouco maior e a sombra mais longe", () => {
   for (const o of [{ flap: true }]) assert.ok(Math.abs(rec(bird({}, Object.assign({ still: true }, o))).st.maxY - n.maxY) < 2.5, "base mudou em " + JSON.stringify(o));
 });
 
-test("custo por quadro: o passarinho faz poucas chamadas e o gasto de memória não cresce (paletas guardadas)", () => {
+test("custo por quadro: o passarinho faz poucas chamadas e o mesmo pedido desenha sempre igual, mesmo depois de centenas de quadros (as paletas guardadas não mudam o desenho)", () => {
   for (const o of [{}, { skin: "arco-iris", flying: 1 }, { skin: "pirata", flap: true }, { skin: "astronauta", safe: true }]) for (const d of DIRS) assert.ok(rec(bird({ facing: d, moving: true }, o)).st.calls < 520, `muitas chamadas: ${rec(bird({ facing: d, moving: true }, o)).st.calls} (${d} ${JSON.stringify(o)})`);
-  const mem = () => process.memoryUsage().heapUsed;
-  for (let i = 0; i < 300; i++) rec(bird({ x: i }, { time: i * 0.016, gr: (i % 9) / 8, flying: (i % 3) / 2 }));
-  const before = mem();
-  for (let i = 0; i < 300; i++) rec(bird({ x: i }, { time: i * 0.016, gr: (i % 9) / 8, flying: (i % 3) / 2 }));
-  assert.ok(mem() - before < 60e6, "memória cresce demais");
+  // 300 quadros com crescimento, voo e tempo variando; depois os mesmos pedidos de novo: as paletas que o desenho guarda não podem mudar o resultado nem o número de chamadas
+  const frame = (i) => rec(bird({ x: i }, { time: i * 0.016, gr: (i % 9) / 8, flying: (i % 3) / 2, skin: BirdArt.SKINS[i % 12].id }));
+  const first = Array.from({ length: 300 }, (_, i) => frame(i));
+  for (let i = 0; i < 300; i++) { const again = frame(i); assert.strictEqual(again.log, first[i].log, `o quadro ${i} desenhou diferente na segunda vez`); assert.strictEqual(again.st.calls, first[i].st.calls); }
+  assert.ok(Math.max(...first.map((f) => f.st.calls)) < 520, "um quadro com muitas chamadas");
 });
 
 // ---------- o gato de quintal e o gavião ----------
@@ -406,7 +410,7 @@ test("efeitos: 8 tipos diferentes; mudam com t; sem `kind` válido não desenha 
     const s = rec((c) => BirdArt.drawFx(c, k, 50, 50, 0.5, {})).st; assert.ok(s.maxX - s.minX <= 80 && s.maxY - s.minY <= 80, k + " grande demais");
     assert.ok(rec((c) => BirdArt.drawFx(c, k, 50, 50, 0.5, {})).st.calls > 2, k + " não desenha nada");
   }
-  assert.strictEqual(seq((c) => BirdArt.drawFx(c, "nada", 5, 5, 0.5, {})).split("\n").length <= 4, true);
+  assert.deepStrictEqual(seq((c) => BirdArt.drawFx(c, "nada", 5, 5, 0.5, {})).split("\n").filter((l) => !/^(save|restore)\(|^=line(Cap|Join):/.test(l)), [], "sem `kind` válido nada é desenhado (só o save/restore em volta)");
   assert.notStrictEqual(seq((c) => BirdArt.drawFx(c, "dust", 50, 50, 0.4, { facing: "left" })), seq((c) => BirdArt.drawFx(c, "dust", 50, 50, 0.4, { facing: "right" })));
   assert.notStrictEqual(seq((c) => BirdArt.drawFx(c, "gust", 50, 50, 0.4, { dx: 1, dy: 0 })), seq((c) => BirdArt.drawFx(c, "gust", 50, 50, 0.4, { dx: 0, dy: -1 })), "o vento segue a direção");
   assert.notStrictEqual(seq((c) => BirdArt.drawFx(c, "feather", 50, 50, 0.4, { color: "#ff0000" })), seq((c) => BirdArt.drawFx(c, "feather", 50, 50, 0.4, {})), "a cor da pena");

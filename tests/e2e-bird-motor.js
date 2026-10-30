@@ -104,7 +104,7 @@ module.exports = async function (T) {
           vets: b.vetSpawns.length === V && b.vetCfgs.length === V && (V === 0 || JSON.stringify(b.vetCfgs[0]) === JSON.stringify(like.vetCfgs[0])), hawks: JSON.stringify(b.catSpawns) === JSON.stringify(hawks), noH: !d.map.join("").includes("H"),
           cfg: JSON.stringify(b.catCfg) === JSON.stringify(like.catCfg), mission: JSON.stringify(b.mission) === JSON.stringify(like.mission), touch: JSON.stringify(b.touchEase) === JSON.stringify(like.touchEase),
           flags: [d.catMode, d.birdMode, b.catMode, b.birdMode].join(), power: [b.bonePower, b.boneStep, !!b.flight], sprint: JSON.stringify(b.sprint), water: b.water, refuge: JSON.stringify(b.refuge), night: b.night, wind: !!b.wind,
-          mix: JSON.stringify(b.boneMix) === JSON.stringify(c.fruitMix), walkOf: b.catWalk === b.hawkWalk, placeholder: b.placeholder, minPoints: b.minPoints,
+          mix: JSON.stringify(b.boneMix) === JSON.stringify(c.fruitMix), walkOf: b.catWalk === b.hawkWalk, placeholder: b.placeholder, minPoints: b.minPoints, likeMin: like.minPoints, hasMission: !!b.mission && JSON.stringify(b.mission) === JSON.stringify(like.mission),
         });
       }
       const dogLv = __game.builtOf("dog")[1];
@@ -117,7 +117,8 @@ module.exports = async function (T) {
     ok(JSON.stringify(r.out.map((o) => o.power)) === JSON.stringify([[0, 2, false], [10, 2, true], [10, 2, true], [10, 2, true], [10, 2, true]]), `o voo alto (10 s, +2 s por nível do reforço) só existe nas fases com fruto do voo alto (${JSON.stringify(r.out.map((o) => o.power))})`);
     ok(r.out.every((o) => o.sprint === JSON.stringify({ factor: 1.35, drain: 0.4, regen: 0.2, winded: 1.5 }) && o.water === null && o.refuge === '{"wait":4}' && o.night === null), "bater asas = a arrancada do gato (×1,35, 2,5 s de fôlego, 5 s para voltar, 1,5 s sem fôlego); sem poça; o galho e o voo alto esperam 4 s ao pé");
     ok(JSON.stringify(r.out.map((o) => o.wind)) === JSON.stringify([false, false, true, true, true]), "a grade do vento só existe nas fases com setas no mapa");
-    ok(r.out[4].minPoints === 2300 || r.out[4].minPoints > 0, `a Fase 5 da fixture (like 11) tem pontos mínimos (${r.out[4].minPoints}) e missão`);
+    ok(r.out[4].minPoints === 2300 && r.out[4].likeMin === 2300 && r.out[4].hasMission, `a Fase 5 da fixture (like 11) tem os 2300 pontos mínimos e a missão da Fase 11 do Cachorrinho (${r.out[4].minPoints} pontos; missão ${r.out[4].hasMission ? "igual" : "faltando ou diferente"})`);
+    ok(r.out.slice(0, 4).every((o) => o.minPoints === o.likeMin), "as outras quatro fases da fixture têm os pontos mínimos da fase like delas");
     ok(r.dog.bird === false && r.dog.flight === null && r.dog.wind === null && r.dog.hawk === null && r.dog.step === 8 && r.dog.sprint === null && r.dog.kinds === undefined, "as fases do Cachorrinho não ligam nada do Passarinho (birdMode falso, sem voo, vento nem hawkWalk; o reforço do poder segue em 8 s)");
     // listas inválidas: o Passarinho continua como estava
     const bad = await ev(pg, (L) => {
@@ -573,7 +574,7 @@ module.exports = async function (T) {
     // pausa: nada de empurrão
     const pz = await ev(pg, () => { __b.start(1); __b.park(); __b.at(3, 3); __game.noCatch = true; return __game.player.x; });
     await pg.click("#btn-pause");
-    const p1 = await ev(pg, () => __game.player.x); await pg.waitForTimeout(300); const p2 = await ev(pg, () => __game.player.x);
+    const p1 = await ev(pg, () => __game.player.x); await pg.evaluate(() => new Promise((r) => { let n = 30; const f = () => (--n <= 0 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); })); /* 30 quadros do jogo de verdade com ele pausado (conta quadros, não relógio: não depende da carga da máquina) */ const p2 = await ev(pg, () => __game.player.x);
     ok(await ev(pg, () => __game.state) === "paused" && p1 === p2, `pausado, o vento não empurra (${p1} = ${p2})`);
     await pg.click("#btn-resume");
     await pg.context().close();
@@ -812,7 +813,8 @@ module.exports = async function (T) {
       const snaps = await ev(pg, async () => {
         __b.start(4); __game.noCatch = true; __b.park();
         const rect = (id) => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; };
-        const snap = async (name, fn) => { fn(); __game.tick(0.001); await new Promise((r) => setTimeout(r, 140)); return { name, text: document.getElementById("hud-state").textContent, sizes: [rect("hud"), rect("game"), rect("hud-state-item")].flat().join("x"), over: document.getElementById("hud-state").scrollWidth > document.getElementById("hud-state-item").clientWidth + 1 }; };
+        const frames = (n) => new Promise((r) => { const f = () => (--n <= 0 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }); // (espera n quadros do jogo, não um tempo de relógio: o placar é redesenhado a cada quadro e a carga da máquina não muda a conta)
+        const snap = async (name, fn) => { fn(); __game.tick(0.001); await frames(8); return { name, text: document.getElementById("hud-state").textContent, sizes: [rect("hud"), rect("game"), rect("hud-state-item")].flat().join("x"), over: document.getElementById("hud-state").scrollWidth > document.getElementById("hud-state-item").clientWidth + 1 }; };
         const out = [];
         out.push(await snap("normal", () => { __b.at(1, 1); __game.power = 0; __game.winded = 0; }));
         out.push(await snap("voo alto", () => { __game.power = 6; }));

@@ -3,7 +3,9 @@
 //  - uma segunda conferência, escrita de outro jeito, célula a célula: ambiente, mapa, gatos, gaviões, sementes, frutos, minhocas, tipos de fruto, galhos, ventos e a velocidade do passarinho (252 × birdSpeed)
 //    vêm de BirdLevels; a condição, as velocidades dos inimigos, as vidas, a perda por vida, a missão e o bônus são os da tabela do Gatinho (o motor copia as mesmas regras da fase `like` do Cachorrinho);
 //  - as seções do README ficam na ordem certa (a do Gatinho, "Passarinho (0.20.0)", a tabela, a biologia, "Conta com senha"), porque o e2e fatia o README entre cabeçalhos.
-// A conferência contra as fases MONTADAS no navegador é a seção "tabela das fases do Passarinho" do e2e.
+// O QUE ESTE TESTE COBRE (e o que não): as colunas que vêm de js/bird-levels.js (ambiente, mapa, gatos, gaviões, sementes, frutos, minhocas, tipos de fruto, galhos, ventos, velocidade do passarinho) são comparadas com os DADOS do jogo;
+// as colunas HERDADAS (condição, velocidades dos inimigos, vidas, perda por vida, missão e bônus) são comparadas aqui só com a tabela do Gatinho do PRÓPRIO README, ou seja, este teste prova que as duas tabelas do README combinam entre si.
+// Que esses números valem no jogo é provado pela seção "tabela das fases do Passarinho" do e2e (tests/e2e-bird-tabela.js), que compara cada célula com as fases MONTADAS no navegador (a fase `like` do Cachorrinho que o motor copia).
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");

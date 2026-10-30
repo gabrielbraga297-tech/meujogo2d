@@ -11,6 +11,7 @@
 //   node tools/birdmaze/readme_table.js --write    grava a tabela no README.md (só as linhas da tabela, dentro da seção "Tabela das fases do Passarinho (0.20.0)")
 //   node tools/birdmaze/readme_table.js --check    confere se a tabela do README é igual à gerada (sai com código 1 se não for; é o que tests/bird-table.test.js faz)
 // Se a tabela do Gatinho mudar (outra velocidade, outra missão), rode --write de novo: o README do Passarinho acompanha.
+// Atenção: as colunas herdadas vêm da tabela do Gatinho do README, não do motor; quem confere essas colunas com o jogo de verdade é a seção "tabela das fases do Passarinho" do e2e (tests/e2e-bird-tabela.js).
 const fs = require("fs");
 const path = require("path");
 
