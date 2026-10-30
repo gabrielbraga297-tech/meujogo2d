@@ -8593,8 +8593,25 @@ const PAGE_HELPERS = () => {
     ok(fx.dog === 20 && fx.cat === 20 && fx.bird === 0 && fx.unk && fx.sep && fx.catPh && !fx.dogPh, `builtOf: 20 fases montadas do Cachorrinho e 20 do Gatinho (objetos separados, as do gato marcadas placeholder), 0 do Passarinho e um bichinho que não existe usa as do Cachorrinho (${JSON.stringify(fx)})`);
     ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,1,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
     // ---- o perfil de cada bichinho (a tabela completa está em tests/profiles.test.js) ----
-    const pr = await ev(page, () => ({ dog: __game.profile.id, bird: __game.profileOf("bird").id, birdPrey: __game.profileOf("bird").noun.prey.many, unknown: __game.profileOf("fish").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === CatThemes.of(7) && Themes.of(7, "cat") !== Themes.of(7), themeBird: Themes.of(7, "bird") === Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) }));
-    ok(pr.dog === "dog" && pr.bird === "bird" && pr.birdPrey === "sementes" && pr.unknown === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeBird && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); o Passarinho tem o perfil dele (0.20.0) e um bichinho sem perfil usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0) e os do Passarinho (sem os arquivos de ambiente) os do Cachorrinho");
+    // (0.20.0) Os ambientes do Passarinho: com js/bird-themes*.js (a página de sempre) `Themes.of(id, "bird")` é o de BirdThemes; sem esses arquivos (aqui, escondendo window.BirdThemes depois de carregar, como o jogo sem o arquivo) cai no do Cachorrinho da mesma fase
+    const pr = await ev(page, () => {
+      const BT = window.BirdThemes;
+      const r = { dog: __game.profile.id, bird: __game.profileOf("bird").id, birdPrey: __game.profileOf("bird").noun.prey.many, unknown: __game.profileOf("fish").id, cat: __game.profileOf("cat").noun.prey.many, themeCat: Themes.of(7, "cat") === CatThemes.of(7) && Themes.of(7, "cat") !== Themes.of(7), themeDog: Themes.of(7, "dog") === Themes.of(7) && Themes.of(7) !== CatThemes.of(7) };
+      r.hasBT = !!(BT && typeof BT.of === "function");
+      const ids = Array.from({ length: 20 }, (_, i) => i + 1);
+      r.themeBirdReal = ids.every((id) => Themes.of(id, "bird") === BT.of(id) && Themes.of(id, "bird") !== Themes.of(id) && Themes.of(id, "bird") !== CatThemes.of(id));
+      r.themeBirdOutOfRange = Themes.of(21, "bird") === Themes.of(21) && Themes.of(0, "bird") === Themes.of(0);
+      Object.defineProperty(window, "BirdThemes", { configurable: true, get: () => undefined, set: () => {} });
+      try {
+        r.hidden = typeof BirdThemes === "undefined";
+        r.themeBirdNoFile = ids.every((id) => Themes.of(id, "bird") === Themes.of(id));
+        r.themeCatNoBird = Themes.of(7, "cat") === CatThemes.of(7); // o Gatinho não depende dos arquivos do Passarinho
+      } finally { Object.defineProperty(window, "BirdThemes", { configurable: true, writable: true, enumerable: true, value: BT }); }
+      r.restored = Themes.of(7, "bird") === BT.of(7);
+      return r;
+    });
+    ok(pr.dog === "dog" && pr.bird === "bird" && pr.birdPrey === "sementes" && pr.unknown === "dog" && pr.cat === "ratinhos" && pr.themeCat && pr.themeDog, "no menu vale o perfil do bichinho escolhido (Cachorrinho); o Passarinho tem o perfil dele (0.20.0) e um bichinho sem perfil usa o do Cachorrinho; os ambientes do Gatinho são os de CatThemes (0.18.0) e os do Cachorrinho os de sempre");
+    ok(pr.hasBT && pr.themeBirdReal && pr.themeBirdOutOfRange && pr.hidden && pr.themeBirdNoFile && pr.themeCatNoBird && pr.restored, `os ambientes do Passarinho (0.20.0) são os de BirdThemes nas 20 fases (diferentes dos do Cachorrinho e do Gatinho; fora de 1 a 20 usa o do Cachorrinho) e, sem os arquivos de ambiente do Passarinho (BirdThemes escondido), são os do Cachorrinho de cada fase, sem mexer nos do Gatinho (${JSON.stringify(pr)})`);
     const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
     ok(/## Perfis por bichinho \(0\.18\.0\)/.test(readme) && /js\/profiles\.js/.test(readme) && /builtOf\(bichinho\)/.test(readme) && /Como o Passarinho entra/.test(readme) && /`sprint`/.test(readme) && /`water`/.test(readme) && /`refuge`/.test(readme) && /Themes\.of\(fase, bichinho\)/.test(readme) && /DEFAULT_ANIMAL/.test(readme), "o README tem a seção Perfis por bichinho (0.18.0): fases por bichinho, perfil de textos, ganchos, como o Passarinho entra e a pendência do bichinho sem nome");
     ok(!/const DEFAULT_ANIMAL = "dog"/.test(src) && /const DEFAULT_ANIMAL = Records\.DEFAULT_ANIMAL;/.test(src) && !/const BUILT\b/.test(src), "js/game.js usa o DEFAULT_ANIMAL de js/records.js e não tem mais o BUILT do Cachorrinho");
