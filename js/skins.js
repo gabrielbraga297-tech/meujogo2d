@@ -47,7 +47,7 @@
     // ----- jogo do Passarinho (0.20.0) -----
     { id: "bird", game: "bird", name: "Passarinho", singular: "o passarinho", from: 1, player: true },
     { id: "seed", game: "bird", name: "Sementes", singular: "as sementes", from: 1 },
-    { id: "stray", game: "bird", name: "Gatos de jardim", singular: "os gatos de jardim", from: 1 },
+    { id: "stray", game: "bird", name: "Gatos de quintal", singular: "os gatos de quintal", from: 1 },
     { id: "birdexit", game: "bird", name: "Ninho (saída)", singular: "o ninho da saída", from: 1 },
     { id: "berry", game: "bird", name: "Frutos", singular: "os frutos", from: 2 },
     { id: "bug", game: "bird", name: "Minhocas", singular: "as minhocas", from: 2 },

@@ -10912,7 +10912,7 @@ const PAGE_HELPERS = () => {
     //   · bone = há ossos · ball = há bolinhas · block = há blocos ou paredes que se movem (blockDefs) · van = há vans (as 4 caixas "X" de cidade marcadas `van`) · foecat = há gatos inimigos (catSpawns).
     //  Gatinho: cat = sempre · guard = há cães de guarda (vetSpawns) · mouse = há ratinhos (rations) · catexit = há saída · yarn = há novelos (bones) · agile = há camundongos ágeis (balls)
     //   · perch = há lugares altos "T" (high) · tracker = há cães rastreadores (catSpawns: os "R" do mapa).
-    //  Passarinho (0.20.0): bird = sempre · seed = há sementes (seeds > 0) · stray = há gatos de jardim (cats > 0) · birdexit = há saída (o "E" do mapa) · berry = há frutos (fruits > 0) · bug = há minhocas (worms > 0)
+    //  Passarinho (0.20.0): bird = sempre · seed = há sementes (seeds > 0) · stray = há gatos de quintal (cats > 0) · birdexit = há saída (o "E" do mapa) · berry = há frutos (fruits > 0) · bug = há minhocas (worms > 0)
     //   · roost = há galhos G (special.G > 0) · gust = há vento (special.wind > 0) · hawk = há gaviões (hawks > 0). Os critérios leem os DADOS dos mapas (js/bird-levels.js, as 20 definições): enquanto o motor do Passarinho
     //   não monta as fases em `__game.builtOf("bird")` este é o critério; com o motor, trocar `birdB` pelas fases montadas (`__game.builtOf("bird")[fase]`) e os campos deles. O vento é o único objeto que SOME de algumas fases
     //   depois da primeira vez: de propósito, as Fases 5 e 18 não têm correntes (BIRD_GAPS), e só essas.

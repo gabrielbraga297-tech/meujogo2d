@@ -8,7 +8,7 @@
 //   seed (sementes: três tipos de semente, sorteados pelo jogo; ficam legíveis também à noite: cor sempre CLARA)
 //     coats   lista de 1 a 3 cores { body (a semente), stripe (listras e detalhes), hi (o brilhinho) }: a semente do tipo i usa a de índice i % tamanho; sem `coats` valem as 3 de sempre
 //     glow    cor de um brilhinho suave em volta da semente (sem ele o brilho é branco)
-//   stray (gatos de jardim: os inimigos do chão, em todas as fases; legíveis na noite das Fases 18 e 19: pelo sempre CLARO, conferido por tests/skins-bird.test.js; o estado "congelado" tinge também estas cores)
+//   stray (gatos de quintal: os inimigos do chão, em todas as fases; legíveis na noite das Fases 18 e 19: pelo sempre CLARO, conferido por tests/skins-bird.test.js; o estado "congelado" tinge também estas cores)
 //     coats   lista de 1 a 4 pelagens { fur, dark, light, eye }: o gato nº i usa a de índice i % tamanho (sem `coats` valem as 4 de sempre: laranja, cinza-claro, branca com manchas e creme)
 //     collar  cor da coleira, ou "rainbow" (4 faixas)        tag  cor da plaquinha da coleira
 //     acc     enfeite: "bandana" (lenço, estampa em `pat`: "dots" ou "check") | "bowtie" (gravata-borboleta) | "hat" (chapéu de festa) | "bow" (laço na cabeça)
@@ -64,7 +64,7 @@
       ] },
   ], { name: "Creme, dourada e com broto", text: "as sementes de sempre (grátis)" });
 
-  // ---- gatos de jardim (F1): a padrão não usa coleira e tem 4 pelagens (laranja, cinza-claro, branca com manchas e creme) ----
+  // ---- gatos de quintal (F1): a padrão não usa coleira e tem 4 pelagens (laranja, cinza-claro, branca com manchas e creme) ----
   Skins.register("stray", [
     { id: "azul", name: "Coleira azul", text: "coleira azul-clara com plaquinha prateada", price: 10, collar: "#2f9ad8", tag: "#e3e9f0" },
     { id: "lenco", name: "Lenço verde", text: "lenço verde de bolinhas brancas", price: 15, acc: "bandana", pat: "dots", c1: "#3fae5a", c2: "#ffffff" },
@@ -76,7 +76,7 @@
         { fur: "#dccbff", dark: "#a98be6", light: "#f7f2ff", eye: "#6bd36b" },
       ] },
     { id: "festa", name: "Gato de festa", text: "coleira roxa e chapéu de aniversário", price: 28, collar: "#7b4fd0", tag: "#ffe14a", acc: "hat", c1: "#ff6fb0", c2: "#ffe14a" },
-  ], { name: "Gato sem coleira", text: "os gatos de jardim de sempre (grátis)" });
+  ], { name: "Gato sem coleira", text: "os gatos de quintal de sempre (grátis)" });
 
   // ---- o ninho da saída (F1): as mesmas ideias das saídas dos outros jogos ----
   Skins.register("birdexit", [

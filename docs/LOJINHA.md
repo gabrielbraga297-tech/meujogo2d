@@ -88,7 +88,7 @@ A categoria libera quando o jogador **alcançou a fase em que o objeto aparece p
 | Gatinho | Cães rastreadores | tracker | 11 | os rastreadores que seguem o rastro |
 | Passarinho | Passarinho | bird | 1 | o bichinho que você joga (as 12 skins do passarinho) |
 | Passarinho | Sementes | seed | 1 | as sementes que o passarinho bica |
-| Passarinho | Gatos de jardim | stray | 1 | os gatos que andam pelo chão e perseguem o passarinho |
+| Passarinho | Gatos de quintal | stray | 1 | os gatos que andam pelo chão e perseguem o passarinho |
 | Passarinho | Ninho (saída) | birdexit | 1 | o ninho que é a saída da fase |
 | Passarinho | Frutos | berry | 2 | os frutos com poderes |
 | Passarinho | Minhocas | bug | 2 | as minhocas que saem da terra e fogem |
@@ -102,7 +102,7 @@ O jogo do Passarinho tem **9 categorias**: o passarinho (`bird`: as **12 skins**
 | Categoria | Skins (preço em petscoin) | O que muda |
 |---|---|---|
 | Sementes `seed` | Algodão-doce (10), Sementes douradas (14), Sementes coloridas (20), Sementes de gelo (26) | a cor dos 3 tipos de semente e um brilhinho em volta; sempre claras, para aparecerem na noite |
-| Gatos de jardim `stray` | Coleira azul (10), Lenço verde (15), Gatos de sorvete (21), Gato de festa (28) | coleira, lenço, chapéu de festa e 4 pelagens claras |
+| Gatos de quintal `stray` | Coleira azul (10), Lenço verde (15), Gatos de sorvete (21), Gato de festa (28) | coleira, lenço, chapéu de festa e 4 pelagens claras |
 | Ninho (saída) `birdexit` | Ninho listrado (10), Ninho arco-íris (16), Ninho estrelado (22), Ninho dourado (30) | só o enfeite (listras, arco-íris, estrelas ou moldura); continua verde aberto e vermelho fechado |
 | Frutos `berry` | Fruto listrado (10), Fruto de bolinhas (14), Fruto de corações (20), Fruto estrelado (26) | só uma estampa por cima; a cor-chave de cada poder e a marquinha (asinha, estrela, floco, raio, ímã) nunca mudam |
 | Minhocas `bug` | Algodão-doce (10), Gorro de tricô (15), Laço de fita (21), Cachecol listrado (27) | cores claras e enfeites na cabeça; a minhoca enterrada (o montinho de terra) é sempre a mesma |

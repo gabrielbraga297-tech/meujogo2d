@@ -75,7 +75,7 @@ module.exports = async function (T) {
     const bird = s.games.find((g) => g.id === "shop-game-bird");
     ok(bird && !bird.disabled && /Passarinho/.test(bird.text) && !/em breve/.test(bird.text), "a aba Passarinho está ligada (o jogo está pronto e tem categorias com skins)");
     ok(JSON.stringify(s.cats.map((c) => c.id.replace("shop-cat-", ""))) === JSON.stringify(BIRD), `as 9 categorias do Passarinho aparecem na ordem do catálogo (${s.cats.map((c) => c.id.replace("shop-cat-", "")).join(", ")})`);
-    ok(JSON.stringify(s.cats.map((c) => c.text.replace(/\s*Fase \d+$/, "").replace(/^\u{1F512}/u, ""))) === JSON.stringify(["Passarinho", "Sementes", "Gatos de jardim", "Ninho (saída)", "Frutos", "Minhocas", "Poleiros", "Ventos", "Gaviões"]), `com os nomes em português (${s.cats.map((c) => c.text).join(" | ")})`);
+    ok(JSON.stringify(s.cats.map((c) => c.text.replace(/\s*Fase \d+$/, "").replace(/^\u{1F512}/u, ""))) === JSON.stringify(["Passarinho", "Sementes", "Gatos de quintal", "Ninho (saída)", "Frutos", "Minhocas", "Poleiros", "Ventos", "Gaviões"]), `com os nomes em português (${s.cats.map((c) => c.text).join(" | ")})`);
     const locked = s.cats.filter((c) => c.locked).map((c) => c.id.replace("shop-cat-", ""));
     ok(JSON.stringify(locked) === '["hawk"]', `no começo (Fase 3 do Passarinho) só os gaviões estão bloqueados (${locked.join(", ") || "nenhuma"})`);
     ok(/Fase 11/.test(s.cats[8].text) && /Libera ao chegar à Fase 11 do Passarinho/.test(s.cats[8].label), `o aviso da aba bloqueada cita a fase e o Passarinho (${s.cats[8].label})`);

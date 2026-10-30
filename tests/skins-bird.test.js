@@ -144,7 +144,7 @@ test("nomes e frases em português do Brasil, simpáticos: nome curto, frase cur
 });
 
 test("os nomes das categorias, no singular e no plural, estão em português certo", () => {
-  const want = { bird: ["Passarinho", "o passarinho"], seed: ["Sementes", "as sementes"], stray: ["Gatos de jardim", "os gatos de jardim"], birdexit: ["Ninho (saída)", "o ninho da saída"], berry: ["Frutos", "os frutos"], bug: ["Minhocas", "as minhocas"], roost: ["Poleiros", "os poleiros"], gust: ["Ventos", "os ventos"], hawk: ["Gaviões", "os gaviões"] };
+  const want = { bird: ["Passarinho", "o passarinho"], seed: ["Sementes", "as sementes"], stray: ["Gatos de quintal", "os gatos de quintal"], birdexit: ["Ninho (saída)", "o ninho da saída"], berry: ["Frutos", "os frutos"], bug: ["Minhocas", "as minhocas"], roost: ["Poleiros", "os poleiros"], gust: ["Ventos", "os ventos"], hawk: ["Gaviões", "os gaviões"] };
   for (const [id, [name, singular]] of Object.entries(want)) { assert.strictEqual(Skins.slot(id).name, name, id); assert.strictEqual(Skins.slot(id).singular, singular, id); }
   assert.ok(/^[a-z]{2,12}$/.test("birdexit") && new Set(Skins.SLOTS.map((s) => s.id)).size === Skins.SLOTS.length, "ids únicos no catálogo inteiro");
 });
