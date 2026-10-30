@@ -18,7 +18,8 @@ module.exports = async function (T) {
     window.__mul = mul;
     window.__b = {
       press, mul,
-      start(id = 1, o, seed = 20261029 + id) { g.setAnimal("bird"); g.setRand(mul(seed)); g.start(id, o); g.autoStart = true; },
+      // (as minhocas são sorteadas com Math.random, de propósito: o motor não gasta o rand dele com elas. Para o teste não oscilar de uma rodada para a outra, Math.random também ganha semente fixa antes de cada início de fase)
+      start(id = 1, o, seed = 20261029 + id) { g.setAnimal("bird"); g.setRand(mul(seed)); Math.random = mul(seed ^ 0x5bd1e995); g.start(id, o); g.autoStart = true; },
       tileOf: (p) => [Math.floor((p.x + p.w / 2) / 32), Math.floor((p.y + p.h / 2) / 32)],
     };
   };
@@ -319,6 +320,13 @@ module.exports = async function (T) {
     // minhoca: parada (fora da terra), depois assustada (foge) e enterrada (só o montinho)
     const worm = await ev(pg, () => {
       __b.start(10); __game.freezeVets = true; __game.noCatch = true; const w = __game.balls[0], lv = __game.builtOf("bird")[10];
+      // a minhoca fica num corredor livre de 13 tiles ('.' de 3 tiles à esquerda a 9 à direita), longe do início (6 tiles ou mais): o chute para a direita rola até 7 tiles e ninguém atrapalha, onde quer que o sorteio a tenha posto
+      const [sc, sr] = lv.spawnTile; let spot = null;
+      for (let r = 2; r < lv.rows - 2 && !spot; r++) for (let c = 4; c < lv.cols - 10 && !spot; c++) {
+        let free = true; for (let k = -3; k <= 9 && free; k++) free = lv.walk[r][c + k] && lv.kinds[r][c + k] === "." && Math.abs(c + k - sc) + Math.abs(r - sr) >= 6;
+        if (free) spot = [c, r];
+      }
+      w.x = spot[0] * 32 + 16; w.y = spot[1] * 32 + 16; w.vx = 0; w.vy = 0; w.taken = false; delete w.dug;
       __game.player.x = w.x - 12 - 200; __game.player.y = w.y - 12; __s.spin(3);
       const out = { before: !!w.dug }; __game.player.x = w.x - 12 - 70; __game.player.y = w.y - 12; __s.spin(2); out.kicked = Math.hypot(w.vx, w.vy) > 40;
       __s.tp(lv.spawnTile[0], lv.spawnTile[1]); __s.spin(180); // o passarinho se afasta: a minhoca rola, para e se enterra
@@ -390,18 +398,19 @@ module.exports = async function (T) {
     const a = await ev(pg, () => {
       __b.start(7); __game.noCatch = true; __game.freezeVets = true; const mm = __s.find(7, "M"), t = mm[Math.floor(mm.length / 3)];
       __game.power = 8; __s.tp(t[0], t[1]); __s.spin(3); const ok1 = __game.save(); const snap = Records.createStore(localStorage).game("bird").loadGame("Totó").snap;
-      return { ok: ok1, parse: __game.parseSave(JSON.parse(JSON.stringify(snap)), "bird"), pw: snap.pw, mz: snap.mz, l: snap.l, size: JSON.stringify(snap).length, t };
+      return { ok: ok1, parse: __game.parseSave(JSON.parse(JSON.stringify(snap)), "bird"), pw: snap.pw, mz: snap.mz, l: snap.l, size: JSON.stringify(snap).length, t, tm: __game.time };
     });
     ok(a.ok && a.parse && a.mz === 1 && a.l === 7 && near(a.pw, 7.95, 0.1), `salvou a Fase 7 com o voo alto (${a.pw} s) sobre o muro ${a.t}: o jogo salvo é aceito (${a.size} bytes)`);
     await cont();
     const c = await ev(pg, () => {
       const lv = __game.builtOf("bird")[7], p = __game.player, over = () => lv.solids.some((s) => s.high && s.x < p.x + 24 && s.x + s.w > p.x && s.y < p.y + 24 && s.y + s.h > p.y);
-      const o = { state: __game.state, over: over(), flying: __game.flying, power: __game.power, safe: __game.safe, lives: __game.lives };
+      const o = { state: __game.state, over: over(), flying: __game.flying, power: __game.power, safe: __game.safe, lives: __game.lives, tm: __game.time };
       __game.noCatch = true; __game.freezeVets = true; for (let i = 0; i < 60 * 9; i++) __game.tick(1 / 60);
       o.end = { flying: __game.flying, over: over(), lives: __game.lives, state: __game.state };
       return o;
     });
-    ok(c.state === "playing" && c.over && c.flying && c.safe && near(c.power, 7.95, 0.5), `continuar: o passarinho volta em cima do muro, ainda em voo alto (${c.power.toFixed(2)} s)`);
+    // (o jogo anda sozinho alguns quadros entre o clique em Continuar e a medida: o voo alto que resta é o salvo menos o tempo de jogo que passou desde que ele voltou, e não um número fixo)
+    ok(c.state === "playing" && c.over && c.flying && c.safe && c.power > 0 && near(c.power, a.pw - (c.tm - a.tm), 0.06), `continuar: o passarinho volta em cima do muro, ainda em voo alto (${c.power.toFixed(2)} s; salvo com ${a.pw} s e ${(c.tm - a.tm).toFixed(2)} s de jogo desde então)`);
     ok(!c.end.flying && !c.end.over && c.end.lives === c.lives && c.end.state === "playing", "e quando o voo acaba ele pousa em chão livre sem perder vida");
     // 2. a salvo no galho (Fase 5)
     const g2 = await ev(pg, () => { __b.start(5); __game.noCatch = true; __game.freezeVets = true; const G = __s.find(5, "G")[1]; __s.tp(G[0], G[1]); __s.spin(3); const p = __game.perch; __game.save(); return { p, G }; });
@@ -409,7 +418,20 @@ module.exports = async function (T) {
     const g3 = await ev(pg, () => { __game.tick(0.02); return { perch: __game.perch, safe: __game.safe, tile: __b.tileOf(__game.player) }; });
     ok(g2.p && g3.perch && g3.safe && g3.tile + "" === g2.G + "", "salvar e continuar em cima de um galho: ele continua no galho e a salvo");
     // 3. no vento (Fase 8)
-    const w0 = await ev(pg, () => { __b.start(8); __game.noCatch = true; __game.freezeVets = true; const W = __s.find(8, ">")[3] || __s.find(8, "<")[3] || __s.find(8, "v")[2] || __s.find(8, "^")[2]; __s.tp(W[0], W[1]); __s.spin(2); __game.save(); return W; });
+    // (começa na ponta de onde a maior corrente da fase nasce: sobram vários tiles de vento pela frente, então os quadros que o jogo anda sozinho entre o clique em Continuar e a medida não a tiram da corrente)
+    const w0 = await ev(pg, () => {
+      __b.start(8); __game.noCatch = true; __game.freezeVets = true;
+      const lv = __game.builtOf("bird")[8], seen = new Set(); let best = null;
+      for (let r = 0; r < lv.rows; r++) for (let c = 0; c < lv.cols; c++) {
+        const ch = lv.kinds[r][c]; if (!">^<v".includes(ch) || seen.has(r * lv.cols + c)) continue;
+        const q = [[c, r]]; seen.add(r * lv.cols + c);
+        for (let i = 0; i < q.length; i++) for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = q[i][0] + dc, nr = q[i][1] + dr; if (nc >= 0 && nr >= 0 && nc < lv.cols && nr < lv.rows && lv.kinds[nr][nc] === ch && !seen.has(nr * lv.cols + nc)) { seen.add(nr * lv.cols + nc); q.push([nc, nr]); } }
+        if (!best || q.length > best.q.length) best = { ch, q };
+      }
+      const up = best.q.slice().sort((a, b) => (best.ch === ">" ? a[0] - b[0] : best.ch === "<" ? b[0] - a[0] : best.ch === "v" ? a[1] - b[1] : b[1] - a[1]))[0];
+      __s.tp(up[0], up[1]); __s.spin(2); __game.save(); return { up, ch: best.ch, n: best.q.length };
+    });
+    ok(w0.n >= 6, `(preparo) a maior corrente da Fase 8 tem ${w0.n} tiles (${w0.ch}); o passarinho começa na ponta de onde ela nasce, em ${w0.up}`);
     await cont();
     const w1 = await ev(pg, () => { __game.noCatch = true; __game.freezeVets = true; const x0 = __game.player.x, y0 = __game.player.y; for (let i = 0; i < 20; i++) __game.tick(1 / 60); return { d: Math.hypot(__game.player.x - x0, __game.player.y - y0), wind: __game.windNow }; });
     ok(w1.d > 10 && w1.wind !== 0, `salvar e continuar numa corrente de vento: o empurrão continua (${w1.d.toFixed(1)} px em 1/3 s)`);
