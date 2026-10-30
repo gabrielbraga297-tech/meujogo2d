@@ -742,6 +742,60 @@ test("tocador: um passo de agendamento cria poucos nós (nada de alocação em l
   assert.ok(alive.length < 80, "fontes soando agora: " + alive.length);
 });
 
+// ---------- Medidas e WAV da ferramenta de render (tools/music-render/analyze.js) ----------
+const Analyze = require("../tools/music-render/analyze.js");
+const SR = 8000;
+const sine = (n, f, a, ph = 0) => { const x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = a * Math.sin(2 * Math.PI * f * i / SR + ph); return x; };
+test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 de A6-DESIGN.md", () => {
+  const m = Analyze.analyze(sine(SR * 4, 440, 0.5), SR, { barSeconds: 2 });
+  assert.ok(Math.abs(m.peak - 0.5) < 1e-3);
+  assert.ok(Math.abs(m.rmsDb - (20 * Math.log10(0.5 / Math.SQRT2))) < 0.05, "RMS de uma senoide: pico / raiz de 2");
+  assert.ok(Math.abs(m.dc) < 1e-3);
+  assert.deepStrictEqual(Analyze.LIMITS.peak, 0.9);
+  assert.strictEqual(Analyze.LIMITS.rmsTargetDb, -22); assert.strictEqual(Analyze.LIMITS.rmsTol, 4);
+  const dc = sine(SR * 2, 440, 0.2).map((v) => v + 0.05);
+  assert.ok(Analyze.check(Analyze.analyze(dc, SR)).some((f) => f.includes("DC")));
+  const loud = sine(SR * 2, 440, 0.99);
+  assert.ok(Analyze.check(Analyze.analyze(loud, SR)).some((f) => f.includes("pico")));
+  const quiet = sine(SR * 2, 440, 0.01);
+  assert.ok(Analyze.check(Analyze.analyze(quiet, SR)).some((f) => f.includes("RMS")));
+  const ok = Analyze.analyze(sine(SR * 4, 440, 0.1), SR, { barSeconds: 2 });
+  assert.deepStrictEqual(Analyze.check(ok), [], JSON.stringify(Analyze.check(ok)));
+  assert.ok(ok.suggestedGain > 0.9 && ok.suggestedGain < 1.3);
+});
+test("analyze: maior silêncio (conta a volta do laço), salto de nível e clique na emenda", () => {
+  const x = sine(SR * 10, 300, 0.3);
+  x.fill(0, SR * 2, SR * 6); // 4 s de silêncio no meio
+  assert.ok(Math.abs(Analyze.analyze(x, SR).silence - 4) < 0.05);
+  assert.ok(Analyze.check(Analyze.analyze(x, SR)).some((f) => f.includes("silêncio")));
+  const y = sine(SR * 10, 300, 0.3);
+  y.fill(0, 0, SR * 1); y.fill(0, SR * 9, SR * 10); // silêncio no fim e no começo: a volta junta os dois (2 s)
+  assert.ok(Math.abs(Analyze.analyze(y, SR).silence - 2) < 0.05);
+  // emenda com salto: os últimos 0,5 s do laço quase mudos e o começo forte, com todas as outras divisões de compasso lisas
+  const z = sine(SR * 8, 300, 0.4); z.fill(0, SR * 7.5, SR * 8);
+  for (let i = SR * 7.5; i < SR * 8; i++) z[i] = 0.004 * Math.sin(2 * Math.PI * 300 * i / SR);
+  const jump = Analyze.analyze(z, SR, { barSeconds: 1 });
+  assert.ok(jump.seamDb > 20 && Analyze.check(jump).some((f) => f.includes("emenda")), "salto de " + jump.seamDb);
+  const smooth = Analyze.analyze(sine(SR * 8, 300, 0.4, 0), SR, { barSeconds: 1 });
+  assert.ok(smooth.seamDb < 1 && !Analyze.check(smooth).some((f) => f.includes("emenda")));
+  // clique: um degrau grande exatamente na emenda
+  const c = sine(SR * 8, 300, 0.1); c[0] = 0.8;
+  assert.ok(Analyze.analyze(c, SR).click > 1.5 && Analyze.check(Analyze.analyze(c, SR)).some((f) => f.includes("clique")));
+  assert.ok(Analyze.analyze(sine(SR * 8, 300, 0.4), SR).click <= 1.5);
+});
+test("analyze.fold soma a cauda ao começo (o que o tocador faz) e wav16 escreve um WAV de 16 bits válido", () => {
+  const x = new Float32Array(10); x[2] = 1; x[12 - 10 + 0] = 1; // índice 2 duas vezes
+  const long = new Float32Array(25); long[3] = 1; long[13] = 1; long[23] = 1;
+  const f = Analyze.fold(long, 10);
+  assert.strictEqual(f[3], 3); assert.strictEqual(f.length, 10);
+  void x;
+  const w = Analyze.wav16(Float32Array.from([0, 0.25, -0.25, 2, -2]), 44100);
+  assert.strictEqual(w.toString("ascii", 0, 4), "RIFF"); assert.strictEqual(w.toString("ascii", 8, 12), "WAVE"); assert.strictEqual(w.toString("ascii", 36, 40), "data");
+  assert.strictEqual(w.readUInt32LE(24), 44100); assert.strictEqual(w.readUInt16LE(34), 16); assert.strictEqual(w.readUInt16LE(22), 1);
+  assert.strictEqual(w.readUInt32LE(40), 10); assert.strictEqual(w.length, 54);
+  assert.deepStrictEqual([0, 1, 2, 3, 4].map((i) => w.readInt16LE(44 + 2 * i)), [0, 8192, -8192, 32767, -32767], "valores cortados em -1..1");
+});
+
 (async () => {
   // dá tempo de eventuais promessas rejeitadas aparecerem antes de fechar a conta
   await new Promise((r) => setTimeout(r, 30));

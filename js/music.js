@@ -957,9 +957,12 @@
   // quanto soa a nota (s) contando a cauda do instrumento
   function lifeOf(inst, dSec, kind) { const I = INST[inst]; return I ? I.life(dSec, kind) : dSec; }
 
-  // ajuste de volume por instrumento e por voz (escolhas de design, calibradas medindo o pico e o RMS da música renderizada: tools/music-render)
-  const INST_GAIN = Object.freeze({ pluck: 1, marimba: 1, xylo: 1, flute: 1, bell: 1, celesta: 1, harp: 1, organ: 1, strings: 1, bass: 1, bassSine: 1, bassSaw: 1, contrabass: 1,
-    woodblock: 1, softkick: 1, brush: 1, shaker: 1, hat: 1, wind: 1, rain: 1, crickets: 1, water: 1 });
+  // Ajuste de volume por instrumento e por voz. Os instrumentos de tom foram calibrados medindo cada um sozinho no Chromium (tools/music-render/calibrate.js:
+  // a energia de uma nota padrão igual à da marimba, arredondada); percussão e ambiências usam correção menor que a da energia (o ruído agudo soa mais forte do que a energia
+  // sugere): são escolhas de design, sem medida de percepção. TRIM é o ajuste geral que leva o tema típico ao RMS-alvo de tools/music-render (conferido a cada render).
+  const TRIM = 0.5;
+  const INST_GAIN = Object.freeze({ pluck: 1.2, marimba: 1, xylo: 1.3, flute: 0.55, bell: 1.05, celesta: 1.1, harp: 1.25, organ: 0.55, strings: 1.8, bass: 0.6, bassSine: 0.45, bassSaw: 0.55, contrabass: 1,
+    woodblock: 1.7, softkick: 1.1, brush: 3, shaker: 2.8, hat: 3.2, wind: 2.2, crickets: 1.7, rain: 2, water: 2.2 });
   const VOICE_GAIN = Object.freeze({ lead: 1, counter: 0.75, bass: 0.9, pad: 0.55, arp: 0.6, perc: 0.8, amb: 0.6 });
 
   // Agenda no contexto `ctx`, ligado a `dest`, as notas da partitura `score` que começam em [opts.from, opts.to) batidas do laço (padrão: o laço inteiro);
@@ -975,7 +978,7 @@
     const start = Number.isFinite(t0) ? t0 : Number(ctx.currentTime) || 0;
     const minTime = Number.isFinite(opts.minTime) ? opts.minTime : -Infinity;
     const only = Array.isArray(opts.voices) ? opts.voices : null;
-    const level = (Number.isFinite(opts.gain) ? opts.gain : 1) * (Number.isFinite(score.gain) ? score.gain : 1);
+    const level = TRIM * (Number.isFinite(opts.gain) ? opts.gain : 1) * (Number.isFinite(score.gain) ? score.gain : 1);
     const kit = makeKit(ctx, dest);
     let lo = 0, hi = ev.length;
     while (lo < hi) { const m = (lo + hi) >> 1; if (ev[m].t < from - 1e-9) lo = m + 1; else hi = m; } // primeiro evento com t >= from
