@@ -177,7 +177,7 @@ test("js/game.js cria o tocador com Music.create({ sound, storage }) logo depois
   assert.ok(/const sound = Sound\.create\([^;]*;\s*sound\.bindUnlock\(\);\s*const music = \(\(\) => \{ try \{ return typeof Music !== "undefined" && Music && typeof Music\.create === "function" \? Music\.create\(\{ sound, storage: safeStorage\(\) \}\) : null; \} catch \{ return null; \} \}\)\(\);/.test(gameSrc.replace(/\/\/[^\n]*/g, "")), "const music = Music.create({ sound, storage: safeStorage() }) dentro de um try/catch, logo depois de sound.bindUnlock()");
   assert.ok(/const mus = \(fn\) => \{ if \(!music\) return; try \{ fn\(music\); \} catch \{[^}]*\} \};/.test(gameCode), "mus(fn) chama fn(music) dentro de try/catch e não faz nada sem music");
   const outside = gameCode.replace(/const mus = [^\n]*\n/, "").split("\n").filter((l) => /\bmusic\.\w+\(/.test(l) && !/\bmus\(\(m\)/.test(l) && !/function (renderMusic|toggleMusic)/.test(l));
-  const bad = outside.filter((l) => !/(const has = !!music, isOn = has && music\.isEnabled\(\)|get music\(\))/.test(l));
+  const bad = outside.filter((l) => !/get music\(\)/.test(l)); // (só o gancho de teste __game.music devolve o tocador)
   assert.deepStrictEqual(bad, [], "chamada direta a music.x() fora do mus(): " + bad.join(" | "));
 });
 

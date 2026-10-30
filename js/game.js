@@ -4957,7 +4957,8 @@
   // ===== MÚSICA: integração =====
   // O botão Música (no canto do menu e na pausa; tecla N) liga e desliga só a música, sem mexer nos efeitos; ligada por padrão. Sem o módulo de música os dois botões ficam escondidos.
   function renderMusic() {
-    const has = !!music, isOn = has && music.isEnabled(), label = isOn ? "Música: ligada" : "Música: desligada";
+    const has = !!music; let isOn = false; mus((m) => { isOn = !!m.isEnabled(); }); // (a preferência vem do tocador; se ele falhar o botão mostra "desligada")
+    const label = isOn ? "Música: ligada" : "Música: desligada";
     const icon = $("btn-music"); icon.classList.toggle("hidden", !has); icon.setAttribute("aria-pressed", isOn ? "true" : "false"); icon.setAttribute("aria-label", label); icon.title = `${label} (tecla N)`;
     icon.querySelector(".mus-on").hidden = !isOn; icon.querySelector(".mus-off").hidden = isOn;
     const b = $("btn-music-pause"); b.classList.toggle("hidden", !has); b.textContent = label; b.setAttribute("aria-pressed", isOn ? "true" : "false");
