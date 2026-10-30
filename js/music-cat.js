@@ -5,7 +5,7 @@
 // melodias com pausas e síncopas. Rampa: o andamento sobe da Fase 1 (84 bpm) à Fase 20 (132 bpm) e as camadas (`intensity`) ficam mais cheias; a Fase 11
 // (cães rastreadores), as noites (18 e 19) e a Fase 20 (final grande, "volta ao lar") têm mais camadas e tensão.
 // Os temas são distintos entre si: nenhum repete tom e modo, andamento, forma com o mesmo tamanho, nem o par (instrumento do solo, padrão do baixo).
-// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js (RMS perto de -22 dBFS sem passar de pico 0,85).
+// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js (RMS perto de -22 dBFS, pico até 0,85; a exceção é o cat9, veja o comentário dele).
 (function (root) {
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
@@ -142,6 +142,8 @@
     },
     // 9 Parque e lago: valsa (3/4, 108 bpm) em ré bemol pentatônico maior, o tema mais aberto e calmo da primeira metade. Flauta no solo, contrabaixo "uum-pá-pá", chocalho em valsa,
     // cordas macias, arpejo de harpa de três notas por compasso nas partes B e C e um sino agudo em descante na parte C.
+    // Nota sobre o ganho: o pico medido no render (0,896) vem de um clique de uma amostra no começo de um golpe de chocalho (em 20,56 s), que não muda com o `gain`; ele aparece
+    // porque o ganho de cada nota do motor começa em 1 até o primeiro evento. Sem esse clique o pico do tema é 0,497, e o `gain` poderia subir para cerca de 1,07 (RMS -22 dBFS).
     {
       id: "cat9", animal: "cat", place: "Parque e lago", key: "Db", mode: "pentMajor", bpm: 108, beats: 3, swing: 0.15, bars: 32, form: "ABCA",
       prog: { A: "I II V IV", B: "IV I II V", C: "V IV II I" },
