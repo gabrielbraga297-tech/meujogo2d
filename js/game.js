@@ -4675,7 +4675,8 @@
         const said = hp.hud.stateSay(S);
         if (lv.birdMode) { // (Passarinho) o leitor de tela não ouve cada mudança: "normal" não é dito (a região só é limpa), as três frases de vento viram um só "no vento" e um estado só é dito depois de durar pelo menos BIRD_LIVE_MIN s de jogo; cruzar um corredor de vento de 4 tiles gerava 16 avisos em 4 s
           const w = /vento/.test(said) ? "no vento" : said;
-          if (w === "normal") { birdLiveCand = ""; if (hudCache.cstl !== "normal") { hudCache.cstl = "normal"; hudEl.stateLive.textContent = ""; } }
+          if (w !== hudCache.cstl && hudCache.cstl !== "normal") { hudCache.cstl = "normal"; hudEl.stateLive.textContent = ""; } // o estado mudou: o aviso antigo sai da região (em silêncio), e voltar a ele depois é dito de novo
+          if (w === "normal") birdLiveCand = "";
           else if (w !== hudCache.cstl) {
             if (birdLiveCand !== w) { birdLiveCand = w; birdLiveSince = time; }
             if (time - birdLiveSince >= BIRD_LIVE_MIN) { hudCache.cstl = w; birdLiveCand = ""; hudEl.stateLive.textContent = hp.hud.stateLive(w); }

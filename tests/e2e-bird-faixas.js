@@ -39,6 +39,7 @@ module.exports = async function (T) {
     // a maior corrente de vento da Fase 8 (7 tiles) e o tile de onde ela nasce
     const prep = () => ev(pg, () => {
       __game.setAnimal("bird"); __game.autoStart = true; __game.start(8); __game.noCatch = true; __game.freezeVets = true;
+      for (const it of __game.items) { it.x = -900; it.y = -900; } __game.balls = []; // (nenhum item no caminho: pegar um fruto mudaria o estado)
       const lv = __game.builtOf("bird")[8], seen = new Set(); let best = null;
       for (let r = 0; r < lv.rows; r++) for (let c = 0; c < lv.cols; c++) {
         const ch = lv.kinds[r][c]; if (!">^<v".includes(ch) || seen.has(r * lv.cols + c)) continue;
@@ -70,14 +71,14 @@ module.exports = async function (T) {
     const all = await ev(pg, () => ({ list: window.__live.slice(), now: document.getElementById("hud-state-live").textContent }));
     ok(one.length === 1 && one[0] === "Estado do passarinho: no vento" && !all.list.some((t) => /normal|contra|favor/.test(t)) && all.now === "", `parado na corrente por mais de 1 s: um aviso "no vento" (${JSON.stringify(one)}); ao sair a região fica vazia, sem "normal" nem direção (agora "${all.now}")`);
     // 3. o galho (A SALVO) ainda é dito, depois de durar 1 s, e voltar ao normal limpa a região
-    await ev(pg, () => { __game.start(5); __game.noCatch = true; __game.freezeVets = true; });
+    await ev(pg, () => { __game.start(5); __game.noCatch = true; __game.freezeVets = true; for (const it of __game.items) { it.x = -900; it.y = -900; } __game.balls = []; });
     await watch();
     await ev(pg, () => { const lv = __game.builtOf("bird")[5]; let g = null; lv.kinds.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "G" && !g) g = [c, r]; })); __game.player.x = g[0] * 32 + 4; __game.player.y = g[1] * 32 + 4; });
     await pg.waitForFunction(() => window.__live.some(Boolean), null, { timeout: 8000 }).catch(() => {});
     const perch = await said();
     ok(perch.length === 1 && perch[0] === "Estado do passarinho: a salvo", `no galho o leitor de tela diz "a salvo" uma vez, depois de 1 s (${JSON.stringify(perch)})`);
     // 4. o Gatinho não mudou: A SALVO e depois normal são ditos como sempre (a região diz "normal" quando ele desce)
-    const catLevel = await ev(pg, () => { const L = Object.values(__game.builtOf("cat")).find((l) => l.kinds.some((row) => row.includes("T"))); __game.setAnimal("cat"); __game.autoStart = true; __game.start(L.id); __game.noCatch = true; __game.freezeVets = true; return L.id; });
+    const catLevel = await ev(pg, () => { const L = Object.values(__game.builtOf("cat")).find((l) => l.kinds.some((row) => row.includes("T"))); __game.setAnimal("cat"); __game.autoStart = true; __game.start(L.id); __game.noCatch = true; __game.freezeVets = true; for (const it of __game.items) { it.x = -900; it.y = -900; } __game.balls = []; return L.id; });
     await watch();
     const tile = await ev(pg, () => { const lv = __game.builtOf("cat")[__game.level]; let t = null; lv.kinds.forEach((row, r) => [...row].forEach((ch, c) => { if (ch === "T" && !t) t = [c, r]; })); __game.player.x = t[0] * 32 + 4; __game.player.y = t[1] * 32 + 4; return t; });
     await pg.waitForFunction(() => window.__live.some(Boolean), null, { timeout: 5000 }).catch(() => {});

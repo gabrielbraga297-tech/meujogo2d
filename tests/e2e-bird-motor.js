@@ -89,6 +89,12 @@ module.exports = async function (T) {
     await pg.context().close();
   });
   async function hudText(pg, sel, text) { return pg.waitForFunction(([sel, text]) => document.querySelector(sel).textContent === text, [sel, text], { timeout: 2000 }).then(() => true, () => false); }
+  // (0.20.0) o leitor de tela só ouve um estado do passarinho depois de ele durar 1 s de jogo (e o vento é dito sempre como "no vento"): anda 70 quadros (1,17 s) com o passarinho parado onde está
+  // (o poder volta ao que era) e espera a região #hud-state-live dizer o que se espera. Chamar depois de o placar já mostrar o estado.
+  async function liveSays(pg, re) {
+    await pg.evaluate(() => { const p = __game.player, at = [p.x, p.y], pw = __game.power; __b.run(70, [], { stay: at }); __game.power = pw; });
+    return pg.waitForFunction((src) => new RegExp(src).test(document.getElementById("hud-state-live").textContent), re.source, { timeout: 3000 }).then(() => true, () => false);
+  }
 
   // =====================================================================================================================================================================
   await section("0.20.0 · Passarinho (motor): adaptador (birdDefFrom copia as regras da fase `like` do Cachorrinho) e fases inválidas", async () => {
@@ -324,7 +330,7 @@ module.exports = async function (T) {
     ok(!a.vetsFlee, "o voo alto não põe ninguém para fugir (ninguém é afugentado)");
     await pg.waitForFunction(() => document.getElementById("hud-power").textContent === "10 s" || document.getElementById("hud-power").textContent === "9 s", null, { timeout: 2000 });
     ok(/VOO ALTO/.test(await pg.textContent("#hud-power-item")), "o placar mostra VOO ALTO e os segundos");
-    ok(await hudText(pg, "#hud-state", "VOO ALTO") && /voo alto/.test(await pg.textContent("#hud-state-live")) && /Estado do passarinho: voo alto/.test(await pg.getAttribute("#hud-state-item", "aria-label") === null ? "" : "Estado do passarinho: voo alto"), "o estado do placar diz VOO ALTO e o leitor de tela é avisado");
+    ok(await hudText(pg, "#hud-state", "VOO ALTO") && await liveSays(pg, /Estado do passarinho: voo alto/) && /Estado do passarinho: voo alto/.test(await pg.getAttribute("#hud-state-item", "aria-label") === null ? "" : "Estado do passarinho: voo alto"), "o estado do placar diz VOO ALTO e o leitor de tela é avisado");
     // atravessa o muro M e para na parede #
     const c = await ev(pg, () => {
       const lv = __b.lv(), o = {};
@@ -343,13 +349,15 @@ module.exports = async function (T) {
     const d = await ev(pg, () => {
       __game.drawNow(); const l1 = JSON.parse(JSON.stringify(window.BirdArt.__last.drawBird.o));
       __game.power = 5; __game.drawNow(); const l5 = window.BirdArt.__last.drawBird.o.blink;
-      __game.power = 1.9; __game.drawNow(); const l2 = window.BirdArt.__last.drawBird.o.blink;
-      return { flying: l1.flying, blink1: l1.blink, blink5: l5, blink2: l2, gr: l1.gr, skin: l1.skin, flap: l1.flap };
+      // (o aviso pisca em compasso com o tempo de jogo, 8 vezes por segundo: dois quadros com 1/8 s de diferença pegam um aceso e um apagado, qualquer que seja a fase do relógio agora)
+      __game.power = 1.9; __game.drawNow(); const l2a = window.BirdArt.__last.drawBird.o.blink;
+      __game.tick(0.125); __game.power = 1.9; __game.drawNow(); const l2b = window.BirdArt.__last.drawBird.o.blink;
+      return { flying: l1.flying, blink1: l1.blink, blink5: l5, blink2: l2a || l2b, alternates: l2a !== l2b, gr: l1.gr, skin: l1.skin, flap: l1.flap };
     });
-    ok(d.flying > 0.9 && !d.blink1 && d.blink5 === false && d.blink2 === true && typeof d.gr === "number" && d.skin === "", `BirdArt.drawBird recebe flying (${d.flying.toFixed(2)}), blink só nos últimos 2 s (5 s: ${d.blink5}; 1,9 s: ${d.blink2}) e o crescimento (${d.gr})`);
+    ok(d.flying > 0.9 && !d.blink1 && d.blink5 === false && d.blink2 === true && d.alternates && typeof d.gr === "number" && d.skin === "", `BirdArt.drawBird recebe flying (${d.flying.toFixed(2)}), blink só nos últimos 2 s (5 s: ${d.blink5}; 1,9 s: ${d.blink2}) e o crescimento (${d.gr})`);
     // os últimos 2 s: o estado vira VOO ACABANDO e o leitor de tela é avisado
     await ev(pg, () => { __game.power = 1.9; __b.run(2); });
-    ok(await hudText(pg, "#hud-state", "VOO ACABANDO") && /voo alto acabando/.test(await pg.textContent("#hud-state-live")), "nos últimos 2 s o placar diz VOO ACABANDO e a região aria-live avisa o leitor de tela");
+    ok(await hudText(pg, "#hud-state", "VOO ACABANDO") && await liveSays(pg, /Estado do passarinho: voo alto acabando/), "nos últimos 2 s o placar diz VOO ACABANDO e a região aria-live avisa o leitor de tela");
     // o poder acaba com o passarinho em cima do muro: pousa no chão livre mais perto, sem perder vida
     const e = await ev(pg, () => {
       __b.at(6, 3); __game.power = 0.04; __game.sound.reset();
@@ -443,7 +451,7 @@ module.exports = async function (T) {
     ok(!r.perchDown && r.afterDown === 2, `ao descer a proteção acaba: o gato ao lado pega o passarinho (vidas ${r.afterDown})`);
     // o placar
     const st = await ev(pg, () => { __b.start(1); __b.park(); __b.at(5, 3); __b.run(2); return null; });
-    ok(await hudText(pg, "#hud-state", "A SALVO") && /a salvo/.test(await pg.textContent("#hud-state-live")) && /Estado do passarinho: a salvo/.test(await pg.getAttribute("#hud-state-item", "aria-label")), "o placar diz A SALVO e o leitor de tela é avisado (aria-label e região aria-live)");
+    ok(await hudText(pg, "#hud-state", "A SALVO") && await liveSays(pg, /Estado do passarinho: a salvo/) && /Estado do passarinho: a salvo/.test(await pg.getAttribute("#hud-state-item", "aria-label")), "o placar diz A SALVO e o leitor de tela é avisado (aria-label e região aria-live)");
     ok(errs.length === e0, "nenhum erro de JavaScript");
     await pg.context().close();
   });
@@ -559,7 +567,7 @@ module.exports = async function (T) {
     ok(g.gust >= 1 && g.gust <= 2 && g.fx && [">", "<", "^", "v"].includes(g.kind) && g.themeCalls > 0, `o som do vento (gust: ${g.gust} em 1,7 s, no máximo um a cada 1,6 s), o efeito gust e o tile é desenhado pelo ambiente (muro/vento via g.kind: "${g.kind}")`);
     // placar
     await ev(pg, () => { __b.start(1); __b.park(); __b.at(9, 3); __b.run(1, ["a"]); __b.press("a", true); });
-    ok(await hudText(pg, "#hud-state", "CONTRA O VENTO") && /contra o vento/.test(await pg.textContent("#hud-state-live")), "andando contra o vento o placar diz CONTRA O VENTO e o leitor de tela é avisado");
+    ok(await hudText(pg, "#hud-state", "CONTRA O VENTO") && await liveSays(pg, /^Estado do passarinho: no vento$/), "andando contra o vento o placar diz CONTRA O VENTO e o leitor de tela é avisado, depois de 1 s, só com \"no vento\" (sem a direção)");
     await ev(pg, () => { __b.press("a", false); __b.press("d", true); __b.at(3, 3); __b.run(1); });
     ok(await hudText(pg, "#hud-state", "A FAVOR DO VENTO"), "a favor: A FAVOR DO VENTO");
     await ev(pg, () => { __b.press("d", false); __b.at(3, 3); __b.run(1); });
