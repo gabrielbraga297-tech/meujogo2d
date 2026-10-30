@@ -244,6 +244,10 @@ test("formas variadas (>= 15 diferentes, 2 a 6 seções), seções de 8 a 16 com
   }
   assert.ok(grows >= 15, "camadas crescem nas seções em " + grows + " temas");
 });
+test("ganho (gain) de cada receita: escrito e dentro de 0,7 a 1,4 (ajustado no render real; no Node só se confere que existe e é razoável)", () => {
+  for (const r of recipes) assert.ok(typeof r.gain === "number" && r.gain >= 0.7 && r.gain <= 1.4, `${r.id}: gain ${r.gain}`);
+  scores.forEach((s, i) => assert.strictEqual(s.gain, recipes[i].gain, ids[i]));
+});
 test("honestidade: o código e os comentários não afirmam que a música foi ouvida nem que soa bem", () => {
   for (const bad of [/soa bem/i, /agrad[aá]vel/i, /foi ouvid/i, /ouvimos/i, /ficou (lindo|bonito|bom)/i, /\bA6\b/, /\bwip\b/i, /\bagente\b/i, /\bfrente\b/i]) assert.ok(!bad.test(SRC), String(bad));
 });

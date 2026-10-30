@@ -5,7 +5,7 @@
 // melodias com pausas e síncopas. Rampa: o andamento sobe da Fase 1 (84 bpm) à Fase 20 (132 bpm) e as camadas (`intensity`) ficam mais cheias; a Fase 11
 // (cães rastreadores), as noites (18 e 19) e a Fase 20 (final grande, "volta ao lar") têm mais camadas e tensão.
 // Os temas são distintos entre si: nenhum repete tom e modo, andamento, forma com o mesmo tamanho, nem o par (instrumento do solo, padrão do baixo).
-// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js.
+// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js (RMS perto de -22 dBFS sem passar de pico 0,85).
 (function (root) {
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
@@ -24,6 +24,7 @@
         perc: { kit: "brush", pattern: "waltz", vel: 0.32, from: 0.45 },
       },
       intensity: 0.5,
+      gain: 1.33,
     },
     // 2 Cozinha e despensa: ré menor, 88 bpm, balanço. Marimba no solo com ritmo cheio de pausas e síncopas, bloco de madeira marcando os contratempos como um relógio de parede
     // e contrabaixo pizzicato em síncope (tresillo). A flauta entra nas partes B e o arpejo de cordas beliscadas só na última parte.
@@ -39,6 +40,7 @@
         perc: { kit: "woodblock", pattern: "offbeat", vel: 0.45, from: 0.3 },
       },
       intensity: 0.55,
+      gain: 1.13,
     },
     // 3 Quintal dos fundos: lá dórico, 92 bpm, balanço forte. Cordas beliscadas no solo com o ritmo "3+3+2" de quem espreita, contrabaixo pizzicato, escovas "ding, ding-a-ding"
     // e uma flauta grave com cordas macias só na parte B. Mais ar entre as notas do que nos temas seguintes.
@@ -54,6 +56,7 @@
         perc: { kit: "brush", pattern: "brush2", vel: 0.45, from: 0.2 },
       },
       intensity: 0.5,
+      gain: 1.17,
     },
     // 4 Jardim e varal: dó lídio (a quarta aumentada deixa o tema arejado, como roupa no vento), 95 bpm. Harpa no solo subindo em saltos médios, baixo de triângulo "raiz e quinta",
     // chocalho em colcheias de balanço e uma flauta grave que dobra a harmonia nas partes mais cheias.
@@ -69,6 +72,7 @@
         perc: { kit: "shaker", pattern: "shuffle", vel: 0.3, from: 0.3 },
       },
       intensity: 0.5,
+      gain: 1.16,
     },
     // 5 Telhados e muros: leveza e suspense. Mi menor harmônico (a sensível dá o suspense), 6/8 em 2 a 98 bpm (passos na ponta dos pés), sino no solo com notas esparsas,
     // contrabaixo pizzicato só nos contratempos, bloco de madeira de vez em quando e uma harpa que sobe e desce (em semínimas) nas partes mais cheias; sem cordas longas, vento bem leve.
@@ -85,6 +89,7 @@
         ambience: { kind: "wind", vel: 0.3 },
       },
       intensity: 0.45,
+      gain: 1.12,
     },
     // 6 Beco da cidade: si bemol blues (escala de blues: a nota "azul" dá o ar de esquina escura), 101 bpm, balanço forte. Flauta grave no solo (às vezes cordas beliscadas),
     // contrabaixo caminhando (walk), escovas em shuffle, órgão suave nas partes mais cheias e celesta aguda em contracanto nos trechos finais. Harmonia de 8 acordes por parte.
@@ -100,6 +105,7 @@
         perc: { kit: "brush", pattern: "shuffle", vel: 0.4, from: 0.3 },
       },
       intensity: 0.55,
+      gain: 1.06,
     },
     // 7 Feira livre: mi bemol mixolídio, 104 bpm, balanço leve. Xilofone no solo em ritmo cheio de notas rápidas (a feira em movimento), baixo de triângulo em síncope (tresillo),
     // bumbo macio e chocalho em polca, arpejo de cordas beliscadas só na parte B (as barracas cheias). O baixo e a melodia se cruzam sem brigar: o solo fica duas oitavas acima.
@@ -115,6 +121,7 @@
         perc: { kit: ["softkick", "shaker"], pattern: "polka", vel: 0.5, from: 0.3 },
       },
       intensity: 0.6,
+      gain: 0.94,
     },
     // 8 Peixaria e mercado: fá sustenido dórico, 106 bpm, balanço. Marimba grave no solo (gotas no balcão molhado: a ambiência "água" cai entre as frases), contrabaixo caminhando,
     // escovas nos contratempos, celesta em contracanto e cordas só nas partes B (que se repetem). Frase de forma ABBA: a parte B volta mais cheia.
@@ -131,6 +138,7 @@
         ambience: { kind: "water", vel: 0.5 },
       },
       intensity: 0.55,
+      gain: 1.01,
     },
     // 9 Parque e lago: valsa (3/4, 108 bpm) em ré bemol pentatônico maior, o tema mais aberto e calmo da primeira metade. Flauta no solo, contrabaixo "uum-pá-pá", chocalho em valsa,
     // cordas macias, arpejo de harpa de três notas por compasso nas partes B e C e um sino agudo em descante na parte C.
@@ -147,6 +155,7 @@
         perc: { kit: "shaker", pattern: "waltz", vel: 0.3, from: 0.45 },
       },
       intensity: 0.5,
+      gain: 0.94,
     },
     // 10 Armazém de grãos: si frígio (a segunda menor dá o ar sombrio), 110 bpm, forma curta ABA de 24 compassos. Órgão grave no solo com notas longas e muitas pausas,
     // baixo de serrilha em pedal (a raiz sustentada), batida de coração no bumbo macio, cordas, e um sino agudo em contracanto só na parte B. Pouco movimento, bastante espaço.
@@ -162,6 +171,7 @@
         perc: { kit: "softkick", pattern: "heartbeat", vel: 0.6, from: 0.3 },
       },
       intensity: 0.6,
+      gain: 0.9,
     },
     // 11 Celeiro e curral: a chegada dos cães rastreadores, o primeiro pico de tensão. Sol sustenido menor harmônico (a sensível e a segunda aumentada), 116 bpm, quase sem pausas
     // e quase sem balanço. Marimba grave martelando o motivo que sobe, baixo de serrilha em "raiz e quinta" (uma pancada por tempo), bumbo macio e prato leve em colcheias,
@@ -178,6 +188,7 @@
         perc: { kit: ["softkick", "hat"], pattern: "driving", vel: 0.6, from: 0.3 },
       },
       intensity: 0.72,
+      gain: 0.83,
     },
     // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço leve, forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
     // com marimba num ritmo de "cacarejo" (notas rápidas e curtas), baixo de triângulo só nos contratempos, bumbo macio e bloco de madeira nos tempos 2 e 4, flauta grave no final.
@@ -192,6 +203,7 @@
         perc: { kit: ["softkick", "woodblock"], pattern: "backbeat", vel: 0.5, from: 0.25 },
       },
       intensity: 0.55,
+      gain: 1.21,
     },
     // 13 Borda da mata: mi frígio, 115 bpm, forma de duas partes longas (AB, 16 compassos cada) com harmonia lenta (um acorde a cada 4 compassos). Celesta no solo com um motivo de
     // 4 compassos, pausas longas, baixo de seno em pedal, cordas, flauta grave e uma harpa bem devagar (uma nota a cada dois tempos) na segunda parte, chocalho esparso. Mais escuro e mais parado que a fase anterior.
@@ -208,6 +220,7 @@
         perc: { kit: "shaker", pattern: "sparse", vel: 0.35, from: 0.2 },
       },
       intensity: 0.6,
+      gain: 0.95,
     },
     // 14 Riacho e pedras: ré pentatônico maior em 6/8 (118 bpm, 48 compassos, ABCABC), a água corre em colcheias. Harpa aguda no solo com notas ligadas em grupos de três,
     // gotas da ambiência "água", baixo de seno em pizzicato, chocalho nos contratempos, arpejo de cordas beliscadas que sobe e desce e uma flauta em contracanto (sem cordas longas).
@@ -224,6 +237,7 @@
         ambience: { kind: "water", vel: 0.55 },
       },
       intensity: 0.5,
+      gain: 0.94,
     },
     // 15 Vila de pescadores: dó menor em 6/8 (120 bpm, 48 compassos, AABCAB), uma barcarola de balanço sem swing. Órgão (sanfona simulada) no solo, às vezes trocado pela flauta,
     // contrabaixo pizzicato em "raiz e quinta", bumbo macio e escova (grave nos tempos, agudo no meio), órgão macio em acordes longos, harpa em arpejo quebrado e flauta grave nas partes mais cheias.
@@ -240,6 +254,7 @@
         perc: { kit: ["softkick", "brush"], pattern: "steady", vel: 0.45, from: 0.3 },
       },
       intensity: 0.6,
+      gain: 0.9,
     },
     // 16 Docas do porto: fá blues, 123 bpm, balanço forte (quase tercina), forma de 12 compassos por parte (ABC, 36 compassos no total) com a progressão em "pergunta e resposta" do blues
     // (os numerais apontam as notas da escala de blues). Cordas beliscadas graves no solo, baixo de serrilha caminhando, bumbo macio e prato leve em shuffle, órgão a partir da parte B
@@ -256,6 +271,7 @@
         perc: { kit: ["softkick", "hat"], pattern: "shuffle", vel: 0.45, from: 0.3 },
       },
       intensity: 0.65,
+      gain: 0.96,
     },
     // 17 Praia e dunas: sol pentatônico menor em 3/4 (119 bpm, 40 compassos, ABABA), aberto e espaçado, com vento. Marimba no solo (som seco de madeira, quase de tambor de aço),
     // baixo de triângulo em pizzicato, harpa subindo três notas por compasso, sino agudo em descante, prato leve nos contratempos. Sem cordas longas; frases longas com pausas.
@@ -272,6 +288,7 @@
         ambience: { kind: "wind", vel: 0.5 },
       },
       intensity: 0.5,
+      gain: 1.11,
     },
     // 18 Telhados à noite: dó sustenido menor, 126 bpm, balanço médio, ABBC (a parte B volta mais cheia e a C fecha no ponto mais alto). Mais tensão que o dia: o solo é o contrabaixo
     // pizzicato em oitava média (o gato que anda sem fazer barulho) sobre baixo de serrilha em síncope, escova na caixa dos tempos 2 e 4, sino agudo em descante, arpejo de celesta
@@ -289,6 +306,7 @@
         ambience: { kind: "crickets", vel: 0.5 },
       },
       intensity: 0.7,
+      gain: 0.98,
     },
     // 19 Mercado à noite (chuva): fá sustenido menor harmônico, 129 bpm, AABAC (40 compassos, a parte C fecha no ponto mais alto). Celesta no solo, baixo de serrilha em pizzicato lento,
     // bumbo macio e chocalho em colcheias nervosas, flauta grave e arpejo de cordas beliscadas nas partes mais fortes (sem acordes longos), e a ambiência de chuva por cima de tudo.
@@ -305,6 +323,7 @@
         ambience: { kind: "rain", vel: 0.5 },
       },
       intensity: 0.75,
+      gain: 0.97,
     },
     // 20 A casa grande: o final e a "volta ao lar". Sol maior (o mesmo centro da Sala de estar, agora no modo maior), 132 bpm, ABABC (40 compassos) que cresce até o ponto mais cheio.
     // Xilofone no solo, que se reveza com celesta, flauta e harpa (os timbres da casa), baixo de triângulo caminhando, harpa em arpejo (oito notas por compasso), flauta em descante,
@@ -321,6 +340,7 @@
         perc: { kit: ["softkick", "shaker"], pattern: "steady", vel: 0.5, from: 0.25 },
       },
       intensity: 0.7,
+      gain: 0.78,
     },
   ]);
 })(typeof window !== "undefined" ? window : globalThis);
