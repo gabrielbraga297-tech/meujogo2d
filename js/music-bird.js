@@ -153,5 +153,151 @@
       },
       intensity: 0.58,
     },
+    // 11 Fazenda e galinheiro: chegam os gaviões; mi menor em 4/4 (112), violão (pluck) seco e saltitante com a flauta nas respostas, baixo de serrilha sincopado, marimba em arpejo e bumbo com bloco de madeira em colcheias; primeira fase de clima tenso.
+    {
+      id: "bird11", animal: "bird", place: "Fazenda e galinheiro", key: "E", mode: "minor", bpm: 112, beats: 4, swing: 0, bars: 32, form: "ABAB",
+      prog: { A: "I VI VII I", B: "IV VII III VI" },
+      motif: { seed: 7111, bars: 2, contour: "hop", leaps: 0.6, rests: 0.1, density: 0.75, rhythm: { A: ["x-xx-xx-", "x-x-xxx-"], B: ["xx-xx-xx", "x---x-x-"] } },
+      voices: {
+        lead: { inst: "pluck", oct: 4, vel: 0.8, rotate: [{ inst: "pluck" }, { inst: "pluck" }, { inst: "flute", oct: 5, vel: 0.6 }] },
+        counter: { inst: "flute", oct: 5, vel: 0.38, from: 0.6, above: true },
+        bass: { inst: "bassSaw", pattern: "sync", oct: 2, vel: 0.55 },
+        arp: { inst: "marimba", rate: 2, shape: "up", oct: 3, vel: 0.34, from: 0.5 },
+        perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.5, from: 0.25 },
+      },
+      intensity: 0.66,
+    },
+    // 12 Margem do rio: lá dórico em valsa corrida (3/4, 114), celesta e flauta, arpejo de harpa que sobe e desce sem parar (a correnteza), baixo de valsa, chocalho esparso e gotas de água.
+    {
+      id: "bird12", animal: "bird", place: "Margem do rio", key: "A", mode: "dorian", bpm: 114, beats: 3, swing: 0, bars: 40, form: "ABABA",
+      prog: { A: "I VII IV I", B: "II III IV V" },
+      motif: { seed: 7212, bars: 2, contour: "wave", leaps: 0.35, rests: 0.15, density: 0.6, rhythm: { A: ["x-xx-x", "x-x-xx"], B: ["x--x-x", "xx-x--"] } },
+      voices: {
+        lead: { inst: "celesta", oct: 5, vel: 0.7, rotate: [{ inst: "celesta" }, { inst: "flute", oct: 4, vel: 0.7 }] },
+        counter: { inst: "flute", oct: 4, vel: 0.4, from: 0.6 },
+        bass: { inst: "bass", pattern: "waltz", oct: 2, vel: 0.6 },
+        arp: { inst: "harp", rate: 2, shape: "updown", oct: 3, vel: 0.4, from: 0.35 },
+        perc: { kit: "shaker", pattern: "sparse", vel: 0.3, from: 0.5 },
+        ambience: { kind: "water", vel: 0.45 },
+      },
+      intensity: 0.56,
+    },
+    // 13 Pântano e vitórias-régias: sol frígio em 6/8 (116) com notas longas e muitas pausas, órgão grave e sino, bordão de serrilha, gotas de harpa, batida de coração (bumbo macio) e água; forma ABACAB.
+    {
+      id: "bird13", animal: "bird", place: "Pântano e vitórias-régias", key: "G", mode: "phrygian", bpm: 116, beats: 6, swing: 0, bars: 48, form: "ABACAB",
+      prog: { A: "I II I VII", B: "I VII VI VII", C: "II I VII I" },
+      motif: { seed: 7313, bars: 2, contour: "fall", leaps: 0.3, rests: 0.45, density: 0.25, rhythm: { A: ["x-----", "x--x--"], B: ["x-----", "x-x---"], C: ["x--x--", "x-----"] } },
+      voices: {
+        lead: { inst: "organ", oct: 3, vel: 0.5, rotate: [{ inst: "organ" }, { inst: "bell", oct: 5, vel: 0.45 }] },
+        bass: { inst: "bassSaw", pattern: "pedal", oct: 2, vel: 0.45 },
+        arp: { inst: "harp", rate: 1.5, shape: "up", oct: 4, vel: 0.3, from: 0.5 },
+        perc: { kit: "softkick", pattern: "heartbeat", vel: 0.35, from: 0.3 },
+        ambience: { kind: "water", vel: 0.55 },
+      },
+      intensity: 0.5,
+    },
+    // 14 Dunas e restinga: dó menor harmônico em 4/4 (118), violão seco (a 2ª aumentada dá o ar de deserto) que passa à flauta, baixo de pizzicato, tresillo de bumbo e bloco de madeira, cordas nas seções cheias e vento; forma ABCB.
+    {
+      id: "bird14", animal: "bird", place: "Dunas e restinga", key: "C", mode: "harmMinor", bpm: 118, beats: 4, swing: 0, bars: 32, form: "ABCB",
+      prog: { A: "I IV V I", B: "VI IV V I", C: "IV VI V I" },
+      motif: { seed: 7414, bars: 2, contour: "wave", leaps: 0.55, rests: 0.2, density: 0.55, rhythm: { A: ["x--x-x--", "x-x-x---"], B: ["x-xx-x-x", "x---x-x-"], C: ["xx-x-xx-", "x-----x-"] } },
+      voices: {
+        lead: { inst: "pluck", oct: 4, vel: 0.8, rotate: [{ inst: "pluck" }, { inst: "flute", oct: 5, vel: 0.6 }] },
+        bass: { inst: "bass", pattern: "pizz", oct: 2, vel: 0.65 },
+        pad: { inst: "strings", oct: 3, vel: 0.24, from: 0.5 },
+        perc: { kit: ["softkick", "woodblock"], pattern: "offbeat", vel: 0.4, from: 0.3 },
+        ambience: { kind: "wind", vel: 0.45 },
+      },
+      intensity: 0.6,
+    },
+    // 15 Falésias e ninhos: lá bemol lídio em 3/4 (120), frases de três compassos subindo na flauta e no sino, contracanto agudo de celesta, arpejo lento de harpa nas seções cheias, bumbo macio com chocalho e vento forte; forma ABABC.
+    {
+      id: "bird15", animal: "bird", place: "Falésias e ninhos", key: "Ab", mode: "lydian", bpm: 120, beats: 3, swing: 0, bars: 40, form: "ABABC",
+      prog: { A: "I VII II V", B: "VI II I V", C: "III VI II V" },
+      motif: { seed: 7515, bars: 3, contour: "rise", leaps: 0.6, rests: 0.25, density: 0.6, rhythm: { A: ["x-x-xx", "x--x-x", "x-----"], B: ["xx-x-x", "x-x---", "x-----"], C: ["x--xx-", "x-x-x-", "x-----"] } },
+      voices: {
+        lead: { inst: "flute", oct: 4, vel: 0.7, rotate: [{ inst: "flute" }, { inst: "bell", oct: 5, vel: 0.5 }] },
+        counter: { inst: "celesta", oct: 5, vel: 0.34, from: 0.6, above: true },
+        bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.65 },
+        arp: { inst: "harp", rate: 1, shape: "broken", oct: 3, vel: 0.38, from: 0.5 },
+        perc: { kit: ["softkick", "shaker"], pattern: "steady", vel: 0.4, from: 0.4 },
+        ambience: { kind: "wind", vel: 0.5 },
+      },
+      intensity: 0.6,
+    },
+    // 16 Vila de pescadores e redes: sol dórico em 6/8 (122), uma giga de marimba e flauta com baixo caminhante, violão em arpejo lento, sino agudo, bumbo e bloco de madeira em polca e brisa do mar; seções de 12 compassos (AABA).
+    {
+      id: "bird16", animal: "bird", place: "Vila de pescadores e redes", key: "G", mode: "dorian", bpm: 122, beats: 6, swing: 0, bars: 48, form: "AABA",
+      prog: { A: "I IV I VII IV I", B: "III IV VII III IV I" },
+      motif: { seed: 7616, bars: 2, contour: "hop", leaps: 0.5, rests: 0.1, density: 0.75, rhythm: { A: ["x-xx-x", "xx-x-x"], B: ["x--x--", "xxxxxx"] } },
+      voices: {
+        lead: { inst: "marimba", oct: 4, vel: 0.8, rotate: [{ inst: "marimba" }, { inst: "flute", vel: 0.7 }] },
+        counter: { inst: "bell", oct: 5, vel: 0.33, from: 0.6, above: true },
+        bass: { inst: "bass", pattern: "walk", oct: 2, vel: 0.7 },
+        arp: { inst: "pluck", rate: 1.5, shape: "up", oct: 3, vel: 0.34, from: 0.6 },
+        perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.5, from: 0.25 },
+        ambience: { kind: "wind", vel: 0.35 },
+      },
+      intensity: 0.64,
+    },
+    // 17 Campos de altitude: ré mixolídio em 4/4 (124), frases longas de quatro compassos (harpa e flauta), bordão de senoide, arpejo de celesta, flauta aguda no contracanto, chocalho e muito vento; leve balanço.
+    {
+      id: "bird17", animal: "bird", place: "Campos de altitude", key: "D", mode: "mixolydian", bpm: 124, beats: 4, swing: 0.06, bars: 32, form: "AABA",
+      prog: { A: "I IV VII IV", B: "VI VII I V" },
+      motif: { seed: 7717, bars: 4, contour: "rise", leaps: 0.35, rests: 0.2, density: 0.4, rhythm: { A: ["x-----x-", "x---x-x-", "x-x-x---", "x-------"], B: ["x--x-x--", "x-----x-", "xx-x----", "x---x---"] } },
+      voices: {
+        lead: { inst: "harp", oct: 4, vel: 0.72, rotate: [{ inst: "harp" }, { inst: "flute", vel: 0.7 }] },
+        counter: { inst: "flute", oct: 5, vel: 0.34, from: 0.62, above: true },
+        bass: { inst: "bassSine", pattern: "pedal", oct: 2, vel: 0.6 },
+        arp: { inst: "celesta", rate: 2, shape: "alberti", oct: 4, vel: 0.3, from: 0.5 },
+        perc: { kit: "shaker", pattern: "offbeat", vel: 0.3, from: 0.5 },
+        ambience: { kind: "wind", vel: 0.5 },
+      },
+      intensity: 0.62,
+    },
+    // 18 Entardecer nos telhados: si menor em 6/8 lento (82), flauta quente que desce em notas longas e passa a frase às cordas, harpa grave no contracanto, contrabaixo em pizzicato, arpejo de harpa descendo, escova rara e brisa; forma ABACA, volta ao começo.
+    {
+      id: "bird18", animal: "bird", place: "Entardecer nos telhados", key: "B", mode: "minor", bpm: 82, beats: 6, swing: 0, bars: 40, form: "ABACA",
+      prog: { A: "I VI III VII", B: "IV VI VII I", C: "III VII VI VII" },
+      motif: { seed: 7818, bars: 2, contour: "fall", leaps: 0.25, rests: 0.3, density: 0.3, rhythm: { A: ["x--x--", "x-----"], B: ["x-x---", "x--x-x"], C: ["x-----", "x--x--"] } },
+      voices: {
+        lead: { inst: "flute", oct: 4, vel: 0.7, rotate: [{ inst: "flute" }, { inst: "flute" }, { inst: "strings", vel: 0.5 }] },
+        counter: { inst: "harp", oct: 3, vel: 0.4, from: 0.6 },
+        bass: { inst: "contrabass", pattern: "pizz", oct: 2, vel: 0.6 },
+        arp: { inst: "harp", rate: 1.5, shape: "down", oct: 4, vel: 0.32, from: 0.45 },
+        perc: { kit: "brush", pattern: "sparse", vel: 0.3, from: 0.4 },
+        ambience: { kind: "wind", vel: 0.3 },
+      },
+      intensity: 0.5,
+    },
+    // 19 Noite na floresta: fá sustenido pentatônico menor em 3/4 (90), flauta grave com muitas pausas, baixo de senoide nos contratempos, órgão baixo e harpa esparsa só nas seções cheias, batida de coração e grilos; o tema mais escuro e vazio.
+    {
+      id: "bird19", animal: "bird", place: "Noite na floresta", key: "F#", mode: "pentMinor", bpm: 90, beats: 3, swing: 0, bars: 32, form: "ABCA",
+      prog: { A: "I IV I V", B: "III IV V I", C: "V IV I III" },
+      motif: { seed: 7919, bars: 2, contour: "wave", leaps: 0.3, rests: 0.5, density: 0.2, rhythm: { A: ["x-----", "x---x-"], B: ["x-----", "x-x---"], C: ["x--x--", "x-----"] } },
+      voices: {
+        lead: { inst: "flute", oct: 3, vel: 0.68 },
+        bass: { inst: "bassSine", pattern: "offbeat", oct: 2, vel: 0.45 },
+        pad: { inst: "organ", oct: 3, vel: 0.22, from: 0.5 },
+        arp: { inst: "harp", rate: 1, shape: "up", oct: 4, vel: 0.3, from: 0.5 },
+        perc: { kit: "softkick", pattern: "heartbeat", vel: 0.35, from: 0.3 },
+        ambience: { kind: "crickets", vel: 0.5 },
+      },
+      intensity: 0.38,
+    },
+    // 20 O grande ninho: ré maior em 4/4 (128), o final: a flauta passa a frase à harpa, ao sino e às cordas, contracanto de celesta, arpejo alberti de harpa, baixo caminhante, bumbo e chocalho; forma ABCBA, em que a volta do A é a "volta ao ninho".
+    {
+      id: "bird20", animal: "bird", place: "O grande ninho", key: "D", mode: "major", bpm: 128, beats: 4, swing: 0.08, bars: 40, form: "ABCBA",
+      prog: { A: "I vi IV V", B: "IV V iii vi", C: "vi IV I V" },
+      motif: { seed: 8020, bars: 2, contour: "arch", leaps: 0.5, rests: 0.1, density: 0.7, rhythm: { A: ["x--x-xx-", "x-x-x---"], B: ["x-xx-x-x", "x---x-x-"], C: ["xx-x-x--", "x-x-----"] } },
+      voices: {
+        lead: { inst: "flute", oct: 4, vel: 0.8, rotate: [{ inst: "flute" }, { inst: "harp" }, { inst: "bell", oct: 5, vel: 0.55 }, { inst: "strings", vel: 0.55 }] },
+        counter: { inst: "celesta", oct: 5, vel: 0.36, from: 0.55, above: true },
+        bass: { inst: "bass", pattern: "walk", oct: 2, vel: 0.75 },
+        arp: { inst: "harp", rate: 2, shape: "alberti", oct: 3, vel: 0.42, from: 0.4 },
+        perc: { kit: ["softkick", "shaker"], pattern: "polka", vel: 0.5, from: 0.2 },
+      },
+      intensity: 0.72,
+    },
   ]);
 })(typeof window !== "undefined" ? window : globalThis);
