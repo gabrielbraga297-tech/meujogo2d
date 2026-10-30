@@ -83,6 +83,10 @@
         <button id="btn-name" type="button">Escolher nome de usuário</button>
         <button id="btn-logout" type="button" class="hidden">Sair da conta</button>
       </nav>
+      <button id="btn-music" class="sound-corner music-corner" type="button" aria-pressed="true" aria-label="Música: ligada" title="Música: ligada (tecla N)">
+        <svg class="mus-on" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M9.5 17V6.5l9-2V15"/><circle cx="7" cy="17.2" r="2.7" fill="#fff"/><circle cx="16.5" cy="15.2" r="2.7" fill="#fff"/></svg>
+        <svg class="mus-off" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" hidden><path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M9.5 17V6.5l9-2V15"/><circle cx="7" cy="17.2" r="2.7" fill="#fff"/><circle cx="16.5" cy="15.2" r="2.7" fill="#fff"/><path fill="none" stroke="#ff7a6b" stroke-width="2.4" stroke-linecap="round" d="M4 4l16 16"/></svg>
+      </button>
       <button id="btn-sound" class="sound-corner" type="button" aria-pressed="true" aria-label="Som: ligado" title="Som: ligado (tecla M)">
         <svg class="snd-on" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="#fff" d="M4 9v6h4l5 4V5L8 9H4z"/><path fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
         <svg class="snd-off" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" hidden><path fill="#fff" d="M4 9v6h4l5 4V5L8 9H4z"/><path fill="none" stroke="#ff7a6b" stroke-width="2.4" stroke-linecap="round" d="M16.5 9.5l5 5M21.5 9.5l-5 5"/></svg>
@@ -150,7 +154,8 @@
         <li><strong>Salvar:</strong> o jogo salva sozinho a cada poucos segundos e quando você pausa ou fecha a página. Você também pode tocar no botão de disquete no topo do jogo, ou em <strong>Salvar jogo</strong> na pausa. Para voltar de onde parou, escolha <strong>Continuar jogo</strong> no menu.</li>
         <li><strong>Pausar:</strong> aperte a tecla <kbd>Esc</kbd> ou <kbd>P</kbd>, o botão <strong>Start</strong> do controle, ou toque no botão de pausa no topo do jogo.</li>
         <li><strong>Som:</strong> o jogo tem efeitos sonoros (o cachorrinho <strong>late</strong> ao completar a fase, com latido de filhote, de jovem ou de adulto conforme o tamanho dele; ração, osso, o agente virando carteiro, ganhar do carteiro, ser pego pela carrocinha, perder e ganhar vida, passar de fase e fim de jogo). O navegador só libera o som depois do seu primeiro toque ou tecla. Para desligar, use o botão <strong>Som</strong> do menu ou da pausa, ou a tecla <kbd>M</kbd>.</li>
-        <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva; <kbd>M</kbd> liga e desliga o som. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>
+        <li><strong>Música:</strong> o menu tem uma música e cada fase de cada bichinho tem a sua; o próprio jogo as toca, sem arquivos de áudio. Ela baixa quando você pausa, some ao vencer ou perder e para quando você sai da aba. Para desligar só a música e manter os efeitos, use o botão <strong>Música</strong> do menu ou da pausa, ou a tecla <kbd>N</kbd>; o botão <strong>Som</strong> e a tecla <kbd>M</kbd> silenciam tudo.</li>
+        <li><strong>Teclado:</strong> <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> ou as setas movem; <kbd>Esc</kbd> ou <kbd>P</kbd> pausam (e continuam); <kbd>Ctrl</kbd>+<kbd>S</kbd> salva; <kbd>M</kbd> liga e desliga o som; <kbd>N</kbd> liga e desliga a música. Nos menus, use as setas <kbd>↑</kbd> <kbd>↓</kbd> (ou <kbd>Tab</kbd>) para escolher, <kbd>Enter</kbd> ou <kbd>Espaço</kbd> para confirmar e <kbd>Esc</kbd> para voltar.</li>
         <li><strong>Controle (gamepad):</strong> conecte um controle (Bluetooth ou cabo) e aperte qualquer botão para ele ser reconhecido. O <strong>analógico esquerdo</strong> ou o <strong>direcional</strong> movem o cachorrinho; <strong>Start</strong> pausa e continua; <strong>Y</strong> salva; nos menus, o direcional escolhe, <strong>A</strong> confirma e <strong>B</strong> volta.</li>
         <li><strong>Pontuações:</strong> em <strong>Suas pontuações</strong>, só você vê o que fez. O <strong>ranking do jogo</strong> aparece para todos os jogadores deste aparelho e mostra apenas a melhor pontuação de cada um.</li>
         <li><strong>Conta (opcional):</strong> em <strong>Escolher nome de usuário</strong> você pode criar uma conta com senha (de 4 a 20 caracteres) para proteger o seu nome neste aparelho.</li>
@@ -290,10 +295,11 @@
         <button id="btn-save" type="button">Salvar jogo</button>
         <button id="btn-pause-menu" type="button">Voltar ao menu</button>
         <button id="btn-sound-pause" type="button" aria-pressed="true">Som: ligado</button>
+        <button id="btn-music-pause" type="button" aria-pressed="true">Música: ligada</button>
       </div>
       <p id="pause-msg" class="muted" role="status" aria-live="polite"></p>
       <p id="pause-up" class="muted"></p>
-      <p id="pause-help" class="hint controls-help">Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl+S salva · M liga e desliga o som.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta.</p>
+      <p id="pause-help" class="hint controls-help">Teclado: setas ou WASD movem · Esc ou P pausa · Ctrl+S salva · M liga e desliga o som · N liga e desliga a música.<br>Controle: analógico ou direcional movem · Start pausa · Y salva · A escolhe · B volta.</p>
     </div>
   </section>
 
@@ -347,6 +353,10 @@
   </section>
 
   <script src="js/sound.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/music-dog.js"></script>
+  <script src="js/music-cat.js"></script>
+  <script src="js/music-bird.js"></script>
   <script src="js/themes.js"></script>
   <script src="js/cat-themes.js"></script>
   <script src="js/cat-themes-1.js"></script>
