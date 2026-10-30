@@ -7,6 +7,8 @@
 //   som.play("bone");                                              // true se tocou; nunca lança erro
 //   som.play("transform", { delay: 0.3 });                         // atraso opcional (s) no relógio do áudio, para encadear sons
 //   som.events                                                     // últimos 200 pedidos { name, t (ms), played }: gancho para testes
+//   som.audio()                                                    // { ctx, input } depois do unlock (input = ganho mestre dos sons) ou null: usado pela música (js/music.js)
+//   som.onUnlock(fn)                                               // chama fn() quando o som destrava (na hora, se já estiver destravado); devolve uma função que cancela
 //
 // Cada som é uma função pura (Sound.render) que agenda osciladores num BaseAudioContext qualquer (AudioContext ou
 // OfflineAudioContext), por isso os testes podem renderizar tudo offline e conferir pico, duração, cliques etc.
@@ -624,6 +626,7 @@
     let muted = false, volume = DEFAULT_VOLUME;
     let last = Object.create(null); // nome -> quando (ms) tocou pela última vez
     let voices = [];                // fim (no relógio do áudio) de cada som em andamento
+    const unlockHooks = [];         // funções registradas por onUnlock
     const events = [];              // os últimos pedidos: { name, t, played }
 
     // ----- preferência guardada (tudo com try/catch: sem storage, ou com erro, vale só a memória) -----
@@ -732,10 +735,27 @@
       unlock() {
         try {
           if (!ensureContext()) return false;
+          const first = !unlocked;
           unlocked = true;
           if (ctx.state !== "running") requestResume();
+          if (first) for (const fn of unlockHooks.slice()) { try { fn(); } catch { /* um gancho com defeito não atrapalha o som */ } }
           return true;
         } catch { return false; }
+      },
+
+      // O contexto de áudio e a entrada da saída mestre ({ ctx, input }) para quem quer tocar algo contínuo (a música), ou null enquanto o som não destravou,
+      // se não há Web Audio ou se o contexto foi fechado. A música liga o próprio barramento em `input`, atrás do volume e do mudo dos efeitos.
+      audio() {
+        return unlocked && ctx && out && ctx.state !== "closed" ? { ctx, input: out.input } : null;
+      },
+
+      // Registra `fn` para ser chamada quando o som destrava (a cada vez que passa de travado a destravado; na hora, se já estiver destravado).
+      // Devolve uma função que cancela o registro. Nunca lança erro, nem por `fn`.
+      onUnlock(fn) {
+        if (typeof fn !== "function") return () => {};
+        unlockHooks.push(fn);
+        if (unlocked && ctx && out) { try { fn(); } catch { /* ignora */ } }
+        return () => { const i = unlockHooks.indexOf(fn); if (i >= 0) unlockHooks.splice(i, 1); };
       },
 
       // Liga unlock() aos primeiros gestos de `target` (padrão: a janela). Devolve uma função que desliga. Sozinho se desliga quando o som está rodando.
