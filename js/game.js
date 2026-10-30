@@ -163,6 +163,8 @@
   const BIRD_REV = 1;                                    // revisão dos mapas do Passarinho (js/bird-levels.js): jogos salvos de outra revisão são descartados com aviso
   const BIRD_FLIGHT = 10, BIRD_FLIGHT_STEP = 2, BIRD_FLIGHT_WARN = 2; // s do voo alto do fruto comum, s a mais por nível do reforço Fruto poderoso e s finais em que o passarinho pisca (aviso)
   const WIND_SPEED = 90;                                 // px/s do empurrão de uma corrente de vento (só no voo baixo)
+  const BIRD_LIVE_MIN = 1;                               // s de jogo que um estado do passarinho precisa durar para o leitor de tela dizê-lo (a região #hud-state-live)
+  let birdLiveCand = "", birdLiveSince = 0;               // (Passarinho) o estado candidato a ser dito e desde quando ele dura
   const BIRD_STEP_MAX = 16;                              // px: o maior pedaço de um passo do passarinho num quadro (o passo é fatiado; um quadro de 20 fps com tudo empilhado anda mais de 56 px)
   const BIRD_WIND = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] }; // as setas do vento no mapa
   // ENTARDECER (Fase 18, `theme.dusk`): a luz do jogo é LARANJA e vai escurecendo: o escuro começa em DUSK_FROM (0 a 1) e sobe até o da noite (NIGHT_DARK) em DUSK_SECS s de jogo (o halo em volta do passarinho continua); a Fase 19 é noite de verdade (azul-escuro)
@@ -4658,7 +4660,7 @@
     { // Gatinho (0.18.0): a barra FÔLEGO e o ESTADO (A SALVO, MOLHADO n s, OFEGANTE); escondidos e parados nas fases do Cachorrinho
       const spr = !!lv.sprint, any = !!(lv.sprint || lv.water || lv.refuge);
       if (hudCache.cs !== spr) { hudCache.cs = spr; hudEl.stamina.classList.toggle("hidden", !spr); }
-      if (hudCache.cst !== any) { hudCache.cst = any; hudEl.stateItem.classList.toggle("hidden", !any); hudCache.cstl = "normal"; hudEl.stateLive.textContent = ""; } // (começa calado: só o que MUDA depois é dito)
+      if (hudCache.cst !== any) { hudCache.cst = any; hudEl.stateItem.classList.toggle("hidden", !any); hudCache.cstl = "normal"; birdLiveCand = ""; hudEl.stateLive.textContent = ""; } // (começa calado: só o que MUDA depois é dito)
       if (spr) {
         const pct = Math.round(stamina * 100), mode = winded > 0 ? "winded" : sprintOn ? "run" : "";
         if (hudCache.sta !== pct) { hudCache.sta = pct; hudEl.staminaFill.style.transform = `scaleX(${stamina.toFixed(3)})`; hudEl.stamina.setAttribute("aria-valuenow", String(pct)); hudEl.stamina.setAttribute("aria-valuetext", `Fôlego: ${pct}%`); }
@@ -4671,7 +4673,14 @@
         if (hudCache.cstv !== t) { hudCache.cstv = t; hudEl.state.textContent = t; hudEl.stateItem.setAttribute("aria-label", hp.hud.stateAria(t)); }
         // leitor de tela: a região `#hud-state-live` diz o estado quando ele MUDA (a contagem do MOLHADO n s não conta como mudança, senão repetiria a cada segundo); diz também o OFEGANTE que o texto do placar omite enquanto está molhado
         const said = hp.hud.stateSay(S);
-        if (hudCache.cstl !== said) { hudCache.cstl = said; hudEl.stateLive.textContent = hp.hud.stateLive(said); }
+        if (lv.birdMode) { // (Passarinho) o leitor de tela não ouve cada mudança: "normal" não é dito (a região só é limpa), as três frases de vento viram um só "no vento" e um estado só é dito depois de durar pelo menos BIRD_LIVE_MIN s de jogo; cruzar um corredor de vento de 4 tiles gerava 16 avisos em 4 s
+          const w = /vento/.test(said) ? "no vento" : said;
+          if (w === "normal") { birdLiveCand = ""; if (hudCache.cstl !== "normal") { hudCache.cstl = "normal"; hudEl.stateLive.textContent = ""; } }
+          else if (w !== hudCache.cstl) {
+            if (birdLiveCand !== w) { birdLiveCand = w; birdLiveSince = time; }
+            if (time - birdLiveSince >= BIRD_LIVE_MIN) { hudCache.cstl = w; birdLiveCand = ""; hudEl.stateLive.textContent = hp.hud.stateLive(w); }
+          } else birdLiveCand = "";
+        } else if (hudCache.cstl !== said) { hudCache.cstl = said; hudEl.stateLive.textContent = hp.hud.stateLive(said); }
       }
     }
     setHud("t", hudEl.time, fmt(time * 1000));
