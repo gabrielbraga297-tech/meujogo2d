@@ -2,6 +2,7 @@
 // O contexto 2D é FALSO e rigoroso: só aceita os métodos e propriedades simples do canvas listados abaixo (qualquer outro lança erro), confere que todo número é finito,
 // que as cores são válidas, que save/restore fecham certinho e que nenhum raio é negativo; registra cada chamada (para comparar desenhos) e acompanha a matriz de
 // transformação para medir a caixa que o desenho ocupa. Também lê o código-fonte: nada de Math.random, relógio nem acesso à página.
+const BIRD_WORDS = require("./bird-words.js"); // a lista de espécies e raças que o Passarinho não pode usar (a mesma de tests/honesty.test.js)
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -178,7 +179,7 @@ test("12 skins: ids únicos, nomes e frases, preços crescentes de 10 a 50 (exce
     assert.deepStrictEqual(Object.keys(s).sort(), ["id", "name", "price", "text"], "campos de " + s.id);
     assert.ok(typeof s.text === "string" && s.text.length >= 8 && s.text.length <= 60, "frase de " + s.id);
     assert.ok(!/veloc|rápid|ponto|vidas?\b|poder|bônus|piado|\bsom\b|mais forte|mais lento|atributo/i.test(s.name + " " + s.text), "a frase de " + s.id + " sugere vantagem");
-    assert.ok(!/can[aá]rio|pardal|sabi[aá]|bem-te-vi|papagaio|periquito|pomba|corvo|cardeal|gralha|tuc|beija|andorinha|\bespécie|\braça/i.test(s.name + " " + s.text), "sem espécie ou raça: " + s.id);
+    assert.ok(!BIRD_WORDS.speciesOrBreedRe().test(s.name + " " + s.text) && !/\bespécie/i.test(s.name + " " + s.text), "sem espécie ou raça (a lista de tests/bird-words.js, a mesma de tests/honesty.test.js): " + s.id);
     assert.strictEqual(BirdArt.skinById(s.id), s);
   }
   assert.strictEqual(BirdArt.skinById("nao-existe"), S[0]); assert.strictEqual(BirdArt.skinById(7), S[0]);
