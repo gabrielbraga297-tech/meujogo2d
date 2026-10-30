@@ -3,6 +3,7 @@
 //   const rig = require("./music-rig.js");
 //   const falhas = rig.checkRecipe(receita);            // lista de textos; vazia = tudo certo
 //   const falhasDoGrupo = rig.checkDistinct(receitas);  // ninguém compartilha tom/modo/andamento/solo/baixo; melodias diferentes entre si
+//   const falhasDaRampa = rig.checkTempoRamp(receitas, { min: 92, max: 148 });  // receitas na ordem das fases: andamento dentro da faixa e crescente
 // O AudioContext falso é rigoroso como o de verdade: lança erro em rampa exponencial para valor <= 0, em tempo negativo ou não numérico,
 // em start() duplo, em stop() antes de start() e registra todo nó, conexão e automação.
 const fs = require("fs");
@@ -289,4 +290,21 @@ function checkDistinct(recipes, opts = {}) {
   return fails;
 }
 
-module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, melodySimilarity, signatureOf };
+// Rampa de andamento de uma lista de temas na ordem das fases (a Fase 1 primeiro): todos dentro de [min, max] bpm, crescendo em tendência (correlação de
+// Spearman entre a fase e o andamento >= minCorr, padrão 0,6) e a última pelo menos `minRise` bpm acima da primeira (padrão 20).
+function checkTempoRamp(recipes, opts = {}) {
+  const min = opts.min === undefined ? 50 : opts.min, max = opts.max === undefined ? 200 : opts.max, minRise = opts.minRise === undefined ? 20 : opts.minRise, minCorr = opts.minCorr === undefined ? 0.6 : opts.minCorr;
+  const fails = [];
+  for (const r of recipes) if (!(r.bpm >= min && r.bpm <= max)) fails.push(`${r.id}: andamento ${r.bpm} fora de ${min}..${max} bpm`);
+  const rank = (v) => v.map((x) => { const less = v.filter((y) => y < x).length, eq = v.filter((y) => y === x).length; return less + (eq - 1) / 2; });
+  const a = rank(recipes.map((_, i) => i)), b = rank(recipes.map((r) => r.bpm)), n = a.length;
+  const ma = a.reduce((x, y) => x + y, 0) / n, mb = b.reduce((x, y) => x + y, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) { num += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; db += (b[i] - mb) ** 2; }
+  const corr = da && db ? num / Math.sqrt(da * db) : 0;
+  if (n > 2 && corr < minCorr) fails.push(`o andamento não cresce com as fases (correlação ${corr.toFixed(2)} < ${minCorr})`);
+  if (n > 1 && recipes[n - 1].bpm - recipes[0].bpm < minRise) fails.push(`a última fase só é ${recipes[n - 1].bpm - recipes[0].bpm} bpm mais rápida que a primeira (mínimo ${minRise})`);
+  return fails;
+}
+
+module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, checkTempoRamp, melodySimilarity, signatureOf };

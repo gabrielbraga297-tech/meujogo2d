@@ -124,6 +124,18 @@ test("temas distintos: tom, modo, andamento, solo e baixo; melodias diferentes e
   assert.deepStrictEqual(rig.checkDistinct(THEMES.map((i) => Music.get(i))), []);
   assert.ok(rig.checkDistinct([Music.get("dog1"), Object.assign({}, Music.get("dog1"), { id: "dogcopia" })]).length >= 1, "dois temas iguais são apontados");
 });
+test("checkTempoRamp: aceita andamento crescente dentro da faixa e aponta fora da faixa, fila que não cresce e subida pequena", () => {
+  const mk = (list) => list.map((bpm, i) => ({ id: "f" + (i + 1), bpm }));
+  const up = mk([92, 94, 98, 100, 104, 108, 110, 112, 116, 118, 122, 124, 126, 130, 132, 136, 140, 142, 146, 148]);
+  assert.deepStrictEqual(rig.checkTempoRamp(up, { min: 92, max: 148 }), []);
+  assert.ok(rig.checkTempoRamp(up, { min: 100, max: 148 }).some((m) => m.includes("fora")));
+  assert.ok(rig.checkTempoRamp(mk([140, 130, 120, 110, 100, 95]), { min: 90, max: 150 }).some((m) => m.includes("não cresce")));
+  assert.ok(rig.checkTempoRamp(mk([100, 100, 101, 102, 105]), { min: 90, max: 150 }).some((m) => m.includes("mais rápida")));
+});
+test("checkDistinct: uma cópia transposta da mesma melodia também é apontada (mede os intervalos, não as notas)", () => {
+  const a = Object.assign({}, Music.get("dog1"), { id: "da" }), b = Object.assign({}, a, { id: "db", key: "A", bpm: 130 });
+  assert.ok(rig.checkDistinct([a, b]).some((m) => m.includes("parecidas")));
+});
 test("determinismo: duas gerações idênticas, também depois de gerar outros temas no meio; semente diferente dá melodia diferente", () => {
   const a = JSON.stringify(Music.score("menu"));
   Music.score("dog1");
@@ -191,6 +203,19 @@ test("âmbito da melodia de no máximo 2 oitavas por instrumento, também com o 
   const counts = Object.fromEntries(Object.keys(byInst).map((k) => [k, s.events.filter((e) => e.voice === "lead" && e.inst === k).length]));
   for (const c of Object.values(counts)) assert.ok(c >= 25, "ninguém domina: " + JSON.stringify(counts));
   assert.ok(Math.max(...Object.values(counts)) < 2.5 * Math.min(...Object.values(counts)), JSON.stringify(counts));
+});
+test("a melodia nunca repete a mesma nota 3 vezes seguidas, em nenhum modo, compasso ou contorno", () => {
+  const keys = Object.keys(Music.KEYS);
+  let i = 0, total = 0;
+  for (const mode of Object.keys(Music.MODES)) for (const beats of [3, 4, 6]) for (const contour of Music.CONTOURS) {
+    const bpm = beats === 6 ? 70 : beats === 3 ? 126 : 112, secs = 32 * (beats === 6 ? 2 : beats) * 60 / bpm;
+    const r = { id: "q" + i, key: keys[i % keys.length], mode, bpm: secs > 100 ? Math.round(bpm * 1.2) : secs < 40 ? Math.round(bpm * 0.8) : bpm, beats, bars: 32, form: "AABA",
+      motif: { seed: i * 13 + 5, contour, leaps: (i % 5) / 4, rests: (i % 3) / 3 }, voices: { lead: { inst: "marimba" } } };
+    const lead = Music.score(r).events.filter((e) => e.voice === "lead");
+    for (let k = 2; k < lead.length; k++) { total++; assert.ok(!(lead[k].deg === lead[k - 1].deg && lead[k - 1].deg === lead[k - 2].deg), `receita ${i}, nota ${k}`); }
+    i++;
+  }
+  assert.ok(total > 10000);
 });
 test("o laço fecha no tom: o último compasso é o dominante, a melodia termina a até 3 graus da primeira nota e a cauda passa para o começo", () => {
   for (const id of THEMES) {

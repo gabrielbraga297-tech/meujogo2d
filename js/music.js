@@ -458,6 +458,14 @@
         }
       }
     }
+    // nunca 3 notas iguais seguidas (nem entre uma frase e outra): a do meio dá um passo para o lado
+    for (let i = 2; i < events.length; i++) {
+      const a = events[i - 2], b = events[i - 1], c = events[i];
+      if (a.deg === b.deg && b.deg === c.deg) {
+        const d = clamp(b.deg + (b.deg + 1 <= dHi ? 1 : -1), dLo, dHi);
+        b.midi += degMidi(sc, d, L.oct) - degMidi(sc, b.deg, L.oct); b.deg = d; b.kind = "orn";
+      }
+    }
     // último compasso: segura uma nota na primeira metade e termina com uma escala curta que desemboca na primeira nota do laço
     const lastStart = (R.bars - 1) * M.barBeats, half = lastStart + M.barBeats / 2, barEnd = R.bars * M.barBeats;
     const kept = events.filter((e) => e.t < half - 1e-9);
