@@ -8630,8 +8630,7 @@ const PAGE_HELPERS = () => {
     const orig = await snap();
     ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /1 petisco/.test(orig.shop) && /10 petscoin/.test(orig.shop) && /em qualquer jogo/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
     // ---- jogando o Cachorrinho (Fase 2): placar, avisos, vitória, derrota ----
-    // (a bolinha do Cachorrinho é sorteada com Math.random, à parte do sorteio do jogo: com semente fixa ela não cai no caminho do teste de vez em quando e a soma da vitória não ganha "bolinhas: 50")
-    await ev(page, () => { let sd = 777; Math.random = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; }; __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
+    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
     const hudDog = await ev(page, () => ({ prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), toast: document.getElementById("toast").textContent }));
     ok(hudDog.prey === "RAÇÕES 0/7" && hudDog.bones === "OSSOS 0/2" && hudDog.balls === "BOLINHAS 0/1" && hudDog.power === "PODER —" && hudDog.aria === "Poder do osso: desligado", `Cachorrinho: o placar diz ${JSON.stringify([hudDog.prey, hudDog.bones, hudDog.balls, hudDog.power])} e a leitura do poder "${hudDog.aria}"`);
     ok(/Fase 2: 2 agentes da carrocinha$/.test(hudDog.toast), `Cachorrinho: o aviso do começo da fase diz "${hudDog.toast}"`);
@@ -8644,6 +8643,8 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-pause");
     ok(/^Cachorrinho: filhote\./.test(await page.textContent("#pause-up")), "Cachorrinho: a pausa diz Cachorrinho: filhote.");
     await page.click("#btn-resume");
+    // (a bolinha é sorteada com Math.random e, assustada pelo cachorrinho que passa perto, rola pelos quadros reais do jogo: de vez em quando caía no caminho e a soma ganhava "bolinhas: 50". Esta soma é a de rações, ossos e carteiros: a bolinha sai de cena)
+    await ev(page, () => { __game.balls = []; });
     await finishNow(page, 10);
     ok(/^Rações: 700 \+ ossos: 300 \+ carteiros: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Cachorrinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
     ok((await ev(page, () => __game.sounds.map((e) => e.name))).some((n) => n === "bark1") && !(await ev(page, () => __game.sounds.map((e) => e.name))).includes("meow"), "Cachorrinho: completar a fase toca o latido de filhote (e nenhum miado)");
@@ -8697,7 +8698,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-pause");
     ok(await page.textContent("#pause-up") === "Gatinho: filhote.", `Gatinho: a pausa diz "${await page.textContent("#pause-up")}"`);
     await page.click("#btn-resume");
-    await ev(page, () => { __game.sound.reset(); });
+    await ev(page, () => { __game.sound.reset(); __game.balls = []; }); // (o camundongo ágil, assustado pelo gatinho que passa perto, rola pelos quadros reais do jogo e de vez em quando caía no caminho: a soma ganhava "camundongos: 50"; esta soma é a de ratinhos, novelos e cães)
     await finishNow(page, 10);
     ok(/^Ratinhos: 700 \+ novelos: 300 \+ cães: 100 \+ bônus de tempo: /.test(await page.textContent("#win-breakdown")), `Gatinho: a soma da vitória "${await page.textContent("#win-breakdown")}"`);
     const catSounds = await ev(page, () => __game.sounds.map((e) => e.name));
