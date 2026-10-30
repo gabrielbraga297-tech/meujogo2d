@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prévia dos desenhos do Gatinho</title>
+<style>
+  body { margin: 0; background: #0e1118; color: #dde; font: 12px system-ui, sans-serif; }
+  #sheet { display: block; }
+  nav { padding: 6px 10px; }
+  nav a { color: #8cf; margin-right: 10px; }
+</style>
+</head>
+<body>
+<nav id="nav"></nav>
+<canvas id="sheet"></canvas>
+<script src="../../js/cat-art.js"></script>
+<script>
+// Folha de prévia de js/cat-art.js (0.18.0). Uso: art.html?sec=cat-adulto&bg=green&z=3  (sec: cat-filhote, cat-jovem, cat-adulto, skins1, skins2, dogs, dogs2, items, fx, real;
+// bg: green ou dark; z: zoom; time: segundos; calm=1: reduzir movimento). Quem tira as capturas é tools/cat-preview/shoot-art.js.
+(function () {
+  const q = new URLSearchParams(location.search);
+  const SECS = ["cat-filhote", "cat-jovem", "cat-adulto", "skins1", "skins2", "dogs", "dogs2", "items", "fx", "real"];
+  const sec = q.get("sec") || "cat-adulto", bg = q.get("bg") === "dark" ? "dark" : "green", calm = q.get("calm") === "1";
+  const Z = +(q.get("z") || (sec === "real" ? 1 : 3)), T = +(q.get("time") || 0.31);
+  document.getElementById("nav").innerHTML = SECS.map((s) => `<a href="?sec=${s}&bg=${bg}">${s}</a>`).join("") + `<a href="?sec=${sec}&bg=${bg === "green" ? "dark" : "green"}">[fundo]</a>`;
+  const cv = document.getElementById("sheet"), ctx = cv.getContext("2d");
+  const COLORS = bg === "green" ? ["#5d9b4a", "#66a653"] : ["#1d2330", "#252c3b"];
+  const LABW = 104; // largura da coluna de rótulos (px da tela)
+  let W = 0, H = 0, CW = 0, CH = 0;
+  function setup(cols, rows, cw, ch) { CW = cw * Z; CH = ch * Z; W = LABW + cols * CW; H = 26 + rows * CH; cv.width = W; cv.height = H; cv.style.width = W + "px"; cv.style.height = H + "px"; ctx.fillStyle = "#0e1118"; ctx.fillRect(0, 0, W, H); ctx.textBaseline = "middle"; }
+  function head(col, text) { ctx.fillStyle = "#cfd6e6"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText(text, LABW + col * CW + CW / 2, 13); }
+  function rowLabel(row, text) { ctx.fillStyle = "#cfd6e6"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.fillText(text, 6, 26 + row * CH + CH / 2); }
+  function cell(col, row, fn) { // (0, 0) do desenho = centro da célula; o chão é xadrez de 32 px como no jogo
+    const x = LABW + col * CW, y = 26 + row * CH;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, CW, CH); ctx.clip();
+    const t = 32 * Z, ox = x + CW / 2 - t / 2, oy = y + CH / 2 - t / 2;
+    for (let yy = oy - Math.ceil((oy - y) / t) * t; yy < y + CH; yy += t) for (let xx = ox - Math.ceil((ox - x) / t) * t; xx < x + CW; xx += t) { ctx.fillStyle = COLORS[(Math.round((xx - ox) / t) + Math.round((yy - oy) / t)) & 1 ? 1 : 0]; ctx.fillRect(xx, yy, t, t); }
+    ctx.translate(x + CW / 2, y + CH / 2); ctx.scale(Z, Z);
+    fn();
+    ctx.restore();
+    ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.strokeRect(x + 0.5, y + 0.5, CW - 1, CH - 1);
+  }
+  const kit = (facing, o, moving) => CatArt.drawCat(ctx, { x: -12, y: -12, w: 24, h: 24, facing, moving: !!moving }, Object.assign({ time: T, calm }, o));
+  const box = () => { ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.setLineDash([2, 2]); ctx.lineWidth = 0.5; ctx.strokeRect(-12, -12, 24, 24); ctx.setLineDash([]); }; // a caixa de 24×24 (só na prévia)
+  const DIRS = ["left", "right", "up", "down"];
+  const STATES = [["parado", {}, false], ["andando", {}, true], ["molhado", { wet: 1 }, true], ["arrancada", { sprint: true }, true], ["a salvo", { safe: true }, false], ["eriçado", { hiss: true }, false]];
+
+  if (sec.startsWith("cat-")) {
+    const gr = { "cat-filhote": 0.1, "cat-jovem": 0.5, "cat-adulto": 1 }[sec] ?? 1;
+    const only = q.get("rows") ? q.get("rows").split(",").map(Number) : null, SH = STATES.filter((_, i) => !only || only.includes(i)); // rows=0,5: só esses estados (para ver de perto)
+    setup(4, SH.length, 60, 60);
+    DIRS.forEach((d, c) => head(c, d));
+    SH.forEach(([name, o, mv], r) => { rowLabel(r, name + " · gr " + gr); DIRS.forEach((d, c) => cell(c, r, () => { box(); kit(d, Object.assign({ gr }, o), mv); })); });
+  } else if (sec === "skins1" || sec === "skins2") {
+    const list = CatArt.SKINS.slice(sec === "skins1" ? 0 : 6, sec === "skins1" ? 6 : 12);
+    setup(7, list.length, 60, 60);
+    ["left", "right", "up", "down", "filhote →", "andando →", "eriçado →"].forEach((t, c) => head(c, t));
+    list.forEach((s, r) => {
+      rowLabel(r, s.name + " (" + s.price + ")");
+      DIRS.forEach((d, c) => cell(c, r, () => kit(d, { skin: s.id }, false)));
+      cell(4, r, () => kit("right", { skin: s.id, gr: 0.1 }, false)); cell(5, r, () => kit("right", { skin: s.id }, true)); cell(6, r, () => kit("right", { skin: s.id, hiss: true }, false));
+    });
+  } else if (sec === "dogs") {
+    const modes = ["patrol", "chase", "flee", "search", "idle", "frozen", "slow"], rows = [];
+    for (const kind of ["guard", "tracker"]) for (const size of ["small", "medium", "large"]) rows.push([kind, size]);
+    setup(modes.length, rows.length, 76, 60);
+    modes.forEach((m, c) => head(c, m));
+    rows.forEach(([kind, size], r) => {
+      rowLabel(r, kind + " · " + size);
+      modes.forEach((m, c) => cell(c, r, () => CatArt.drawDog(ctx, { x: 0, y: 0, dir: 1, mode: m === "frozen" || m === "slow" ? "patrol" : m, kind, size, frozen: m === "frozen", slow: m === "slow", idx: 0 }, { time: T, calm })));
+    });
+  } else if (sec === "dogs2") {
+    const cols = [];
+    for (const kind of ["guard", "tracker"]) for (let i = 0; i < 4; i++) cols.push([kind, i]);
+    setup(cols.length, 3, 76, 60);
+    cols.forEach(([kind, i], c) => head(c, kind + " idx " + i));
+    ["patrol", "chase", "flee"].forEach((m, r) => { rowLabel(r, m + " (olha p/ esq.)"); cols.forEach(([kind, i], c) => cell(c, r, () => CatArt.drawDog(ctx, { x: 0, y: 0, dir: -1, mode: m, kind, size: "medium", idx: i }, { time: T + i * 0.2, calm }))); });
+  } else if (sec === "items") {
+    setup(10, 5, 52, 52);
+    rowLabel(0, "ratinho (var 0-2)"); rowLabel(1, "camundongo correndo"); rowLabel(2, "camundongo parado"); rowLabel(3, "novelo (t, t+0,6)"); rowLabel(4, "postos");
+    for (let v = 0; v < 3; v++) for (let k = 0; k < 2; k++) cell(v * 2 + k, 0, () => CatArt.drawMouse(ctx, { x: -8 + k * 16, y: -8 + k * 16, variant: v }, { time: T + k * 0.55, calm }));
+    for (let a = 0; a < 8; a++) cell(a, 1, () => CatArt.drawAgileMouse(ctx, { x: 0, y: 0, vx: Math.cos(a * Math.PI / 4) * 160, vy: Math.sin(a * Math.PI / 4) * 160, hue: a }, { time: T, calm, r: 8 }));
+    for (let h = 0; h < 4; h++) cell(h, 2, () => CatArt.drawAgileMouse(ctx, { x: 0, y: 0, vx: 0, vy: 0, hue: h }, { time: T, calm, r: 8 }));
+    cell(4, 2, () => CatArt.drawAgileMouse(ctx, { x: 0, y: 0, vx: 3, vy: 0, hue: 0 }, { time: T, calm, r: 8 })); // quase parado
+    const kinds = ["scare", "gold", "ice", "turbo", "magnet"];
+    kinds.forEach((k, i) => { cell(i, 3, () => CatArt.drawYarn(ctx, { x: -8, y: -8, kind: k }, { time: T, calm })); cell(5 + i, 3, () => CatArt.drawYarn(ctx, { x: -8, y: -8, kind: k }, { time: T + 0.6, calm })); });
+    cell(0, 4, () => CatArt.drawPost(ctx, 0, 0, { kind: "guard" })); cell(1, 4, () => CatArt.drawPost(ctx, 0, 0, { kind: "tracker" }));
+    cell(2, 4, () => { box(); CatArt.drawPost(ctx, 0, 0, { kind: "guard" }); CatArt.drawDog(ctx, { x: 0, y: 4, dir: 1, mode: "idle", kind: "guard", size: "medium", idx: 1 }, { time: T, calm }); });
+    cell(3, 4, () => { box(); CatArt.drawPost(ctx, 0, 0, { kind: "tracker" }); CatArt.drawDog(ctx, { x: 0, y: 0, dir: 1, mode: "idle", kind: "tracker", size: "medium", idx: 2 }, { time: T, calm }); });
+  } else if (sec === "fx") {
+    const kinds = ["splash", "shake", "dust", "hiss", "sparkle", "wetdrop"], ts = [0.1, 0.3, 0.5, 0.7, 0.9];
+    setup(ts.length, kinds.length, 72, 64);
+    ts.forEach((t, c) => head(c, "t = " + t));
+    kinds.forEach((k, r) => { rowLabel(r, k); ts.forEach((t, c) => cell(c, r, () => { kit("right", { wet: k === "splash" || k === "shake" || k === "wetdrop" ? 1 : 0, sprint: k === "dust", hiss: k === "hiss" }, false); CatArt.drawFx(ctx, k, 0, 0, t, { calm, facing: "right" }); })); });
+  } else { // real: tamanho de verdade (zoom 1) em chão do jogo: o gatinho nos 3 estágios e 4 direções, as 12 skins, os cães, os ratinhos, os novelos
+    setup(1, 1, 820, 160);
+    cell(0, 0, () => {
+      ctx.translate(-400, -76);
+      const kit1 = (x, y, d, o, mv) => CatArt.drawCat(ctx, { x, y, w: 24, h: 24, facing: d, moving: !!mv }, Object.assign({ time: T, calm }, o));
+      [0.05, 0.5, 1].forEach((g, i) => DIRS.forEach((d, j) => kit1(8 + (i * 4 + j) * 36, 4, d, { gr: g }, (i + j) % 2 === 0)));
+      kit1(8 + 12 * 36, 4, "right", { gr: 1, wet: 1 }, true); kit1(8 + 13 * 36, 4, "right", { gr: 1, sprint: true }, true); kit1(8 + 14 * 36, 4, "right", { gr: 1, safe: true }, false); kit1(8 + 15 * 36, 4, "right", { gr: 1, hiss: true }, false);
+      CatArt.SKINS.forEach((s, n) => kit1(8 + n * 36, 42, n % 2 ? "left" : "right", { skin: s.id }, false));
+      let x = 20;
+      for (const kind of ["guard", "tracker"]) for (const m of ["patrol", "chase", "flee", "search", "idle"]) { CatArt.drawDog(ctx, { x: x + 12, y: 88, dir: 1, mode: m, kind, size: "medium", idx: 1 }, { time: T, calm }); x += 42; }
+      for (const sz of ["small", "large"]) { CatArt.drawDog(ctx, { x: x + 12, y: 88, dir: 1, mode: "patrol", kind: "guard", size: sz, idx: 0 }, { time: T, calm }); x += 46; }
+      CatArt.drawPost(ctx, x + 20, 88, { kind: "guard" }); CatArt.drawPost(ctx, x + 70, 88, { kind: "tracker" });
+      x = 20;
+      for (let v = 0; v < 3; v++) { CatArt.drawMouse(ctx, { x: x, y: 112, variant: v }, { time: T, calm }); x += 28; }
+      x += 10;
+      ["scare", "gold", "ice", "turbo", "magnet"].forEach((k, i) => { CatArt.drawYarn(ctx, { x: x + i * 28, y: 112, kind: k }, { time: T, calm }); }); x += 150;
+      for (let h = 0; h < 4; h++) CatArt.drawAgileMouse(ctx, { x: x + h * 26, y: 120, vx: h < 2 ? 120 : 0, vy: 0, hue: h }, { time: T, calm, r: 8 });
+    });
+  }
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>
