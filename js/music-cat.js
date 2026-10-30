@@ -165,7 +165,7 @@
     },
     // 11 Celeiro e curral: a chegada dos cães rastreadores, o primeiro pico de tensão. Sol sustenido menor harmônico (a sensível e a segunda aumentada), 116 bpm, quase sem pausas
     // e quase sem balanço. Marimba grave martelando o motivo que sobe, baixo de serrilha em "raiz e quinta" (uma pancada por tempo), bumbo macio e prato leve em colcheias,
-    // cordas agudas em descante e arpejo de cordas beliscadas em colcheias nas partes finais (a parte C vem duas vezes, a segunda mais forte); sem acordes longos, para o tema ficar seco e nervoso.
+    // cordas agudas em descante e arpejo de cordas beliscadas em colcheias a partir da parte B (a parte C vem duas vezes, a segunda mais forte); sem acordes longos, para o tema ficar seco e nervoso.
     {
       id: "cat11", animal: "cat", place: "Celeiro e curral", key: "G#", mode: "harmMinor", bpm: 116, beats: 4, swing: 0.1, bars: 32, form: "ABCC",
       prog: { A: "I IV V I", B: "VI VII I V", C: "I VII VI V" },
@@ -240,6 +240,87 @@
         perc: { kit: ["softkick", "brush"], pattern: "steady", vel: 0.45, from: 0.3 },
       },
       intensity: 0.6,
+    },
+    // 16 Docas do porto: fá blues, 123 bpm, balanço forte (quase tercina), forma de 12 compassos por parte (ABC, 36 compassos no total) com a progressão em "pergunta e resposta" do blues
+    // (os numerais apontam as notas da escala de blues). Cordas beliscadas graves no solo, baixo de serrilha caminhando, bumbo macio e prato leve em shuffle, órgão a partir da parte B
+    // e uma flauta aguda em descante nos trechos finais. Pesado e gingado: o porto com os guindastes.
+    {
+      id: "cat16", animal: "cat", place: "Docas do porto", key: "F", mode: "blues", bpm: 123, beats: 4, swing: 0.5, bars: 36, form: "ABC",
+      prog: { A: "I I I I III III I I V III I V", B: "III III I I V V III III I V I V", C: "I III I III V III I I V III I V" },
+      motif: { seed: 7616, bars: 2, contour: "fall", leaps: 0.4, rests: 0.3, density: 0.6, rhythm: ["x--x-xx-", "x-x--x--"] },
+      voices: {
+        lead: { inst: "pluck", oct: 3, vel: 0.8 },
+        counter: { inst: "flute", oct: 4, vel: 0.4, from: 0.75, above: true },
+        bass: { inst: "bassSaw", pattern: "walk", oct: 2, vel: 0.85 },
+        pad: { inst: "organ", oct: 3, vel: 0.25, from: 0.55 },
+        perc: { kit: ["softkick", "hat"], pattern: "shuffle", vel: 0.45, from: 0.3 },
+      },
+      intensity: 0.65,
+    },
+    // 17 Praia e dunas: sol pentatônico menor em 3/4 (119 bpm, 40 compassos, ABABA), aberto e espaçado, com vento. Marimba no solo (som seco de madeira, quase de tambor de aço),
+    // baixo de triângulo em pizzicato, harpa subindo três notas por compasso, sino agudo em descante, prato leve nos contratempos. Sem cordas longas; frases longas com pausas.
+    {
+      id: "cat17", animal: "cat", place: "Praia e dunas", key: "G", mode: "pentMinor", bpm: 119, beats: 3, swing: 0.2, bars: 40, form: "ABABA",
+      prog: { A: "I III IV V", B: "IV III V I" },
+      motif: { seed: 7717, bars: 2, contour: "rise", leaps: 0.35, rests: 0.35, density: 0.4, rhythm: ["x-x--x", "x----x"] },
+      voices: {
+        lead: { inst: "marimba", oct: 4, vel: 0.7 },
+        counter: { inst: "bell", oct: 5, vel: 0.3, from: 0.7, above: true },
+        bass: { inst: "bass", pattern: "pizz", oct: 2, vel: 0.75 },
+        arp: { inst: "harp", rate: 1, shape: "up", oct: 4, vel: 0.4, from: 0.6 },
+        perc: { kit: ["softkick", "hat"], pattern: "offbeat", vel: 0.3, from: 0.3 },
+        ambience: { kind: "wind", vel: 0.5 },
+      },
+      intensity: 0.5,
+    },
+    // 18 Telhados à noite: dó sustenido menor, 126 bpm, balanço médio, ABBC (a parte B volta mais cheia e a C fecha no ponto mais alto). Mais tensão que o dia: o solo é o contrabaixo
+    // pizzicato em oitava média (o gato que anda sem fazer barulho) sobre baixo de serrilha em síncope, escova na caixa dos tempos 2 e 4, sino agudo em descante, arpejo de celesta
+    // a partir da parte B e grilos ao fundo (sem cordas longas, para as notas ficarem nítidas).
+    {
+      id: "cat18", animal: "cat", place: "Telhados à noite", key: "C#", mode: "minor", bpm: 126, beats: 4, swing: 0.3, bars: 32, form: "ABBC",
+      prog: { A: "I IV VI V", B: "VI VII I III", C: "IV V I V" },
+      motif: { seed: 7818, bars: 2, contour: "wave", leaps: 0.5, rests: 0.3, density: 0.6, rhythm: ["x-.x-.x-", "xx.x-x--"] },
+      voices: {
+        lead: { inst: "contrabass", oct: 3, vel: 0.85 },
+        counter: { inst: "bell", oct: 5, vel: 0.35, from: 0.8, above: true },
+        bass: { inst: "bassSaw", pattern: "sync", oct: 2, vel: 0.8 },
+        arp: { inst: "celesta", rate: 1, shape: "broken", oct: 4, vel: 0.4, from: 0.82 },
+        perc: { kit: ["softkick", "brush"], pattern: "backbeat", vel: 0.5, from: 0.25 },
+        ambience: { kind: "crickets", vel: 0.5 },
+      },
+      intensity: 0.7,
+    },
+    // 19 Mercado à noite (chuva): fá sustenido menor harmônico, 129 bpm, AABAC (40 compassos, a parte C fecha no ponto mais alto). Celesta no solo, baixo de serrilha em pizzicato lento,
+    // bumbo macio e chocalho em colcheias nervosas, flauta grave e arpejo de cordas beliscadas nas partes mais fortes (sem acordes longos), e a ambiência de chuva por cima de tudo.
+    {
+      id: "cat19", animal: "cat", place: "Mercado à noite", key: "F#", mode: "harmMinor", bpm: 129, beats: 4, swing: 0.2, bars: 40, form: "AABAC",
+      prog: { A: "I VI V I", B: "IV V VI VII", C: "VI V I V" },
+      motif: { seed: 7919, bars: 2, contour: "fall", leaps: 0.55, rests: 0.25, density: 0.65, rhythm: ["x.xx-x.x", "x--x.x-x"] },
+      voices: {
+        lead: { inst: "celesta", oct: 4, vel: 0.8 },
+        counter: { inst: "flute", oct: 3, vel: 0.45, from: 0.85 },
+        bass: { inst: "bassSaw", pattern: "pizz", oct: 2, vel: 0.8 },
+        arp: { inst: "pluck", rate: 1, shape: "alberti", oct: 4, vel: 0.4, from: 0.85 },
+        perc: { kit: ["softkick", "shaker"], pattern: "driving", vel: 0.55, from: 0.3 },
+        ambience: { kind: "rain", vel: 0.5 },
+      },
+      intensity: 0.75,
+    },
+    // 20 A casa grande: o final e a "volta ao lar". Sol maior (o mesmo centro da Sala de estar, agora no modo maior), 132 bpm, ABABC (40 compassos) que cresce até o ponto mais cheio.
+    // Xilofone no solo, que se reveza com celesta, flauta e harpa (os timbres da casa), baixo de triângulo caminhando, harpa em arpejo (oito notas por compasso), flauta em descante,
+    // bumbo macio e chocalho. É o tema com mais notas por segundo junto com o 19; sem cordas longas, para as notas caberem no limite de vozes.
+    {
+      id: "cat20", animal: "cat", place: "A casa grande", key: "G", mode: "major", bpm: 132, beats: 4, swing: 0.2, bars: 40, form: "ABABC",
+      prog: { A: "I vi IV V", B: "IV I V vi", C: "vi IV I V" },
+      motif: { seed: 8020, bars: 2, contour: "rise", leaps: 0.5, rests: 0.1, density: 0.7, rhythm: ["x-xx-xx-", "x-x-xxx-"] },
+      voices: {
+        lead: { inst: "xylo", oct: 4, vel: 0.85, rotate: [{ inst: "xylo" }, { inst: "celesta" }, { inst: "flute" }, { inst: "harp" }] },
+        counter: { inst: "flute", oct: 5, vel: 0.5, from: 0.6, above: true },
+        bass: { inst: "bass", pattern: "walk", oct: 2, vel: 0.85 },
+        arp: { inst: "harp", rate: 2, shape: "updown", oct: 4, vel: 0.5, from: 0.7 },
+        perc: { kit: ["softkick", "shaker"], pattern: "steady", vel: 0.5, from: 0.25 },
+      },
+      intensity: 0.7,
     },
   ]);
 })(typeof window !== "undefined" ? window : globalThis);
