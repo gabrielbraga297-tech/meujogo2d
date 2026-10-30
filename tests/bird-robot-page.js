@@ -83,7 +83,7 @@ module.exports = function ROBOT(o) {
   const exitOpen = () => (lv.minPoints ? g.score >= lv.minPoints : g.collected >= lv.rations && g.bonesGot >= lv.bones) && (!mission || ((!mission.bones || g.bonesGot >= lv.bones) && g.collected >= (mission.rations || 0)));
 
   for (let attempt = 0; attempt < attempts; attempt++) {
-    g.setAnimal("bird"); g.setRand(mul((o.seed || 1) * 1000 + attempt * 77 + id)); g.freezeVets = !live; g.noCatch = false;
+    g.setAnimal("bird"); g.setRand(mul((o.seed || 1) * 1000 + attempt * 77 + id)); Math.random = mul(((o.seed || 1) * 1000 + attempt * 77 + id) ^ 0x5bd1e995); g.freezeVets = !live; g.noCatch = false; // (Math.random também com semente: as minhocas são sorteadas com ele, à parte do rand do motor)
     g.start(id, { retries: attempt }); g.autoStart = true;
     res.attempts = attempt + 1;
     let prevInfo = null, frames = 0, target = null, path = [], refuge = null, perchWait = 0, lastPos = null, stillN = 0, lastLost = g.livesLost, prevM = false, plans = 0;

@@ -25,6 +25,9 @@ module.exports = async function (T) {
     const press = (k, on) => window.dispatchEvent(new KeyboardEvent(on ? "keydown" : "keyup", { key: k, code: k.length === 1 ? "Key" + k.toUpperCase() : k }));
     let seed = 20261029; // (sorteios do jogo com semente fixa: as fases-miniatura se repetem igual a cada rodada)
     g.setRand(() => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; });
+    // (as minhocas são sorteadas com Math.random, de propósito: o motor não gasta o rand dele com elas. Para o teste não oscilar de uma rodada para a outra, Math.random também ganha semente fixa)
+    let mseed = 20261030;
+    Math.random = () => { mseed = (mseed + 0x6d2b79f5) | 0; let t = Math.imul(mseed ^ (mseed >>> 15), 1 | mseed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     window.__b = {
       press,
       start(id = 1, o) { g.setAnimal("bird"); g.start(id, o); g.freezeVets = true; g.autoStart = true; },
