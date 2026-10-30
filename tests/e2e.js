@@ -8630,7 +8630,8 @@ const PAGE_HELPERS = () => {
     const orig = await snap();
     ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /1 petisco/.test(orig.shop) && /10 petscoin/.test(orig.shop) && /em qualquer jogo/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
     // ---- jogando o Cachorrinho (Fase 2): placar, avisos, vitória, derrota ----
-    await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
+    // (a bolinha do Cachorrinho é sorteada com Math.random, à parte do sorteio do jogo: com semente fixa ela não cai no caminho do teste de vez em quando e a soma da vitória não ganha "bolinhas: 50")
+    await ev(page, () => { let sd = 777; Math.random = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; }; __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
     const hudDog = await ev(page, () => ({ prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), toast: document.getElementById("toast").textContent }));
     ok(hudDog.prey === "RAÇÕES 0/7" && hudDog.bones === "OSSOS 0/2" && hudDog.balls === "BOLINHAS 0/1" && hudDog.power === "PODER —" && hudDog.aria === "Poder do osso: desligado", `Cachorrinho: o placar diz ${JSON.stringify([hudDog.prey, hudDog.bones, hudDog.balls, hudDog.power])} e a leitura do poder "${hudDog.aria}"`);
     ok(/Fase 2: 2 agentes da carrocinha$/.test(hudDog.toast), `Cachorrinho: o aviso do começo da fase diz "${hudDog.toast}"`);
@@ -10915,12 +10916,14 @@ const PAGE_HELPERS = () => {
     //  Passarinho (0.20.0): bird = sempre · seed = há sementes (seeds > 0) · stray = há gatos de quintal (cats > 0) · birdexit = há saída (o "E" do mapa) · berry = há frutos (fruits > 0) · bug = há minhocas (worms > 0)
     //   · roost = há galhos G (special.G > 0) · gust = há vento (special.wind > 0) · hawk = há gaviões (hawks > 0). Os critérios leem os DADOS dos mapas (js/bird-levels.js, as 20 definições): enquanto o motor do Passarinho
     //   não monta as fases em `__game.builtOf("bird")` este é o critério; com o motor, trocar `birdB` pelas fases montadas (`__game.builtOf("bird")[fase]`) e os campos deles. O vento é o único objeto que SOME de algumas fases
-    //   depois da primeira vez: de propósito, as Fases 5 e 18 não têm correntes (BIRD_GAPS), e só essas.
+    //   depois da primeira vez: de propósito, algumas fases de campo aberto não têm correntes (BIRD_GAPS, derivado dos mapas: as fases com special.wind 0 depois da primeira com vento), e só elas.
     // Uma categoria registrada sem critério aqui reprova o teste: quem cria uma categoria nova escreve também o critério dela.
     const pg = await s19Page();
     await fresh(pg, { name: "Totó" });
     const birdB = Object.fromEntries(require(path.join(root, "js/bird-levels.js")).map((l) => [l.id, { ...l, map: l.map.join("") }])); // (as 20 fases do Passarinho, os dados dos mapas; ver o critério acima)
-    const BIRD_GAPS = { gust: [5, 18] };
+    // as fases sem vento DEPOIS da primeira que tem vento, lidas dos mapas (js/bird-levels.js), e não copiadas de outro lugar; as outras categorias não podem ter buraco nenhum
+    const firstWind = Object.values(birdB).find((l) => l.special.wind > 0).id;
+    const BIRD_GAPS = { gust: Object.values(birdB).filter((l) => l.id > firstWind && !(l.special.wind > 0)).map((l) => l.id) };
     const res = await ev(pg, ([birdB, BIRD_GAPS]) => {
       const crit = {
         dog: { dog: () => true, agent: (b) => b.vetSpawns.length > 0, ration: (b) => b.rations > 0, exit: (b) => b.exitTiles.length > 0, postman: (b) => b.bones > 0 && b.bonePower > 0, bone: (b) => b.bones > 0, ball: (b) => b.balls > 0, block: (b) => b.blockDefs.length > 0, van: (b) => b.solids.some((s) => s.van), foecat: (b) => b.catSpawns.length > 0 },
@@ -10945,7 +10948,7 @@ const PAGE_HELPERS = () => {
     const wrong = res.rows.filter((r) => r.first !== r.from);
     ok(res.unregistered.length === 0 && res.total === 27 && res.rows.length === res.total && wrong.length === 0, `a fase \`from\` de cada uma das ${res.total} categorias (todas registradas${res.unregistered.length ? "; sem skins: " + res.unregistered.join(", ") : ""}) é a primeira fase do jogo em que o objeto aparece (${res.rows.map((r) => `${r.id}: F${r.from}`).join(", ")})${wrong.length ? " — ERRADAS: " + wrong.map((r) => `${r.id} diz Fase ${r.from}, mas aparece na ${r.first}`).join("; ") : ""}`);
     const gone = res.rows.filter((r) => !r.onwards);
-    ok(gone.length === 0, `e, a partir dessa fase, o objeto aparece em todas as fases seguintes (só o vento falta nas Fases 5 e 18, de propósito)${gone.length ? " — somem em alguma fase: " + gone.map((r) => `${r.id} (${r.missing.join(",")})`).join(", ") : ""}`);
+    ok(gone.length === 0, `e, a partir dessa fase, o objeto aparece em todas as fases seguintes (só o vento falta, de propósito, nas Fases ${BIRD_GAPS.gust.join(" e ")}, as de campo aberto sem corrente)${gone.length ? " — somem em alguma fase: " + gone.map((r) => `${r.id} (${r.missing.join(",")})`).join(", ") : ""}`);
     ok(res.rows.every((r) => r.skinFrom.every((f) => f >= r.from && f <= 20)), "nenhuma skin abre antes da categoria dela (e nenhuma passa da Fase 20)");
     await pg.context().close();
   });

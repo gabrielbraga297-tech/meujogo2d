@@ -534,7 +534,8 @@ module.exports = async function (T) {
     const pg = await newPage({ realBird: "real", realCat: true, viewport: { width: 1000, height: 700 } });
     await fresh(pg, { name: "Totó" }); await pg.evaluate(BIRD_PAGE); await pg.evaluate(PAGE_SHOTS);
     const e0 = errs0();
-    const timeIt = async (animal, id) => { const tries = []; for (let k = 0; k < 5; k++) { tries.push(await ev(pg, FRAME, [animal, id])); if (tries[tries.length - 1].med <= 10) break; } // (o melhor de até 5 rodadas de 400 quadros: a carga da máquina só deixa a medida mais lenta, nunca mais rápida) return tries.reduce((b, t) => (t.med < b.med ? t : b)); };
+    // (o melhor de até 5 rodadas de 400 quadros: a carga da máquina só deixa a medida mais lenta, nunca mais rápida)
+    const timeIt = async (animal, id) => { const tries = []; for (let k = 0; k < 5; k++) { tries.push(await ev(pg, FRAME, [animal, id])); if (tries[tries.length - 1].med <= 10) break; } return tries.reduce((b, t) => (t.med < b.med ? t : b)); };
     const cat20 = await timeIt("cat", 20), cat18 = await timeIt("cat", 18);
     console.log(`   (desempenho) Gatinho F20: mediana ${cat20.med.toFixed(2)} ms, p90 ${cat20.p90.toFixed(2)} ms, comandos ${cat20.draw.toFixed(2)} ms; F18 (noite): ${cat18.med.toFixed(2)} ms`);
     const ref = Math.max(cat20.med, cat18.med);

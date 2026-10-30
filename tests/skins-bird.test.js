@@ -387,12 +387,15 @@ test("`from` de cada categoria = a primeira fase dos mapas de js/bird-levels.js 
   for (const s of Skins.slotsOf("bird")) assert.ok(CRIT[s.id], `${s.id}: toda categoria tem o critério escrito neste teste`);
   for (const s of Skins.slotsOf("bird")) assert.strictEqual(s.from, want[s.id], `${s.id}: from ${s.from}, mapas ${want[s.id]}`);
   assert.deepStrictEqual(want, { bird: 1, seed: 1, stray: 1, birdexit: 1, berry: 2, bug: 2, roost: 3, gust: 3, hawk: 11 });
-  // a partir da fase `from` o objeto aparece em todas as seguintes; a única exceção é o vento, que o desenho do jogo tira de propósito das Fases 5 e 18 (campo aberto sem corrente)
-  const GAPS = { gust: [5, 18] };
+  // a partir da fase `from` o objeto aparece em todas as seguintes; a única exceção é o vento, que o desenho do jogo tira de propósito de algumas fases de campo aberto (sem corrente).
+  // Os buracos vêm dos mapas (js/bird-levels.js: as fases sem vento depois da primeira com vento), não de uma lista copiada em outro lugar
+  const GAPS = {};
   for (const s of Skins.slotsOf("bird")) {
     const gone = LEVELS.filter((l) => l.id >= s.from && !CRIT[s.id](l)).map((l) => l.id);
-    assert.deepStrictEqual(gone, GAPS[s.id] || [], `${s.id}: fases a partir da ${s.from} sem o objeto`);
+    if (gone.length) GAPS[s.id] = gone;
   }
+  assert.deepStrictEqual(Object.keys(GAPS), ["gust"], "só o vento some de fases depois da primeira em que aparece: " + JSON.stringify(GAPS));
+  assert.ok(GAPS.gust.length >= 1 && GAPS.gust.every((id) => LEVELS[id - 1].special.wind === 0 && !LEVELS[id - 1].map.some((row) => /[<>^v]/.test(row))), "as fases sem vento não têm nenhum tile de vento no mapa: " + GAPS.gust);
   for (const slot of CATS) for (const k of skinsOf(slot)) assert.ok(k.from === undefined || k.from >= Skins.slot(slot).from, `${slot}/${k.id}: from`);
 });
 
