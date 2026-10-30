@@ -2826,7 +2826,8 @@
       for (const it of sv.items) {
         if (!Array.isArray(it) || it.length !== (sv.v === 3 ? 4 : 5)) return null;
         const [c, r, t, l] = it, b = sv.v === 3 ? 0 : it[4];
-        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (L.puddle && L.puddle[r][c]) || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || !Number.isInteger(b) || b < 0 || b > BONE_KINDS.length) return null;
+        if (!Number.isInteger(c) || !Number.isInteger(r) || c < 0 || r < 0 || c >= L.cols || r >= L.rows || !L.walk[r][c] || (L.puddle && L.puddle[r][c]) || (L.birdMode && L.wind && L.wind[r][c]) || (t !== 0 && t !== 1) || (l !== 0 && l !== 1) || !Number.isInteger(b) || b < 0 || b > BONE_KINDS.length) return null;
+        // (Passarinho: sementes, frutos e minhocas nunca nascem numa corrente de vento — o `L.wind[r][c]` acima — e o jogo salvo que põe um item nela é recusado)
         // dois itens que faltam pegar não podem ocupar o mesmo tile (um já pego pode: jogos salvos da 0.4.0 tinham esse defeito)
         if (t === 0) { if (seen.has(r * L.cols + c)) return null; seen.add(r * L.cols + c); }
         if (L.trackTiles.some(([tc, tr]) => tc === c && tr === r)) return null; // nunca no trilho de um bloco
