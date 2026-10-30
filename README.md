@@ -942,7 +942,9 @@ tests/skins.test.js   testes unitários do catálogo da lojinha: categorias, fas
 tests/skins-dog.test.js testes unitários das skins dos objetos do Cachorrinho (Node): as 10 categorias de js/skins-dog.js, preços, textos, campos visuais e o desenho (js/game.js) lendo cada campo
 tests/skins-cat.test.js testes unitários das skins dos objetos do Gatinho (Node, com um ctx de mentira): as 6 categorias de js/skins-cat.js, preços, textos, campos visuais, o desenho de js/cat-art.js com cada skin, as cores-chave dos novelos e os ratinhos claros na noite
 tests/skins-cat-frame.js quadros fixos do jogo do Gatinho (não é um teste: roda dentro da página e devolve o hash de pixels de cada cena; usado pelo e2e e por tools/skin-preview/cat-skins.js)
-tests/wiring.test.js  testes de fiação (Node): a ordem dos scripts do index.html e a lojinha de js/game.js passando o jogo da categoria ao progresso (reachedLevel) e usando Skins.unlocked
+tests/wiring.test.js  testes de fiação (Node): a ordem dos scripts do index.html, a lojinha de js/game.js passando o jogo da categoria ao progresso (reachedLevel) e usando Skins.unlocked, e o contrato js/game.js -> BirdArt (toda função e todo campo que o jogo passa à arte do Passarinho existe e é lido)
+tests/engine.test.js  testes do motor do Passarinho (Node, ~13 s, sem navegador): roda o js/game.js de verdade com um DOM de mentira e confere as invariantes (nunca fora do mundo nem dentro de parede, o passo não atravessa muro de 1 tile a 20 fps, pouso em chão livre, vento, gato e gavião contra o voo alto, jogo salvo adulterado recusado, pontos e saída)
+tests/engine-rig.js   não é um teste: o DOM de mentira, o carregador dos scripts de js/ e os ajudantes (teclas, cliques, Continuar) que o tests/engine.test.js usa
 tests/cat-art.test.js testes unitários dos desenhos do Gatinho (Node, com um ctx de mentira)
 tests/cat-levels.test.js testes dos 20 mapas do Gatinho e do gerador (Node; precisa de python3 para conferir o determinismo do gerador)
 tests/cat-themes-1.test.js testes dos ambientes do Gatinho, Fases 1 a 10 (Node)
@@ -979,7 +981,8 @@ node tests/profiles.test.js
 node tests/skins.test.js        # o catálogo da lojinha única (categorias, fase de liberação, registro das skins)
 node tests/skins-dog.test.js    # as skins dos objetos do Cachorrinho (catálogo, campos visuais e o desenho lendo cada campo)
 node tests/skins-cat.test.js    # as skins dos objetos do Gatinho (catálogo e desenho com um ctx de mentira); tests/skins-cat-frame.js não é um teste: são os quadros fixos do Gatinho que o e2e e tools/skin-preview/cat-skins.js usam
-node tests/wiring.test.js       # a fiação da lojinha: ordem dos scripts do index.html e o jogo da categoria passado ao progresso
+node tests/wiring.test.js       # a fiação: ordem dos scripts do index.html, o jogo da categoria passado ao progresso da lojinha e o contrato do jogo com a arte do Passarinho
+node tests/engine.test.js       # o motor do Passarinho no Node, sem navegador (~13 s): invariantes de movimento, pouso, vento, inimigos, jogo salvo e pontos
 node tests/cat-art.test.js
 node tests/cat-levels.test.js   # precisa de python3 (confere que o gerador dos mapas é determinístico; sem python3 o teste FALHA)
 node tests/cat-themes-1.test.js
