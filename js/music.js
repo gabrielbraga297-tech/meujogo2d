@@ -231,6 +231,7 @@
     if (L.rotate && !L.rotate.length) L.rotate = null;
     R.voices.lead = L;
     R.voices.counter = v.counter ? vox(v.counter, "counter", "flute", Math.max(1, L.oct - 1), 0.55, 0.6, tone) : null;
+    if (R.voices.counter) R.voices.counter.above = v.counter.above === true; // true: contracanto agudo (descante), sempre acima da melodia
     R.voices.bass = v.bass === null ? null : vox(v.bass, "bass", "bass", 2, 0.8, 0, tone);
     if (R.voices.bass) {
       const p = v.bass && v.bass.pattern !== undefined ? v.bass.pattern : "rootfifth";
@@ -490,13 +491,13 @@
       for (const [off, dur] of slots) {
         const t = barStart + off;
         const under = lead.filter((e) => e.t < t + dur - 1e-9 && e.t + e.d > t + 1e-9);
-        const leadMin = under.length ? Math.min(...under.map((e) => e.midi)) : Infinity;
+        const leadMin = under.length ? Math.min(...under.map((e) => e.midi)) : Infinity, leadMax = under.length ? Math.max(...under.map((e) => e.midi)) : -Infinity;
         let best = null, bestCost = Infinity;
         for (const tn of h.tones) for (let k = -2; k <= 3; k++) {
           const d = tn + k * len;
           if (d < lo || d > hi) continue;
           const midi = degMidi(sc, d, C.oct);
-          if (midi > leadMin - 3) continue;
+          if (C.above ? midi < leadMax + 3 : midi > leadMin - 3) continue; // o contracanto fica abaixo da melodia (ou acima, se `above`)
           let cost = prev === null ? Math.abs(d - Math.round(len * 0.4)) : Math.abs(d - prev) + (Math.abs(d - prev) > 3 ? 2 : 0);
           if (prev !== null && dirLead !== 0 && Math.sign(d - prev) === -dirLead) cost -= 0.6;
           if (prev !== null && d === prev) cost += 0.8;
@@ -996,7 +997,258 @@
     }
     return { count, end, failed };
   }
-  function create() { return null; } // @@PLAYER@@
+  // ---------- O tocador ----------
+  const LOOKAHEAD = 0.6;          // s de música agendados à frente do relógio do áudio
+  const TICK_MS = 120;            // de quanto em quanto tempo o agendador confere
+  const BUS_GAIN = 0.45;          // ganho do barramento de música (relativo ao mestre dos sons)
+  const FADE_DEFAULT = 0.7;       // crossfade entre temas (s)
+  const START_LEAD = 0.06;        // folga ao começar um tema (s)
+  const RESUME_RETRY_MS = 1000;   // de quanto em quanto tempo pede resume() a um contexto suspenso
+  const MAX_EVENTS = 200;         // pedidos lembrados em `events`
+  const finite = (x) => typeof x === "number" && Number.isFinite(x);
+
+  // opts: { sound (o Sound.create do jogo: dá o contexto de áudio e o mudo), storage (opcional: getItem/setItem; guarda "cachorrinho.musica.v1"),
+  //         now (ms, padrão Date.now), setInterval/clearInterval (injetáveis para os testes), busGain (padrão 0,45) }
+  function create(opts) {
+    opts = opts || {};
+    const sound = opts.sound || null;
+    const storage = opts.storage || null;
+    const now = typeof opts.now === "function" ? opts.now : Date.now;
+    const setIv = typeof opts.setInterval === "function" ? opts.setInterval : (typeof root.setInterval === "function" ? root.setInterval.bind(root) : null);
+    const clrIv = typeof opts.clearInterval === "function" ? opts.clearInterval : (typeof root.clearInterval === "function" ? root.clearInterval.bind(root) : null);
+    const busGain = finite(opts.busGain) ? clamp(opts.busGain, 0, 2) : BUS_GAIN;
+
+    let enabled = true, paused = false, broken = false;
+    let desired = null;              // o tema pedido: { id, fade, from, volume }
+    let cur = null;                  // o tema soando: { id, score, node, live, pos (batida do laço até onde já agendamos), posTime (s do áudio dessa batida) }
+    const fading = [];               // nós saindo: { node, endMs }
+    let ctx = null, duckNode = null, bus = null, lastAllowed = null;
+    let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs }
+    let timer = null, lastResumeTry = -Infinity, offUnlock = null;
+    const events = [];
+
+    // ----- preferência guardada (tudo com try/catch: sem storage, ou com erro, vale só a memória) -----
+    function load() {
+      if (!storage) return;
+      try {
+        const raw = storage.getItem(KEY);
+        if (raw === "0" || raw === "1") { enabled = raw === "1"; return; }
+        const p = JSON.parse(raw || "null");
+        if (p && typeof p === "object" && (p.on === 0 || p.on === 1)) enabled = p.on === 1;
+      } catch { /* preferência ilegível: fica ligada */ }
+    }
+    function save() {
+      if (!storage) return;
+      try { storage.setItem(KEY, JSON.stringify({ on: enabled ? 1 : 0 })); } catch { /* sem espaço ou bloqueado */ }
+    }
+    load();
+
+    function record(name, extra) {
+      let ev;
+      try { ev = Object.assign({ name, t: now() }, extra); } catch { ev = { name, t: 0 }; }
+      events.push(ev);
+      if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS);
+    }
+
+    // ----- ligação com o Sound -----
+    const getAudio = () => { try { return sound && typeof sound.audio === "function" ? sound.audio() : null; } catch { return null; } };
+    const isMuted = () => { try { return !!(sound && typeof sound.isMuted === "function" && sound.isMuted()); } catch { return false; } };
+    const supported = () => !!sound && typeof sound.audio === "function" && sound.supported !== false && !broken;
+
+    function ensureBus(a) { // um barramento por contexto: tema -> duck -> barramento -> entrada mestre do Sound
+      if (ctx === a.ctx && bus) return true;
+      try {
+        const d = a.ctx.createGain(), b = a.ctx.createGain();
+        b.gain.value = lastAllowed === false ? 0 : busGain;
+        d.gain.value = duckValue();
+        d.connect(b); b.connect(a.input);
+        ctx = a.ctx; duckNode = d; bus = b;
+        cur = null; fading.length = 0; // o que existia era de outro contexto
+        return true;
+      } catch { broken = true; ctx = null; bus = null; duckNode = null; return false; }
+    }
+    function duckValue() { const tp = temp && temp.untilMs > now() ? temp : null; return tp ? tp.level : baseDuck; }
+    function applyDuck() {
+      if (!ctx || !duckNode) return;
+      try {
+        const t = ctx.currentTime, p = duckNode.gain, tp = temp && temp.untilMs > now() ? temp : null;
+        p.cancelScheduledValues(t);
+        p.setTargetAtTime(tp ? tp.level : baseDuck, t, 0.04);
+        if (tp) p.setTargetAtTime(baseDuck, t + (tp.untilMs - now()) / 1000, 0.25);
+      } catch { try { duckNode.gain.value = duckValue(); } catch { /* nada a fazer */ } }
+    }
+    function applyBus(allowed) {
+      if (!ctx || !bus || lastAllowed === allowed) return;
+      lastAllowed = allowed;
+      try { const t = ctx.currentTime; bus.gain.cancelScheduledValues(t); bus.gain.setTargetAtTime(allowed ? busGain : 0, t, allowed ? 0.05 : 0.02); } catch { try { bus.gain.value = allowed ? busGain : 0; } catch { /* nada */ } }
+    }
+
+    // ----- temas -----
+    function releaseNode(node, fadeSec) { // some em `fadeSec` e depois solta do grafo
+      const f = Math.max(0.02, fadeSec);
+      try {
+        const p = node.gain, t = ctx.currentTime, v = p.value;
+        p.cancelScheduledValues(t);
+        p.setValueAtTime(v, t);
+        p.linearRampToValueAtTime(0, t + f);
+      } catch { /* o nó some junto com o desligamento */ }
+      fading.push({ node, endMs: now() + (f + 0.15) * 1000 });
+    }
+    function cleanupFading() {
+      for (let i = fading.length - 1; i >= 0; i--) {
+        if (now() >= fading[i].endMs) { try { fading[i].node.disconnect(); } catch { /* ignora */ } fading.splice(i, 1); }
+      }
+    }
+    function newNode(volume, fadeIn) {
+      const n = ctx.createGain(), t = ctx.currentTime;
+      n.gain.setValueAtTime(0, t);
+      n.gain.linearRampToValueAtTime(volume, t + Math.max(0.02, fadeIn));
+      n.connect(duckNode);
+      return n;
+    }
+    function startTheme(d) {
+      const score = scoreOf(d.id);
+      if (!score) { desired = null; return; }
+      const hadSound = !!(cur && cur.live);
+      if (cur && cur.live) releaseNode(cur.node, d.fade);
+      cur = null;
+      const t = ctx.currentTime;
+      cur = { id: d.id, score, node: newNode(d.volume, hadSound ? d.fade : Math.min(d.fade, 0.25)), live: true, pos: mod(d.from, score.lengthBeats), posTime: t + START_LEAD, volume: d.volume };
+    }
+    function silence() { // pausa, mudo ou música desligada: some depressa e guarda o compasso em que estava
+      if (!cur || !cur.live) return;
+      const sc = cur.score, spb = 60 / sc.bpm, t = ctx.currentTime;
+      const heard = mod(cur.pos - Math.max(0, cur.posTime - t) / spb, sc.lengthBeats);
+      cur.pos = Math.floor(heard / sc.barBeats + 1e-9) * sc.barBeats; // volta ao começo do compasso, para os sons longos (cordas) entrarem de novo
+      releaseNode(cur.node, 0.05);
+      cur.node = null; cur.live = false;
+    }
+    function revive() {
+      cur.node = newNode(cur.volume, 0.15);
+      cur.posTime = ctx.currentTime + START_LEAD;
+      cur.live = true;
+    }
+    function scheduleAhead() {
+      const sc = cur.score, spb = 60 / sc.bpm, t = ctx.currentTime, target = t + LOOKAHEAD;
+      if (cur.posTime < t - 0.05) { // ficamos para trás (aba em segundo plano, engasgo): pula o tempo perdido em vez de despejar notas atrasadas
+        cur.pos = mod(cur.pos + (t + 0.03 - cur.posTime) / spb, sc.lengthBeats);
+        cur.posTime = t + 0.03;
+      }
+      for (let guard = 0; cur.posTime < target - 1e-9 && guard < 8; guard++) {
+        const span = Math.min((target - cur.posTime) / spb, sc.lengthBeats - cur.pos);
+        if (!(span > 1e-9)) { cur.pos = 0; continue; }
+        const to = cur.pos + span;
+        render(sc, ctx, cur.node, cur.posTime, { from: cur.pos, to, minTime: t });
+        cur.posTime += span * spb;
+        cur.pos = to >= sc.lengthBeats - 1e-9 ? 0 : to;
+      }
+    }
+
+    // ----- o agendador -----
+    function ensureTimer() { if (!timer && setIv) { try { timer = setIv(tick, TICK_MS); } catch { timer = null; } } }
+    function stopTimer() { if (timer !== null && clrIv) { try { clrIv(timer); } catch { /* ignora */ } } timer = null; }
+    function step() {
+      cleanupFading();
+      const a = getAudio();
+      if (a && ensureBus(a)) {
+        const c = a.ctx, allowed = enabled && !paused && !isMuted();
+        if (c.state !== "running") { // suspenso (aba em segundo plano, celular): pede para retomar de vez em quando, sem agendar nada
+          if (now() - lastResumeTry >= RESUME_RETRY_MS) { lastResumeTry = now(); try { const r = c.resume(); if (r && typeof r.catch === "function") r.catch(() => {}); } catch { /* o navegador recusou */ } }
+        } else {
+          applyBus(allowed);
+          if (!allowed) silence();
+          else if (!desired) { if (cur) { if (cur.live) releaseNode(cur.node, 0.5); cur = null; } }
+          else {
+            if (!cur || cur.id !== desired.id) startTheme(desired);
+            else if (!cur.live) revive();
+            if (cur) scheduleAhead();
+          }
+        }
+      }
+      if (!desired && !fading.length) stopTimer();
+    }
+    function tick() { try { step(); } catch { /* o jogo nunca pode cair por causa da música */ } }
+
+    if (sound && typeof sound.onUnlock === "function") { try { offUnlock = sound.onUnlock(() => tick()); } catch { offUnlock = null; } }
+
+    const api = {
+      // Toca o tema `id` (registrado com Music.register). Se já é o tema pedido, não reinicia (devolve true). Troca de tema com crossfade de `o.fade` s (padrão 0,7).
+      // o: { fade (s), from (batida do laço), volume (0..1,5; padrão 1), restart (true: recomeça mesmo sendo o mesmo id) }. Id desconhecido: devolve false e nada muda.
+      // Antes do unlock do Sound, com a música desligada, no mudo ou em pausa, o pedido fica guardado e o tema entra quando puder. Nunca lança erro.
+      play(id, o) {
+        let ok = false;
+        try {
+          o = o || {};
+          if (typeof id === "string" && get(id)) {
+            ok = true;
+            if (!desired || desired.id !== id || o.restart) {
+              desired = { id, fade: finite(o.fade) ? clamp(o.fade, 0, 8) : FADE_DEFAULT, from: finite(o.from) ? Math.max(0, o.from) : 0, volume: finite(o.volume) ? clamp(o.volume, 0, 1.5) : 1 };
+              if (o.restart && cur) { if (cur.live) releaseNode(cur.node, desired.fade); cur = null; }
+            }
+            ensureTimer();
+            tick();
+          }
+        } catch { ok = false; }
+        record("play", { id: typeof id === "string" ? id.slice(0, 20) : "?", ok });
+        return ok;
+      },
+      // Para a música em `fade` s (padrão 0,5) e esquece o tema pedido.
+      stop(fade) {
+        try {
+          desired = null;
+          const f = finite(fade) ? clamp(fade, 0, 8) : 0.5;
+          if (cur && cur.live && ctx) releaseNode(cur.node, f);
+          cur = null;
+          if (fading.length) ensureTimer();
+          tick();
+        } catch { /* ignora */ }
+        record("stop", { fade });
+      },
+      // Abaixa a música para `level` (0..1) por `seconds` s e volta ao volume de antes. Sem `seconds` fica abaixada até um novo duck/setDuck.
+      duck(level, seconds) {
+        try {
+          const lv = finite(level) ? clamp(level, 0, 1) : 0.25;
+          if (finite(seconds) && seconds > 0) temp = { level: lv, untilMs: now() + seconds * 1000 };
+          else { baseDuck = lv; temp = null; }
+          applyDuck();
+        } catch { /* ignora */ }
+        record("duck", { level, seconds });
+      },
+      // Muda o volume fixo (0..1) da música relativo ao normal; usado na pausa do jogo (0,25) e para voltar (1).
+      setDuck(level) {
+        try { baseDuck = finite(level) ? clamp(level, 0, 1) : 1; applyDuck(); } catch { /* ignora */ }
+        record("setDuck", { level });
+        return baseDuck;
+      },
+      // Pausa (aba escondida, janela sem foco): some depressa e não agenda nada; resume() volta do começo do compasso em que parou.
+      pause() { paused = true; record("pause"); tick(); },
+      resume() { paused = false; record("resume"); tick(); },
+      // Botão "Música": liga ou desliga (guarda a preferência). Desligada, nada toca; ao ligar, o tema pedido volta do compasso em que estava.
+      setEnabled(v) { enabled = !!v; save(); record("setEnabled", { on: enabled }); tick(); return enabled; },
+      isEnabled() { return enabled; },
+      toggleEnabled() { return api.setEnabled(!enabled); },
+      // Confere o agendador agora (o jogo pode chamar depois de mudar o mudo do Sound, para a música reagir sem esperar o próximo ciclo).
+      tick,
+      // Para tudo e solta os ganchos.
+      dispose() { try { api.stop(0); stopTimer(); if (offUnlock) offUnlock(); offUnlock = null; } catch { /* ignora */ } },
+      get current() { return desired ? desired.id : null; },
+      get events() { return events; },
+      get supported() { return supported(); },
+      get paused() { return paused; },
+      // "stopped" (nada pedido), "unsupported" (sem Web Audio), "off" (música desligada), "muted", "paused", "waiting" (ainda não destravou), "suspended" (contexto suspenso), "playing"
+      get state() {
+        if (!desired) return "stopped";
+        if (!supported()) return "unsupported";
+        if (!enabled) return "off";
+        if (isMuted()) return "muted";
+        if (paused) return "paused";
+        const a = getAudio();
+        if (!a) return "waiting";
+        return a.ctx.state === "running" ? "playing" : "suspended";
+      },
+    };
+    return api;
+  }
   // ---------- Registro de temas ----------
   const registry = new Map();     // id -> receita (cópia)
   const scoreCache = new Map();   // id -> partitura (os últimos CACHE_MAX temas pedidos)
@@ -1038,6 +1290,73 @@
     while (scoreCache.size > CACHE_MAX) scoreCache.delete(scoreCache.keys().next().value);
     return s;
   }
+
+  // ---------- tema do menu ----------
+  // Acolhedor e curioso: fá maior, 104 bpm, 32 compassos em ABAB (74 s). Marimba, flauta e contrabaixo pizzicato se revezam no motivo (uma frase de 2 compassos cada),
+  // sobre contrabaixo pizzicato, cordas, harpa e bloco de madeira que entram conforme a seção (camadas por `intensity`).
+  register([{
+    id: "menu", animal: "menu", place: "Menu", key: "F", mode: "major", bpm: 104, beats: 4, swing: 0.12, bars: 32, form: "ABAB",
+    prog: { A: "I vi IV V", B: "vi IV I V" },
+    motif: { seed: 2101, bars: 2, contour: "arch", leaps: 0.35, rests: 0.15, rhythm: ["x-x-xx-x", "x--x-x--"] },
+    voices: {
+      lead: { inst: "marimba", oct: 4, vel: 0.8, rotate: [{ inst: "marimba" }, { inst: "flute" }, { inst: "contrabass", oct: 3 }] },
+      counter: { inst: "celesta", oct: 4, vel: 0.5, from: 0.62 },
+      bass: { inst: "contrabass", pattern: "pizz", oct: 2, vel: 0.8 },
+      pad: { inst: "strings", oct: 3, vel: 0.45, from: 0.35 },
+      arp: { inst: "harp", rate: 2, shape: "broken", oct: 4, vel: 0.5, from: 0.6 },
+      perc: { kit: "woodblock", pattern: "steady", vel: 0.5, from: 0.3 },
+    },
+    intensity: 0.55,
+  }]);
+
+  // ---------- temas de exemplo (substituídos pelos arquivos dos compositores) ----------
+  // Um de cada estilo, para provar o motor: js/music-dog.js, js/music-cat.js e js/music-bird.js registram os temas de verdade com os mesmos ids
+  // (dog1, cat1, bird1, ...) e o registro posterior substitui estes.
+  register([
+    // Cachorrinho: alegre e saltitante. Sol mixolídio, polca (bumbo macio e bloco de madeira), baixo de "uum-pá", xilofone, arpejo de violão (pluck).
+    {
+      id: "dog1", animal: "dog", place: "Quintal", key: "G", mode: "mixolydian", bpm: 116, beats: 4, swing: 0.1, bars: 32, form: "AABA",
+      prog: { A: "I VII IV I", B: "IV I VII I" },
+      motif: { seed: 7301, bars: 2, contour: "hop", leaps: 0.5, rests: 0.1, density: 0.7 },
+      voices: {
+        lead: { inst: "xylo", oct: 4, vel: 0.8 },
+        counter: { inst: "flute", oct: 4, vel: 0.5, from: 0.6 },
+        bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.8 },
+        arp: { inst: "pluck", rate: 2, shape: "broken", oct: 4, vel: 0.5, from: 0.5 },
+        perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.55, from: 0.25 },
+      },
+      intensity: 0.6,
+    },
+    // Gatinho: furtivo e elegante. Ré dórico com acordes de 7ª, balanço forte, contrabaixo pizzicato, escovas, celesta e flauta grave, bastante silêncio.
+    {
+      id: "cat1", animal: "cat", place: "Sala de estar", key: "D", mode: "dorian", bpm: 92, beats: 4, swing: 0.4, bars: 32, form: "AABA",
+      prog: { A: "I7 IV7 I7 V7", B: "VII IV7 I7 V7" },
+      motif: { seed: 4409, bars: 2, contour: "wave", leaps: 0.5, rests: 0.45, density: 0.35 },
+      voices: {
+        lead: { inst: "celesta", oct: 5, vel: 0.75 },
+        counter: { inst: "flute", oct: 3, vel: 0.45, from: 0.55 },
+        bass: { inst: "contrabass", pattern: "pizz", oct: 2, vel: 0.8 },
+        pad: { inst: "organ", oct: 3, vel: 0.3, from: 0.5 },
+        perc: { kit: "brush", pattern: "brush2", vel: 0.5, from: 0.2 },
+      },
+      intensity: 0.55,
+    },
+    // Passarinho: leve e arejado. Mi pentatônico maior em 6/8 (dois pulsos por compasso), flauta, arpejos de harpa, sinos, vento suave, sem percussão.
+    {
+      id: "bird1", animal: "bird", place: "Jardim florido", key: "E", mode: "pentMajor", bpm: 76, beats: 6, swing: 0, bars: 32, form: "AABA",
+      prog: { A: "I V II IV", B: "II IV I IV" },
+      motif: { seed: 9127, bars: 2, contour: "arch", leaps: 0.4, rests: 0.25, density: 0.45 },
+      voices: {
+        lead: { inst: "flute", oct: 4, vel: 0.75 },
+        counter: { inst: "bell", oct: 5, vel: 0.4, from: 0.6, above: true },
+        bass: { inst: "bassSine", pattern: "waltz", oct: 2, vel: 0.6 },
+        pad: { inst: "organ", oct: 3, vel: 0.3, from: 0.4 },
+        arp: { inst: "harp", rate: 3, shape: "updown", oct: 5, vel: 0.45, from: 0.45 },
+        ambience: "wind",
+      },
+      intensity: 0.5,
+    },
+  ]);
 
   return {
     KEY, MAX_VOICES, MIN_LOOP_SECONDS, MAX_LOOP_SECONDS, MODES, KEYS, CONTOURS, BASS_PATTERNS, ARP_SHAPES, PERC_KITS, PERC_PATTERNS, AMBIENCES, INSTRUMENTS,
