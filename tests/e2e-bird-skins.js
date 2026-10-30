@@ -1,5 +1,5 @@
-// Seções do Passarinho (0.20.0): AS SKINS E A LOJINHA (js/skins-bird.js, os mostruários PREVIEW de js/game.js, a categoria `bird`). Carregado por tests/e2e.js (o gancho passa as ferramentas T)
-// ou, enquanto esse gancho não existe, por tests/_run-bird-skins.js. Rodar só estas: node tests/e2e.js "Skins do Passarinho"
+// Seções do Passarinho (0.20.0): AS SKINS E A LOJINHA (js/skins-bird.js, os mostruários PREVIEW de js/game.js, a categoria `bird`). Carregado por tests/e2e.js (o gancho passa as ferramentas T).
+// Rodar só estas: node tests/e2e.js "Skins do Passarinho"
 // As páginas abrem com `realCat: true` (o Gatinho de verdade) e `realBird: "real"` (os arquivos de verdade do Passarinho, sem as fixtures do motor); se o jogo do Passarinho ainda não estiver pronto
 // (sem o motor), `ensureBird` o liga com `enableTestAnimal` só para a lojinha poder mostrar a aba dele.
 const path = require("path");

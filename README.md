@@ -952,7 +952,9 @@ tests/bird-art.test.js testes unitários dos desenhos do Passarinho (Node, com u
 tests/bird-themes-1.test.js testes dos ambientes do Passarinho, Fases 1 a 10 (Node); tests/bird-themes-2.test.js, Fases 11 a 20; tests/bird-themes-harness.js não é um teste: é o ctx de mentira que os dois usam
 tests/bird-table.test.js confere a tabela das fases do Passarinho do README com js/bird-levels.js e com a tabela do Gatinho (Node)
 tests/skins-bird.test.js testes unitários das skins dos objetos do Passarinho (Node, com um ctx de mentira)
-tests/e2e-bird-*.js   seções do e2e do Passarinho, uma por assunto (carregadas pelo tests/e2e.js); tests/fixtures/ tem as 5 fases e o BirdArt de teste que elas usam
+tests/e2e-bird-*.js   seções do e2e do Passarinho, uma por assunto (carregadas pelo tests/e2e.js): motor, integração, skins e a tabela das fases; tests/fixtures/ tem as 5 fases e o BirdArt de teste que as do motor usam
+tests/bird-robot-page.js o robô que joga as fases do Passarinho no navegador, andando de verdade até a vitória (função de página, usada por tests/e2e-bird-integracao.js)
+tests/bird-words.js   a lista de espécies e raças que o Passarinho não pode usar (a mesma em tests/honesty.test.js e tests/bird-art.test.js)
 tests/honesty.test.js confere a honestidade científica: nenhuma citação de artigo fora de docs/pesquisa-gatinho/ e docs/pesquisa-passarinho/, nada marcado como verificado e "escolha de design" nas tabelas de biologia do Gatinho e do Passarinho (Node)
 tests/version.test.js confere a versão (js/version.js) com o CHANGELOG.md e o workflow
 tests/e2e.js          testes no navegador (Playwright)
@@ -960,7 +962,7 @@ tests/ab-dog.js       A/B de pixels do Cachorrinho: hash do canvas com a mesma s
 tests/ab-sounds.js    A/B de sons do Cachorrinho: cenas fixas e a lista de pedidos de som; ab-sounds-0170.json é a referência de antes dos sons do Gatinho (usado pelo e2e)
 tools/cat-preview/    prévias e capturas do Gatinho (art.html, themes1/2.html, shoot-art.js, shoot-themes*.js e shoot-game.js, que fotografa o jogo de verdade)
 tools/bird-preview/   prévias e capturas do Passarinho (art.html, themes.html, shoot-art.js, shoot-themes.js e bench.js)
-tools/skin-preview/   capturas das skins dos objetos com o jogo de verdade: shoot.js (objetos do Cachorrinho) e cat-skins.js (objetos do Gatinho)
+tools/skin-preview/   capturas das skins dos objetos com o jogo de verdade: shoot.js (objetos do Cachorrinho), cat-skins.js (objetos do Gatinho) e bird-skins.js (objetos do Passarinho)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
 
@@ -995,6 +997,8 @@ node tests/e2e.js              # opcional: node tests/e2e.js "toque" roda só as
 node tests/e2e.js "Lojinha única"                      # a lojinha única: abas, liberação por fase, carteira, tamanhos de tela, fase `from` e documentação
 node tests/e2e.js "skins dos objetos do Cachorrinho"   # as skins dos objetos do Cachorrinho no navegador (desenho idêntico com tudo no padrão, pixels de cada skin, mostruários, telas)
 node tests/e2e.js "Skins do Gatinho"                   # as skins dos objetos do Gatinho no navegador (idem, com dia e noite)
+node tests/e2e.js "Skins do Passarinho"                # as skins do Passarinho no navegador (tests/e2e-bird-skins.js: mostruários, lojinha, liberação por fase e o desenho em jogo)
+node tests/e2e.js "Passarinho (integração)"            # o Passarinho com os arquivos de verdade juntos (tests/e2e-bird-integracao.js): as 20 fases montam, capturas, o robô joga as 20 fases, jogo salvo, telas, desempenho, sons e textos
 node tests/e2e.js "Passarinho (motor)"                 # o motor do Passarinho no navegador (tests/e2e-bird-*.js): voo alto, galho, gavião, vento, minhocas, frutos, jogo salvo, telas e isolamento do Cachorrinho e do Gatinho
 node tests/e2e.js "tabela das fases do Passarinho"     # a tabela das fases do Passarinho do README contra as fases montadas no navegador
 ```
