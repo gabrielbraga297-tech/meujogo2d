@@ -125,6 +125,27 @@ function makeTimers(now) {
 }
 
 // ---------- Inspeção do grafo ----------
+// Valor de um parâmetro (FakeParam) no instante T, aplicando a automação como o navegador: setValueAtTime, rampas linear e exponencial (partem do valor do evento
+// anterior), setTargetAtTime (aproximação exponencial até o próximo evento) e cancelScheduledValues (apaga o que já estava agendado a partir dele).
+// `init` é o valor antes do primeiro evento (padrão: `param.value`, que no FakeParam é só o que foi atribuído com `.value =`).
+function paramAt(param, T, init) {
+  let evs = [];
+  for (const e of param.events) { if (e.type === "cancel") evs = evs.filter((x) => x.t < e.t); else evs.push(e); }
+  evs = evs.map((e, i) => Object.assign({ i }, e)).sort((a, b) => a.t - b.t || a.i - b.i);
+  let v = init === undefined ? param.value : init, tPrev = 0;
+  for (let k = 0; k < evs.length; k++) {
+    const e = evs[k];
+    if (e.t > T) {
+      if ((e.type === "lin" || e.type === "exp") && T >= tPrev) { const f = (T - tPrev) / Math.max(1e-9, e.t - tPrev); return e.type === "lin" ? v + (e.v - v) * f : v * Math.pow(e.v / v, f); }
+      break;
+    }
+    if (e.type === "target") {
+      const nx = evs[k + 1], tEnd = Math.min(T, nx ? nx.t : T), vEnd = e.v + (v - e.v) * Math.exp(-(tEnd - e.t) / e.tc);
+      if (nx && nx.t <= T) { v = vEnd; tPrev = nx.t; } else return vEnd;
+    } else { v = e.v; tPrev = e.t; }
+  }
+  return v;
+}
 const sourcesOf = (ctx) => ctx.nodes.filter((n) => n.kind === "osc" || n.kind === "buffer");
 function reachesDestination(from, seen = new Set()) {
   const node = from instanceof FakeParam ? from.owner : from;
@@ -310,4 +331,4 @@ function checkTempoRamp(recipes, opts = {}) {
   return fails;
 }
 
-module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, checkTempoRamp, melodySimilarity, signatureOf };
+module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, paramAt, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, checkTempoRamp, melodySimilarity, signatureOf };

@@ -1018,6 +1018,8 @@
   const BUS_GAIN = 0.45;          // ganho do barramento de música (relativo ao mestre dos sons)
   const FADE_DEFAULT = 0.7;       // crossfade entre temas (s)
   const START_LEAD = 0.06;        // folga ao começar um tema (s)
+  const DUCK_DOWN_TC = 0.04;      // constante de tempo (s) do duck ao abaixar (a descida leva ~0,1 s)
+  const DUCK_UP_TC = 0.25;        // e ao voltar (~0,75 s)
   const RESUME_RETRY_MS = 1000;   // de quanto em quanto tempo pede resume() a um contexto suspenso
   const MAX_EVENTS = 200;         // pedidos lembrados em `events`
   const finite = (x) => typeof x === "number" && Number.isFinite(x);
@@ -1039,6 +1041,7 @@
     const fading = [];               // nós saindo: { node, endMs }
     let ctx = null, duckNode = null, bus = null, lastAllowed = null;
     let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs }
+    let duckModel = { v: 1, t: 0, L: 1, tc: DUCK_DOWN_TC, later: [] }; // curva do ganho do duck (ver duckNow)
     let timer = null, lastResumeTry = -Infinity, offUnlock = null;
     const events = [];
 
@@ -1078,18 +1081,36 @@
         d.gain.value = duckValue();
         d.connect(b); b.connect(a.input);
         ctx = a.ctx; duckNode = d; bus = b;
+        duckModel = { v: d.gain.value, t: ctx.currentTime, L: d.gain.value, tc: DUCK_DOWN_TC, later: [] };
         cur = null; fading.length = 0; // o que existia era de outro contexto
         return true;
       } catch { broken = true; ctx = null; bus = null; duckNode = null; return false; }
     }
     function duckValue() { const tp = temp && temp.untilMs > now() ? temp : null; return tp ? tp.level : baseDuck; }
+    // O nível que o ganho do duck tem AGORA, calculado com a mesma curva que applyDuck agenda (setTargetAtTime): serve para congelar o volume efetivo de um
+    // tema que sai. Não lemos `gain.value` porque o navegador pode devolver o valor sem a automação; e não usamos o alvo (duckValue), que só vale depois da subida.
+    function duckNow() {
+      if (!ctx) return duckValue();
+      const T = ctx.currentTime, m = duckModel;
+      let v = m.v, t = m.t, L = m.L, tc = m.tc;
+      for (const s of m.later) {
+        if (s.t >= T) break;
+        v = L + (v - L) * Math.exp(-(s.t - t) / tc); t = s.t; L = s.L; tc = s.tc;
+      }
+      return L + (v - L) * Math.exp(-Math.max(0, T - t) / tc);
+    }
     function applyDuck() {
       if (!ctx || !duckNode) return;
       try {
-        const t = ctx.currentTime, p = duckNode.gain, tp = temp && temp.untilMs > now() ? temp : null;
+        const t = ctx.currentTime, p = duckNode.gain, tp = temp && temp.untilMs > now() ? temp : null, target = tp ? tp.level : baseDuck, from = duckNow();
         p.cancelScheduledValues(t);
-        p.setTargetAtTime(tp ? tp.level : baseDuck, t, 0.04);
-        if (tp) p.setTargetAtTime(baseDuck, t + (tp.untilMs - now()) / 1000, 0.25);
+        p.setTargetAtTime(target, t, DUCK_DOWN_TC);
+        duckModel = { v: from, t, L: target, tc: DUCK_DOWN_TC, later: [] };
+        if (tp) {
+          const back = t + (tp.untilMs - now()) / 1000;
+          p.setTargetAtTime(baseDuck, back, DUCK_UP_TC);
+          duckModel.later.push({ t: back, L: baseDuck, tc: DUCK_UP_TC });
+        }
       } catch { try { duckNode.gain.value = duckValue(); } catch { /* nada a fazer */ } }
     }
     function applyBus(allowed) {
@@ -1104,8 +1125,11 @@
       try {
         const p = node.gain, t = ctx.currentTime, v = p.value;
         p.cancelScheduledValues(t);
-        p.setValueAtTime(v, t);
+        // O tema que sai congela o volume que se ouve agora (tema x duck) e passa a ir direto ao barramento: o duck deixa de valer para ele. Sem isso, ao voltar da
+        // pausa (duck 0,25 -> 1) o duck subiria enquanto o tema velho ainda desvanece e ele 'incharia' por uns 0,5 s.
+        p.setValueAtTime(v * duckNow(), t);
         p.linearRampToValueAtTime(0, t + f);
+        node.disconnect(); node.connect(bus);
       } catch { /* o nó some junto com o desligamento */ }
       fading.push({ node, endMs: now() + (f + 0.15) * 1000 });
     }

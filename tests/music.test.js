@@ -523,11 +523,76 @@ test("tocador: trocar de tema faz crossfade de 0,7 s; o tema velho para de agend
   r.run(3000);
   assert.strictEqual(r.children(oldG), oldKids, "o tema velho não ganhou mais notas");
   assert.ok(r.children(newG) > 20);
-  assert.ok(oldG.disconnected === true, "solto do grafo depois do fade");
+  assert.ok(oldG.disconnected === true && oldG.out.length === 0, "solto do grafo depois do fade");
   assert.strictEqual(r.music.position.id, "dog1");
   r.music.play("cat1", { fade: 2 });
   const g3 = r.chain().themes.find((g) => !g.disconnected && g !== newG);
   const e3 = g3.gain.events; assert.ok(Math.abs(e3[e3.length - 1].t - e3[0].t - 2) < 1e-6, "fade pedido de 2 s");
+});
+// volume que se ouve de um nó de tema no instante T: o ganho dele vezes o do duck (se ainda passa por ele)
+const heard = (r, node, T) => (node.out.includes(r.chain().duck) ? rig.paramAt(r.chain().duck.gain, T) : 1) * rig.paramAt(node.gain, T);
+// o volume do tema que sai nunca sobe durante o fade, de t0 até `secs` s depois; devolve os valores (de 10 em 10 ms)
+function assertNeverRises(r, node, t0, secs, what) {
+  const vals = [];
+  for (let k = 0; k <= Math.round(secs * 100); k++) vals.push(heard(r, node, t0 + k * 0.01));
+  for (let k = 1; k < vals.length; k++) assert.ok(vals[k] <= vals[k - 1] + 1e-9, `${what}: o volume do tema que sai subiu em ${(k * 0.01).toFixed(2)} s (${vals[k - 1].toFixed(3)} -> ${vals[k].toFixed(3)})`);
+  return vals;
+}
+test("tocador: voltar da pausa para o menu — o tema que sai não 'incha': o volume que se ouve dele só desce, de 0,25 a 0, qualquer que seja a ordem setDuck/play", () => {
+  for (const order of ["setDuck e depois play (como o jogo faz)", "play e depois setDuck"]) {
+    const r = rigPlayer();
+    r.music.play("dog1"); r.run(3000);
+    r.music.setDuck(0.25); r.run(2000); // pausa do jogo: o tema da fase abafado
+    const t0 = r.ctx().currentTime, old = r.chain().themes[0];
+    assert.ok(Math.abs(heard(r, old, t0) - 0.25) < 1e-6, "antes de sair o tema se ouve a 0,25");
+    if (order.startsWith("setDuck")) { r.music.setDuck(1); r.music.play("menu"); } else { r.music.play("menu"); r.music.setDuck(1); }
+    const vals = assertNeverRises(r, old, t0, 0.8, order);
+    assert.ok(Math.abs(vals[0] - 0.25) < 1e-6, order + ": começa onde estava (0,25), sem salto: " + vals[0]);
+    assert.ok(Math.abs(heard(r, old, t0 + 0.35) - 0.125) < 1e-6, order + ": rampa linear de 0,7 s");
+    assert.ok(vals[70] < 1e-9, order + ": some em 0,7 s");
+    // o tema novo entra pelo duck, que volta a 1: termina no volume cheio
+    const themes = r.chain().themes, fresh = themes[themes.length - 1];
+    assert.ok(fresh.out.includes(r.chain().duck) && !old.out.includes(r.chain().duck));
+    assert.ok(Math.abs(heard(r, fresh, t0 + 3) - 1) < 1e-3, order + ": o menu chega a 1");
+  }
+});
+test("tocador: crossfade normal (sem duck) e stop(fade) seguem lineares; o duck não muda por causa da troca de tema", () => {
+  const r = rigPlayer();
+  r.music.play("menu"); r.run(3000);
+  const { duck } = r.chain(), nDuckEvents = duck.gain.events.length, t0 = r.ctx().currentTime, old = r.chain().themes[0];
+  r.music.play("dog1");
+  assert.strictEqual(duck.gain.events.length, nDuckEvents, "trocar de tema não mexe no duck");
+  const vals = assertNeverRises(r, old, t0, 0.8, "crossfade");
+  assert.ok(Math.abs(vals[0] - 1) < 1e-9 && vals[70] < 1e-9 && Math.abs(vals[35] - 0.5) < 1e-6, "1 -> 0 em linha reta em 0,7 s");
+  const themes = r.chain().themes, fresh = themes[themes.length - 1];
+  let prev = -1;
+  for (let k = 0; k <= 70; k++) { const x = heard(r, fresh, t0 + k * 0.01); assert.ok(x >= prev - 1e-9, "o tema novo só sobe"); prev = x; }
+  assert.ok(Math.abs(prev - 1) < 1e-9);
+  r.run(4000);
+  const t1 = r.ctx().currentTime;
+  r.music.stop(1);
+  assertNeverRises(r, fresh, t1, 1.1, "stop");
+  assert.ok(Math.abs(heard(r, fresh, t1 + 0.5) - 0.5) < 1e-6 && heard(r, fresh, t1 + 1) < 1e-9);
+});
+test("tocador: tema que sai com o duck em movimento (descendo, parado, voltando) congela o volume que se ouvia e nunca sobe — o modelo do duck bate com a automação", () => {
+  for (const wait of [0, 20, 100, 700, 800, 1000, 1500, 3000]) {
+    const r = rigPlayer();
+    r.music.play("menu"); r.run(2000);
+    const old = r.chain().themes[0], { duck } = r.chain();
+    r.music.duck(0.3, 0.8); r.run(wait);
+    const t0 = r.ctx().currentTime, want = rig.paramAt(duck.gain, t0);
+    r.music.stop(2); // fade longo: se o duck ainda subisse sobre o tema que sai ele incharia
+    const vals = assertNeverRises(r, old, t0, 2.1, "duck + " + wait + " ms");
+    assert.ok(Math.abs(vals[0] - want) < 1e-6, `duck + ${wait} ms: congelou ${vals[0].toFixed(4)}, o duck valia ${want.toFixed(4)}`);
+    assert.ok(vals[200] < 1e-9);
+  }
+  // pausa -> vitória (stop) com o duck fixo: sai a partir de 0,25
+  const q = rigPlayer();
+  q.music.play("dog1"); q.run(2000); q.music.setDuck(0.25); q.run(1000);
+  const t0 = q.ctx().currentTime, g = q.chain().themes[0];
+  q.music.stop(0.5);
+  const v = assertNeverRises(q, g, t0, 0.6, "pausa e vitória");
+  assert.ok(Math.abs(v[0] - 0.25) < 1e-6);
 });
 test("tocador: id desconhecido ou inválido devolve false e nada muda; tudo fica no log de pedidos", () => {
   const r = rigPlayer();
@@ -545,13 +610,14 @@ test("tocador: stop(fade) some em `fade` s (padrão 0,5), esquece o tema, para o
   assert.strictEqual(r.music.current, null); assert.strictEqual(r.music.state, "stopped");
   const e = g.gain.events; assert.strictEqual(e[e.length - 1].v, 0); assert.ok(Math.abs(e[e.length - 1].t - (t0 + 0.4)) < 1e-6);
   const kids = r.children(g);
+  assert.ok(g.out.length === 1 && g.out[0] === r.chain().bus, "o tema que sai vai direto ao barramento enquanto some (o duck não o afeta)");
   r.run(2000);
-  assert.strictEqual(r.children(g), kids, "sem notas novas"); assert.ok(g.disconnected);
+  assert.strictEqual(r.children(g), kids, "sem notas novas"); assert.ok(g.disconnected && g.out.length === 0, "solto do grafo depois do fade");
   assert.strictEqual(r.timers.count, 0, "timer parado");
   r.music.play("menu");
   assert.strictEqual(r.timers.count, 1);
   assert.strictEqual(r.chain().themes.filter((x) => !x.disconnected).length, 1);
-  r.music.stop(); const e2 = r.chain().themes.find((x) => !x.disconnected).gain.events; assert.ok(Math.abs(e2[e2.length - 1].t - e2[e2.length - 1 - 1].t - 0.5) < 1e-6, "padrão 0,5 s");
+  r.music.stop(); const themesNow = r.chain().themes, e2 = themesNow[themesNow.length - 1].gain.events; assert.ok(Math.abs(e2[e2.length - 1].t - e2[e2.length - 1 - 1].t - 0.5) < 1e-6, "padrão 0,5 s");
   r.music.stop(); // parar de novo não dá erro
 });
 test("tocador: duck(nível, segundos) abaixa e volta; setDuck é o nível fixo (pausa do jogo); duck sem tempo fica até mudar", () => {
