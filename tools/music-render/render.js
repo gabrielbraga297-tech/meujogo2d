@@ -1,7 +1,7 @@
 // Renderiza as músicas tema num OfflineAudioContext REAL do Chromium (Playwright), mede e grava WAVs de 16 bits para ouvir.
 // Uso:  node tools/music-render/render.js [ids...] [--out pasta] [--files a.js,b.js] [--tail s] [--loops n] [--no-wav] [--json arquivo]
 //   sem ids: todos os temas registrados (js/music.js e, se existirem, js/music-dog.js, js/music-cat.js e js/music-bird.js).
-//   --out    pasta dos WAVs e do relatorio.json (padrão: $MUSIC_OUT, ou musicas-a6/wav ao lado do arquivo de trava $MUSIC_LOCK, ou a pasta temporária)
+//   --out    pasta dos WAVs e do relatorio.json (padrão: $MUSIC_OUT, ou musicas/wav ao lado do arquivo de trava $MUSIC_LOCK, ou a pasta temporária)
 //   --files  scripts a carregar depois de js/music.js, no lugar dos js/music-*.js (separados por vírgula)
 //   --tail   segundos de cauda depois do laço (padrão 4)
 //   --loops  quantas vezes o laço (em regime, já com a cauda somada ao começo) vai no WAV; 1 = o laço mais a cauda como saiu do render
@@ -37,7 +37,7 @@ function parseArgs(argv) {
     else if (a.startsWith("--")) { console.error("opção desconhecida: " + a); process.exit(2); }
     else o.ids.push(a);
   }
-  if (!o.out) o.out = process.env.MUSIC_OUT || (LOCK ? path.join(path.dirname(path.resolve(LOCK)), "musicas-a6", "wav") : path.join(os.tmpdir(), "musicas-a6", "wav"));
+  if (!o.out) o.out = process.env.MUSIC_OUT || (LOCK ? path.join(path.dirname(path.resolve(LOCK)), "musicas", "wav") : path.join(os.tmpdir(), "musicas", "wav"));
   return o;
 }
 const pad = (s, n) => String(s).padEnd(n);

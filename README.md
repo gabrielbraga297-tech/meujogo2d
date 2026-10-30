@@ -511,9 +511,66 @@ A música só começa depois do **primeiro gesto** do jogador (o mesmo `unlock` 
 | Tema | Bichinho | Lugar | Tom e modo | Andamento (bpm) | Compasso | Forma | Solo | Baixo | Percussão | Laço (s) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | menu | Menu | Menu | Fá maior | 104 | 4/4 | ABAB | marimba / flauta / contrabaixo pizzicato | contrabaixo pizzicato (pizz) | bloco de madeira (steady) | 73,8 |
-| dog1 | Cachorrinho | Quintal | Sol mixolídio | 116 | 4/4 | AABA | xilofone | baixo (rootfifth) | bumbo macio + bloco de madeira (polka) | 66,2 |
-| cat1 | Gatinho | Sala de estar | Ré dórico | 92 | 4/4 | AABA | celesta | contrabaixo pizzicato (pizz) | escova (brush2) | 83,5 |
-| bird1 | Passarinho | Jardim florido | Mi pentatônica maior | 76 | 6/8 | AABA | flauta | baixo senoidal (waltz) | — | 50,5 |
+| dog1 | Cachorrinho | Quintal | Dó maior | 92 | 4/4 | AABA | marimba | baixo (rootfifth) | bloco de madeira (sparse) | 83,5 |
+| dog2 | Cachorrinho | Campo | Ré mixolídio | 96 | 4/4 | ABAB | cordas beliscadas | baixo (walk) | bumbo macio + chocalho (backbeat) | 80,0 |
+| dog3 | Cachorrinho | Casa | Fá maior | 100 | 3/4 | AABA | celesta / marimba | baixo (waltz) | escova (waltz) | 57,6 |
+| dog4 | Cachorrinho | Rua do bairro | Sib maior | 104 | 4/4 | AABC | xilofone | baixo (rootfifth) | bumbo macio + bloco de madeira (steady) | 73,8 |
+| dog5 | Cachorrinho | Condomínio | Sol lídio | 107 | 4/4 | ABAC | flauta / marimba | contrabaixo pizzicato (walk) | escova (brush2) | 71,8 |
+| dog6 | Cachorrinho | Praça | Lá maior | 111 | 6/8 | ABACAB | harpa / xilofone | baixo (rootfifth) | bumbo macio + bloco de madeira (polka) | 51,9 |
+| dog7 | Cachorrinho | Parque canino | Mi mixolídio | 114 | 4/4 | AABA | marimba / cordas beliscadas | baixo (sync) | bumbo macio + prato leve (shuffle) | 67,4 |
+| dog8 | Cachorrinho | Feira | Mib maior | 118 | 4/4 | ABACA | órgão / cordas beliscadas | baixo (rootfifth) | bumbo macio + bloco de madeira (polka) | 81,4 |
+| dog9 | Cachorrinho | Praia | Ré pentatônica maior | 110 | 4/4 | ABAB | xilofone / marimba | baixo senoidal (offbeat) | bumbo macio + chocalho (offbeat) | 69,8 |
+| dog10 | Cachorrinho | Central da carrocinha | Lá menor | 124 | 4/4 | AABA | baixo serrilha / xilofone | baixo (pedal) | bumbo macio (heartbeat) | 61,9 |
+| dog11 | Cachorrinho | Beco dos gatos | Mi frígio | 130 | 4/4 | ABAB | contrabaixo pizzicato / cordas beliscadas | contrabaixo pizzicato (pizz) | bumbo macio + bloco de madeira (driving) | 59,1 |
+| dog12 | Cachorrinho | Pet shop | Dó lídio | 120 | 4/4 | AABC | marimba / sino | baixo (walk) | prato leve (brush2) | 64,0 |
+| dog13 | Cachorrinho | Fazenda | Sol mixolídio | 126 | 4/4 | AABB | cordas beliscadas / marimba | baixo (rootfifth) | bumbo macio + bloco de madeira (backbeat) | 61,0 |
+| dog14 | Cachorrinho | Bosque | Si dórico | 122 | 4/4 | ABAC | flauta / cordas beliscadas | baixo senoidal (pedal) | bumbo macio + chocalho (steady) | 63,0 |
+| dog15 | Cachorrinho | Lago e docas | Fá# pentatônica menor | 128 | 6/8 | ABACABA | cordas beliscadas / flauta | baixo senoidal (waltz) | bumbo macio + bloco de madeira (sparse) | 52,5 |
+| dog16 | Cachorrinho | Mercadão | Láb maior | 132 | 4/4 | AABC | xilofone / marimba | baixo (walk) | bumbo macio + bloco de madeira (driving) | 58,2 |
+| dog17 | Cachorrinho | Estacionamento | Fá mixolídio | 136 | 4/4 | ABAC | marimba | baixo serrilha (sync) | bumbo macio + prato leve (offbeat) | 56,5 |
+| dog18 | Cachorrinho | Telhados | Dó# menor | 140 | 3/4 | ABABCA | celesta / harpa | contrabaixo pizzicato (pizz) | bumbo macio + bloco de madeira (waltz) | 61,7 |
+| dog19 | Cachorrinho | Estação de trem | Sol blues | 144 | 4/4 | AABA | órgão / flauta | contrabaixo pizzicato (walk) | bumbo macio + prato leve (shuffle) | 53,3 |
+| dog20 | Cachorrinho | Fortaleza da carrocinha | Ré menor harmônica | 148 | 4/4 | ABACBC | cordas / marimba / órgão | baixo serrilha (sync) | bumbo macio + bloco de madeira (driving) | 77,8 |
+| cat1 | Gatinho | Sala de estar | Sol dórico | 84 | 3/4 | AABA | celesta | baixo senoidal (waltz) | escova (waltz) | 68,6 |
+| cat2 | Gatinho | Cozinha e despensa | Ré menor | 88 | 4/4 | ABAB | marimba | contrabaixo pizzicato (sync) | bloco de madeira (offbeat) | 87,3 |
+| cat3 | Gatinho | Quintal dos fundos | Lá dórico | 92 | 4/4 | ABAC | cordas beliscadas | contrabaixo pizzicato (pizz) | escova (brush2) | 83,5 |
+| cat4 | Gatinho | Jardim e varal | Dó lídio | 95 | 4/4 | AABC | harpa | baixo (rootfifth) | chocalho (shuffle) | 80,8 |
+| cat5 | Gatinho | Telhados e muros | Mi menor harmônica | 98 | 6/8 | ABACBA | sino | contrabaixo pizzicato (offbeat) | bloco de madeira (sparse) | 58,8 |
+| cat6 | Gatinho | Beco da cidade | Sib blues | 101 | 4/4 | ABCB | flauta / cordas beliscadas | contrabaixo pizzicato (walk) | escova (shuffle) | 76,0 |
+| cat7 | Gatinho | Feira livre | Mib mixolídio | 104 | 4/4 | AABB | xilofone | baixo (sync) | bumbo macio + chocalho (polka) | 73,8 |
+| cat8 | Gatinho | Peixaria e mercado | Fá# dórico | 106 | 4/4 | ABBA | marimba | baixo (walk) | escova (offbeat) | 72,5 |
+| cat9 | Gatinho | Parque e lago | Réb pentatônica maior | 108 | 3/4 | ABCA | flauta | contrabaixo pizzicato (waltz) | chocalho (waltz) | 53,3 |
+| cat10 | Gatinho | Armazém de grãos | Si frígio | 110 | 4/4 | ABA | órgão | baixo serrilha (pedal) | bumbo macio (heartbeat) | 52,4 |
+| cat11 | Gatinho | Celeiro e curral | Sol# menor harmônica | 116 | 4/4 | ABCC | marimba | baixo serrilha (rootfifth) | bumbo macio + prato leve (driving) | 66,2 |
+| cat12 | Gatinho | Horta e galinheiro | Láb mixolídio | 112 | 4/4 | AAB | cordas beliscadas / marimba | baixo (offbeat) | bumbo macio + bloco de madeira (backbeat) | 51,4 |
+| cat13 | Gatinho | Borda da mata | Mi frígio | 115 | 4/4 | AB | celesta | baixo senoidal (pedal) | chocalho (sparse) | 66,8 |
+| cat14 | Gatinho | Riacho e pedras | Ré pentatônica maior | 118 | 6/8 | ABCABC | harpa | baixo senoidal (pizz) | chocalho (offbeat) | 48,8 |
+| cat15 | Gatinho | Vila de pescadores | Dó menor | 120 | 6/8 | AABCAB | órgão / flauta | contrabaixo pizzicato (rootfifth) | bumbo macio + escova (steady) | 48,0 |
+| cat16 | Gatinho | Docas do porto | Fá blues | 123 | 4/4 | ABC | cordas beliscadas | baixo serrilha (walk) | bumbo macio + prato leve (shuffle) | 70,2 |
+| cat17 | Gatinho | Praia e dunas | Sol pentatônica menor | 119 | 3/4 | ABABA | marimba | baixo (pizz) | bumbo macio + prato leve (offbeat) | 60,5 |
+| cat18 | Gatinho | Telhados à noite | Dó# menor | 126 | 4/4 | ABBC | contrabaixo pizzicato | baixo serrilha (sync) | bumbo macio + escova (backbeat) | 61,0 |
+| cat19 | Gatinho | Mercado à noite | Fá# menor harmônica | 129 | 4/4 | AABAC | celesta | baixo serrilha (pizz) | bumbo macio + chocalho (driving) | 74,4 |
+| cat20 | Gatinho | A casa grande | Sol maior | 132 | 4/4 | ABABC | xilofone / celesta / flauta / harpa | baixo (walk) | bumbo macio + chocalho (steady) | 72,7 |
+| bird1 | Passarinho | Jardim florido | Sol pentatônica maior | 76 | 6/8 | AABA | flauta / sino | baixo senoidal (waltz) | — | 50,5 |
+| bird2 | Passarinho | Pomar de macieiras | Ré lídio | 80 | 3/4 | ABAB | harpa / flauta | baixo (waltz) | escova (waltz) | 72,0 |
+| bird3 | Passarinho | Horta e cerca | Dó maior | 84 | 4/4 | AABC | marimba / cordas beliscadas | baixo (walk) | bloco de madeira (sparse) | 68,6 |
+| bird4 | Passarinho | Telhados e chaminés | Sib mixolídio | 88 | 6/8 | AABAC | celesta / cordas beliscadas | baixo (sync) | escova (steady) | 54,5 |
+| bird5 | Passarinho | Praça da vila | Lá maior | 92 | 3/4 | ABAC | órgão / flauta / xilofone | baixo (rootfifth) | bumbo macio + bloco de madeira (waltz) | 62,6 |
+| bird6 | Passarinho | Parque e coreto | Mi mixolídio | 96 | 4/4 | ABBA | xilofone / flauta | baixo (offbeat) | bumbo macio + bloco de madeira (steady) | 80,0 |
+| bird7 | Passarinho | Milharal | Fá pentatônica maior | 99 | 6/8 | ABABAC | marimba / flauta | baixo senoidal (pedal) | chocalho (offbeat) | 58,2 |
+| bird8 | Passarinho | Campo de trigo e espantalhos | Si dórico | 102 | 3/4 | AABAB | sino / marimba | baixo senoidal (sync) | bloco de madeira (sparse) | 70,6 |
+| bird9 | Passarinho | Lago e juncos | Réb maior | 105 | 6/8 | ABABCB | harpa / flauta | baixo (rootfifth) | — | 54,9 |
+| bird10 | Passarinho | Mata de pinheiros | Mi dórico | 108 | 4/4 | AABC | cordas / flauta | baixo (walk) | escova (sparse) | 71,1 |
+| bird11 | Passarinho | Fazenda e galinheiro | Mi menor | 112 | 4/4 | ABAB | cordas beliscadas / flauta | baixo serrilha (sync) | bumbo macio + bloco de madeira (driving) | 68,6 |
+| bird12 | Passarinho | Margem do rio | Lá dórico | 114 | 3/4 | ABABA | celesta / flauta | baixo (waltz) | chocalho (sparse) | 63,2 |
+| bird13 | Passarinho | Pântano e vitórias-régias | Sol frígio | 116 | 6/8 | ABACAB | órgão / sino | baixo serrilha (pedal) | bumbo macio (heartbeat) | 49,7 |
+| bird14 | Passarinho | Dunas e restinga | Dó menor harmônica | 118 | 4/4 | ABCB | cordas beliscadas / flauta | baixo (pizz) | bumbo macio + bloco de madeira (offbeat) | 65,1 |
+| bird15 | Passarinho | Falésias e ninhos | Láb lídio | 120 | 3/4 | ABABC | flauta / sino | baixo (rootfifth) | bumbo macio + chocalho (steady) | 60,0 |
+| bird16 | Passarinho | Vila de pescadores e redes | Sol dórico | 122 | 6/8 | AABA | marimba / flauta | baixo (walk) | bumbo macio + bloco de madeira (polka) | 47,2 |
+| bird17 | Passarinho | Campos de altitude | Ré mixolídio | 124 | 4/4 | AABA | harpa / flauta | baixo senoidal (pedal) | chocalho (offbeat) | 61,9 |
+| bird18 | Passarinho | Entardecer nos telhados | Si menor | 82 | 6/8 | ABACA | flauta / cordas | contrabaixo pizzicato (pizz) | escova (sparse) | 58,5 |
+| bird19 | Passarinho | Noite na floresta | Fá# pentatônica menor | 90 | 3/4 | ABCA | flauta | baixo senoidal (offbeat) | bumbo macio (heartbeat) | 64,0 |
+| bird20 | Passarinho | O grande ninho | Ré maior | 128 | 4/4 | ABCBA | flauta / harpa / sino / cordas | baixo (walk) | bumbo macio + chocalho (polka) | 75,0 |
 <!-- music-table:fim -->
 
 **O que foi medido, e o que não foi.** Nenhuma pessoa ouviu as músicas durante o desenvolvimento: o ambiente em que o jogo foi feito não tem ouvido humano nem placa de som. Só foram medidas propriedades: (1) em Node, por receita (`tests/music-<bichinho>.test.js` e `tests/music-rig.js`), a estrutura da partitura (todas as notas dentro da escala do modo, melodia em no máximo 2 oitavas por instrumento, duração do laço de 40 a 100 s, o último compasso leva de volta ao começo, no máximo 14 vozes ao mesmo tempo, nenhum valor não finito, todo oscilador com início e fim) e, entre temas, que ninguém repete (tom, modo, andamento, solo, baixo) e que o andamento sobe com a fase; (2) num `OfflineAudioContext` real do Chromium (`tools/music-render/render.js`, que sai com código 1 se um limite falhar), o pico (no máximo 0,9), o nível RMS (entre −26 e −18 dBFS, a mesma faixa para todos os temas), o componente contínuo (DC), o maior trecho mudo e o salto de nível na emenda do laço; (3) num `AudioContext` real do Chromium (`tools/music-render/live.js`), que o tocador começa, troca de tema, abafa, pausa e silencia. Os WAVs gravados por `tools/music-render/render.js` existem para o dono ouvir. Se uma música combina com a fase, se o volume cansa ou se a melodia fica na cabeça são perguntas que só ouvindo se responde, e ainda não foram respondidas. A integração com o jogo é conferida no navegador (`node tests/e2e.js "música:"`) com um `AudioContext` de mentira, que registra os ganhos do barramento, e com o real do Chromium; só o Chromium foi usado (Firefox e Safari não foram testados). Os números de volume, andamento, instrumentos e forma são **escolhas de design**, sem fonte.

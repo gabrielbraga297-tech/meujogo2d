@@ -200,7 +200,7 @@ Comportamento garantido (conferido em `tests/music.test.js` com um AudioContext 
 * **Mudo** (`som.isMuted()`): não agenda nada, zera o barramento e some em 0,05 s; ao desmutar volta do começo do compasso em que parou. **Aba escondida / pausa de jogo:** o jogo chama `pause()`/`resume()` (e `setDuck(0.25)` na pausa do menu).
 * Desempenho: um ciclo cria poucas dezenas de nós (nenhum ciclo passou de 300 nos testes), há no máximo 14 notas soando, o ruído é um só buffer de 1 s por contexto, e todo oscilador é parado no fim.
 
-**Quando chamar (A6-DESIGN.md):** menu e telas de menu `play("menu")`; começar a Fase N `play("dog"+N)` (ou `cat`/`bird`); pausa `setDuck(0.25)` e `setDuck(1)` ao voltar; perder uma vida `duck(0.25, 0.8)`;
+**Quando chamar (desenho das músicas):** menu e telas de menu `play("menu")`; começar a Fase N `play("dog"+N)` (ou `cat`/`bird`); pausa `setDuck(0.25)` e `setDuck(1)` ao voltar; perder uma vida `duck(0.25, 0.8)`;
 vitória `stop(0.5)`; game over `stop(0.4)`; aba escondida `pause()` e `resume()`; botão Música `toggleEnabled()`; depois de `som.setMuted(...)` chame `musica.tick()`.
 
 ## 8. Conferências e ferramentas
@@ -225,12 +225,12 @@ toda voz declarada toca alguma nota; **<= 14 vozes ao mesmo tempo** (contagem in
 **Render real** (`tools/music-render/render.js`, Chromium + `OfflineAudioContext` 44100 Hz mono, sob `flock`):
 
 ```
-MUSIC_LOCK=<scratchpad>/browser.lock NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium \
+MUSIC_LOCK=<pasta de trabalho>/browser.lock NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium \
   node tools/music-render/render.js [ids...] [--out pasta] [--files a.js,b.js] [--tail s] [--loops n] [--no-wav]
 ```
 
 Sem `ids` renderiza todos os temas registrados (`js/music.js` mais `js/music-dog.js`, `js/music-cat.js` e `js/music-bird.js`, se existirem). Cada tema é renderizado sozinho, com ganho 1 e sem o barramento do jogo, 1 laço + 4 s de cauda;
-a medida é feita no laço "em regime" (a cauda é somada ao começo, como o tocador faz). Grava `<id>.wav` (16 bits) e `relatorio.json` em `--out` (padrão: `$MUSIC_OUT`, ou `musicas-a6/wav` ao lado do arquivo de `MUSIC_LOCK`).
+a medida é feita no laço "em regime" (a cauda é somada ao começo, como o tocador faz). Grava `<id>.wav` (16 bits) e `relatorio.json` em `--out` (padrão: `$MUSIC_OUT`, ou `musicas/wav` ao lado do arquivo de `MUSIC_LOCK`).
 Imprime uma tabela e **sai com código 1** se algum limite falhar:
 
 | Medida | Limite |
@@ -247,7 +247,7 @@ A coluna "ganho sug." é o `gain` da receita que levaria o RMS ao alvo sem passa
 
 ## 9. Como compor uma receita (roteiro)
 
-1. Escolha o lugar e o clima (A6-DESIGN.md) e traduza em **modo, tom e andamento** (a rampa de andamento da Fase 1 à 20 e os picos de clima das fases-chave estão no desenho). Dois temas não podem repetir (tom, modo, andamento, solo, padrão do baixo).
+1. Escolha o lugar e o clima (desenho das músicas) e traduza em **modo, tom e andamento** (a rampa de andamento da Fase 1 à 20 e os picos de clima das fases-chave estão no desenho). Dois temas não podem repetir (tom, modo, andamento, solo, padrão do baixo).
 2. Escreva `prog` (uma progressão por letra; 4 acordes por seção de 8 compassos é o comum), um `motif` com **semente própria** e, se quiser um ritmo seu, `rhythm`. Varie `contour`, `leaps` e `rests` entre os temas.
 3. Escolha as vozes: um solo, um baixo (`pattern` combinando com o gênero: `rootfifth`/`walk` para o cachorrinho, `pizz`/`sync` para o gato, `waltz`/`pedal` para o passarinho), e só as camadas que a fase pede
    (use `intensity` e `from` para as seções A serem mais leves que as B/C). A ambiência é para quando o lugar pede (vento, grilos, chuva, água).

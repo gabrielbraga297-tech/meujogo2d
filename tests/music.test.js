@@ -771,7 +771,7 @@ test("tocador: um passo de agendamento cria poucos nós (nada de alocação em l
 const Analyze = require("../tools/music-render/analyze.js");
 const SR = 8000;
 const sine = (n, f, a, ph = 0) => { const x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = a * Math.sin(2 * Math.PI * f * i / SR + ph); return x; };
-test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 de A6-DESIGN.md", () => {
+test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 do desenho das músicas", () => {
   const m = Analyze.analyze(sine(SR * 4, 440, 0.5), SR, { barSeconds: 2 });
   assert.ok(Math.abs(m.peak - 0.5) < 1e-3);
   assert.ok(Math.abs(m.rmsDb - (20 * Math.log10(0.5 / Math.SQRT2))) < 0.05, "RMS de uma senoide: pico / raiz de 2");

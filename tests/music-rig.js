@@ -174,7 +174,7 @@ function checkRender(score, label = "") {
   return fails;
 }
 
-// A lista de todas as conferências estruturais de uma receita (A6-DESIGN.md, "Conferências automáticas"). Devolve [] se tudo passa.
+// A lista de todas as conferências estruturais de uma receita (desenho das músicas, "Conferências automáticas"). Devolve [] se tudo passa.
 //   opts: { render: false para pular a renderização no contexto falso (mais rápido) }
 function checkRecipe(recipe, opts = {}) {
   const id = recipe && recipe.id ? recipe.id : "?";
