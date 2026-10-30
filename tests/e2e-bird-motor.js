@@ -1,5 +1,5 @@
 // Seções do Passarinho (0.20.0): o MOTOR (js/game.js). Carregado por tests/e2e.js, que passa as ferramentas (T). Todas as páginas abrem com `realBird: true` (as fixtures de tests/fixtures/ no lugar dos mapas de verdade:
-// 5 fases pequenas + um BirdArt e um ambiente provisórios que contam as chamadas) e, para as mecânicas, com fases-miniatura feitas aqui (`mini`) e instaladas por `__game.defineBirdLevels`.
+// 5 fases pequenas + um BirdArt e um ambiente mínimos de teste que contam as chamadas) e, para as mecânicas, com fases-miniatura feitas aqui (`mini`) e instaladas por `__game.defineBirdLevels`.
 // Rodar só estas: node tests/e2e.js "Passarinho (motor)"   (uma seção: node tests/e2e.js "Passarinho (motor): vento")
 const path = require("path");
 

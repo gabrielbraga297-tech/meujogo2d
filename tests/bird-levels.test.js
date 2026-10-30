@@ -25,7 +25,7 @@ function test(name, fn) {
 }
 const each = (fn) => { const bad = []; for (const lv of LEVELS) { try { fn(lv); } catch (e) { bad.push(`Fase ${lv.id}: ${e.message}`); } } if (bad.length) throw new Error(bad.slice(0, 8).join("\n")); };
 
-// ---- a tabela do desenho (A5): [colunas, linhas, gatos, gaviões, sementes, frutos, minhocas, grupos de G, grupos de vento]
+// ---- a tabela do desenho (docs/PASSARINHO-DESENHO.md): [colunas, linhas, gatos, gaviões, sementes, frutos, minhocas, grupos de G, grupos de vento]
 const EXPECTED = {
   1: [25, 18, 1, 0, 5, 0, 0, 0, 0], 2: [25, 18, 2, 0, 7, 2, 1, 0, 0], 3: [25, 18, 2, 0, 7, 2, 1, 1, 2], 4: [41, 29, 3, 0, 15, 2, 2, 2, 3], 5: [41, 29, 3, 0, 20, 2, 2, 4, 0],
   6: [49, 33, 3, 0, 24, 3, 3, 2, 2], 7: [49, 37, 4, 0, 28, 3, 3, 2, 3], 8: [55, 39, 5, 0, 32, 4, 3, 3, 5], 9: [55, 39, 5, 0, 36, 4, 3, 5, 6], 10: [55, 41, 6, 0, 40, 5, 3, 4, 2],
@@ -88,12 +88,12 @@ test("campos de cada fase: título, lugar, nota, like, sementes, frutos (fruitMi
   assert.deepStrictEqual(LEVELS.map((l) => l.like), LEVELS.map((l) => l.id), "like = id");
 });
 
-test("os números de cada fase são os da tabela do desenho (A5): tamanho, gatos, gaviões, sementes, frutos, minhocas, grupos de G e de vento", () => {
+test("os números de cada fase são os da tabela do desenho: tamanho, gatos, gaviões, sementes, frutos, minhocas, grupos de G e de vento", () => {
   assert.strictEqual(Object.keys(PLAN_ROWS).length, 20, "não achei as 20 linhas da tabela em docs/PASSARINHO-DESENHO.md");
   each((lv) => {
     const { W, H } = A.size(lv.map), p = PLAN_ROWS[lv.id], e = EXPECTED[lv.id];
-    assert.deepStrictEqual([W, H, lv.cats, lv.hawks, lv.seeds, lv.fruits, lv.worms, lv.special.G, lv.special.wind], e, "diferente da tabela do desenho (A5)");
-    assert.deepStrictEqual([p.W, p.H, p.cats, p.hawks, p.seeds, p.fruits, p.worms, p.G, p.wind], e, "a tabela de docs/PASSARINHO-DESENHO.md está diferente da do desenho (A5)");
+    assert.deepStrictEqual([W, H, lv.cats, lv.hawks, lv.seeds, lv.fruits, lv.worms, lv.special.G, lv.special.wind], e, "diferente da tabela do desenho");
+    assert.deepStrictEqual([p.W, p.H, p.cats, p.hawks, p.seeds, p.fruits, p.worms, p.G, p.wind], e, "a tabela de docs/PASSARINHO-DESENHO.md está diferente da esperada neste teste");
     assert.deepStrictEqual(lv.size, [W, H]);
     assert.strictEqual(p.M, lv.special.M ? "sim" : "não", "coluna M da tabela do documento");
     assert.ok(p.place.toLowerCase().startsWith(lv.place.toLowerCase().split(" ")[0]), `lugar "${lv.place}" x documento "${p.place}"`);

@@ -114,5 +114,5 @@ Mudar um mapa depois da entrega exige subir a revisão dos mapas do Passarinho n
 
 ## Limitações
 - As setas de vento são desenhadas e conferidas só nas direções do mapa; o empurrão (90 px/s) e o clamp contra paredes são do motor.
-- Os mapas foram conferidos por BFS (grade 4-vizinhos) e por simulação simples do sorteio de itens, não jogando no navegador; a jogabilidade (dificuldade real, tempos) fica para a integração.
+- Os mapas são conferidos por BFS (grade 4-vizinhos) e por simulação simples do sorteio de itens (testes de Node); a jogabilidade (dificuldade real, tempos) é conferida no navegador por um robô que joga as 20 fases até a vitória, com os gatos e os gaviões soltos (`node tests/e2e.js "Passarinho (integração)"`).
 - A economia dos atalhos é medida em passos de grade entre tiles de chão, não em segundos de jogo (o voo alto, a velocidade e o fôlego mudam o tempo real).

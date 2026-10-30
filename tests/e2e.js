@@ -109,7 +109,7 @@ const PAGE_HELPERS = () => {
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
   // (0.20.0) O mesmo vale para o Passarinho: js/bird-levels.js (window.BirdLevels) liga o Passarinho no jogo; as seções antigas o testam "Em breve" (o arquivo é ignorado) e as páginas abertas com `realBird: true` (tests/e2e-bird-*.js)
-  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente provisórios), que valem mesmo que os arquivos de verdade existam; `realBird: "levels"` põe só as fases (sem BirdArt nem ambiente: o desenho de reserva do motor); `realBird: "real"` deixa a página carregar os arquivos de verdade.
+  // recebem as FIXTURES do motor (tests/fixtures/: 5 fases pequenas no formato de js/bird-levels.js, um BirdArt e um ambiente mínimos de teste), que valem mesmo que os arquivos de verdade existam; `realBird: "levels"` põe só as fases (sem BirdArt nem ambiente: o desenho de reserva do motor); `realBird: "real"` deixa a página carregar os arquivos de verdade.
   const rawNewContext = browser.newContext.bind(browser);
   const FIX = (n) => fs.readFileSync(path.join(__dirname, "fixtures", n), "utf8");
   const BIRD_FIXTURES = () => `${FIX("bird-levels-fixture.js")}
@@ -9049,7 +9049,7 @@ const PAGE_HELPERS = () => {
       const a = __run(180, ["Shift", "d"], { stay: true }), noShift = __run(2, ["d"], { stay: true });
       return { sta: a[179].stamina, speed: a[0].speed, all: a.every((x) => x.sprinting), turboLeft: __game.fx.turbo, normal: noShift[0].speed };
     });
-    ok(tb.sta === 1 && tb.all && near(tb.speed, 252 * 1.4 * 1.35, 1e-6) && near(tb.normal, 252 * 1.4, 1e-6) && near(tb.turboLeft, 8 - 182 / 60, 0.05), `com o novelo turbo a arrancada não gasta fôlego (fica em ${tb.sta}) e soma ao ×1,4 do turbo: ${tb.speed.toFixed(1)} px/s (${tb.normal.toFixed(1)} sem apertar)`);
+    ok(tb.sta === 1 && tb.all && near(tb.speed, 252 * 1.4 * 1.35, 1e-6) && near(tb.normal, 252 * 1.4, 1e-6) && near(tb.turboLeft, 8 - 182 / 60, 0.05), `com o novelo turbo a arrancada não gasta fôlego (fica em ${tb.sta}) e multiplica o ×1,4 do turbo pelo ×1,35 da arrancada: ${tb.speed.toFixed(1)} px/s (${tb.normal.toFixed(1)} sem apertar)`);
     // ---- molhado: sem arrancada (e a lentidão está na seção da poça) ----
     const wetNo = await ev(cp, () => { __game.fx = { turbo: 0 }; __at(2, 2); __game.stamina = 1; __game.wet = 3; const f = __run(30, ["Shift", "d"], { stay: true }); return { any: f.some((x) => x.sprinting), speed: f[0].speed, sta: f[29].stamina }; });
     ok(!wetNo.any && near(wetNo.speed, 252 * 0.65, 1e-6) && wetNo.sta === 1, "molhado não consegue dar arrancada, mesmo com a tecla apertada");
@@ -11708,7 +11708,7 @@ const PAGE_HELPERS = () => {
 
 
   // ----------------------------------------------------------------------------------------------------------------------------
-  // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por frente (tests/e2e-bird-<frente>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
+  // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por assunto (tests/e2e-bird-<assunto>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
   for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-bird-.+\.js$/.test(n)).sort()) {
     await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
   }

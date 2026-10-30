@@ -39,7 +39,7 @@ def _s(**k):
 
 
 # --------------------------------------------------------------------------------------------
-# Tabela das fases (A5-DESIGN). W x H = colunas x linhas.
+# Tabela das fases (docs/PASSARINHO-DESENHO.md). W x H = colunas x linhas.
 # --------------------------------------------------------------------------------------------
 #            tamanho         gatos gaviões sementes frutos minhocas  G  vento  saída  alcance do "!" (do cachorrinho; igual ao do Gatinho)
 SPEC = {

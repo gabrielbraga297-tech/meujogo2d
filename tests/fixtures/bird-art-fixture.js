@@ -1,5 +1,5 @@
-// FIXTURE DE TESTE (0.20.0, motor do Passarinho): um BirdArt e um tema de ambiente MÍNIMOS e provisórios, só para os testes do motor (tests/e2e-bird-motor.js) conferirem COMO o js/game.js chama a arte e os ambientes do Passarinho:
-// cada função desenha uma forma lisa e guarda a contagem de chamadas (`BirdArt.__calls`) e os últimos argumentos (`BirdArt.__last`). NÃO é a arte do jogo (js/bird-art.js é de outra frente) e não deve ir para o jogo.
+// FIXTURE DE TESTE (0.20.0, motor do Passarinho): um BirdArt e um tema de ambiente MÍNIMOS, só para os testes do motor (tests/e2e-bird-motor.js) conferirem COMO o js/game.js chama a arte e os ambientes do Passarinho:
+// cada função desenha uma forma lisa e guarda a contagem de chamadas (`BirdArt.__calls`) e os últimos argumentos (`BirdArt.__last`). NÃO é a arte do jogo (a arte de verdade é js/bird-art.js) e não deve ir para o jogo.
 // O teste injeta isto antes de js/game.js (newPage({ realBird: true })); `window.__birdThemeFixture` é o ambiente que `Themes.of(fase, "bird")` devolve nessas páginas (floor, wall, crate, high, muro, wind e os campos de lugar).
 (function () {
   const calls = {}, last = {};
@@ -23,7 +23,7 @@
     drawFx(ctx, kind, x, y, t, o) { note("drawFx", { kind, x, y, t }); (calls["fx:" + kind] = (calls["fx:" + kind] || 0) + 1); ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 6 + t * 10, 0, Math.PI * 2); ctx.stroke(); },
   };
   const theme = {
-    id: 0, place: "Lugar de teste", blurb: "ambiente provisório do teste do motor", night: false, mover: { wall: ["#777", "#999", "#444"], door: ["#888", "#aaa", "#555"] }, rail: ["#666", "#222"],
+    id: 0, place: "Lugar de teste", blurb: "ambiente mínimo do teste do motor", night: false, mover: { wall: ["#777", "#999", "#444"], door: ["#888", "#aaa", "#555"] }, rail: ["#666", "#222"],
     floor(g) { note("theme.floor", 0); g.ctx.fillStyle = (g.r + g.c) % 2 ? "#9bc28a" : "#a7cf96"; g.rect(g.x, g.y, T, T); },
     wall(g) { note("theme.wall", 0); g.ctx.fillStyle = "#4a4f5b"; g.rect(g.x, g.y, T, T); },
     crate(g) { note("theme.crate", 0); g.ctx.fillStyle = "#b08a5a"; g.rect(g.x + 4, g.y + 4, T - 8, T - 8); },

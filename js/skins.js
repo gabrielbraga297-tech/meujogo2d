@@ -3,7 +3,7 @@
 //
 // Categoria (slot): { id, game, name, singular, from, player? }
 //   id        de 2 a 12 letras minúsculas, sem números nem hífen ("agent", "ration"...): é o que records.js exige (/^[a-z]{2,12}$/). É também a chave da skin em uso na carteira (records.js: `eq` para "dog", `eqa[slot]` para as outras).
-//   game      o jogo (bichinho) onde o objeto aparece: "dog" | "cat" (| "bird" no futuro). A skin só aparece desenhada nesse jogo.
+//   game      o jogo (bichinho) onde o objeto aparece: "dog" | "cat" | "bird". A skin só aparece desenhada nesse jogo.
 //   from      a fase mais baixa, DAQUELE jogo, em que o objeto aparece (e, portanto, a partir da qual a categoria pode ser comprada). Um teste confere com os mapas do jogo.
 //   player    true nas categorias do próprio bichinho ("dog", "cat"): a skin de quem você joga.
 // Skin: { id, name, text, price, from?, ...campos visuais }

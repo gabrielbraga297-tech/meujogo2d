@@ -1614,7 +1614,7 @@
   // Pontos, recordes, ranking, progresso e jogo salvo são INDEPENDENTES por bichinho (store.game(id): js/records.js) e jogar um nunca mexe nos dados de outro.
   // Qualquer bichinho pronto pode ser escolhido a qualquer momento, sem exigir nada dos outros; DENTRO de um bichinho a fase N só abre quando a N−1 foi concluída.
   // A carteira de petscoin, a lojinha, as contas e os jogadores são ÚNICOS (de todos os bichinhos). `levels` = a lista de fases do bichinho (o menu e a lista de fases usam ela);
-  // `ready` = dá para jogar. O Cachorrinho e o Gatinho (com js/cat-levels.js carregado) estão prontos; sem esse arquivo o Gatinho cai nas fases de reserva (CAT_LEVELS, `placeholder`) e fica `ready: false`; o Passarinho ainda não tem fases.
+  // `ready` = dá para jogar. O Cachorrinho e o Gatinho (com js/cat-levels.js carregado) estão prontos; sem esse arquivo o Gatinho cai nas fases de reserva (CAT_LEVELS, `placeholder`) e fica `ready: false`; o Passarinho (com js/bird-levels.js carregado) também está pronto, com as 20 fases dele, e sem esse arquivo fica `ready: false` e sem fases.
   // (0.18.0) Cada jogo também tem: `rev` (revisão dos MAPAS dele: jogos salvos de outra revisão são descartados com aviso) e `built` (as fases montadas por buildLevel, id -> fase, montadas na primeira vez que alguém pede e
   // refeitas se `levels` for trocada). TUDO o que depende das fases de uma partida passa por builtOf(bichinho)/levelsOf(bichinho): o da partida em andamento (`gameAnimal`) ou o escolhido no menu (syncAnimal()).
   // O texto de cada bichinho (substantivos, avisos, placar) vem do perfil dele: js/profiles.js (`P()` mais abaixo).
@@ -3055,7 +3055,7 @@
   function openAnimals() { renderAnimals(); showScreen("animals"); }
 
   // ---------- Lojinha única (0.15.9; ampliada na 0.19.0): petiscos (1 por fase completada = 1 petscoin) por skins de todos os bichinhos e objetos dos jogos ----------
-  // Abas por JOGO (Cachorrinho | Gatinho | Passarinho "em breve") e, dentro do jogo, CATEGORIAS (o bichinho, os agentes da carrocinha, as rações...; o catálogo é o js/skins.js). A carteira de petscoin é uma só.
+  // Abas por JOGO (Cachorrinho | Gatinho | Passarinho; um jogo que não está pronto aparece desligado, "em breve") e, dentro do jogo, CATEGORIAS (o bichinho, os agentes da carrocinha, as rações...; o catálogo é o js/skins.js). A carteira de petscoin é uma só.
   // Cada categoria libera quando o jogador ALCANÇA a fase em que o objeto aparece NAQUELE jogo (store.reachedLevel); antes disso ela aparece apagada, com cadeado, e não vende (o armazenamento também recusa: "locked").
   // O mostruário de cada categoria é `PREVIEW[categoria]` (canvas 216 × 156): as do bichinho estão aqui; as dos objetos vêm mais abaixo, neste mesmo arquivo (os mostruários das skins dos objetos do Cachorrinho e do Gatinho); sem uma, desenha um mostruário simples com o nome da categoria.
   PREVIEW.dog = (c2, skin, w, h) => withLook("dog", skin, c2, () => { // o cachorrinho adulto, de lado, com a skin
@@ -4957,8 +4957,8 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get animal() { return syncAnimal(); }, get gameAnimal() { return gameAnimal; }, setAnimal(id) { const ok = pickAnimal(id); if (ok && document.body.dataset.screen === "menu") renderMenu(); return ok; },
     // `levels` = quantas fases dá para JOGAR (0 enquanto o bichinho não está pronto); `total` = quantas fases estão cadastradas (o Gatinho tem as 20 de teste, `placeholder`, mesmo desligado); `rev` = revisão dos mapas
     get games() { return GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb, ready: g.ready, levels: g.ready ? g.levels.length : 0, total: g.levels.length, rev: g.rev, placeholder: g.levels.length > 0 && g.levels.every((l) => l.placeholder) })); },
-    // SÓ PARA TESTES: marca um bichinho que ainda não existe ("cat" ou "bird") como pronto. O Gatinho usa as fases dele (por enquanto a cópia `placeholder` das 20 do Cachorrinho); o Passarinho, que ainda não tem fases,
-    // ganha uma cópia delas. Serve para testar no navegador que cada bichinho tem os seus pontos, recordes, progresso, jogo salvo e textos, sem esperar os jogos novos. Vale só até recarregar a página; o jogo de verdade nunca chama isto.
+    // SÓ PARA TESTES: marca como pronto um bichinho ("cat" ou "bird") cujo arquivo de fases não foi carregado. O Gatinho usa a cópia `placeholder` das 20 fases do Cachorrinho; o Passarinho, sem js/bird-levels.js,
+    // ganha uma cópia delas. Serve para testar no navegador que cada bichinho tem os seus pontos, recordes, progresso, jogo salvo e textos, sem depender dos mapas deles. Vale só até recarregar a página; o jogo de verdade nunca chama isto.
     enableTestAnimal(id) {
       const g = gameOf(id);
       if (!g || g.id === DEFAULT_ANIMAL) return false;
