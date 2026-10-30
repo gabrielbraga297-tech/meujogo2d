@@ -163,5 +163,83 @@
       },
       intensity: 0.6,
     },
+    // 11 Celeiro e curral: a chegada dos cães rastreadores, o primeiro pico de tensão. Sol sustenido menor harmônico (a sensível e a segunda aumentada), 116 bpm, quase sem pausas
+    // e quase sem balanço. Marimba grave martelando o motivo que sobe, baixo de serrilha em "raiz e quinta" (uma pancada por tempo), bumbo macio e prato leve em colcheias,
+    // cordas agudas em descante e arpejo de cordas beliscadas em colcheias nas partes finais (a parte C vem duas vezes, a segunda mais forte); sem acordes longos, para o tema ficar seco e nervoso.
+    {
+      id: "cat11", animal: "cat", place: "Celeiro e curral", key: "G#", mode: "harmMinor", bpm: 116, beats: 4, swing: 0.1, bars: 32, form: "ABCC",
+      prog: { A: "I IV V I", B: "VI VII I V", C: "I VII VI V" },
+      motif: { seed: 7111, bars: 2, contour: "rise", leaps: 0.5, rests: 0.1, density: 0.8, rhythm: ["xx-xxx-x", "x-xx-xx-"] },
+      voices: {
+        lead: { inst: "marimba", oct: 3, vel: 0.85 },
+        counter: { inst: "strings", oct: 4, vel: 0.35, from: 0.75, above: true },
+        bass: { inst: "bassSaw", pattern: "rootfifth", oct: 2, vel: 0.85 },
+        arp: { inst: "pluck", rate: 2, shape: "broken", oct: 4, vel: 0.45, from: 0.8 },
+        perc: { kit: ["softkick", "hat"], pattern: "driving", vel: 0.6, from: 0.3 },
+      },
+      intensity: 0.72,
+    },
+    // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço leve, forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
+    // com marimba num ritmo de "cacarejo" (notas rápidas e curtas), baixo de triângulo só nos contratempos, bumbo macio e bloco de madeira nos tempos 2 e 4, flauta grave no final.
+    {
+      id: "cat12", animal: "cat", place: "Horta e galinheiro", key: "Ab", mode: "mixolydian", bpm: 112, beats: 4, swing: 0.25, bars: 24, form: "AAB",
+      prog: { A: "I IV I V", B: "IV VII I V" },
+      motif: { seed: 7212, bars: 2, contour: "hop", leaps: 0.55, rests: 0.3, density: 0.65, rhythm: ["xx-x-xx-", "x-x-x---"] },
+      voices: {
+        lead: { inst: "pluck", oct: 4, vel: 0.8, rotate: [{ inst: "pluck" }, { inst: "marimba" }] },
+        counter: { inst: "flute", oct: 3, vel: 0.4, from: 0.65 },
+        bass: { inst: "bass", pattern: "offbeat", oct: 2, vel: 0.8 },
+        perc: { kit: ["softkick", "woodblock"], pattern: "backbeat", vel: 0.5, from: 0.25 },
+      },
+      intensity: 0.55,
+    },
+    // 13 Borda da mata: mi frígio, 115 bpm, forma de duas partes longas (AB, 16 compassos cada) com harmonia lenta (um acorde a cada 4 compassos). Celesta no solo com um motivo de
+    // 4 compassos, pausas longas, baixo de seno em pedal, cordas, flauta grave e uma harpa bem devagar (uma nota a cada dois tempos) na segunda parte, chocalho esparso. Mais escuro e mais parado que a fase anterior.
+    {
+      id: "cat13", animal: "cat", place: "Borda da mata", key: "E", mode: "phrygian", bpm: 115, beats: 4, swing: 0.05, bars: 32, form: "AB",
+      prog: { A: "I II I VII", B: "VI VII II I" },
+      motif: { seed: 7313, bars: 4, contour: "wave", leaps: 0.35, rests: 0.45, density: 0.3, rhythm: ["x---x---", "x-x-----", "x--x-x--", "x-------"] },
+      voices: {
+        lead: { inst: "celesta", oct: 4, vel: 0.7 },
+        counter: { inst: "flute", oct: 3, vel: 0.45, from: 0.7 },
+        bass: { inst: "bassSine", pattern: "pedal", oct: 2, vel: 0.8 },
+        pad: { inst: "strings", oct: 3, vel: 0.3, from: 0.4 },
+        arp: { inst: "harp", rate: 0.5, shape: "up", oct: 4, vel: 0.4, from: 0.7 },
+        perc: { kit: "shaker", pattern: "sparse", vel: 0.35, from: 0.2 },
+      },
+      intensity: 0.6,
+    },
+    // 14 Riacho e pedras: ré pentatônico maior em 6/8 (118 bpm, 48 compassos, ABCABC), a água corre em colcheias. Harpa aguda no solo com notas ligadas em grupos de três,
+    // gotas da ambiência "água", baixo de seno em pizzicato, chocalho nos contratempos, arpejo de cordas beliscadas que sobe e desce e uma flauta em contracanto (sem cordas longas).
+    {
+      id: "cat14", animal: "cat", place: "Riacho e pedras", key: "D", mode: "pentMajor", bpm: 118, beats: 6, swing: 0, bars: 48, form: "ABCABC",
+      prog: { A: "I II V IV", B: "IV V II I", C: "V IV I II" },
+      motif: { seed: 7414, bars: 2, contour: "wave", leaps: 0.3, rests: 0.15, density: 0.6, rhythm: ["x-xx-x", "xx-xx-"] },
+      voices: {
+        lead: { inst: "harp", oct: 5, vel: 0.7 },
+        counter: { inst: "flute", oct: 4, vel: 0.4, from: 0.65 },
+        bass: { inst: "bassSine", pattern: "pizz", oct: 2, vel: 0.75 },
+        arp: { inst: "pluck", rate: 1.5, shape: "updown", oct: 4, vel: 0.35, from: 0.7 },
+        perc: { kit: "shaker", pattern: "offbeat", vel: 0.3, from: 0.3 },
+        ambience: { kind: "water", vel: 0.55 },
+      },
+      intensity: 0.5,
+    },
+    // 15 Vila de pescadores: dó menor em 6/8 (120 bpm, 48 compassos, AABCAB), uma barcarola de balanço sem swing. Órgão (sanfona simulada) no solo, às vezes trocado pela flauta,
+    // contrabaixo pizzicato em "raiz e quinta", bumbo macio e escova (grave nos tempos, agudo no meio), órgão macio em acordes longos, harpa em arpejo quebrado e flauta grave nas partes mais cheias.
+    {
+      id: "cat15", animal: "cat", place: "Vila de pescadores", key: "C", mode: "minor", bpm: 120, beats: 6, swing: 0, bars: 48, form: "AABCAB",
+      prog: { A: "I VI VII I", B: "III VII VI V", C: "IV VII III VI" },
+      motif: { seed: 7515, bars: 2, contour: "arch", leaps: 0.4, rests: 0.2, density: 0.5, rhythm: ["x--x-x", "x-xx--"] },
+      voices: {
+        lead: { inst: "organ", oct: 4, vel: 0.7, rotate: [{ inst: "organ" }, { inst: "flute" }] },
+        counter: { inst: "flute", oct: 3, vel: 0.4, from: 0.8 },
+        bass: { inst: "contrabass", pattern: "rootfifth", oct: 2, vel: 0.8 },
+        pad: { inst: "organ", oct: 3, vel: 0.3, from: 0.5 },
+        arp: { inst: "harp", rate: 1, shape: "broken", oct: 4, vel: 0.4, from: 0.7 },
+        perc: { kit: ["softkick", "brush"], pattern: "steady", vel: 0.45, from: 0.3 },
+      },
+      intensity: 0.6,
+    },
   ]);
 })(typeof window !== "undefined" ? window : globalThis);
