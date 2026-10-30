@@ -4300,12 +4300,17 @@
 
 
   // ===== PASSARINHO: motor — desenho =====
-  // (0.20.0) Desenho do Passarinho: tudo daqui só roda quando `birdDraw` (a partida é do Passarinho). Os desenhos de verdade são de BirdArt (js/bird-art.js) e os ambientes de BirdThemes (via Themes.of(fase, "bird")), os dois de outras frentes;
+  // (0.20.0) Desenho do Passarinho: tudo daqui só roda quando `birdDraw` (a partida é do Passarinho). Os desenhos de verdade são de BirdArt (js/bird-art.js) e os ambientes de BirdThemes (via Themes.of(fase, "bird")), cada um no seu arquivo;
   // se algum faltar (ou der erro), cada peça cai num desenho simples de reserva (formas coloridas) e o jogo continua jogável. `birdArt(nome, ...)` chama BirdArt.nome na hora (nunca guarda a referência) e devolve true se desenhou.
-  const birdFailed = new Set();
+  // Uma função que falta (ou o BirdArt inteiro) avisa UMA vez por nome no console (console.warn), em vez de cair em silêncio no desenho de reserva; uma que dá erro vai para `birdFailed` e para o console.error.
+  const birdFailed = new Set(), birdMissing = new Set();
   function birdArt(name, ...a) {
     const B = typeof BirdArt !== "undefined" ? BirdArt : null;
-    if (!B || typeof B[name] !== "function" || birdFailed.has(name)) return false;
+    if (!B || typeof B[name] !== "function") {
+      if (!birdMissing.has(name)) { birdMissing.add(name); if (typeof console !== "undefined") console.warn(B ? `BirdArt.${name} não existe: o jogo desenha a peça de reserva` : `BirdArt não carregou: o jogo desenha a peça de reserva (${name})`); }
+      return false;
+    }
+    if (birdFailed.has(name)) return false;
     try { return B[name](...a) !== false; } catch (e) { birdFailed.add(name); if (typeof console !== "undefined") console.error(`BirdArt.${name}: ${e.message}`); return false; }
   }
   const FRUIT_PLAIN = { scare: "#e5533d", gold: "#ffd23f", ice: "#6ec6ff", turbo: "#ff9f43", magnet: "#b57cff" }; // (reserva) a cor de cada tipo de fruto

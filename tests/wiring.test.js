@@ -76,5 +76,77 @@ test("renderShop: todo reached(...) recebe o jogo da categoria que está sendo m
   for (const m of unlocked) assert.ok(new RegExp(`^${m[2]}\\.id,`).test(m[1]), `Skins.unlocked(${m[1]}, ...): a categoria e o jogo precisam ser do mesmo objeto (${m[2]})`);
 });
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// O contrato js/game.js -> js/bird-art.js (o Passarinho): game.js chama `birdArt("drawNome", ...)`, que cai num desenho de reserva (silenciosamente) se BirdArt.drawNome não existe ou se um campo
+// que o jogo passa não é lido pela arte. Sem este teste, um nome ou um campo trocado só apareceria como um passarinho de formas simples, que o jogo "aguenta" sem erro.
+const BirdArt = require(path.join(__dirname, "../js/bird-art.js"));
+const artSrc = read("js/bird-art.js");
+// os argumentos de cada chamada birdArt("nome", a, b, { ... }) de js/game.js (separados no nível de cima, sem cair em strings, parênteses e chaves de dentro)
+function birdArtCalls() {
+  const out = [];
+  for (const m of gameSrc.matchAll(/\bbirdArt\("(\w+)"/g)) {
+    let depth = 0, cur = "", args = [], p = m.index + m[0].length;
+    for (; p < gameSrc.length; p++) {
+      const c = gameSrc[p];
+      if (c === '"' || c === "'" || c === "`") { const q = c; cur += c; for (p++; gameSrc[p] !== q; p++) { cur += gameSrc[p]; if (gameSrc[p] === "\\") { p++; cur += gameSrc[p]; } } cur += q; continue; }
+      if (c === "(" || c === "[" || c === "{") depth++;
+      if (c === ")" || c === "]" || c === "}") { if (depth === 0) break; depth--; }
+      if (c === "," && depth === 0) { args.push(cur.trim()); cur = ""; continue; }
+      cur += c;
+    }
+    if (cur.trim()) args.push(cur.trim());
+    out.push({ name: m[1], args: args.filter(Boolean), line: gameSrc.slice(0, m.index).split("\n").length });
+  }
+  return out;
+}
+// as chaves de um literal { a, b: 1, c: x.y } escrito no nível de cima (atalhos incluídos)
+function literalKeys(src) {
+  const body = src.trim().replace(/^\{|\}$/g, ""), keys = [];
+  let depth = 0, cur = "";
+  const flush = () => { const k = /^\s*(\w+)\s*(?::|$)/.exec(cur); if (k) keys.push(k[1]); cur = ""; };
+  for (let p = 0; p < body.length; p++) {
+    const c = body[p];
+    if (c === '"' || c === "'" || c === "`") { const q = c; cur += c; for (p++; body[p] !== q; p++) { cur += body[p]; if (body[p] === "\\") { p++; cur += body[p]; } } cur += q; continue; }
+    if (c === "(" || c === "[" || c === "{") depth++;
+    if (c === ")" || c === "]" || c === "}") depth--;
+    if (c === "," && depth === 0) { flush(); continue; }
+    cur += c;
+  }
+  flush();
+  return keys;
+}
+// o campo é lido por js/bird-art.js: `x.campo`, `x?.campo`, ou um { campo, ... } = ... de desestruturação
+const artReads = (key) => new RegExp(`\\??\\.${key}\\b|[{,]\\s*${key}\\s*(?:[,}]|=)`).test(artSrc);
+
+test("game.js -> BirdArt: toda função que game.js chama por birdArt(\"...\") existe em BirdArt (e BirdArt.X escrito direto em game.js também)", () => {
+  const calls = birdArtCalls(), names = [...new Set(calls.map((c) => c.name))].sort();
+  assert.ok(calls.length >= 12 && names.length >= 9, `game.js deveria chamar pelo menos 9 funções de BirdArt em 12 pontos (achou ${names.length} em ${calls.length})`);
+  const missing = names.filter((n) => typeof BirdArt[n] !== "function");
+  assert.deepStrictEqual(missing, [], `game.js chama birdArt("${missing.join('", "')}") mas BirdArt não tem essa função: o jogo desenharia a peça de reserva (as que existem: ${Object.keys(BirdArt).filter((k) => typeof BirdArt[k] === "function").join(", ")})`);
+  const direct = [...new Set([...gameSrc.replace(/\/\/.*$/gm, "").matchAll(/\bBirdArt\.(\w+)/g)].map((m) => m[1]))].sort(); // (sem os comentários, que dizem "BirdArt.nome")
+  assert.deepStrictEqual(direct.filter((n) => !(n in BirdArt)), [], "game.js usa BirdArt.X que BirdArt não exporta");
+});
+
+test("game.js -> BirdArt: os campos que game.js passa nos literais { ... } de cada chamada são lidos por js/bird-art.js (variant, open, w, h, rim, twig, lining, hidden, kind, look, r, time, calm...)", () => {
+  const calls = birdArtCalls(), unread = [], seen = new Set();
+  for (const c of calls) for (const a of c.args) if (/^\{[\s\S]*\}$/.test(a)) for (const k of literalKeys(a)) { seen.add(k); if (!artReads(k)) unread.push(`birdArt("${c.name}") na linha ${c.line}: o campo "${k}" que o jogo passa não é lido em js/bird-art.js`); }
+  assert.deepStrictEqual(unread, [], "campo passado que a arte não lê (o jogo desenha, mas sem o efeito):\n     " + unread.join("\n     "));
+  for (const k of ["variant", "open", "w", "h", "rim", "twig", "lining", "hidden", "kind", "look", "r", "time", "calm"]) assert.ok(seen.has(k), `o teste deveria ter visto o campo "${k}" nas chamadas de game.js (o teste de contrato ficou cego?)`);
+});
+
+test("game.js: o birdArt avisa UMA vez por nome (console.warn) quando BirdArt.nome falta, em vez de cair em silêncio no desenho de reserva", () => {
+  const body = fnSrc("birdArt");
+  assert.ok(/console\.warn\(/.test(body) && /birdMissing/.test(body), "birdArt deve chamar console.warn com um Set de nomes já avisados (birdMissing)");
+  assert.ok(/!birdMissing\.has\(name\)/.test(body) && /birdMissing\.add\(name\)/.test(body), "o aviso é um por nome");
+  // o comportamento, de verdade: o corpo da função rodando com um BirdArt sem drawHawk
+  const run = new Function("BirdArt", "console", "birdFailed", "birdMissing", `${body}\nreturn birdArt;`);
+  const warns = [], fake = { drawBird: () => true };
+  const birdArt = run(fake, { warn: (m) => warns.push(m), error: () => {} }, new Set(), new Set());
+  assert.strictEqual(birdArt("drawHawk", 1), false); assert.strictEqual(birdArt("drawHawk", 1), false); assert.strictEqual(birdArt("drawSeed", 1), false);
+  assert.strictEqual(birdArt("drawBird", 1), true);
+  assert.strictEqual(warns.length, 2, `um aviso por nome que falta (drawHawk, drawSeed), nenhum para o que existe: ${JSON.stringify(warns)}`);
+  assert.ok(/drawHawk/.test(warns[0]) && /drawSeed/.test(warns[1]));
+});
+
 if (failed) { console.log(`\n${failed} teste(s) falharam`); process.exit(1); }
 console.log("\nTodos os testes de fiação passaram");
