@@ -77,6 +77,7 @@ body.touch .icon-btn { width: 44px; height: 44px; }
   opacity: 0; pointer-events: none; transition: opacity .15s;
 }
 #toast.show { opacity: 1; }
+#toast.top { bottom: auto; } /* (Passarinho) o aviso de abertura sobe para o alto do campo quando cobriria o passarinho; o `top` vem do jogo, logo abaixo das faixas */
 /* faixas no alto do jogo, uma embaixo da outra (se a da missão quebrar em duas linhas, a dos efeitos desce junto e nunca a cobre) */
 #top-bars {
   position: absolute; left: 50%; top: 1.5%; transform: translateX(-50%); width: max-content; max-width: 94%;

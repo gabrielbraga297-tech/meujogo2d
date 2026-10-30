@@ -1002,6 +1002,7 @@ node tests/e2e.js "skins dos objetos do Cachorrinho"   # as skins dos objetos do
 node tests/e2e.js "Skins do Gatinho"                   # as skins dos objetos do Gatinho no navegador (idem, com dia e noite)
 node tests/e2e.js "Skins do Passarinho"                # as skins do Passarinho no navegador (tests/e2e-bird-skins.js: mostruários, lojinha, liberação por fase e o desenho em jogo)
 node tests/e2e.js "Passarinho (integração)"            # o Passarinho com os arquivos de verdade juntos (tests/e2e-bird-integracao.js): as 20 fases montam, capturas, o robô joga as 20 fases, jogo salvo, telas, desempenho, sons e textos
+node tests/e2e.js "Passarinho (aviso)"                 # o aviso de abertura da fase não cobre o passarinho em 10 tamanhos de tela (tests/e2e-bird-aviso.js)
 node tests/e2e.js "Passarinho (motor)"                 # o motor do Passarinho no navegador (tests/e2e-bird-*.js): voo alto, galho, gavião, vento, minhocas, frutos, jogo salvo, telas e isolamento do Cachorrinho e do Gatinho
 node tests/e2e.js "tabela das fases do Passarinho"     # a tabela das fases do Passarinho do README contra as fases montadas no navegador
 ```

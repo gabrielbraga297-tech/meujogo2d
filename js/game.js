@@ -2739,7 +2739,9 @@
     }
   }
 
+  let toastTop = false; // (Passarinho) o aviso de abertura da fase subiu para o alto do campo porque cobriria o passarinho (veja positionStartToast)
   function toast(text, seconds) {
+    if (toastTop) { toastTop = false; $("toast").classList.remove("top"); $("toast").style.top = ""; } // todo aviso novo nasce no lugar de sempre, embaixo
     $("toast").textContent = text; $("toast").classList.add("show"); hintTimer = seconds;
   }
 
@@ -4458,6 +4460,24 @@
     if (fly && !birdArt("drawFx", ctx, "shadow", cx, cy, flyAnim, { calm })) ellipse(cx, cy + 10, 11 * (1 - 0.3 * flyAnim), 3.8 * (1 - 0.3 * flyAnim), `rgba(0,0,0,${(0.3 - 0.08 * flyAnim).toFixed(2)})`);
     if (!birdArt("drawBird", ctx, player, o)) plainBird(player, o);
   }
+  // (Passarinho) O aviso de abertura da fase ("O tempo só começa quando você se mexer.") fica embaixo do campo até o primeiro passo. Nas Fases 7, 12, 15 e 19, em telas de computador e de tablet, o início do passarinho
+  // fica na parte de baixo do campo visível e o aviso o cobria (50% a 100% dele). Se o aviso cobre o passarinho, ele sobe para o ALTO do campo, logo abaixo das faixas da missão e dos efeitos (como elas), com o mesmo texto
+  // e o mesmo role="status"; se em cima cobrir mais, fica embaixo. Roda a cada quadro enquanto o aviso de abertura está na tela (o tamanho do campo ainda se acomoda nos primeiros quadros e a janela pode mudar).
+  function positionStartToast() {
+    const t = $("toast");
+    if (!t.classList.contains("show")) return;
+    const cr = canvas.getBoundingClientRect(), wr = $("wrap").getBoundingClientRect();
+    if (!cr.width) return;
+    const f = cr.width / canvas.width, sx = view.k * view.zoom;
+    const pl = cr.left + (player.x - view.camX) * sx * f, pt = cr.top + (player.y - view.camY) * sx * f, pr = pl + player.w * sx * f, pb = pt + player.h * sx * f;
+    const hit = (r) => Math.max(0, Math.min(r.right, pr) - Math.max(r.left, pl)) * Math.max(0, Math.min(r.bottom, pb) - Math.max(r.top, pt)); // área do passarinho sob o aviso
+    t.classList.remove("top"); t.style.top = ""; toastTop = false;
+    const below = hit(t.getBoundingClientRect());
+    if (below <= 0) return;
+    const bars = $("top-bars").getBoundingClientRect(), y = (bars.height ? bars.bottom : wr.top + wr.height * 0.015) + 4 - wr.top;
+    t.classList.add("top"); t.style.top = `${Math.round(y)}px`; toastTop = true;
+    if (hit(t.getBoundingClientRect()) >= below) { t.classList.remove("top"); t.style.top = ""; toastTop = false; } // em cima cobriria igual ou mais (campo muito pequeno): fica embaixo
+  }
   // ===== fim PASSARINHO: motor — desenho =====
 
   function draw() {
@@ -4467,6 +4487,7 @@
     const camX = Math.round(clamp(player.x + player.w / 2 - vw / 2, 0, Math.max(0, WORLD_W - vw)) * sx) / sx;
     const camY = Math.round(clamp(player.y + player.h / 2 - vh / 2, 0, Math.max(0, WORLD_H - vh)) * sx) / sx;
     view.camX = camX; view.camY = camY;
+    if (lv.birdMode && startHint) positionStartToast(); // (Passarinho) o aviso de abertura não cobre o passarinho
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#1d2330"; ctx.fillRect(0, 0, canvas.width, canvas.height);
