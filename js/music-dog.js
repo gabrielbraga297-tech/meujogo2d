@@ -20,7 +20,7 @@
         bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.7 },
         perc: { kit: "woodblock", pattern: "sparse", vel: 0.4, from: 0.25 },
       },
-      intensity: 0.4, gain: 1,
+      intensity: 0.4, gain: 1.25,
     },
     // 2 Campo: céu aberto, passo largo. Ré mixolídio, 96 bpm, ABAB (80 s), balanço leve. Cordas beliscadas (violão) com baixo caminhante, bumbo macio e chocalho
     // marcando os tempos 2 e 4 ("boom-chá"); um descante de flauta aguda aparece na seção B. Ritmo sincopado de violão (3+3+2).
@@ -34,7 +34,7 @@
         bass: { inst: "bass", pattern: "walk", oct: 2, vel: 0.75 },
         perc: { kit: ["softkick", "shaker"], pattern: "backbeat", vel: 0.5, from: 0.25 },
       },
-      intensity: 0.5, gain: 1,
+      intensity: 0.5, gain: 1.07,
     },
     // 3 Casa: a valsa da sala de estar. Fá maior em 3/4, 100 bpm, AABA (58 s). Celesta e marimba se revezam no motivo (uma frase cada), baixo de valsa
     // ("uum-pá-pá"), órgão suave de fundo e escovas leves; contramelodia grave de flauta na seção B. Ritmo de semínima, colcheias e dois pulsos pontuados.
@@ -49,7 +49,7 @@
         pad: { inst: "organ", oct: 3, vel: 0.35, from: 0.35 },
         perc: { kit: "brush", pattern: "waltz", vel: 0.4, from: 0.3 },
       },
-      intensity: 0.5, gain: 1,
+      intensity: 0.5, gain: 1.15,
     },
     // 4 Rua do bairro: marcha de passeio. Si bemol maior, 104 bpm, AABC (74 s). Xilofone em ritmo pontuado de marcha, baixo de raiz e quinta, bumbo macio e bloco
     // de madeira nos tempos; a flauta de contramelodia entra nas seções B e C. O motivo salta (contorno saltitante, saltos médios).
@@ -77,7 +77,7 @@
         bass: { inst: "contrabass", pattern: "walk", oct: 2, vel: 0.75 },
         perc: { kit: "brush", pattern: "brush2", vel: 0.45, from: 0.25 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 1.07,
     },
     // 6 Praça: encontro de cachorros, giga em 6/8. Lá maior, 111 bpm (pulso de semínima pontuada), 48 compassos em ABACAB (52 s). Harpa e xilofone se revezam, baixo de raiz e quinta
     // em dois pulsos, polca de bumbo e bloco; um arpejo de cordas beliscadas entra só na seção C (a mais cheia).
@@ -92,7 +92,7 @@
         arp: { inst: "pluck", rate: 3, shape: "up", oct: 4, vel: 0.45, from: 0.78 },
         perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.5, from: 0.25 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 0.87,
     },
     // 7 Parque canino: correria na grama. Mi mixolídio, 114 bpm, AABA (67 s), balanço leve. Marimba e cordas beliscadas se revezam, motivo cheio de saltos, baixo em
     // tresillo (raiz, oitava, quinta), prato leve em colcheias de balanço e arpejo "alberti" de cordas beliscadas a partir da repetição da seção A.
@@ -107,7 +107,7 @@
         arp: { inst: "pluck", rate: 2, shape: "alberti", oct: 4, vel: 0.45, from: 0.55 },
         perc: { kit: ["softkick", "hat"], pattern: "shuffle", vel: 0.45, from: 0.3 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 0.99,
     },
     // 8 Feira: barracas e pregões, polca. Mi bemol maior, 118 bpm, rondó ABACA em 40 compassos (81 s). Órgão suave e cordas beliscadas se revezam (acordeão e violão de feira),
     // baixo de raiz e quinta "uum-pá", polca de bumbo e bloco de madeira, marimba grave de contramelodia.
@@ -121,7 +121,7 @@
         bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.85 },
         perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.55, from: 0.25 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 0.93,
     },
     // 9 Praia: leve e ensolarada. Ré pentatônico maior, 110 bpm, ABAB (70 s), balanço leve. Xilofone e marimba (som de panela de aço), baixo senoidal só nos contratempos,
     // bumbo macio e chocalho em contratempo, arpejo de violãozinho (sobe e desce) a partir da repetição e uma brisa de vento bem baixa.
@@ -137,7 +137,7 @@
         perc: { kit: ["softkick", "shaker"], pattern: "offbeat", vel: 0.45, from: 0.25 },
         ambience: { kind: "wind", vel: 0.3 },
       },
-      intensity: 0.45, gain: 1,
+      intensity: 0.45, gain: 1.28,
     },
     // 10 Central da carrocinha: concreto, grades e perigo. Lá menor, 124 bpm, AABA (62 s). Serrilha grave de solo (revezando com xilofone), baixo sustentado, batida de
     // coração no bumbo, cordas de fundo e arpejo grave de cordas beliscadas que desce; contorno descendente, saltos médios, poucas pausas.
@@ -152,7 +152,7 @@
         arp: { inst: "pluck", rate: 2, shape: "down", oct: 3, vel: 0.4, from: 0.55 },
         perc: { kit: "softkick", pattern: "heartbeat", vel: 0.7, from: 0.25 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 0.9,
     },
     // 11 Beco dos gatos: esgueirar-se com cuidado. Mi frígio, 130 bpm, ABAB (59 s). Contrabaixo em oitava grave de solo (revezando com cordas beliscadas), baixo em pizzicato,
     // bloco de madeira em colcheias seguidas, descante de celesta; motivo com pausas (respirações) e contorno que desce.
@@ -166,7 +166,7 @@
         bass: { inst: "contrabass", pattern: "pizz", oct: 2, vel: 0.8 },
         perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.5, from: 0.3 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 1.02,
     },
     // 12 Pet shop: prateleiras coloridas e brinquedos. Dó lídio, 120 bpm, AABC (64 s), balanço forte. Marimba com campainhas (sino) no revezamento, baixo caminhante,
     // pratinho de escova, descante de flauta e arpejo de celesta que sobe e brilha nas seções B e C. Contorno ascendente, muitos saltos.
@@ -181,7 +181,7 @@
         arp: { inst: "celesta", rate: 2, shape: "up", oct: 5, vel: 0.35, from: 0.7 },
         perc: { kit: "hat", pattern: "brush2", vel: 0.45, from: 0.25 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 1.04,
     },
     // 13 Fazenda: dança de celeiro. Sol mixolídio, 126 bpm, AABB (61 s), como uma música de dança dupla. Cordas beliscadas (banjo) com marimba, baixo de raiz e quinta, bumbo e bloco
     // nos tempos 2 e 4, contramelodia de flauta; ritmo de galope. O contorno sobe e desce em arco.
@@ -195,7 +195,7 @@
         bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.85 },
         perc: { kit: ["softkick", "woodblock"], pattern: "backbeat", vel: 0.55, from: 0.25 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 0.9,
     },
     // 14 Bosque: sombras entre as árvores, passo contido. Si dórico, 122 bpm, ABAC (63 s). Flauta e cordas beliscadas se revezam em notas mais longas, baixo sustentado e senoidal,
     // cordas de fundo, chocalho de folhas, arpejo lento de harpa e vento bem baixo. Contorno que desce, pausas.
@@ -211,7 +211,7 @@
         perc: { kit: ["softkick", "shaker"], pattern: "steady", vel: 0.4, from: 0.3 },
         ambience: { kind: "wind", vel: 0.3 },
       },
-      intensity: 0.5, gain: 1,
+      intensity: 0.5, gain: 0.88,
     },
     // 15 Lago e docas: barcarola, balanço de barco. Fá sustenido pentatônico menor em 6/8, 128 bpm, rondó ABACABA em 56 compassos (53 s). Cordas beliscadas e flauta, baixo
     // senoidal de valsa (raiz e quinta), batida esparsa, arpejo de harpa que sobe e desce como ondas, sino de descante e gotas de água.
@@ -227,7 +227,7 @@
         perc: { kit: ["softkick", "woodblock"], pattern: "sparse", vel: 0.35, from: 0.3 },
         ambience: { kind: "water", vel: 0.35 },
       },
-      intensity: 0.5, gain: 1,
+      intensity: 0.5, gain: 0.96,
     },
     // 16 Mercadão: barracas lotadas, calor e pressa. Lá bemol maior, 132 bpm, AABC (58 s). Xilofone com marimba, baixo caminhante, percussão em colcheias seguidas, arpejo "alberti" de cordas
     // beliscadas a partir da repetição e descante de flauta nas seções B e C. Contorno ascendente, ritmo bem cheio.
@@ -242,7 +242,7 @@
         arp: { inst: "pluck", rate: 2, shape: "alberti", oct: 4, vel: 0.45, from: 0.6 },
         perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.55, from: 0.25 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 0.85,
     },
     // 17 Estacionamento: asfalto, buzinas e cones, ritmo travado. Fá mixolídio, 136 bpm, ABAC (57 s). Marimba seca, baixo de serrilha em tresillo, bumbo macio com prato leve nos contratempos,
     // órgão grave de contramelodia (como buzina) e arpejo que desce. Ritmo quebrado, contorno que desce.
@@ -257,7 +257,7 @@
         arp: { inst: "pluck", rate: 2, shape: "down", oct: 4, vel: 0.4, from: 0.6 },
         perc: { kit: ["softkick", "hat"], pattern: "offbeat", vel: 0.5, from: 0.25 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 0.96,
     },
     // 18 Telhados (noite): valsa veloz e sombria. Dó sustenido menor em 3/4, 140 bpm, 48 compassos em ABABCA (62 s). Celesta e harpa no solo, contrabaixo em pizzicato, batida de valsa
     // de bumbo e bloco, cordas de fundo, flauta grave de contramelodia e grilos baixos. Pausas no motivo; sem arpejo, para a textura não ficar carregada.
@@ -273,7 +273,7 @@
         perc: { kit: ["softkick", "woodblock"], pattern: "waltz", vel: 0.45, from: 0.25 },
         ambience: { kind: "crickets", vel: 0.3 },
       },
-      intensity: 0.55, gain: 1,
+      intensity: 0.55, gain: 0.93,
     },
     // 19 Estação de trem: o trem que chega, balanço de blues. Sol blues, 144 bpm, AABA (53 s), balanço forte (0,45). Órgão no solo (revezando com flauta), baixo caminhante de contrabaixo,
     // prato leve em colcheias de balanço marcando o "tchuc-tchuc" do trem e bumbo macio nos tempos. Ritmo em síncopa.
@@ -286,7 +286,7 @@
         bass: { inst: "contrabass", pattern: "walk", oct: 2, vel: 0.8 },
         perc: { kit: ["softkick", "hat"], pattern: "shuffle", vel: 0.5, from: 0.25 },
       },
-      intensity: 0.6, gain: 1,
+      intensity: 0.6, gain: 1.01,
     },
     // 20 Fortaleza da carrocinha: o final grande. Ré menor harmônico, 148 bpm, 48 compassos em ABACBC (78 s). Cordas no solo (revezando com marimba e órgão), baixo de serrilha em tresillo,
     // percussão em colcheias, cordas de fundo e arpejo "alberti" de xilofone (sem contramelodia, para as vozes caberem no limite de 14); as camadas entram cedo e as seções B e C são as mais cheias. Contorno ascendente, saltos largos.
@@ -301,7 +301,7 @@
         arp: { inst: "xylo", rate: 2, shape: "alberti", oct: 4, vel: 0.45, from: 0.5 },
         perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.65, from: 0.25 },
       },
-      intensity: 0.7, gain: 1,
+      intensity: 0.7, gain: 0.78,
     },
   ];
 

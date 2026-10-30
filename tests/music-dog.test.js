@@ -227,6 +227,10 @@ test("camadas: a seção A é mais leve que B e C (nível), e nenhuma voz declar
   });
 });
 
+test("ganho: cada receita tem o `gain` calibrado no render real, entre 0,6 e 1,5 (o volume entre os temas é nivelado pelo render, não por este teste)", () => {
+  for (const r of recipes) assert.ok(typeof r.gain === "number" && r.gain >= 0.6 && r.gain <= 1.5, `${r.id}: gain ${r.gain}`);
+});
+
 // ---------- Texto ----------
 test("honestidade: o arquivo não promete como a música soa nem cita fontes", () => {
   assert.ok(!/soa bem|soam bem|agrad[aá]vel|foi ouvid|foram ouvid|ficou lind|bonita|maravilhos|et al\.|doi\.org|\((19|20)\d\d\)/i.test(SRC), "texto com promessa de como soa ou citação");
