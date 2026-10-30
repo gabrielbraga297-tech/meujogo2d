@@ -163,6 +163,7 @@
   const BIRD_REV = 1;                                    // revisão dos mapas do Passarinho (js/bird-levels.js): jogos salvos de outra revisão são descartados com aviso
   const BIRD_FLIGHT = 10, BIRD_FLIGHT_STEP = 2, BIRD_FLIGHT_WARN = 2; // s do voo alto do fruto comum, s a mais por nível do reforço Fruto poderoso e s finais em que o passarinho pisca (aviso)
   const WIND_SPEED = 90;                                 // px/s do empurrão de uma corrente de vento (só no voo baixo)
+  const BIRD_STEP_MAX = 16;                              // px: o maior pedaço de um passo do passarinho num quadro (o passo é fatiado; um quadro de 20 fps com tudo empilhado anda mais de 56 px)
   const BIRD_WIND = { ">": [1, 0], "<": [-1, 0], "^": [0, -1], "v": [0, 1] }; // as setas do vento no mapa
   // ENTARDECER (Fase 18, `theme.dusk`): a luz do jogo é LARANJA e vai escurecendo: o escuro começa em DUSK_FROM (0 a 1) e sobe até o da noite (NIGHT_DARK) em DUSK_SECS s de jogo (o halo em volta do passarinho continua); a Fase 19 é noite de verdade (azul-escuro)
   const DUSK_FROM = 0.3, DUSK_SECS = 90;
@@ -2639,8 +2640,13 @@
     if (lv.water) updateWater(dt);                    // (Gatinho) pelo molhado e arrancada valem para este passo
     if (lv.sprint) updateSprint(dt, !!(ix || iy));
     const step = Math.min(dt, 0.05) * dogSpeedNow();
-    moveAxis(ix * step, 0);
-    moveAxis(0, iy * step);
+    if (lv.birdMode) { // (Passarinho) com tudo empilhado (8 frutos, Asas fortes 4, rajada e bater asas) o passo de um quadro de 20 fps passa de 56 px e pularia um muro ou uma parede de 1 tile (24 + 32): o passo é fatiado em pedaços de até 16 px
+      const n = Math.max(1, Math.ceil(Math.abs(step) / BIRD_STEP_MAX));
+      for (let i = 0; i < n; i++) { moveAxis(ix * step / n, 0); moveAxis(0, iy * step / n); }
+    } else {
+      moveAxis(ix * step, 0);
+      moveAxis(0, iy * step);
+    }
     if (lv.wind) updateWind(dt, ix, iy);              // (Passarinho) a corrente de vento o empurra (só no voo baixo; as paredes e os muros ainda o seguram)
     if (lv.refuge) { const wasPerch = perch; perch = onHighNow(); safe = perch || flightOn(); if (perch && !wasPerch) sfx(P().sfx.landing); } // (Gatinho) com o centro num lugar alto ele está a salvo; (Passarinho) o galho OU o voo alto: os gatos de quintal não o alcançam (e o pouso no galho tem som: `landing`, vazio no Gatinho)
     if (lv.catMode) { const low = onLowNow(); if (low && !onLow && time - jumpAt >= SFX_JUMP_EVERY) { jumpAt = time; sfx(P().sfx.jump); } onLow = low; } // (Gatinho) começou a atravessar um obstáculo baixo (X): o pulo (no máximo uma vez a cada SFX_JUMP_EVERY s)
