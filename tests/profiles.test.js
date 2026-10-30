@@ -208,6 +208,8 @@ test("Gatinho: as frases do Gatinho são diferentes das do Cachorrinho (só as n
   // as únicas frases iguais são as neutras (sem substantivo de bichinho): as bolinhas, as vidas, a proteção, o turbo e os nomes dos sons que ainda são os mesmos
   const allowed = new Set(["noun.ball.one", "noun.ball.many", "reinforce.life.name", "reinforce.life.text", "reinforce.heart.name", "reinforce.heart.text", "reinforce.shield.name", "reinforce.shield.text", "fx.turbo()", "say.ballGot()", "say.winBalls()",
     "lose.short", "hud.balls", "hud.powerBadge", "hud.ballsTitle", "sfx.ration", "sfx.bone", "sfx.capture", "sfx.transform", "sfx.beat", "sfx.alert2",
+    // (0.20.0) os nomes da faixa dos efeitos (Escudo, Gelo, Turbo, Ímã) são os mesmos nos dois
+    "fxNames.shield", "fxNames.ice", "fxNames.turbo", "fxNames.magnet",
     // (0.20.0) o FÔLEGO e o ESTADO do placar e o aviso do voo alto: o Cachorrinho (que não os mostra) guarda os mesmos textos do index.html que o Gatinho usa; o aviso do voo alto é vazio nos dois
     "hud.stamina", "hud.staminaTitle", "hud.stateTitle", "hud.state()", "hud.stateAria()", "hud.stateLive()", "hud.stateSay()", "say.powerEnding()", "sfx.soarEnd", "sfx.landing", "sfx.gust"]);
   assert.deepStrictEqual([...new Set(same)].filter((w) => !allowed.has(w)), []);
@@ -271,6 +273,9 @@ test("Passarinho: substantivos (semente, fruto, minhoca, gato de quintal, gaviã
   assert.deepStrictEqual([n.self.one, n.self.cap, n.prey.one, n.prey.many, n.power.one, n.power.many, n.ball.one, n.ball.many], ["passarinho", "Passarinho", "semente", "sementes", "fruto", "frutos", "minhoca", "minhocas"]);
   assert.deepStrictEqual([n.foe.one, n.foe.many, n.foe.shortOne, n.foe.shortMany, n.foe2.one, n.foe2.many], ["gato de quintal", "gatos de quintal", "gato", "gatos", "gavião", "gaviões"]);
   assert.deepStrictEqual([bird.hud.prey, bird.hud.power, bird.hud.balls], ["SEMENTES", "FRUTOS", "MINHOCAS"]);
+  assert.deepStrictEqual(dog.fxNames, { shield: "Escudo", ice: "Gelo", turbo: "Turbo", magnet: "Ímã" }, "a faixa dos efeitos do Cachorrinho diz o que sempre disse");
+  assert.deepStrictEqual(cat.fxNames, dog.fxNames, "e a do Gatinho também");
+  assert.deepStrictEqual(bird.fxNames, { shield: "Escudo", ice: "Ar frio", turbo: "Rajada", magnet: "Ímã" }, "a do Passarinho usa os nomes dos frutos");
   assert.deepStrictEqual(bird.boneLabel, { scare: "Fruto do voo alto", gold: "Fruto dourado", ice: "Fruto de ar frio", turbo: "Fruto de rajada", magnet: "Fruto ímã" });
   assert.strictEqual(bird.say.ballGot(50, 1, 3), "Minhoca! +50 pontos (1/3)");
   assert.strictEqual(bird.say.foes(5, 0, false), "5 gatos");
@@ -342,7 +347,7 @@ test("Passarinho: as frases do Passarinho são diferentes das do Cachorrinho e d
   const d = new Map(allStrings(dog).map(([w, t]) => [w.replace(/^dog\./, ""), t])), c = new Map(allStrings(cat).map(([w, t]) => [w.replace(/^cat\./, ""), t]));
   const same = allStrings(bird).map(([w, t]) => [w.replace(/^bird\./, ""), t]).filter(([w, t]) => d.get(w) === t || c.get(w) === t).map(([w]) => w);
   const allowed = new Set(["reinforce.life.name", "reinforce.life.text", "reinforce.heart.name", "reinforce.heart.text", "reinforce.shield.text", "lose.short", "hud.powerBadge", "hud.stamina", "sfx.alert2Every", "say.winScared()", "say.beat()", "say.beat2()",
-    "hud.state()", "hud.stateSay()", "ui.shopTitle", "ui.shopHelp", "sfx.hurt", "sfx.beat", "sfx.winMore", "sfx.splash", "sfx.shake", "sfx.jump", "sfx.ballMore", "say.pauseGrowth()"]);
+    "hud.state()", "hud.stateSay()", "fxNames.shield", "fxNames.magnet", "ui.shopTitle", "ui.shopHelp", "sfx.hurt", "sfx.beat", "sfx.winMore", "sfx.splash", "sfx.shake", "sfx.jump", "sfx.ballMore", "say.pauseGrowth()"]);
   assert.deepStrictEqual([...new Set(same)].filter((w) => !allowed.has(w) && !/^sfx\./.test(w)), []);
   for (const [a, b2] of [[bird.hud.prey, dog.hud.prey], [bird.hud.prey, cat.hud.prey], [bird.lose.foe, cat.lose.foe], [bird.say.needAll(true), cat.say.needAll(true)], [bird.boneLabel.scare, cat.boneLabel.scare], [bird.ui.howto, cat.ui.howto], [bird.ui.pauseHelp, cat.ui.pauseHelp]]) assert.notStrictEqual(a, b2);
 });

@@ -4645,7 +4645,7 @@
     setHud("p", hudEl.points, lv.minPoints ? `${score} / ${lv.minPoints}` : String(score));
     if (hudCache.ms !== gameAnimal + "|" + lv.id + "|" + !!lv.mission) { hudCache.ms = gameAnimal + "|" + lv.id + "|" + !!lv.mission; hudEl.missionBar.classList.toggle("hidden", !lv.mission); hudEl.missionBar.setAttribute("aria-label", lv.mission ? `Missão da ${lv.title}: ${missionTexts(lv, hp).join(" e ")}. A saída só abre com os pontos mínimos e a missão cumprida${lv.missionBonus ? `; cumprir a missão vale +${lv.missionBonus} pontos` : ""}.` : "Missão da fase"); }
     { // faixa dos efeitos dos ossos de tipo novo (escudo, gelo, turbo, ímã): só aparece enquanto há algum
-      const t = [["shield", "Escudo"], ["ice", "Gelo"], ["turbo", "Turbo"], ["magnet", "Ímã"]].filter(([k]) => fx[k] > 0).map(([k, n]) => `${n} ${Math.ceil(fx[k])} s`).join(" · ");
+      const t = ["shield", "ice", "turbo", "magnet"].filter((k) => fx[k] > 0).map((k) => `${hp.fxNames[k]} ${Math.ceil(fx[k])} s`).join(" · "); // (os nomes vêm do perfil: o Passarinho diz Ar frio e Rajada)
       if (hudCache.fx !== t) { hudCache.fx = t; hudEl.fxBar.textContent = t; hudEl.fxBar.classList.toggle("hidden", !t); }
     }
     if (lv.mission) { // faixa da missão: só o que ainda falta (ossos, rações); cumprida, diz "Missão cumprida!" (e quantos pontos ainda faltam, se for o caso)

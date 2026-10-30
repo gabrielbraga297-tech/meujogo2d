@@ -38,6 +38,7 @@
       foe2: { one: "gato", many: "gatos" },                                                                             // o segundo inimigo (a partir da Fase 11); null = não existe
     },
     boneLabel: { scare: "Osso do poder", gold: "Osso de ouro", ice: "Osso de gelo", turbo: "Osso turbo", magnet: "Osso ímã" },
+    fxNames: { shield: "Escudo", ice: "Gelo", turbo: "Turbo", magnet: "Ímã" },                                               // os nomes da faixa dos efeitos no alto do jogo (nesta ordem)
     reinforce: {
       speed: { name: "Patas ligeiras", text: "+8% de velocidade do cachorrinho" },
       bone: { name: "Osso poderoso", text: "+8 s no poder do osso" },
@@ -154,6 +155,7 @@
       foe2: null, // no jogo do Gatinho não há um segundo tipo de inimigo
     },
     boneLabel: { scare: "Novelo do poder", gold: "Novelo de ouro", ice: "Novelo de gelo", turbo: "Novelo turbo", magnet: "Novelo ímã" },
+    fxNames: { shield: "Escudo", ice: "Gelo", turbo: "Turbo", magnet: "Ímã" },
     reinforce: {
       speed: { name: "Patas ágeis", text: "+8% de velocidade do gatinho" },
       bone: { name: "Novelo poderoso", text: "+8 s no poder do novelo" },
@@ -298,6 +300,7 @@
       foe2: { one: "gavião", many: "gaviões" },                                                                          // a partir da Fase 11
     },
     boneLabel: { scare: "Fruto do voo alto", gold: "Fruto dourado", ice: "Fruto de ar frio", turbo: "Fruto de rajada", magnet: "Fruto ímã" },
+    fxNames: { shield: "Escudo", ice: "Ar frio", turbo: "Rajada", magnet: "Ímã" },                                              // (os mesmos nomes dos frutos: a faixa diz "Ar frio 6 s" e "Rajada 8 s")
     reinforce: {
       speed: { name: "Asas fortes", text: "+8% de velocidade do passarinho" },
       bone: { name: "Fruto poderoso", text: "+2 s no voo alto do fruto (e +4 s nos outros frutos)" },
