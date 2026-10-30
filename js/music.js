@@ -1008,7 +1008,7 @@
   const finite = (x) => typeof x === "number" && Number.isFinite(x);
 
   // opts: { sound (o Sound.create do jogo: dá o contexto de áudio e o mudo), storage (opcional: getItem/setItem; guarda "cachorrinho.musica.v1"),
-  //         now (ms, padrão Date.now), setInterval/clearInterval (injetáveis para os testes), busGain (padrão 0,45) }
+  //         now (ms, padrão: o relógio do sistema), setInterval/clearInterval (injetáveis para os testes), busGain (padrão 0,45) }
   function create(opts) {
     opts = opts || {};
     const sound = opts.sound || null;
@@ -1113,13 +1113,17 @@
       if (cur && cur.live) releaseNode(cur.node, d.fade);
       cur = null;
       const t = ctx.currentTime;
-      cur = { id: d.id, score, node: newNode(d.volume, hadSound ? d.fade : Math.min(d.fade, 0.25)), live: true, pos: mod(d.from, score.lengthBeats), posTime: t + START_LEAD, volume: d.volume };
+      cur = { id: d.id, score, node: newNode(d.volume, hadSound ? d.fade : Math.min(d.fade, 0.25)), live: true, pos: mod(d.from, score.lengthBeats), posTime: t + START_LEAD, volume: d.volume, wrapped: false };
+    }
+    function heardBeat() { // a batida do laço que se ouve agora (o agendado à frente ainda não soou)
+      const sc = cur.score, ahead = cur.live && ctx ? Math.max(0, cur.posTime - ctx.currentTime) : 0, raw = cur.pos - ahead / (60 / sc.bpm);
+      return raw < 0 && !cur.wrapped ? 0 : mod(raw, sc.lengthBeats); // no começo do tema ainda não houve volta: nada de "fim do laço"
     }
     function silence() { // pausa, mudo ou música desligada: some depressa e guarda o compasso em que estava
       if (!cur || !cur.live) return;
-      const sc = cur.score, spb = 60 / sc.bpm, t = ctx.currentTime;
-      const heard = mod(cur.pos - Math.max(0, cur.posTime - t) / spb, sc.lengthBeats);
-      cur.pos = Math.floor(heard / sc.barBeats + 1e-9) * sc.barBeats; // volta ao começo do compasso, para os sons longos (cordas) entrarem de novo
+      const sc = cur.score;
+      cur.pos = Math.floor(heardBeat() / sc.barBeats + 1e-9) * sc.barBeats; // volta ao começo do compasso, para os sons longos (cordas) entrarem de novo
+      cur.wrapped = false;
       releaseNode(cur.node, 0.05);
       cur.node = null; cur.live = false;
     }
@@ -1132,15 +1136,15 @@
       const sc = cur.score, spb = 60 / sc.bpm, t = ctx.currentTime, target = t + LOOKAHEAD;
       if (cur.posTime < t - 0.05) { // ficamos para trás (aba em segundo plano, engasgo): pula o tempo perdido em vez de despejar notas atrasadas
         cur.pos = mod(cur.pos + (t + 0.03 - cur.posTime) / spb, sc.lengthBeats);
-        cur.posTime = t + 0.03;
+        cur.posTime = t + 0.03; cur.wrapped = true;
       }
       for (let guard = 0; cur.posTime < target - 1e-9 && guard < 8; guard++) {
         const span = Math.min((target - cur.posTime) / spb, sc.lengthBeats - cur.pos);
-        if (!(span > 1e-9)) { cur.pos = 0; continue; }
+        if (!(span > 1e-9)) { cur.pos = 0; cur.wrapped = true; continue; }
         const to = cur.pos + span;
         render(sc, ctx, cur.node, cur.posTime, { from: cur.pos, to, minTime: t });
         cur.posTime += span * spb;
-        cur.pos = to >= sc.lengthBeats - 1e-9 ? 0 : to;
+        if (to >= sc.lengthBeats - 1e-9) { cur.pos = 0; cur.wrapped = true; } else cur.pos = to;
       }
     }
 
@@ -1235,6 +1239,8 @@
       get events() { return events; },
       get supported() { return supported(); },
       get paused() { return paused; },
+      // Onde a música está: { id, beat (batida do laço que se ouve agora), live (false em pausa/mudo: guarda o compasso em que parou) } ou null.
+      get position() { return cur ? { id: cur.id, beat: heardBeat(), live: cur.live } : null; },
       // "stopped" (nada pedido), "unsupported" (sem Web Audio), "off" (música desligada), "muted", "paused", "waiting" (ainda não destravou), "suspended" (contexto suspenso), "playing"
       get state() {
         if (!desired) return "stopped";

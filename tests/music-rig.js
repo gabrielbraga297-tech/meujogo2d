@@ -33,7 +33,7 @@ class FakeNode {
     if (!dest || !(dest instanceof FakeNode || dest instanceof FakeParam)) throw new TypeError("connect: destino inválido");
     this.out.push(dest); return dest;
   }
-  disconnect() { this.out = []; this.disconnected = true; }
+  disconnect() { this.wasConnectedTo = (this.wasConnectedTo || []).concat(this.out); this.out = []; this.disconnected = true; }
 }
 class FakeGain extends FakeNode { constructor(c) { super(c, "gain"); this.gain = new FakeParam(this, "gain", 1); } }
 class FakeCompressor extends FakeNode {
