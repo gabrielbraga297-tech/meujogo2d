@@ -22,7 +22,7 @@
         bass: { inst: "bassSine", pattern: "waltz", oct: 2, vel: 0.5 },
         arp: { inst: "harp", rate: 3, shape: "updown", oct: 3, vel: 0.4, from: 0.38 },
       },
-      intensity: 0.42,
+      intensity: 0.42, gain: 1.2,
     },
     // 2 Pomar de macieiras: ré lídio em valsa (3/4, 80), harpa que se alterna com a flauta, contracanto grave de flauta, violão (pluck) quebrado e escova só nas seções cheias (sem cordas, para ficar leve).
     {
@@ -36,7 +36,7 @@
         arp: { inst: "pluck", rate: 2, shape: "broken", oct: 3, vel: 0.38, from: 0.42 },
         perc: { kit: "brush", pattern: "waltz", vel: 0.32, from: 0.55 },
       },
-      intensity: 0.46,
+      intensity: 0.46, gain: 1.35,
     },
     // 3 Horta e cerca: dó maior em 4/4 (84), motivos saltitantes de marimba (que passa para o violão), baixo caminhante, bloco de madeira esparso e leve balanço; seções de 6 compassos (AABC).
     {
@@ -50,7 +50,7 @@
         arp: { inst: "harp", rate: 2, shape: "up", oct: 4, vel: 0.36, from: 0.7 },
         perc: { kit: "woodblock", pattern: "sparse", vel: 0.4, from: 0.3 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.14,
     },
     // 4 Telhados e chaminés: si bemol mixolídio em 6/8 (88), celesta e violão, baixo sincopado, arpejo alberti de harpa (três notas por compasso), escova leve; forma AABAC com uma seção final mais cheia.
     {
@@ -64,7 +64,7 @@
         arp: { inst: "harp", rate: 1.5, shape: "alberti", oct: 3, vel: 0.4, from: 0.45 },
         perc: { kit: "brush", pattern: "steady", vel: 0.3, from: 0.4 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.19,
     },
     // 5 Praça da vila: lá maior em valsa de coreto (3/4, 92), órgão suave que alterna com flauta e xilofone, baixo "uum-pá-pá" com bumbo macio e bloco de madeira, sino agudo no contracanto; forma ABAC.
     {
@@ -78,7 +78,7 @@
         pad: { inst: "strings", oct: 3, vel: 0.25, from: 0.4 },
         perc: { kit: ["softkick", "woodblock"], pattern: "waltz", vel: 0.38, from: 0.3 },
       },
-      intensity: 0.52,
+      intensity: 0.52, gain: 1.2,
     },
     // 6 Parque e coreto: mi mixolídio em 4/4 (96), marcha leve com "uum-pá" (baixo nos contratempos, bumbo macio e bloco de madeira), xilofone com a flauta nas respostas, sino agudo e violão nas seções B; forma ABBA, trio no meio.
     {
@@ -92,7 +92,7 @@
         arp: { inst: "pluck", rate: 2, shape: "up", oct: 3, vel: 0.34, from: 0.55 },
         perc: { kit: ["softkick", "woodblock"], pattern: "steady", vel: 0.5, from: 0.3 },
       },
-      intensity: 0.55,
+      intensity: 0.55, gain: 1.38,
     },
     // 7 Milharal: fá pentatônico maior em 6/8 (99), motivos de um compasso que a marimba e a flauta trocam como chamados, bordão de senoide, arpejo de violão, chocalho (o farfalhar das folhas) e vento; forma ABABAC.
     {
@@ -107,7 +107,7 @@
         perc: { kit: "shaker", pattern: "offbeat", vel: 0.3, from: 0.4 },
         ambience: { kind: "wind", vel: 0.45 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.08,
     },
     // 8 Campo de trigo e espantalhos: si dórico em 3/4 (102), sino e marimba com muitas pausas (um quê de estranho e brincalhão), baixo sincopado de senoide, arpejo lento de celesta, bloco de madeira esparso e vento.
     {
@@ -122,7 +122,7 @@
         perc: { kit: "woodblock", pattern: "sparse", vel: 0.35, from: 0.3 },
         ambience: { kind: "wind", vel: 0.5 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.19,
     },
     // 9 Lago e juncos: ré bemol maior em 6/8 (105), notas longas de harpa e flauta como numa barcarola, gotas de celesta em três notas por compasso, baixo "raiz-quinta" e gotas de água; sem percussão; forma ABABCB.
     {
@@ -136,7 +136,7 @@
         arp: { inst: "celesta", rate: 1.5, shape: "updown", oct: 5, vel: 0.3, from: 0.45 },
         ambience: { kind: "water", vel: 0.5 },
       },
-      intensity: 0.46,
+      intensity: 0.46, gain: 1.15,
     },
     // 10 Mata de pinheiros: mi dórico em 4/4 (108), melodia de cordas que passa à flauta, baixo caminhante, arpejo lento de harpa nas seções cheias, escova esparsa e vento fraco entre as árvores; forma AABC com três contornos diferentes.
     {
@@ -151,7 +151,7 @@
         perc: { kit: "brush", pattern: "sparse", vel: 0.35, from: 0.3 },
         ambience: { kind: "wind", vel: 0.3 },
       },
-      intensity: 0.58,
+      intensity: 0.58, gain: 1.12,
     },
     // 11 Fazenda e galinheiro: chegam os gaviões; mi menor em 4/4 (112), violão (pluck) seco e saltitante com a flauta nas respostas, baixo de serrilha sincopado, marimba em arpejo e bumbo com bloco de madeira em colcheias; primeira fase de clima tenso.
     {
@@ -165,7 +165,7 @@
         arp: { inst: "marimba", rate: 2, shape: "up", oct: 3, vel: 0.34, from: 0.5 },
         perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.5, from: 0.25 },
       },
-      intensity: 0.66,
+      intensity: 0.66, gain: 1.08,
     },
     // 12 Margem do rio: lá dórico em valsa corrida (3/4, 114), celesta e flauta, arpejo de harpa que sobe e desce sem parar (a correnteza), baixo de valsa, chocalho esparso e gotas de água.
     {
@@ -180,7 +180,7 @@
         perc: { kit: "shaker", pattern: "sparse", vel: 0.3, from: 0.5 },
         ambience: { kind: "water", vel: 0.45 },
       },
-      intensity: 0.56,
+      intensity: 0.56, gain: 1.19,
     },
     // 13 Pântano e vitórias-régias: sol frígio em 6/8 (116) com notas longas e muitas pausas, órgão grave e sino, bordão de serrilha, gotas de harpa, batida de coração (bumbo macio) e água; forma ABACAB.
     {
@@ -194,7 +194,7 @@
         perc: { kit: "softkick", pattern: "heartbeat", vel: 0.35, from: 0.3 },
         ambience: { kind: "water", vel: 0.55 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.52,
     },
     // 14 Dunas e restinga: dó menor harmônico em 4/4 (118), violão seco (a 2ª aumentada dá o ar de deserto) que passa à flauta, baixo de pizzicato, tresillo de bumbo e bloco de madeira, cordas nas seções cheias e vento; forma ABCB.
     {
@@ -208,7 +208,7 @@
         perc: { kit: ["softkick", "woodblock"], pattern: "offbeat", vel: 0.4, from: 0.3 },
         ambience: { kind: "wind", vel: 0.45 },
       },
-      intensity: 0.6,
+      intensity: 0.6, gain: 1.12,
     },
     // 15 Falésias e ninhos: lá bemol lídio em 3/4 (120), frases de três compassos subindo na flauta e no sino, contracanto agudo de celesta, arpejo lento de harpa nas seções cheias, bumbo macio com chocalho e vento forte; forma ABABC.
     {
@@ -223,7 +223,7 @@
         perc: { kit: ["softkick", "shaker"], pattern: "steady", vel: 0.4, from: 0.4 },
         ambience: { kind: "wind", vel: 0.5 },
       },
-      intensity: 0.6,
+      intensity: 0.6, gain: 1.16,
     },
     // 16 Vila de pescadores e redes: sol dórico em 6/8 (122), uma giga de marimba e flauta com baixo caminhante, violão em arpejo lento, sino agudo, bumbo e bloco de madeira em polca e brisa do mar; seções de 12 compassos (AABA).
     {
@@ -238,7 +238,7 @@
         perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.5, from: 0.25 },
         ambience: { kind: "wind", vel: 0.35 },
       },
-      intensity: 0.64,
+      intensity: 0.64, gain: 0.87,
     },
     // 17 Campos de altitude: ré mixolídio em 4/4 (124), frases longas de quatro compassos (harpa e flauta), bordão de senoide, arpejo de celesta, flauta aguda no contracanto, chocalho e muito vento; leve balanço.
     {
@@ -253,7 +253,7 @@
         perc: { kit: "shaker", pattern: "offbeat", vel: 0.3, from: 0.5 },
         ambience: { kind: "wind", vel: 0.5 },
       },
-      intensity: 0.62,
+      intensity: 0.62, gain: 1.02,
     },
     // 18 Entardecer nos telhados: si menor em 6/8 lento (82), flauta quente que desce em notas longas e passa a frase às cordas, harpa grave no contracanto, contrabaixo em pizzicato, arpejo de harpa descendo, escova rara e brisa; forma ABACA, volta ao começo.
     {
@@ -268,7 +268,7 @@
         perc: { kit: "brush", pattern: "sparse", vel: 0.3, from: 0.4 },
         ambience: { kind: "wind", vel: 0.3 },
       },
-      intensity: 0.5,
+      intensity: 0.5, gain: 1.22,
     },
     // 19 Noite na floresta: fá sustenido pentatônico menor em 3/4 (90), flauta grave com muitas pausas, baixo de senoide nos contratempos, órgão baixo e harpa esparsa só nas seções cheias, batida de coração e grilos; o tema mais escuro e vazio.
     {
@@ -283,7 +283,7 @@
         perc: { kit: "softkick", pattern: "heartbeat", vel: 0.35, from: 0.3 },
         ambience: { kind: "crickets", vel: 0.5 },
       },
-      intensity: 0.38,
+      intensity: 0.38, gain: 1.24,
     },
     // 20 O grande ninho: ré maior em 4/4 (128), o final: a flauta passa a frase à harpa, ao sino e às cordas, contracanto de celesta, arpejo alberti de harpa, baixo caminhante, bumbo e chocalho; forma ABCBA, em que a volta do A é a "volta ao ninho".
     {
@@ -297,7 +297,7 @@
         arp: { inst: "harp", rate: 2, shape: "alberti", oct: 3, vel: 0.42, from: 0.4 },
         perc: { kit: ["softkick", "shaker"], pattern: "polka", vel: 0.5, from: 0.2 },
       },
-      intensity: 0.72,
+      intensity: 0.72, gain: 0.96,
     },
   ]);
 })(typeof window !== "undefined" ? window : globalThis);
