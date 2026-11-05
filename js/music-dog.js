@@ -166,7 +166,7 @@
         bass: { inst: "contrabass", pattern: "pizz", oct: 2, vel: 0.8 },
         perc: { kit: ["softkick", "woodblock"], pattern: "driving", vel: 0.5, from: 0.3 },
       },
-      intensity: 0.6, gain: 1.02,
+      intensity: 0.6, gain: 0.94,
     },
     // 12 Pet shop: prateleiras coloridas e brinquedos. Dó lídio, 120 bpm, AABC (64 s), balanço médio (0,28). Marimba com campainhas (sino) no revezamento, baixo caminhante,
     // pratinho de escova, descante de flauta e arpejo de celesta que sobe e brilha nas seções B e C. Contorno ascendente, muitos saltos.

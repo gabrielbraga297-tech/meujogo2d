@@ -1425,7 +1425,7 @@
       arp: { inst: "harp", rate: 2, shape: "broken", oct: 4, vel: 0.5, from: 0.6 },
       perc: { kit: "woodblock", pattern: "steady", vel: 0.5, from: 0.3 },
     },
-    intensity: 0.55,
+    intensity: 0.55, gain: 0.94,
   }]);
 
   // ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------
