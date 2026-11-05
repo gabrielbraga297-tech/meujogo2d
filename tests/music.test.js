@@ -741,6 +741,50 @@ test("tocador: duck antes do unlock vale quando o barramento nasce", () => {
   r.music.setDuck(0.25); r.music.play("menu"); r.sound.unlock();
   assert.strictEqual(r.chain().duck.gain.value, 0.25);
 });
+test("tocador: duck temporário pedido antes do unlock (o barramento nasce dentro da janela do duck) volta sozinho ao nível fixo — não fica preso em 0,3", () => {
+  const r = rigPlayer({ unlock: false });
+  r.music.play("menu");
+  r.music.duck(0.3, 0.8);
+  r.run(200);
+  r.sound.unlock();
+  r.run(3000);
+  const { duck } = r.chain(), T = r.ctx().currentTime;
+  const targets = duck.gain.events.filter((e) => e.type === "target");
+  assert.deepStrictEqual(targets.map((e) => e.v), [0.3, 1], "abaixa e agenda a volta");
+  assert.ok(Math.abs(targets[1].t - targets[0].t - 0.6) < 1e-6, "volta 0,6 s depois (0,8 s do pedido menos os 0,2 s que passaram)");
+  assert.ok(Math.abs(rig.paramAt(duck.gain, T) - 1) < 1e-3, "3 s depois o duck vale 1: " + rig.paramAt(duck.gain, T));
+  // duck FIXO antes do unlock continua sem agendar nada (o nível já nasce certo)
+  const q = rigPlayer({ unlock: false });
+  q.music.setDuck(0.25); q.music.play("menu"); q.sound.unlock();
+  assert.strictEqual(q.chain().duck.gain.events.length, 0); assert.strictEqual(q.chain().duck.gain.value, 0.25);
+  // e um duck temporário que já venceu antes do unlock não faz nada
+  const w = rigPlayer({ unlock: false });
+  w.music.play("menu"); w.music.duck(0.3, 0.5); w.now.add(2000); w.sound.unlock();
+  assert.strictEqual(w.chain().duck.gain.value, 1); assert.strictEqual(w.chain().duck.gain.events.length, 0);
+});
+test("tocador: se o relógio do sistema volta (ajuste de hora) durante um duck temporário, o duck vale como vencido e não fica preso por uma hora", () => {
+  const r = rigPlayer();
+  r.music.play("menu"); r.run(300);
+  const { duck } = r.chain();
+  r.music.duck(0.3, 0.8); r.run(200);
+  r.now.add(-3600e3); // o relógio volta 1 h
+  r.music.setDuck(1); r.run(5000);
+  const T = r.ctx().currentTime;
+  assert.ok(Math.abs(rig.paramAt(duck.gain, T) - 1) < 1e-3, "5 s depois o duck vale 1: " + rig.paramAt(duck.gain, T));
+  assert.ok(duck.gain.events.filter((e) => e.type === "target").every((e) => e.t < T + 5), "nenhuma volta agendada para daqui a uma hora");
+  // o nível fixo novo vale mesmo com o relógio recuado
+  const q = rigPlayer();
+  q.music.play("menu"); q.run(300);
+  q.music.duck(0.3, 0.8); q.run(200); q.now.add(-3600e3);
+  q.music.setDuck(0.5); q.run(5000);
+  assert.ok(Math.abs(rig.paramAt(q.chain().duck.gain, q.ctx().currentTime) - 0.5) < 1e-3);
+  // um recuo pequeno (menos de 1 s além da duração) não derruba um duck legítimo
+  const w = rigPlayer();
+  w.music.play("menu"); w.run(300);
+  w.music.duck(0.3, 0.8); w.run(100); w.now.add(-500); w.music.duck(0.2, 0.8);
+  const ev = w.chain().duck.gain.events.filter((e) => e.type === "target");
+  assert.deepStrictEqual(ev.slice(-2).map((e) => e.v), [0.2, 1], "duck normal depois de um recuo pequeno");
+});
 test("tocador: pausa (aba escondida) some depressa, não agenda nada e o resume volta do começo do compasso em que parou", () => {
   const r = rigPlayer();
   r.music.play("menu"); r.run(6000);

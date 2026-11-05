@@ -1109,7 +1109,7 @@
     let cur = null;                  // o tema soando: { id, score, node, live, pos (batida do laço até onde já agendamos), posTime (s do áudio dessa batida) }
     const fading = [];               // nós saindo: { node, endMs }
     let ctx = null, duckNode = null, bus = null, lastAllowed = null;
-    let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs }
+    let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs, ms (a duração pedida) }
     let duckModel = { v: 1, t: 0, L: 1, tc: DUCK_DOWN_TC, later: [] }; // curva do ganho do duck (ver duckNow)
     let timer = null, lastResumeTry = -Infinity, offUnlock = null;
     const events = [];
@@ -1152,10 +1152,13 @@
         ctx = a.ctx; duckNode = d; bus = b;
         duckModel = { v: d.gain.value, t: ctx.currentTime, L: d.gain.value, tc: DUCK_DOWN_TC, later: [] };
         cur = null; fading.length = 0; // o que existia era de outro contexto
+        if (activeTemp()) applyDuck(); // o barramento nasceu dentro da janela de um duck temporário (duck pedido antes do unlock, contexto recriado): agenda já a volta ao nível fixo
         return true;
       } catch { broken = true; ctx = null; bus = null; duckNode = null; return false; }
     }
-    function duckValue() { const tp = temp && temp.untilMs > now() ? temp : null; return tp ? tp.level : baseDuck; }
+    // O duck temporário que vale agora, ou null. Se o relógio do sistema voltou, `untilMs` fica muito além da duração pedida (mais de 1 s de folga): o duck vale como vencido em vez de ficar preso.
+    function activeTemp() { if (!temp) return null; const left = temp.untilMs - now(); return left > 0 && left <= temp.ms + 1000 ? temp : null; }
+    function duckValue() { const tp = activeTemp(); return tp ? tp.level : baseDuck; }
     // O nível que o ganho do duck tem AGORA, calculado com a mesma curva que applyDuck agenda (setTargetAtTime): serve para congelar o volume efetivo de um
     // tema que sai. Não lemos `gain.value` porque o navegador pode devolver o valor sem a automação; e não usamos o alvo (duckValue), que só vale depois da subida.
     function duckNow() {
@@ -1171,7 +1174,7 @@
     function applyDuck() {
       if (!ctx || !duckNode) return;
       try {
-        const t = ctx.currentTime, p = duckNode.gain, tp = temp && temp.untilMs > now() ? temp : null, target = tp ? tp.level : baseDuck, from = duckNow();
+        const t = ctx.currentTime, p = duckNode.gain, tp = activeTemp(), target = tp ? tp.level : baseDuck, from = duckNow();
         p.cancelScheduledValues(t);
         p.setTargetAtTime(target, t, DUCK_DOWN_TC);
         duckModel = { v: from, t, L: target, tc: DUCK_DOWN_TC, later: [] };
@@ -1320,7 +1323,7 @@
       duck(level, seconds) {
         try {
           const lv = finite(level) ? clamp(level, 0, 1) : 0.25;
-          if (finite(seconds) && seconds > 0) temp = { level: lv, untilMs: now() + seconds * 1000 };
+          if (finite(seconds) && seconds > 0) temp = { level: lv, untilMs: now() + seconds * 1000, ms: seconds * 1000 };
           else { baseDuck = lv; temp = null; }
           applyDuck();
         } catch { /* ignora */ }
