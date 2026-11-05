@@ -1,7 +1,7 @@
 // Músicas tema do GATINHO: 20 receitas (cat1 a cat20), uma por fase, cada uma com o clima do lugar da fase (o campo `place` é o mesmo de js/cat-levels.js).
 // Contrato e molde: docs/MUSICA.md. Cada receita é só dado (tom, modo, andamento, forma, progressão, motivo, vozes, camadas); quem faz a partitura é js/music.js.
 // Estilo do bichinho (escolha de design; nenhuma pessoa ouviu estas músicas): furtivo, elegante e malandro. Modos dórico, menor, menor harmônico, frígio, blues, pentatônicos
-// e uns poucos claros (lídio, mixolídio, maior) para os lugares abertos; balanço (swing); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima;
+// e uns poucos claros (lídio, mixolídio, maior) para os lugares abertos; balanço (swing: nos comentários, leve até 0,2, médio de 0,25 a 0,3 e forte de 0,4 em diante); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima;
 // melodias com pausas e síncopas. Rampa: o andamento sobe da Fase 1 (84 bpm) à Fase 20 (132 bpm) e as camadas (`intensity`) ficam mais cheias; a Fase 11
 // (cães rastreadores), as noites (18 e 19) e a Fase 20 (final grande, "volta ao lar") têm mais camadas e tensão.
 // Os temas são distintos entre si: nenhum repete tom e modo, andamento, forma com o mesmo tamanho, nem o par (instrumento do solo, padrão do baixo).
@@ -10,7 +10,7 @@
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
   M.register([
-    // 1 Sala de estar: simples e aconchegante. Valsa lenta (3/4, 84 bpm) em sol dórico com acordes de sétima e balanço leve. Celesta no solo, baixo de seno
+    // 1 Sala de estar: simples e aconchegante. Valsa lenta (3/4, 84 bpm) em sol dórico com acordes de sétima e balanço médio (0,3). Celesta no solo, baixo de seno
     // ("uum-pá-pá"), escovas só a partir da repetição e um órgão suave; a flauta grave só entra na parte B. Poucas notas, frases que respiram.
     {
       id: "cat1", animal: "cat", place: "Sala de estar", key: "G", mode: "dorian", bpm: 84, beats: 3, swing: 0.3, bars: 32, form: "AABA",
@@ -26,7 +26,7 @@
       intensity: 0.5,
       gain: 1.33,
     },
-    // 2 Cozinha e despensa: ré menor, 88 bpm, balanço. Marimba no solo com ritmo cheio de pausas e síncopas, bloco de madeira marcando os contratempos como um relógio de parede
+    // 2 Cozinha e despensa: ré menor, 88 bpm, balanço médio (0,3). Marimba no solo com ritmo cheio de pausas e síncopas, bloco de madeira marcando os contratempos como um relógio de parede
     // e contrabaixo pizzicato em síncope (tresillo). A flauta entra nas partes B e o arpejo de cordas beliscadas só na última parte.
     {
       id: "cat2", animal: "cat", place: "Cozinha e despensa", key: "D", mode: "minor", bpm: 88, beats: 4, swing: 0.3, bars: 32, form: "ABAB",
@@ -190,7 +190,7 @@
       intensity: 0.72,
       gain: 0.83,
     },
-    // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço leve, forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
+    // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço médio (0,25), forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
     // com marimba num ritmo de "cacarejo" (notas rápidas e curtas), baixo de triângulo só nos contratempos, bumbo macio e bloco de madeira nos tempos 2 e 4, flauta grave no final.
     {
       id: "cat12", animal: "cat", place: "Horta e galinheiro", key: "Ab", mode: "mixolydian", bpm: 112, beats: 4, swing: 0.25, bars: 24, form: "AAB",

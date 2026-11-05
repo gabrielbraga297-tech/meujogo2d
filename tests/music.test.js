@@ -44,11 +44,36 @@ test("carregar o módulo no Node não cria timers nem toca em AudioContext; o to
   assert.strictEqual(m.state, "unsupported");
   m.dispose();
 });
-test("os temas embutidos: menu primeiro, depois os três exemplos; ids únicos; get devolve null para id desconhecido", () => {
-  assert.deepStrictEqual(Music.ids().slice(0, 4), THEMES);
-  assert.strictEqual(new Set(Music.ids()).size, Music.ids().length);
+test("os temas embutidos (o menu e os três exemplos) estão registrados, sem ids repetidos (a conferência não depende da ordem do registro); get devolve null para id desconhecido", () => {
+  const ids = Music.ids();
+  for (const id of THEMES) assert.ok(ids.includes(id), id + " registrado");
+  assert.strictEqual(new Set(ids).size, ids.length);
   assert.strictEqual(Music.get("nao-existe"), null);
   assert.strictEqual(Music.get("menu").id, "menu");
+});
+// Os intervalos dos modos escritos à mão, de um livro de teoria, SEM ler a tabela do motor: as conferências "todas as notas na escala" usam a mesma tabela do gerador (Music.scaleInfo) e por isso
+// não pegariam um modo escrito errado (por exemplo o dórico com a sexta menor, que é o eólio).
+test("modos e tons: os intervalos dos 10 modos e as notas de cada tom conferem com os escritos à mão (independentes da tabela do motor)", () => {
+  const byHand = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10], lydian: [0, 2, 4, 6, 7, 9, 11],
+    phrygian: [0, 1, 3, 5, 7, 8, 10], pentMajor: [0, 2, 4, 7, 9], pentMinor: [0, 3, 5, 7, 10], harmMinor: [0, 2, 3, 5, 7, 8, 11], blues: [0, 3, 5, 6, 7, 10] };
+  assert.deepStrictEqual(Object.keys(Music.MODES).sort(), Object.keys(byHand).sort());
+  for (const [mode, steps] of Object.entries(byHand)) { assert.deepStrictEqual([...Music.MODES[mode]], steps, mode); assert.deepStrictEqual([...Music.scaleInfo("C", mode).steps], steps, "scaleInfo " + mode); }
+  const keysByHand = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
+  assert.deepStrictEqual({ ...Music.KEYS }, keysByHand);
+  // as notas (classes de altura) de alguns tons completos, contadas à mão no teclado: C=0 C#=1 D=2 D#=3 E=4 F=5 F#=6 G=7 G#=8 A=9 A#=10 B=11
+  const pcs = (key, mode) => [...Music.scaleInfo(key, mode).pcs].sort((a, b) => a - b);
+  assert.deepStrictEqual(pcs("G", "dorian"), [0, 2, 4, 5, 7, 9, 10], "sol dórico: G A Bb C D E F");
+  assert.deepStrictEqual(pcs("D", "lydian"), [1, 2, 4, 6, 8, 9, 11], "ré lídio: D E F# G# A B C#");
+  assert.deepStrictEqual(pcs("F#", "pentMinor"), [1, 4, 6, 9, 11], "fá# pentatônico menor: F# A B C# E");
+  assert.deepStrictEqual(pcs("A", "minor"), [0, 2, 4, 5, 7, 9, 11], "lá menor: só as teclas brancas");
+  assert.deepStrictEqual(pcs("E", "phrygian"), [0, 2, 4, 5, 7, 9, 11], "mi frígio: só as teclas brancas");
+  assert.deepStrictEqual(pcs("B", "dorian"), [1, 2, 4, 6, 8, 9, 11], "si dórico: B C# D E F# G# A (as mesmas notas de lá maior)");
+  assert.deepStrictEqual(pcs("C", "harmMinor"), [0, 2, 3, 5, 7, 8, 11], "dó menor harmônico: C D Eb F G Ab B");
+  assert.deepStrictEqual(pcs("G", "blues"), [0, 1, 2, 5, 7, 10], "sol blues: G Bb C Db D F");
+  // alturas: a tônica da oitava `oct` é a nota MIDI 12 x (oct + 1) + tom; os graus sobem pela escala e dão a volta na oitava
+  const sc = Music.scaleInfo("C", "major");
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, -1].map((d) => Music.degMidi(sc, d, 4)), [60, 62, 64, 65, 67, 69, 71, 72, 59]);
+  assert.strictEqual(Music.degMidi(Music.scaleInfo("A", "minor"), 0, 2), 45); assert.strictEqual(Music.midiHz(45), 110);
 });
 test("o bloco dos temas de exemplo está marcado no código (js/music-dog.js, js/music-cat.js e js/music-bird.js os substituem)", () => {
   assert.ok(SRC.includes("// ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------"));

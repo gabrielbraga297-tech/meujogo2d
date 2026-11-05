@@ -60,7 +60,7 @@ Todas as chaves menos `id` e `voices.lead` têm padrão. Valores fora da faixa e
 | `mode` | `major minor dorian mixolydian lydian phrygian pentMajor pentMinor harmMinor blues` (`"major"`) |
 | `bpm` | 50 a 200 (100). É o **pulso** que se sente: semínima em 4/4 e 3/4, semínima pontuada em 6/8 |
 | `beats` | `4` (4/4), `3` (3/4) ou `6` (6/8 "em 2": o compasso tem 2 pulsos de 3 colcheias) (4) |
-| `swing` | 0 a 0,6 (0). Atrasa as colcheias de contratempo em `swing x 0,25` batida (0,6 = 0,15, quase tercina). Ignorado em 6/8; não balança pad nem ambiência |
+| `swing` | 0 a 0,6 (0). Nos comentários das receitas: leve até 0,2, médio de 0,25 a 0,3, forte de 0,4 em diante. Atrasa as colcheias de contratempo em `swing x 0,25` batida (0,6 = 0,15, quase tercina). Ignorado em 6/8; não balança pad nem ambiência |
 | `bars` | inteiro de 8 a 64 (32). O laço dura `bars x batidas do compasso x 60 / bpm` segundos e precisa ficar entre **40 e 100 s** |
 | `form` | 2 a 8 letras de `A` a `H` (`"ABAB"`), uma letra por seção; `bars` precisa dividir por esse número e cada seção ter 2 compassos ou mais (ex.: 32 compassos em `AABA` = 4 seções de 8) |
 | `prog` | progressão por graus (ver abaixo). Texto, lista ou objeto por letra de seção (`{ A, B, default }`) |
