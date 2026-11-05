@@ -3020,7 +3020,7 @@ const PAGE_HELPERS = () => {
     await ev(g, () => { document.getElementById("btn-resume").focus(); __padSet({ press: [13] }); __game.padPoll(0.016); });
     ok(await focusId() === "btn-save", "(repetição) primeiro passo");
     await ev(g, () => { for (let i = 0; i < 40; i++) __game.padPoll(0.016); __padSet({ release: [13] }); __game.padPoll(0.016); });
-    ok(["btn-resume", "btn-save", "btn-pause-menu", "btn-sound-pause"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
+    ok(["btn-resume", "btn-save", "btn-pause-menu", "btn-sound-pause", "btn-music-pause"].includes(await focusId()), "segurar o direcional continua passando pelos botões (sem travar nem sair da tela)");
     await padHit(9);
 
     // o direcional já apertado ao abrir uma tela não corre pelos botões (só vale depois de voltar ao neutro)
