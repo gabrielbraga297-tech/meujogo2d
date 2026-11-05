@@ -117,8 +117,8 @@ Todas têm `inst` (instrumento), `oct` (oitava da **tônica**; a nota C4 = 60 fi
 | Papel | Nomes |
 |---|---|
 | Melodia, contramelodia, pad, arpejo (qualquer um serve para qualquer voz de tom) | `pluck` (cordas beliscadas), `marimba`, `xylo` (xilofone), `flute` (senoide com vibrato e sopro), `bell` (sino, parciais inarmônicos), `celesta`, `harp`, `organ` (órgão suave), `strings` (duas serrilhas desafinadas com passa-baixa) |
-| Baixo (também servem de solo em oitava baixa) | `bass` (triângulo + 2º harmônico), `bassSine`, `bassSaw` (serrilha filtrada + seno), `contrabass` (pizzicato: a nota morre sozinha, com batida grave) |
-| `perc.kit` | `woodblock` (grave e agudo), `brush` (escova de ruído), `shaker` (chocalho), `softkick` (bumbo macio, só marca o grave), `hat` (prato leve) |
+| Baixo (também servem de solo em oitava baixa) | `bass` (triângulo), `bassSine`, `bassSaw` (serrilha filtrada + seno), `contrabass` (pizzicato: a nota morre sozinha, com batida grave). Todos levam também o 2º e o 3º harmônicos (50% e 25% da amplitude do fundamental), porque o alto-falante de um celular reproduz pouco abaixo de uns 150 Hz e muitas notas do baixo têm o fundamental entre 49 e 92 Hz |
+| `perc.kit` | `woodblock` (grave e agudo), `brush` (escova de ruído), `shaker` (chocalho), `softkick` (bumbo macio, só marca o grave: o "tum" de 135 a 48 Hz mais uma varredura curta uma oitava acima e um estalo de ruído em torno de 1,1 kHz, que um alto-falante pequeno reproduz), `hat` (prato leve) |
 | `ambience` | `wind` (rajadas de 3 a 5 s), `crickets` (grupos de pios curtos), `rain` (chuvisco de 3 a 5 s), `water` (gotas) |
 
 `perc.kit` pode ser uma lista `[grave, agudo]` (ex.: `["softkick", "woodblock"]`); com um só nome serve aos dois papéis (o bumbo ignora as batidas agudas; um padrão só de batidas agudas com bumbo fica sem notas e a conferência avisa).

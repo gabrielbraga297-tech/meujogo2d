@@ -847,6 +847,7 @@
   // Cada instrumento tem `life(d, kind)` (segundos que a nota soa, contando a cauda; `d` = duração escrita em segundos) e
   // `play(kit, at, d, L, f, g, e)` (L = life já calculada, f = frequência em Hz, g = ganho final, e = o evento).
   // Os números são escolhas de design para um timbre simples (um par de osciladores + filtro + envelope), nenhum medido contra instrumento real.
+  const BASS_H2 = 0.5, BASS_H3 = 0.25;   // amplitude do 2º e do 3º harmônico dos baixos, relativa à do fundamental (escolha de design; ver o comentário dos baixos)
   const INST = {
     // cordas beliscadas (ukulele/violão de nylon): triângulo com filtro que fecha, mais uma serrilha levemente desafinada
     pluck: { life: (d) => clamp(0.3 + d * 0.6, 0.35, 1.3), play(k, at, d, L, f, g) {
@@ -898,23 +899,29 @@
       k.tone({ at, dur: L, f: f * 0.996, type: "sawtooth", lp: Math.min(f * 3.5, 2200), gain: 0.13 * g, a: 0.35, r: 0.4, sus: 1 });
       k.tone({ at, dur: L, f: f * 1.004, type: "sawtooth", lp: Math.min(f * 3.5, 2200), gain: 0.13 * g, a: 0.35, r: 0.4, sus: 1 });
     } },
-    // baixos: triângulo com o 2º harmônico (para o celular), seno puro, e serrilha filtrada com seno
+    // baixos: o alto-falante de um celular quase não toca abaixo de uns 150 Hz e muitas notas do baixo têm o fundamental abaixo de 100 Hz; por isso cada baixo leva também o 2º e o 3º
+    // harmônicos (BASS_H2 e BASS_H3 do fundamental): mesmo sem o fundamental a altura da nota continua se ouvindo. Triângulo; seno puro; serrilha filtrada com seno; pizzicato.
     bass: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "triangle", gain: 0.62 * g, a: 0.01, r: 0.06, sus: 0.6 });
-      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.16 * g, a: 0.01, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.62 * BASS_H2 * g, a: 0.01, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.62 * BASS_H3 * g, a: 0.01, r: 0.06, sus: 0.4 });
     } },
     bassSine: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "sine", gain: 0.75 * g, a: 0.012, r: 0.06, sus: 0.7 });
-      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.1 * g, a: 0.012, r: 0.06, sus: 0.6 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.75 * BASS_H2 * g, a: 0.012, r: 0.06, sus: 0.6 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.75 * BASS_H3 * g, a: 0.012, r: 0.06, sus: 0.5 });
     } },
     bassSaw: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "sawtooth", lp: f * 5, lp2: f * 2.2, q: 1.2, gain: 0.3 * g, a: 0.008, r: 0.06, sus: 0.5 });
       k.tone({ at, dur: L, f, type: "sine", gain: 0.4 * g, a: 0.008, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.4 * BASS_H2 * g, a: 0.008, r: 0.06, sus: 0.45 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.4 * BASS_H3 * g, a: 0.008, r: 0.06, sus: 0.4 });
     } },
-    // contrabaixo pizzicato: nota que morre sozinha e uma batida grave de ruído no começo
+    // contrabaixo pizzicato: nota que morre sozinha (os harmônicos morrem antes do fundamental) e uma batida grave de ruído no começo
     contrabass: { life: (d) => clamp(0.35 + d * 0.25, 0.4, 1.0), play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "triangle", gain: 0.8 * g, a: 0.006, r: 0.05, sus: 0.03 });
-      k.tone({ at, dur: L * 0.5, f: f * 2, type: "sine", gain: 0.1 * g, a: 0.006, r: 0.04, sus: 0.03 });
+      k.tone({ at, dur: L * 0.6, f: f * 2, type: "sine", gain: 0.8 * BASS_H2 * g, a: 0.006, r: 0.04, sus: 0.03 });
+      k.tone({ at, dur: L * 0.4, f: f * 3, type: "sine", gain: 0.8 * BASS_H3 * g, a: 0.006, r: 0.03, sus: 0.03 });
       k.noise({ at, dur: 0.04, type: "lowpass", f: 400, q: 0.7, gain: 0.12 * g, a: 0.004, r: 0.02, sus: 0.1 });
     } },
     // percussão (o `kind` do evento é "low" = grave/marcação, "high" = agudo/contratempo, "ghost" = nota fantasma, "fill" = virada)
@@ -924,9 +931,13 @@
       k.tone({ at, dur: 0.04, f: f0 * 2.35, type: "sine", gain: 0.15 * g, a: 0.003, r: 0.01, sus: 0.03 });
       k.noise({ at, dur: 0.02, type: "bandpass", f: 3000, q: 1.5, gain: 0.12 * g, a: 0.003, r: 0.01, sus: 0.1 });
     } },
+    // bumbo macio: o 'tum' (senoide que cai de 135 a 48 Hz) quase não sai num alto-falante de celular; por isso leva também uma varredura curta uma oitava acima (270 a 96 Hz)
+    // e um estalo de ruído em torno de 1,1 kHz (15 ms), que um alto-falante pequeno reproduz
     softkick: { life: () => 0.28, play(k, at, d, L, f, g) {
       k.tone({ at, dur: 0.22, f: 135, f2: 48, type: "sine", gain: 0.95 * g, a: 0.004, r: 0.05, sus: 0.02 });
+      k.tone({ at, dur: 0.08, f: 270, f2: 96, type: "sine", gain: 0.35 * g, a: 0.004, r: 0.03, sus: 0.03 });
       k.noise({ at, dur: 0.03, type: "lowpass", f: 500, q: 0.7, gain: 0.1 * g, a: 0.004, r: 0.015, sus: 0.1 });
+      k.noise({ at, dur: 0.015, type: "bandpass", f: 1100, q: 0.9, gain: 0.6 * g, a: 0.003, r: 0.008, sus: 0.1 });
     } },
     brush: { life: (d, kind) => (kind === "low" ? 0.2 : 0.16), play(k, at, d, L, f, g, e) {
       if (e.kind === "low") k.noise({ at, dur: 0.18, type: "bandpass", f: 3200, q: 0.5, gain: 0.28 * g, a: 0.025, r: 0.06, sus: 0.3 });

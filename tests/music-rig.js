@@ -155,6 +155,65 @@ function reachesDestination(from, seen = new Set()) {
   return node.out.some((o) => reachesDestination(o, seen));
 }
 
+// ---------- Espectro estimado de uma nota (lido do grafo agendado) ----------
+// `noteGraph(evento, bpm)` renderiza UMA nota no AudioContext falso e devolve as fontes que soam: [{ kind ("osc"|"buffer"), type, src, filters (biquads no caminho), gain (o ganho de
+// envelope), t0, t1, peak (pico do envelope) }]. Os osciladores de vibrato (cujo ganho vai a um parâmetro) não entram.
+function noteGraph(ev, bpm) {
+  const f = makeFake(), ctx = new f.Ctx();
+  Music.render({ bpm, lengthBeats: 64, gain: 1, events: [Object.assign({}, ev, { t: 0 })] }, ctx, ctx.destination, 0);
+  const out = [];
+  for (const src of ctx.nodes.filter((n) => n.kind === "osc" || n.kind === "buffer")) {
+    const filters = [];
+    let n = src, g = null;
+    for (let i = 0; i < 4 && n; i++) { const nx = n.out.find((o) => o && o.kind); if (!nx) break; if (nx.kind === "biquad") filters.push(nx); else if (nx.kind === "gain") { g = nx; break; } n = nx; }
+    if (!g || g.out.some((o) => o instanceof FakeParam)) continue;
+    const t0 = src.starts[0][0], t1 = src.kind === "osc" ? src.stops[0] : t0 + src.starts[0][2];
+    out.push({ kind: src.kind, type: src._type, src, filters, gain: g, t0, t1, peak: Math.max(...g.gain.events.filter((e) => e.type === "lin" || e.type === "exp").map((e) => Math.abs(e.v))) });
+  }
+  return out;
+}
+// `spectrumOf(evento, bpm)` devolve [[Hz, energia]...]: a energia (amplitude ao quadrado, integrada no tempo, nas unidades do render real com os ganhos de instrumento e de voz) de cada
+// parcial de cada fonte, na frequência que ela tem naquele instante (os glissandos são percorridos). Modelo: seno = 1 parcial; triângulo = harmônicos ímpares com amplitude 8/(pi^2 n^2);
+// serrilha = todos com 2/(pi n); passa-baixa = 1/raiz(1 + (f/fc)^4) (2ª ordem, sem ressonância). O ruído entra como estimativa grosseira: energia = ganho^2 x 1/3 (ruído branco
+// uniforme) x banda equivalente / (taxa/2), espalhada em 8 faixas (passa-baixa) ou posta na frequência central (passa-banda e passa-alta).
+// É uma ESTIMATIVA para comparar versões do motor e medir proporções; não é uma medida de áudio de verdade.
+const spectrumCache = new Map();
+function spectrumOf(ev, bpm) {
+  const key = [ev.inst, ev.midi, ev.d, ev.v, ev.kind, ev.voice, ev.f, bpm].join("|");
+  if (spectrumCache.has(key)) return spectrumCache.get(key);
+  const out = [], STEPS = 24;
+  for (const { kind, type, src, filters: fl, gain: g, t0, t1 } of noteGraph(ev, bpm)) {
+    const dt = (t1 - t0) / STEPS;
+    for (let i = 0; i < STEPS; i++) {
+      const t = t0 + (i + 0.5) * dt, gain = paramAt(g.gain, t), amp2 = gain * gain * dt;
+      if (kind === "osc") {
+        const lp = (hz) => fl.filter((b) => b.type === "lowpass").reduce((a, b) => a / Math.sqrt(1 + Math.pow(hz / paramAt(b.frequency, t), 4)), 1);
+        const f0 = paramAt(src.frequency, t);
+        const parts = type === "sine" ? [[1, 1]] : type === "triangle" ? [1, 3, 5, 7, 9, 11, 13].map((n) => [n, 8 / (Math.PI * Math.PI * n * n)]) : Array.from({ length: 24 }, (_, k) => [k + 1, 2 / (Math.PI * (k + 1))]);
+        for (const [n, a] of parts) if (n * f0 < 20000) out.push([n * f0, Math.pow(a * lp(n * f0), 2) / 2 * amp2]);
+      } else {
+        const first = fl[0], ftype = first ? first.type : "bandpass", fc = first ? paramAt(first.frequency, t) : 1000, q = first ? Math.max(0.5, paramAt(first.Q, t)) : 1;
+        const enbw = ftype === "bandpass" ? Math.PI / 2 * fc / q : ftype === "lowpass" ? Math.PI / 2 * fc : 22050 - fc, e = amp2 / 3 * Math.min(1, enbw / 22050);
+        if (ftype === "lowpass") for (let b = 0; b < 8; b++) out.push([fc * (b + 0.5) / 8, e / 8 * (fl.slice(1).some((x) => x.type === "lowpass") ? 0.5 : 1)]);
+        else out.push([ftype === "highpass" ? fc * 1.5 : fc, e]);
+      }
+    }
+  }
+  spectrumCache.set(key, out);
+  return out;
+}
+// espectro somado de todas as notas de `voices` (padrão: todas) de uma partitura
+function scoreSpectrum(score, voices) {
+  const parts = [];
+  for (const e of score.events) {
+    if (voices && !voices.includes(e.voice)) continue;
+    for (const p of spectrumOf(e, score.bpm)) parts.push([p[0], p[1] * (Number.isFinite(score.gain) ? score.gain * score.gain : 1)]);
+  }
+  return parts;
+}
+// fração da energia (0..1) acima de `hz`
+function energyAbove(parts, hz) { let tot = 0, up = 0; for (const [f, e] of parts) { tot += e; if (f > hz) up += e; } return tot ? up / tot : 0; }
+
 // ---------- Conferências estruturais ----------
 const mod = (a, n) => ((a % n) + n) % n;
 
@@ -331,4 +390,4 @@ function checkTempoRamp(recipes, opts = {}) {
   return fails;
 }
 
-module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, paramAt, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, checkTempoRamp, melodySimilarity, signatureOf };
+module.exports = { Music, makeFake, clock, memStorage, makeTimers, FakeParam, FakeNode, paramAt, noteGraph, spectrumOf, scoreSpectrum, energyAbove, sourcesOf, reachesDestination, checkRecipe, checkRender, checkDistinct, checkTempoRamp, melodySimilarity, signatureOf };

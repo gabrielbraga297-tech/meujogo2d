@@ -376,11 +376,45 @@ test("render: argumentos inválidos lançam TypeError; um navegador que recusa c
   const r = Music.render(sc, c, c.destination, 0);
   assert.ok(r.failed > 0 && r.count < sc.events.length);
 });
-test("a nota mais grave e a mais aguda dos 4 temas ficam na faixa do celular e do alto-falante (40 Hz a 4 kHz de fundamental, menos o 'f' da água)", () => {
+test("a nota mais grave e a mais aguda dos 4 temas ficam entre os MIDI 28 e 96 (41 Hz a 2 kHz de fundamental; é só a faixa das notas, não diz o que um alto-falante reproduz)", () => {
   for (const id of THEMES) {
     const midis = Music.scoreOf(id).events.filter((e) => e.midi !== null).map((e) => e.midi);
     assert.ok(Math.min(...midis) >= 28 && Math.max(...midis) <= 96, id + ": " + Math.min(...midis) + ".." + Math.max(...midis));
   }
+});
+// ---------- Baixo e bumbo no alto-falante do celular ----------
+// Um alto-falante de celular reproduz pouco abaixo de uns 150 Hz e muitas notas do baixo (49 a 92 Hz de fundamental) ficavam só no fundamental. Os baixos levam também o 2º e o 3º harmônicos
+// e o bumbo, um estalo de médios. Aqui se confere o desenho de cada instrumento no grafo; a proporção de energia nos 61 temas está em tests/music-themes.test.js.
+const oneNote = (inst, midi, over) => rig.noteGraph(Object.assign({ t: 0, d: 1, midi, v: 0.8, voice: midi === null ? "perc" : "bass", inst, kind: midi === null ? "low" : "root" }, over), 120);
+test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônicos (amplitude de pelo menos 40% e 20% do fundamental), com poucos nós por nota", () => {
+  for (const inst of ["bass", "bassSine", "bassSaw", "contrabass"]) {
+    const midi = 40, f = Music.midiHz(midi), g = oneNote(inst, midi);
+    const osc = g.filter((x) => x.kind === "osc");
+    const at = (mult) => osc.filter((x) => Math.abs(x.src.frequency.events[0].v / f - mult) < 1e-9);
+    const pure = (mult) => at(mult).filter((x) => x.type === "sine");
+    // o fundamental de referência: o oscilador mais forte na frequência f (no bassSaw há duas fontes em f: serrilha e seno)
+    const fund = Math.max(...at(1).map((x) => x.peak));
+    assert.ok(pure(2).length === 1 && pure(3).length === 1, `${inst}: falta o 2º ou o 3º harmônico (senoides em ${at(2).length}/${at(3).length})`);
+    assert.ok(pure(2)[0].peak >= 0.4 * fund && pure(3)[0].peak >= 0.2 * fund, `${inst}: harmônicos fracos (${pure(2)[0].peak.toFixed(3)} e ${pure(3)[0].peak.toFixed(3)} contra ${fund.toFixed(3)})`);
+    assert.ok(pure(2)[0].peak < fund && pure(3)[0].peak < pure(2)[0].peak, `${inst}: o fundamental segue sendo o mais forte`);
+    const nodes = new Set(); for (const x of g) { nodes.add(x.src); nodes.add(x.gain); for (const b of x.filters) nodes.add(b); }
+    assert.ok(nodes.size <= 14, `${inst}: ${nodes.size} nós por nota`);
+  }
+});
+test("bumbo macio (softkick): continua o 'tum' (senoide de 135 a 48 Hz) e ganhou uma varredura uma oitava acima e um estalo de ruído em torno de 1 kHz curto (15 ms de envelope)", () => {
+  const g = oneNote("softkick", null), oscs = g.filter((x) => x.kind === "osc"), noises = g.filter((x) => x.kind === "buffer");
+  const tum = oscs.find((x) => x.src.frequency.events[0].v === 135);
+  assert.ok(tum && tum.type === "sine" && tum.src.frequency.events.some((e) => e.type === "exp" && e.v === 48), "o 'tum' de 135 a 48 Hz");
+  const sweep = oscs.find((x) => x.src.frequency.events[0].v >= 200);
+  assert.ok(sweep && sweep.src.frequency.events.some((e) => e.type === "exp" && e.v < sweep.src.frequency.events[0].v) && sweep.t1 - sweep.t0 < 0.15, "varredura curta que cai a partir de 200 Hz ou mais");
+  const click = noises.find((x) => x.filters[0] && x.filters[0].type === "bandpass" && x.filters[0].frequency.events[0].v >= 800);
+  assert.ok(click && click.t1 - click.t0 < 0.05, "estalo de ruído passa-banda a partir de 800 Hz, de uns 15 ms (a fonte dura o envelope mais 20 ms de folga)");
+  assert.ok(click.peak >= 0.4 * tum.peak, `o estalo não pode ser desprezível ao lado do 'tum' (${click.peak.toFixed(3)} contra ${tum.peak.toFixed(3)})`);
+  const e = rig.spectrumOf({ t: 0, d: 0.25, midi: null, v: 0.6, voice: "perc", inst: "softkick", kind: "low" }, 120);
+  assert.ok(rig.energyAbove(e, 150) >= 0.02, "pelo menos 2% da energia estimada do bumbo fica acima de 150 Hz (antes: 0%)");
+  assert.ok(rig.energyAbove(e, 150) < 0.5, "o 'tum' continua sendo o corpo do bumbo");
+  const nodes = new Set(); for (const x of g) { nodes.add(x.src); nodes.add(x.gain); for (const b of x.filters) nodes.add(b); }
+  assert.ok(nodes.size <= 14, nodes.size + " nós por bumbo");
 });
 
 // ---------- Acréscimos do Sound: audio() e onUnlock() ----------
