@@ -199,7 +199,10 @@ test("js/game.js: setState e showScreen terminam chamando musicSync(); perder um
   assert.ok(!/m\.duck\(/.test(fnSrc("gameOver")), "a derrota não pede o abafado curto (só parar)");
   assert.ok(/m\.tick\(\)/.test(fnSrc("toggleSound")), "toggleSound manda a música conferir o mudo na hora");
   assert.ok(/m\.toggleEnabled\(\)/.test(fnSrc("toggleMusic")) && /renderMusic\(\)/.test(fnSrc("toggleMusic")), "toggleMusic liga e desliga a preferência e redesenha os botões");
-  assert.ok(/k === "n" && !e\.repeat && !\(e\.target instanceof HTMLInputElement\) && !\(e\.target instanceof HTMLTextAreaElement\)\) \{ toggleMusic\(\); return; \}/.test(gameCode), "a tecla N chama toggleMusic (sem repetir e sem atrapalhar quem digita)");
+  assert.ok(/k === "n" && !e\.repeat && !typingInto\(e\.target\)\) \{ toggleMusic\(\); sayToggle\("music"\); return; \}/.test(gameCode), "a tecla N chama toggleMusic e avisa o leitor de tela (sem repetir e sem atrapalhar quem digita)");
+  assert.ok(/k === "m" && !e\.repeat && !typingInto\(e\.target\)\) \{ toggleSound\(\); sayToggle\("sound"\); return; \}/.test(gameCode), "a tecla M faz o mesmo com o som");
+  assert.ok(/function typingInto\(t\)/.test(gameCode) && /HTMLTextAreaElement/.test(fnSrc("typingInto")) && /TYPING_INPUTS/.test(fnSrc("typingInto")) && !/checkbox/.test(gameCode.match(/const TYPING_INPUTS = [^\n]*/)[0]), "typingInto ignora campos de texto, mas não a caixa de marcar");
+  assert.ok(/id="toggle-live"[^>]*aria-live="polite"/.test(read("index.html")), "a região falada #toggle-live existe no index.html");
   assert.ok(/on\("btn-music", toggleMusic\); on\("btn-music-pause", toggleMusic\);/.test(gameCode), "os dois botões chamam toggleMusic");
   assert.ok(/visibilitychange", \(\) => \{ mus\(\(m\) => \(document\.hidden \? m\.pause\(\) : m\.resume\(\)\)\); \}\)/.test(gameCode), "a aba escondida pausa a música e voltar a retoma");
   assert.ok(/addEventListener\("blur", \(\) => \{ mus\(\(m\) => m\.pause\(\)\); \}\)/.test(gameCode) && /addEventListener\("focus", \(\) => \{ if \(!document\.hidden\) mus\(\(m\) => m\.resume\(\)\); \}\)/.test(gameCode), "a janela sem foco pausa a música e o foco a retoma");

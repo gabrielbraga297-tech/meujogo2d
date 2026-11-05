@@ -351,6 +351,55 @@ module.exports = async function (T) {
   });
 
   // =====================================================================
+  await section("música: M e N valem com o foco numa caixa de marcar (Mostrar senha) mas não em campos de texto, o leitor de tela recebe o novo estado pelas teclas e o título do menu não fica sob os ícones em tela muito estreita", async () => {
+    const e0 = errs.length;
+    const pg = await mpage();
+    await fresh(pg);
+    await gesture(pg);
+    await wait(pg, 300);
+    await pg.click("#btn-name");
+    await pg.click("#btn-open-register");
+    await pg.focus("#reg-show");
+    const f0 = await ev(pg, () => ({ id: document.activeElement.id, type: document.activeElement.type, on: __game.music.isEnabled(), muted: __game.sound.isMuted() }));
+    await pg.keyboard.press("n");
+    const a = await ev(pg, () => ({ on: __game.music.isEnabled(), live: document.getElementById("toggle-live").textContent, checked: document.getElementById("reg-show").checked }));
+    ok(f0.id === "reg-show" && f0.type === "checkbox" && f0.on && a.on === false && a.live === "Música desligada" && a.checked === false, `com o foco em "Mostrar senha", N desliga a música, o leitor de tela recebe "Música desligada" e a caixa não muda (${JSON.stringify([f0, a])})`);
+    await pg.keyboard.press("n");
+    const b = await ev(pg, () => ({ on: __game.music.isEnabled(), live: document.getElementById("toggle-live").textContent }));
+    ok(b.on === true && b.live === "Música ligada", `N de novo liga e o aviso muda para "Música ligada" (${JSON.stringify(b)})`);
+    await pg.keyboard.press("m");
+    const c = await ev(pg, () => ({ muted: __game.sound.isMuted(), live: document.getElementById("toggle-live").textContent }));
+    await pg.keyboard.press("m");
+    const d = await ev(pg, () => ({ muted: __game.sound.isMuted(), live: document.getElementById("toggle-live").textContent }));
+    ok(c.muted === true && c.live === "Som desligado" && d.muted === false && d.live === "Som ligado", `M liga e desliga o som com o foco na caixa e o aviso diz "Som desligado" e "Som ligado" (${JSON.stringify([c, d])})`);
+    // nos campos de texto e de senha continua tudo como estava: digitar não liga nem desliga nada e não fala nada
+    await ev(pg, () => { document.getElementById("toggle-live").textContent = ""; });
+    await pg.focus("#reg-pass");
+    await pg.keyboard.type("nNmM", { delay: 10 });
+    const t = await ev(pg, () => ({ v: document.getElementById("reg-pass").value, on: __game.music.isEnabled(), muted: __game.sound.isMuted(), live: document.getElementById("toggle-live").textContent }));
+    ok(t.v === "nNmM" && t.on && !t.muted && t.live === "", `no campo de senha digitar nNmM só escreve o texto (${JSON.stringify(t)})`);
+    // o botão não repete o aviso: quem clica já ouve o novo rótulo do próprio botão
+    await ev(pg, () => { document.getElementById("toggle-live").textContent = ""; });
+    await pg.click("#btn-register-back");
+    await pg.click("#btn-name-back");
+    await pg.click("#btn-music");
+    const bt = await ev(pg, () => ({ on: __game.music.isEnabled(), live: document.getElementById("toggle-live").textContent }));
+    ok(bt.on === false && bt.live === "", `o clique no botão Música não escreve na região falada (${JSON.stringify(bt)})`);
+    ok(errs.length === e0 && pg.warns.length === 0, `nenhum erro nem aviso no console (${errs.slice(e0).join(" | ")} ${pg.warns.join(" | ")})`);
+    await pg.context().close();
+    // o título do menu ganha espaço dos dois lados abaixo de 240 px de largura (zoom de 200% num celular pequeno), para os ícones dos cantos não o cobrirem
+    const pads = [];
+    for (const w of [195, 220, 240, 241, 320]) {
+      const q = await mpage({ viewport: { width: w, height: 422 }, hasTouch: true, isMobile: true });
+      await fresh(q);
+      pads.push([w, await ev(q, () => { const cs = getComputedStyle(document.getElementById("menu-title")); return [cs.paddingLeft, cs.paddingRight]; })]);
+      await q.context().close();
+    }
+    const narrow = pads.filter(([w]) => w <= 240).every(([, p]) => p[0] === "52px" && p[1] === "52px"), wide = pads.filter(([w]) => w > 240).every(([, p]) => p[0] !== "52px");
+    ok(narrow && wide, `o título do menu tem 52 px de cada lado até 240 px de largura e volta ao normal depois (${JSON.stringify(pads)})`);
+  });
+
+  // =====================================================================
   await section("música: sem Web Audio o jogo segue (menu, fases, pausa, vitória, derrota, M e N), sem erro nem aviso, e o botão Música continua funcionando", async () => {
     const e0 = errs.length;
     const pg = await mpage({ fake: false, noAudio: true });

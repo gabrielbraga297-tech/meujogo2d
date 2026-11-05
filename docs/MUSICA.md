@@ -247,7 +247,7 @@ Imprime uma tabela e **sai com código 1** se algum limite falhar:
 | Medida | Limite |
 |---|---|
 | pico | <= 0,9 |
-| RMS (dBFS, banda cheia) | entre -26 e -18 (alvo -22 +- 4), para todos os temas; é o nível do **tema sozinho a ganho 1**: no jogo ainda há o barramento (0,45, cerca de -7 dB) e o volume mestre |
+| RMS (dBFS, banda cheia) | entre -26 e -18 (alvo -22 +- 4), para todos os temas; é o nível do **tema sozinho a ganho 1**: no jogo ainda há o barramento (0,45, cerca de -7 dB), o volume mestre e o compressor dos sons; medida na saída real do jogo (`AudioContext` do Chromium, o menu e 6 fases), a música fica com RMS de -35,2 a -33,2 dBFS e pico de -21,8 a -14,3 dBFS |
 | DC | \|DC\| < 0,01 |
 | maior silêncio (quadros de 20 ms abaixo de 0,001, contando a volta do laço) | < `maxSilence` (3 s) |
 | emenda do laço | salto de nível (janelas de 250 ms antes e depois) no máximo 3 dB acima do maior salto dos outros compassos; degrau entre amostras na emenda <= 1,5 x o maior do resto |

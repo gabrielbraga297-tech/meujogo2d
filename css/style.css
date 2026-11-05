@@ -377,6 +377,7 @@ body.touch.sprint-on .rotate-tip { padding-right: 90px; } /* o botão Correr (76
 /* (0.21.0) celular deitado: a pausa ganhou o botão Música (5 botões); em 3 colunas ela continua com 2 linhas de botões, como antes, e cabe sem rolar (também com a ajuda de 3 linhas do Gatinho e do Passarinho) */
 @media (max-height: 520px) and (min-width: 440px) { #pause .menu-list button { flex: 1 1 30%; padding-inline: 6px; } }
 @media (max-height: 520px) and (max-width: 620px) { #menu .menu-top { padding-inline: 52px; } } /* (zoom de 200%) o botão do som, no canto, não cobre o botão do bichinho */
+@media (max-width: 240px) { #menu-title { padding-inline: 52px; } } /* (0.21.0, zoom de 200% num celular pequeno) os ícones de música e de som, nos dois cantos, não cobrem o título */
 
 /* (0.16.1) telas de altura média (notebook, 700 px): a vitória da Fase 20 tem 2 linhas a mais (petisco e parabéns) e passava da tela */
 @media (max-height: 760px) and (min-height: 521px) {

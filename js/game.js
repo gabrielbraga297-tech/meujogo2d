@@ -4863,6 +4863,22 @@
     els[(i + dir + els.length) % els.length].focus();
   }
 
+  // ===== Música =====
+  // M e N valem em qualquer lugar, menos onde se digita: caixas de texto, senha, busca, e-mail, número, áreas de texto e campos editáveis. Caixas de marcar e botões não contam ("Mostrar senha" não esconde o M e o N).
+  const TYPING_INPUTS = new Set(["text", "password", "search", "email", "url", "tel", "number", ""]);
+  function typingInto(t) { return t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && TYPING_INPUTS.has(String(t.type || "").toLowerCase())) || !!(t && t.isContentEditable); }
+  // Quem usa leitor de tela e aperta M ou N durante a partida não tem o botão em foco: a região `#toggle-live` diz o novo estado (só pelas teclas; pelo botão, o próprio botão já diz).
+  function sayToggle(what) {
+    try {
+      const el = $("toggle-live"); if (!el) return;
+      let text = "";
+      if (what === "sound") text = sound.isMuted() ? "Som desligado" : "Som ligado";
+      else mus((m) => { text = m.isEnabled() ? "Música ligada" : "Música desligada"; });
+      el.textContent = text;
+    } catch { /* o aviso falado nunca derruba o jogo */ }
+  }
+  // ===== fim Música =====
+
   window.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && String(e.key).toLowerCase() === "s" && (state === "playing" || state === "paused")) {
       e.preventDefault(); manualSave(); return; // Ctrl+S (ou Cmd+S) salva o jogo em vez de abrir "Salvar página"
@@ -4870,8 +4886,8 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // não atrapalha atalhos do navegador
     const k = keyName(e);
     if (k === "Escape") { if (!e.repeat) onEscape(); return; } // segurar a tecla não fica pausando e continuando
-    if (k === "m" && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { toggleSound(); return; } // M liga e desliga o som (não atrapalha quem digita nome ou senha)
-    if (k === "n" && !e.repeat && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) { toggleMusic(); return; } // N liga e desliga a música (como o M, não atrapalha quem digita nome ou senha)
+    if (k === "m" && !e.repeat && !typingInto(e.target)) { toggleSound(); sayToggle("sound"); return; } // M liga e desliga o som (não atrapalha quem digita nome ou senha)
+    if (k === "n" && !e.repeat && !typingInto(e.target)) { toggleMusic(); sayToggle("music"); return; } // N liga e desliga a música (como o M, não atrapalha quem digita nome ou senha)
     if (k === "p" && !e.repeat && state === "paused") { resumeGame(); return; }
     if (state === "playing") {
       keys[k] = true;
