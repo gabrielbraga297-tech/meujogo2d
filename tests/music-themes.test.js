@@ -20,9 +20,10 @@ test("há os 61 temas: menu e 20 fases de cada bichinho", () => {
 // Baixo no celular. Um alto-falante de celular reproduz pouco abaixo de 150 Hz (valor de ordem de grandeza, não medido aqui) e as notas do baixo vão de 49 a 92 Hz de fundamental na nota mais
 // grave de cada tema. A conferência mede, no grafo agendado de cada nota (tests/music-rig.js, `scoreSpectrum`), que fração da energia estimada do baixo cai acima de 150 Hz, somando os
 // parciais de cada oscilador com a amplitude deles. É uma estimativa, não uma medida de áudio, e não prova que o baixo "soa bem": só impede que o baixo volte a ser quase só fundamental.
-// Os números vêm do resultado medido: antes dos harmônicos o pior tema tinha 0,5% (19 temas abaixo de 8%) e a mediana era 13,6%; depois, o pior tem 9,6% e a mediana é 29,2%.
-// Por isso o piso é 8% por tema (nenhum dos 19 temas antigos passa) e a mediana precisa de 25% (a antiga não passa).
-const BASS_MIN_FRACTION = 0.08, BASS_MEDIAN_FRACTION = 0.25;
+// Os números vêm do resultado medido: antes dos harmônicos o pior tema tinha 0,5% (9 temas abaixo de 4%) e a mediana era 13,6%; depois, o pior tem 4,7% e a mediana é 20,3%.
+// Por isso o piso é 4% por tema (9 dos temas antigos não passam) e a mediana precisa de 18% (a antiga não passa). Os harmônicos são moderados de propósito (35% e 15% do fundamental): com 50% e 25%
+// a fração subia (piso 9,6%, mediana 29,2%), mas o pico do tema do menu passou de 0,82 para 1,03 no render real (soma em fase no começo das notas), então o piso não é maior.
+const BASS_MIN_FRACTION = 0.04, BASS_MEDIAN_FRACTION = 0.18;
 test(`baixo: a fração da energia acima de 150 Hz é de pelo menos ${BASS_MIN_FRACTION * 100}% em cada um dos 61 temas e a mediana passa de ${BASS_MEDIAN_FRACTION * 100}%`, () => {
   const frac = {};
   for (const id of IDS) {

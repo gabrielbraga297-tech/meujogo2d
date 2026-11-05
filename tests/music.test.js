@@ -471,7 +471,7 @@ test("a nota mais grave e a mais aguda dos 4 temas ficam entre os MIDI 28 e 96 (
 // Um alto-falante de celular reproduz pouco abaixo de uns 150 Hz e muitas notas do baixo (49 a 92 Hz de fundamental) ficavam só no fundamental. Os baixos levam também o 2º e o 3º harmônicos
 // e o bumbo, um estalo de médios. Aqui se confere a estrutura de cada instrumento no grafo; a proporção de energia nos 61 temas está em tests/music-themes.test.js.
 const oneNote = (inst, midi, over) => rig.noteGraph(Object.assign({ t: 0, d: 1, midi, v: 0.8, voice: midi === null ? "perc" : "bass", inst, kind: midi === null ? "low" : "root" }, over), 120);
-test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônicos (amplitude de pelo menos 40% e 20% do fundamental), com poucos nós por nota", () => {
+test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônicos (amplitude de pelo menos 30% e 12% do fundamental), com poucos nós por nota", () => {
   for (const inst of ["bass", "bassSine", "bassSaw", "contrabass"]) {
     const midi = 40, f = Music.midiHz(midi), g = oneNote(inst, midi);
     const osc = g.filter((x) => x.kind === "osc");
@@ -480,7 +480,7 @@ test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônic
     // o fundamental de referência: o oscilador mais forte na frequência f (no bassSaw há duas fontes em f: serrilha e seno)
     const fund = Math.max(...at(1).map((x) => x.peak));
     assert.ok(pure(2).length === 1 && pure(3).length === 1, `${inst}: falta o 2º ou o 3º harmônico (senoides em ${at(2).length}/${at(3).length})`);
-    assert.ok(pure(2)[0].peak >= 0.4 * fund && pure(3)[0].peak >= 0.2 * fund, `${inst}: harmônicos fracos (${pure(2)[0].peak.toFixed(3)} e ${pure(3)[0].peak.toFixed(3)} contra ${fund.toFixed(3)})`);
+    assert.ok(pure(2)[0].peak >= 0.3 * fund && pure(3)[0].peak >= 0.12 * fund, `${inst}: harmônicos fracos (${pure(2)[0].peak.toFixed(3)} e ${pure(3)[0].peak.toFixed(3)} contra ${fund.toFixed(3)})`);
     assert.ok(pure(2)[0].peak < fund && pure(3)[0].peak < pure(2)[0].peak, `${inst}: o fundamental segue sendo o mais forte`);
     const nodes = new Set(); for (const x of g) { nodes.add(x.src); nodes.add(x.gain); for (const b of x.filters) nodes.add(b); }
     assert.ok(nodes.size <= 14, `${inst}: ${nodes.size} nós por nota`);

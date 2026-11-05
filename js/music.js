@@ -906,7 +906,7 @@
   // Cada instrumento tem `life(d, kind)` (segundos que a nota soa, contando a cauda; `d` = duração escrita em segundos) e
   // `play(kit, at, d, L, f, g, e)` (L = life já calculada, f = frequência em Hz, g = ganho final, e = o evento).
   // Os números são escolhas de design para um timbre simples (um par de osciladores + filtro + envelope), nenhum medido contra instrumento real.
-  const BASS_H2 = 0.5, BASS_H3 = 0.25;   // amplitude do 2º e do 3º harmônico dos baixos, relativa à do fundamental (escolha de design; ver o comentário dos baixos)
+  const BASS_H2 = 0.35, BASS_H3 = 0.15;   // amplitude do 2º e do 3º harmônico dos baixos, relativa à do fundamental (escolha de design; ver o comentário dos baixos)
   const INST = {
     // cordas beliscadas (ukulele/violão de nylon): triângulo com filtro que fecha, mais uma serrilha levemente desafinada
     pluck: { life: (d) => clamp(0.3 + d * 0.6, 0.35, 1.3), play(k, at, d, L, f, g) {
@@ -994,9 +994,9 @@
     // e um estalo de ruído em torno de 1,1 kHz (15 ms), que um alto-falante pequeno reproduz
     softkick: { life: () => 0.28, play(k, at, d, L, f, g) {
       k.tone({ at, dur: 0.22, f: 135, f2: 48, type: "sine", gain: 0.95 * g, a: 0.004, r: 0.05, sus: 0.02 });
-      k.tone({ at, dur: 0.08, f: 270, f2: 96, type: "sine", gain: 0.35 * g, a: 0.004, r: 0.03, sus: 0.03 });
+      k.tone({ at, dur: 0.08, f: 270, f2: 96, type: "sine", gain: 0.3 * g, a: 0.004, r: 0.03, sus: 0.03 });
       k.noise({ at, dur: 0.03, type: "lowpass", f: 500, q: 0.7, gain: 0.1 * g, a: 0.004, r: 0.015, sus: 0.1 });
-      k.noise({ at, dur: 0.015, type: "bandpass", f: 1100, q: 0.9, gain: 0.6 * g, a: 0.003, r: 0.008, sus: 0.1 });
+      k.noise({ at, dur: 0.015, type: "bandpass", f: 1100, q: 0.9, gain: 0.5 * g, a: 0.003, r: 0.008, sus: 0.1 });
     } },
     brush: { life: (d, kind) => (kind === "low" ? 0.2 : 0.16), play(k, at, d, L, f, g, e) {
       if (e.kind === "low") k.noise({ at, dur: 0.18, type: "bandpass", f: 3200, q: 0.5, gain: 0.28 * g, a: 0.025, r: 0.06, sus: 0.3 });
