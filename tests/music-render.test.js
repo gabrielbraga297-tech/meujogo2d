@@ -161,6 +161,55 @@ test("render.js: opção desconhecida ou inválida sai com código 2 e mensagem,
   fs.rmSync(t.dir, { recursive: true });
 });
 
+// ---- detector de ganhos que não escalam (tools/music-render/scale.js usa A.scaleResidual dentro da página) ----
+test("scaleResidual: sinal que escala com o ganho dá resíduo zero; um clique que não escala (1 amostra) é achado com a posição e o tamanho; tolerância e razão são ajustáveis", () => {
+  const n = 1000, a = new Float32Array(n), b = new Float32Array(n);
+  for (let i = 0; i < n; i++) { const v = 0.3 * Math.sin(i / 7); a[i] = v; b[i] = v * 0.25; }
+  const ok = A.scaleResidual(a, b, 4, 0.01);
+  assert.strictEqual(ok.bad, 0); assert.ok(ok.worst < 1e-6 && ok.samples === n && Math.abs(ok.peak - 0.3) < 1e-3 && ok.lengthMismatch === false);
+  a[500] += 0.4; // um clique que o outro render não tem na mesma proporção
+  const click = A.scaleResidual(a, b, 4, 0.01);
+  assert.strictEqual(click.bad, 1); assert.strictEqual(click.at, 500); assert.ok(Math.abs(click.worst - 0.4) < 1e-6);
+  assert.strictEqual(A.scaleResidual(a, b, 4, 0.5).bad, 0, "tolerância maior");
+  assert.ok(A.scaleResidual(a, b, 2, 0.01).bad > 100, "razão errada: quase tudo falha");
+  const short = A.scaleResidual(a, b.subarray(0, 10), 4, 0.01);
+  assert.strictEqual(short.lengthMismatch, true);
+  assert.deepStrictEqual(A.scaleFails(ok, 44100), []);
+  const f = A.scaleFails(click, 1000);
+  assert.strictEqual(f.length, 1); assert.ok(f[0].includes("1 amostra") && f[0].includes("0.400") && f[0].includes("0.500 s"), f[0]);
+  assert.ok(A.scaleFails(short, 44100)[0].includes("tamanhos"));
+});
+test("pageScriptFor: o analyze.js embrulhado para a página entrega a mesma conta (window.__Analyze.scaleResidual) que o Node", () => {
+  const vm = require("vm"), ctx = { window: {} };
+  vm.runInNewContext(R.pageScriptFor(path.join(__dirname, "../tools/music-render/analyze.js"), "__Analyze").content, ctx);
+  assert.deepStrictEqual(Object.keys(ctx.window.__Analyze).sort(), Object.keys(A).sort());
+  const a = Float32Array.from([0, 0.4, 0.8]), b = Float32Array.from([0, 0.1, 0.1]);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx.window.__Analyze.scaleResidual(a, b, 4, 0.01))), JSON.parse(JSON.stringify(A.scaleResidual(a, b, 4, 0.01))));
+});
+const SCALE = path.join(__dirname, "../tools/music-render/scale.js");
+function runScale(args, extraEnv) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mscale-"));
+  const env = { ...process.env, MUSIC_PLAYWRIGHT: path.join(FAKE_MODULES, "playwright"), MUSIC_LOCK: "", PREVIEW_LOCK: "", MUSIC_OUT: "", FAKE_LOG: path.join(dir, "fake.log"), ...extraEnv };
+  const r = spawnSync(process.execPath, [SCALE, "--json", path.join(dir, "e.json"), "--out", dir, ...args], { env, encoding: "utf8", timeout: 60000 });
+  return { dir, r, report: R.readReport(path.join(dir, "e.json")) };
+}
+test("scale.js contra o navegador de mentira: tudo escala -> código 0 e relatório; um clique em bb -> código 1 com o tema, a amostra e o segundo; um tema que trava é tentado de novo", () => {
+  const ok = runScale([]);
+  assert.strictEqual(ok.r.status, 0, ok.r.stdout + ok.r.stderr);
+  assert.ok(ok.r.stdout.includes("ganho 1 e 0,25") && /Todos os 3 temas escalam/.test(ok.r.stdout), ok.r.stdout);
+  assert.deepStrictEqual(ok.report.themes.map((x) => [x.id, x.bad, x.fails.length]), [["aa", 0, 0], ["bb", 0, 0], ["cc", 0, 0]]);
+  assert.strictEqual(ok.report.partial, false); assert.strictEqual(ok.report.ratio, 4); assert.strictEqual(ok.report.tolerance, 0.01);
+  const click = runScale([], { FAKE_CLICK_ID: "bb" });
+  assert.strictEqual(click.r.status, 1, click.r.stdout);
+  assert.ok(click.r.stdout.includes("FALHA bb: 1 amostra(s) que não escalam com o volume (a pior: resíduo 0.400 em 0.028 s)"), click.r.stdout);
+  assert.deepStrictEqual(click.report.themes.map((x) => x.fails.length), [0, 1, 0]);
+  const hang = runScale(["--timeout", "1"], { FAKE_HANG_ID: "cc", FAKE_HANG_LAUNCHES: "1" });
+  assert.strictEqual(hang.r.status, 0, hang.r.stdout + hang.r.stderr);
+  assert.ok(hang.r.stdout.includes("cc: não terminou em 1 s") && hang.report.themes.length === 3);
+  assert.strictEqual(runScale(["--loops", "2"]).r.status, 2, "scale.js não aceita --loops");
+  for (const x of [ok, click, hang]) fs.rmSync(x.dir, { recursive: true });
+});
+
 (async () => {
   for (const [name, fn] of queue) {
     try { await fn(); console.log("OK   " + name); } catch (e) { failed++; console.log("FAIL " + name + "\n     " + (e && e.stack ? e.stack.split("\n").slice(0, 6).join("\n     ") : e)); }

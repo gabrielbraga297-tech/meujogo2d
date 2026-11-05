@@ -248,6 +248,12 @@ Imprime uma tabela e **sai com código 1** se algum limite falhar:
 | maior silêncio (quadros de 20 ms abaixo de 0,001, contando a volta do laço) | < `maxSilence` (3 s) |
 | emenda do laço | salto de nível (janelas de 250 ms antes e depois) no máximo 3 dB acima do maior salto dos outros compassos; degrau entre amostras na emenda <= 1,5 x o maior do resto |
 
+**Conferência de escala** (`tools/music-render/scale.js`, mesmo ambiente do render): renderiza cada tema duas vezes, com ganho 1 e com ganho 0,25, e confere que o primeiro é igual a 4 vezes o segundo em **todas** as amostras
+(resíduo até 0,01, ou -40 dBFS). Uma amostra que não escala é um clique: por exemplo, o ganho de uma nota que começa fora de 0 deixa passar a 1ª amostra da fonte inteira, e isso não muda com o volume.
+`node tools/music-render/scale.js [ids...] [--files a.js,b.js] [--tail s] [--json arquivo] [--resume] [--timeout s]` (sem ids: todos os temas); grava `escala.json` (ou o de `--json`) depois de cada tema, usa o mesmo
+tempo-limite, a mesma nova tentativa e o mesmo `--resume` do render, e sai com código 1 se algum tema tiver amostra fora de escala. Só acha o que não escala; não diz se o tema "soa bem". A conta (`scaleResidual`
+em `tools/music-render/analyze.js`) é testada em Node (`tests/music-render.test.js`), inclusive o `scale.js` inteiro contra um navegador de mentira.
+
 A coluna "ganho sug." é o `gain` da receita que levaria o RMS ao alvo sem passar de pico 0,9: para acertar um tema fora da faixa, ponha esse valor em `gain` e renderize de novo.
 `tools/music-render/calibrate.js` mede cada instrumento sozinho (a tabela `INST_GAIN` de `js/music.js` saiu daí para os instrumentos de tom; percussão e ambiências têm correção menor, de design) e
 `tools/music-render/live.js` roda o tocador num `AudioContext` real em tempo real (começa, troca de tema, duck, pausa, mudo, botão, parar), medindo o nível de saída por um analisador.

@@ -106,6 +106,11 @@ function relaunchUnderLock(file, argv, env) {
 }
 // O módulo do Playwright. MUSIC_PLAYWRIGHT (caminho de outro módulo) o substitui: serve para os testes de Node usarem um navegador de mentira (tests/fixtures/fake-modules/playwright).
 function loadPlaywright(env) { return require((env && env.MUSIC_PLAYWRIGHT) || "playwright"); }
+// Um módulo de Node (CommonJS, sem require) embrulhado para a página: devolve o argumento de `page.addScriptTag` que o deixa em `window[globalName]`
+function pageScriptFor(file, globalName) {
+  const src = fs.readFileSync(file, "utf8");
+  return { content: `(function () { var module = { exports: {} }; ${src}\n window.${globalName} = module.exports; })();` };
+}
 // Abre um navegador com uma página em branco e carrega os `scripts` (caminhos de arquivos) nela. `onError(texto)` é chamado a cada erro da página ou do console.
 async function openPage(chromium, scripts, onError) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
@@ -124,4 +129,4 @@ async function closeBrowser(browser, ms) {
   try { await withTimeout(browser.close(), ms || 10000, "fechar o navegador"); } catch { /* parado: segue */ }
 }
 
-module.exports = { SR, DEFAULT_TIMEOUT_S, ATTEMPTS, parseArgs, reportPath, readReport, planResume, orderRows, writeReportAtomic, withTimeout, runWithRetry, relaunchUnderLock, loadPlaywright, openPage, closeBrowser };
+module.exports = { SR, DEFAULT_TIMEOUT_S, ATTEMPTS, parseArgs, reportPath, readReport, planResume, orderRows, writeReportAtomic, withTimeout, runWithRetry, relaunchUnderLock, loadPlaywright, pageScriptFor, openPage, closeBrowser };
