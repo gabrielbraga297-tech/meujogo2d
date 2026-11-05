@@ -16,6 +16,7 @@
 //      o tocador o chama aos pedaços (antecedência curta), os testes e a ferramenta de render o chamam num AudioContext falso ou num OfflineAudioContext real.
 //   3. Music.create({...}) é o tocador (barramento próprio, crossfade, duck, pausa, mudo, preferência, agendador por setInterval).
 // O gerador nunca usa números aleatórios do sistema nem o relógio: o mesmo tema soa igual toda vez.
+// Nenhuma pessoa ouviu estas músicas durante o desenvolvimento: os testes e as ferramentas de tools/music-render só medem propriedades (escala, laço, pico, volume, emenda).
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;

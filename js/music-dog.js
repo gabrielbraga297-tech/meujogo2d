@@ -1,5 +1,5 @@
 // Músicas tema do CACHORRINHO: 20 receitas, uma por fase (dog1 a dog20), registradas em Music (js/music.js). O contrato da receita está em docs/MUSICA.md.
-// Escolhas de design (ninguém ouviu estes temas; os testes conferem só estrutura e medidas): alegre e saltitante nas primeiras fases (maiores, mixolídio e lídio,
+// Escolhas de design (nenhuma pessoa ouviu estes temas; os testes conferem só estrutura e medidas): alegre e saltitante nas primeiras fases (maiores, mixolídio e lídio,
 // marcha, polca e balanço leve, xilofone, marimba e cordas beliscadas, baixo caminhante, bloco de madeira); o andamento sobe da Fase 1 (92 bpm) à 20 (148 bpm), as camadas
 // entram aos poucos e as fases de perigo (Central da carrocinha, Beco dos gatos, Telhados à noite, Fortaleza) ganham urgência com modos menor, frígio, dórico e menor harmônico.
 // O `place` de cada receita é o lugar da fase em js/themes.js. Cada tema tem tom, modo, andamento, semente do motivo e combinação de solo, baixo e percussão próprios.

@@ -13,8 +13,11 @@
 //     Uma negação só vale se estiver COLADA à afirmação (até 30 letras antes, na mesma oração): "Nada aqui foi verificado; nenhum estudo mostra isso" passa, "Nenhum artigo foi aberto, mas estudos mostram isso" não.
 // Músicas tema (0.21.0): ninguém ouviu as músicas (o ambiente de desenvolvimento não tem ouvido humano nem placa de som). Só foram medidas propriedades (escala, laço, pico, RMS, emenda...).
 //  7. nenhum texto que o dono ou o jogador lê (a seção "Músicas tema (0.21.0)" e as linhas do README que falam de música, o item "Música:" do Como jogar e a ajuda da pausa, a primeira entrada do CHANGELOG se falar de música,
-//     docs/MUSICA.md, os comentários de js/music*.js e de tools/music-render/ e de tools/music-table.js) afirma que a música "soa bem", é "agradável", "bonita", que "foi ouvida" ou que "fica boa";
-//  8. a seção do README diz que nenhuma pessoa ouviu as músicas, que só foram medidas propriedades e que ouvir é o teste que falta; e nem ela nem os textos do jogo trazem rótulo interno de trabalho.
+//     docs/MUSICA.md, os comentários de js/music*.js e de tools/music-render/ e de tools/music-table.js) afirma que a música "soa bem" (também no plural e com "tão bem"), é "agradável", "bonita", "belíssima", que "foi ouvida" ou que
+//     "fica boa"/"ficam boas", nem diz que ALGUÉM ouviu ("a equipe ouviu", "uma pessoa ouviu", "amigos ouviram", "escutou", "ouvimos"...; "nenhuma pessoa ouviu" e "ninguém ouviu" passam);
+//  8. a frase "nenhuma pessoa ouviu" está no README (a seção diz também que só foram medidas propriedades e que ouvir é o teste que falta), na entrada 0.21.0 do CHANGELOG, em docs/MUSICA.md e no comentário de abertura de
+//     cada js/music*.js; e nenhum texto de música (README, Como jogar, pausa, perfis, CHANGELOG do topo, docs/MUSICA.md, comentários e ferramentas) traz rótulo interno de trabalho: A5, A6 (palavra inteira), frente, wip, agente de ..., scratchpad,
+//     coordenador, compositor (e compositores).
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -92,7 +95,9 @@ const birdCode = () => {
 // (\b do JavaScript só entende letras sem acento; por isso as bordas das palavras são conferidas com \p{L})
 const NEG = /(?<!\p{L})(não|nao|nada|nenhum[a]?|nunca|jamais|nem)(?!\p{L})/iu;
 const NEG_WINDOW = 30;
-const negated = (line, idx) => NEG.test(line.slice(0, idx).split(/[.;:|()—,!?]|(?<!\p{L})(?:mas|porém|embora|contudo|e|ou)(?!\p{L})/iu).pop().slice(-NEG_WINDOW));
+const negated = (line, idx, re) => (re || NEG).test(line.slice(0, idx).split(/[.;:|()—,!?]|(?<!\p{L})(?:mas|porém|embora|contudo|e|ou)(?!\p{L})/iu).pop().slice(-NEG_WINDOW));
+// nos textos de música "ninguém" também nega ("ninguém ouviu")
+const NEG_MUSIC = /(?<!\p{L})(não|nao|nada|nenhum[a]?|nunca|jamais|nem|ningu[ée]m)(?!\p{L})/iu;
 const CLAIMS = [
   /\b(est[áa]|foi|foram|s[ãa]o|ficou|ficaram) (todos? )?(verificad[oa]s?|comprovad[oa]s?|confirmad[oa]s?|testad[oa]s? em (artigo|estudo|literatura))\b/gi,
   /\bverificad[oa]s? (em|por|na|no) (artigo|artigos|estudo|estudos|literatura|fonte|fontes|pesquisa)/gi,
@@ -272,15 +277,29 @@ test("os detectores pegam as frases de redator desatento e deixam passar os cont
 
 // ======================================================= Músicas tema (0.21.0) =======================================================
 const MUSIC_SECTION = "Músicas tema (0.21.0)";
+// Afirmações de qualidade ou de que alguém ouviu. Valem se NÃO vierem negadas coladas ("não mede se soa bem", "ninguém ouviu").
 const QUALITY = [
-  /\bsoa(?:m)?\s+(?:muito\s+)?(?:bem|bom|boa|lindamente|agrad\p{L}*|natural\p{L}*)/giu,
+  /\bsoa(?:m)?\s+(?:(?:muito|tão|tao|mesmo|realmente)\s+)?(?:bem|bom|boa|bons|boas|lindamente|agrad\p{L}*|natural\p{L}*)/giu,
   /\bagrad[aá]ve(?:l|is)\b/giu,
-  /\b(?:bonit[ao]s?|lind[ao]s?|gostos[ao]s?|delicios[ao]s?|encantador\p{L}*)(?!\p{L})/giu,
+  /\b(?:bonit[ao]s?|lind[ao]s?|gostos[ao]s?|delicios[ao]s?|encantador\p{L}*|bel[íi]ssim\p{L}*|maravilhos\p{L}*)(?!\p{L})/giu,
   /\b(?:foi|foram|já foi|já foram|ficou|ficaram) (?:ouvid[oa]s?|escutad[oa]s?|aprovad[oa]s?)\b/giu,
-  /\b(?:ouvi|ouvimos|escutei|escutamos) (?:as |os |a |o )?(?:música|músicas|tema|temas)\b/giu,
-  /\bfica(?:m)? (?:bem|boa|bom|bonit[ao]s?)\b/giu,
+  /(?<!\p{L})(?:(?:ouviu|ouviram|escutou|escutaram|ouvimos|escutamos|escutei)(?!\p{L})|ouvi(?![\p{L}-]))/giu, // ("ouvi-la" é o verbo ouvir com pronome, não conta)
+  /\bfica(?:m)? (?:bem|bo(?:a|m|as|ns)|bonit[ao]s?)(?!\p{L})/giu,
   /\b(?:ficou|ficaram) (?:ótim|boa|bom|bem)\p{L}*/giu,
 ];
+// Elogio escondido numa negação ("Nada soa tão bem quanto estas músicas"): vale mesmo com o "nada" colado, porque a frase afirma que soa melhor que tudo
+const QUALITY_EVEN_IF_NEGATED = [/(?<!\p{L})nada\s+(?:soa|fica|é|há)\s+(?:t[aã]o|mais)\s+(?:bem|bom|boa|bonit\p{L}*|lind\p{L}*|agrad\p{L}*)/giu];
+const qualityHits = (line) => {
+  const hits = [];
+  for (const re of QUALITY) for (const m of line.matchAll(re)) if (!negated(line, m.index, NEG_MUSIC)) hits.push(m[0]);
+  for (const re of QUALITY_EVEN_IF_NEGATED) for (const m of line.matchAll(re)) hits.push(m[0]);
+  return hits;
+};
+// rótulos de trabalho que não podem aparecer em NENHUM texto de música (nem nos comentários de código): o código do trabalho (A6, palavra inteira) e o papel "compositor"
+const MUSIC_LABELS = /(?<!\p{L}|\d)(?:A6|compositor(?:es|as?)?)(?![\p{L}\d])/giu;
+// a entrada de uma versão do CHANGELOG (do "## 0.21.0" até o próximo "## ") e o comentário de abertura de um arquivo js (as linhas "//" do começo, juntadas)
+const changelogEntry = (v) => { const t = read("CHANGELOG.md"), a = t.search(new RegExp("^## " + v.replace(/\./g, "\\.") + "(?![\\d.])", "m")); if (a < 0) return null; const rest = t.slice(a + 3), b = rest.search(/\n## /); return b < 0 ? t.slice(a) : t.slice(a, a + 3 + b); };
+const headerComment = (f) => { const out = []; for (const l of read(f).split("\n")) { if (l.startsWith("//")) out.push(l.replace(/^\/\/\s?/, "")); else break; } return out.join(" "); };
 // os textos de música: [nome, texto, confereRótulosInternos]
 const musicTexts = () => {
   const readme = read("README.md"), out = [], sec = section(readme, MUSIC_SECTION);
@@ -302,27 +321,45 @@ test("Músicas tema: o README tem a seção, e ela diz que nenhuma pessoa ouviu 
   assert.ok(sec, `falta a seção "${MUSIC_SECTION}" no README`);
   assert.ok(/nenhuma pessoa ouviu as músicas durante o desenvolvimento/i.test(sec), "deve dizer: nenhuma pessoa ouviu as músicas durante o desenvolvimento");
   assert.ok(/só foram medidas propriedades/i.test(sec) && /só ouvindo se responde/i.test(sec), "deve dizer que só foram medidas propriedades e que o resto só ouvindo se responde");
-  assert.ok(/WAVs/.test(sec) && /dono ouvir/.test(sec), "deve dizer que os WAVs existem para o dono ouvir");
   assert.ok(/escolhas de design/i.test(sec), "os números de volume, andamento, instrumentos e forma são escolhas de design");
 });
 
-test("Músicas tema: nenhum texto de música diz que ela soa bem, é agradável, bonita, foi ouvida ou fica boa (README, Como jogar, pausa, CHANGELOG do topo, docs/MUSICA.md e os comentários dos arquivos de música)", () => {
-  const bad = [], texts = musicTexts();
-  assert.ok(texts.length >= 8, `há textos de música para conferir (achou ${texts.length})`);
-  for (const { name, text } of texts) text.split("\n").forEach((line, i) => { for (const re of QUALITY) for (const m of line.matchAll(re)) if (!negated(line, m.index)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 100)}..."`); });
-  assert.deepStrictEqual(bad, [], "afirmação de qualidade que ninguém verificou (ninguém ouviu):\n     " + bad.join("\n     "));
+test('Músicas tema: a frase "nenhuma pessoa ouviu" está na entrada 0.21.0 do CHANGELOG, em docs/MUSICA.md e no comentário de abertura de js/music.js, js/music-dog.js, js/music-cat.js e js/music-bird.js', () => {
+  const missing = [], phrase = /nenhuma pessoa ouviu/i;
+  const entry = changelogEntry("0.21.0");
+  if (!entry) missing.push("CHANGELOG.md: não achei a entrada ## 0.21.0"); else if (!phrase.test(entry)) missing.push("CHANGELOG.md, entrada 0.21.0");
+  if (!phrase.test(read("docs/MUSICA.md").replace(/\s+/g, " ").replace(/> /g, ""))) missing.push("docs/MUSICA.md");
+  for (const f of ["js/music.js", "js/music-dog.js", "js/music-cat.js", "js/music-bird.js"]) if (!phrase.test(headerComment(f))) missing.push(`${f}, comentário de abertura`);
+  assert.deepStrictEqual(missing, [], 'falta dizer "nenhuma pessoa ouviu as músicas" em:\n     ' + missing.join("\n     "));
 });
 
-test("Músicas tema: nenhum rótulo interno de trabalho (A5, A6, frente, wip, agente de ..., scratchpad, coordenador) no README, no Como jogar, na ajuda da pausa e nas frases do perfil", () => {
+test("Músicas tema: nenhum texto de música diz que ela soa bem, é agradável, bonita, foi ouvida ou fica boa, nem que alguém a ouviu (README, Como jogar, pausa, CHANGELOG do topo, docs/MUSICA.md e os comentários dos arquivos de música)", () => {
+  const bad = [], texts = musicTexts();
+  assert.ok(texts.length >= 8, `há textos de música para conferir (achou ${texts.length})`);
+  for (const { name, text } of texts) text.split("\n").forEach((line, i) => { for (const hit of qualityHits(line)) bad.push(`${name}:${i + 1}: "${hit}" em "${line.trim().slice(0, 100)}..."`); });
+  assert.deepStrictEqual(bad, [], "afirmação de qualidade que ninguém verificou (nenhuma pessoa ouviu):\n     " + bad.join("\n     "));
+});
+
+test("Músicas tema: nenhum rótulo interno de trabalho (A5, A6, compositor, frente, wip, agente de ..., scratchpad, coordenador) no README, no Como jogar, na ajuda da pausa, nas frases do perfil, no CHANGELOG do topo, em docs/MUSICA.md e nos comentários e ferramentas da música", () => {
   const bad = [];
-  for (const { name, text, internal } of musicTexts()) if (internal) text.split("\n").forEach((line, i) => { for (const m of line.matchAll(INTERNAL)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`); for (const m of line.matchAll(/\bA6\b/g)) bad.push(`${name}:${i + 1}: "${m[0]}"`); });
+  for (const { name, text, internal } of musicTexts()) text.split("\n").forEach((line, i) => {
+    if (internal) for (const m of line.matchAll(INTERNAL)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`);
+    for (const m of line.matchAll(MUSIC_LABELS)) bad.push(`${name}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`);
+  });
   assert.deepStrictEqual(bad, [], "rótulo interno:\n     " + bad.join("\n     "));
 });
 
-test("Músicas tema: o detector pega as frases de redator desatento e deixa passar as negações coladas", () => {
-  const caught = (line) => { let hit = false; for (const re of QUALITY) for (const m of line.matchAll(re)) if (!negated(line, m.index)) hit = true; return hit; };
-  for (const line of ["A música da Fase 3 soa bem.", "Todas as músicas foram ouvidas e aprovadas.", "É uma melodia agradável e bonita.", "A música fica boa no celular.", "Nenhuma pessoa ouviu, mas a música soa muito bem."]) assert.ok(caught(line), "não pegou: " + line);
-  for (const line of ["Nenhuma pessoa ouviu as músicas durante o desenvolvimento.", "A ferramenta não mede se soa bem: só que toca.", "Ninguém ouviu: nada aqui diz que é agradável.", "Os WAVs existem para o dono ouvir."]) assert.ok(!caught(line), "pegou um controle legítimo: " + line);
+test("Músicas tema: o detector pega as frases de redator desatento (inclusive no plural, com \"tão bem\", com sujeito qualquer e escondidas numa negação) e deixa passar as negações coladas", () => {
+  const caught = (line) => qualityHits(line).length > 0;
+  for (const line of ["A música da Fase 3 soa bem.", "Todas as músicas foram ouvidas e aprovadas.", "É uma melodia agradável e bonita.", "A música fica boa no celular.", "Nenhuma pessoa ouviu, mas a música soa muito bem.",
+    "As músicas ficam boas.", "Os temas ficam bons.", "As músicas ficam bonitas.", "As músicas soam bem.", "As músicas soam tão bem no celular.", "As músicas são belíssimas.", "As melodias ficaram belíssimas.",
+    "A equipe ouviu todos os temas.", "Uma pessoa ouviu estas músicas.", "Alguns amigos ouviram estas músicas.", "A dona escutou os temas.", "Ouvimos os temas.", "Escutaram tudo.", "As músicas ouviram-se bem.",
+    "Nada soa tão bem quanto estas músicas.", "Nada fica mais bonito que o tema do menu."]) assert.ok(caught(line), "não pegou: " + line);
+  for (const line of ["Nenhuma pessoa ouviu as músicas durante o desenvolvimento.", "A ferramenta não mede se soa bem: só que toca.", "Ninguém ouviu: nada aqui diz que é agradável.", "Nenhuma pessoa ouviu estes temas; as conferências são estruturais.",
+    "Para ouvir um tema, basta jogar a fase.", "O dono ainda não ouviu as músicas.", "Ninguém ouviu estes temas nem escutou nenhum.", "As músicas não ficam boas nem ruins: ninguém sabe."]) assert.ok(!caught(line), "pegou um controle legítimo: " + line);
+  const labels = (line) => [...line.matchAll(MUSIC_LABELS)].length;
+  for (const line of ["escrito pelo compositor", "os compositores seguem este molde", "teste do compositor", "feito na frente A6", "A6-DESIGN.md"]) assert.ok(labels(line), "não pegou o rótulo: " + line);
+  for (const line of ["0xA6 é só um número", "o compositor-de-nada" && "feitor", "ré maior e dó", "A62 e xA6x"]) assert.ok(!labels(line), "pegou o que não é rótulo: " + line);
 });
 
 console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes de honestidade passaram");

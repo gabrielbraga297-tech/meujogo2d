@@ -1,6 +1,6 @@
 // Músicas tema do GATINHO: 20 receitas (cat1 a cat20), uma por fase, cada uma com o clima do lugar da fase (o campo `place` é o mesmo de js/cat-levels.js).
 // Contrato e molde: docs/MUSICA.md. Cada receita é só dado (tom, modo, andamento, forma, progressão, motivo, vozes, camadas); quem faz a partitura é js/music.js.
-// Estilo do bichinho (escolha de design, ninguém ouviu estas músicas): furtivo, elegante e malandro. Modos dórico, menor, menor harmônico, frígio, blues, pentatônicos
+// Estilo do bichinho (escolha de design; nenhuma pessoa ouviu estas músicas): furtivo, elegante e malandro. Modos dórico, menor, menor harmônico, frígio, blues, pentatônicos
 // e uns poucos claros (lídio, mixolídio, maior) para os lugares abertos; balanço (swing); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima;
 // melodias com pausas e síncopas. Rampa: o andamento sobe da Fase 1 (84 bpm) à Fase 20 (132 bpm) e as camadas (`intensity`) ficam mais cheias; a Fase 11
 // (cães rastreadores), as noites (18 e 19) e a Fase 20 (final grande, "volta ao lar") têm mais camadas e tensão.

@@ -8,7 +8,7 @@ O mesmo tema soa igual toda vez, e os testes conferem a estrutura da música sem
 Arquivos: `js/music.js` (o motor, o tema `menu` e três temas de exemplo, `dog1`, `cat1` e `bird1`, que `js/music-dog.js`, `js/music-cat.js` e `js/music-bird.js` substituem pelos 60 temas das fases), `tests/music.test.js`, `tests/music-themes.test.js`,
 `tests/music-render.test.js` e `tests/music-rig.js` (testes e ajudas), `tools/music-render/` (render real no Chromium, conferência de escala, calibração e verificação ao vivo), e os acréscimos `audio()` e `onUnlock()` em `js/sound.js` (nenhum efeito sonoro mudou).
 
-> O que foi e o que não foi conferido: ninguém ouviu estas músicas. As conferências são **estruturais** (notas dentro da escala, âmbito, duração, laço, vozes) e **medidas**
+> O que foi e o que não foi conferido: nenhuma pessoa ouviu estas músicas durante o desenvolvimento. As conferências são **estruturais** (notas dentro da escala, âmbito, duração, laço, vozes) e **medidas**
 > (pico, RMS, silêncio e emenda do laço, num OfflineAudioContext real do Chromium). Elas não dizem se uma música "fica boa". Os WAVs que `tools/music-render` grava não fazem parte do repositório: para ouvir um tema, basta jogar a fase ou rodar o render.
 
 ## 1. Registrar temas
@@ -275,7 +275,7 @@ Limites a lembrar: nenhuma nota fora do modo (o gerador garante), laço de 40 a 
 
 ## 10. Estilo e rampa de andamento por bichinho
 
-É um guia de escolhas de quem cria os temas, não uma regra do motor: as receitas atuais o seguem e os testes de cada bichinho conferem a rampa de andamento (`checkTempoRamp`, seção 8). Nada aqui foi ouvido por ninguém; o estilo musical é escolha de design.
+É um guia de escolhas de quem cria os temas, não uma regra do motor: as receitas atuais o seguem e os testes de cada bichinho conferem a rampa de andamento (`checkTempoRamp`, seção 8). Nenhuma pessoa ouviu estes temas; o estilo musical é escolha de design.
 
 | Tema | Estilo | Andamento (bpm) |
 |---|---|---|

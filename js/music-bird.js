@@ -1,6 +1,6 @@
 // Músicas tema do PASSARINHO: 20 receitas (bird1 a bird20), uma por fase, com o clima do lugar da fase (o campo `place` repete js/bird-levels.js).
 // Contrato das receitas: docs/MUSICA.md. Este arquivo só registra receitas em `Music` (js/music.js vem antes no navegador); o registro posterior substitui o tema de exemplo `bird1` do motor.
-// Escolhas de design (nada aqui foi ouvido por uma pessoa; as conferências são estruturais e medidas, ver tests/music-bird.test.js):
+// Escolhas de design (nenhuma pessoa ouviu estes temas; as conferências são estruturais e medidas, ver tests/music-bird.test.js):
 //   * Estilo do bichinho: leve e arejado; pentatônicas, lídio, maior e mixolídio no começo, modos menores a partir da Fase 11 (chegada dos gaviões); arpejos de harpa/celesta/sino,
 //     flauta e compassos soltos (6/8 e 3/4 em quase todas as fases, 4/4 nas fases de marcha, mata, fazenda, dunas, campos de altitude e no final); vento, água e grilos como ambiência;
 //     motivos curtos e ritmados, como cantos de pássaro, sem imitar nenhuma espécie.
