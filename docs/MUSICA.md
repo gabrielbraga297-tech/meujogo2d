@@ -86,7 +86,7 @@ contrastantes (contorno e ritmo mudam); a repetição de uma letra repete a melo
 
 | Chave | Significado |
 |---|---|
-| `seed` | número ou texto; a semente do sorteio determinístico (o padrão é derivado do id). **Dois temas não devem ter a mesma** |
+| `seed` | número ou texto; a semente do sorteio determinístico (o padrão é derivado do id). **Dois temas do mesmo bichinho não devem ter a mesma semente** (entre bichinhos diferentes algumas sementes se repetem, sem diferença medida entre as melodias) |
 | `bars` | tamanho do motivo em compassos (1 a 4; 2) |
 | `contour` | `arch` (sobe e desce), `rise`, `fall`, `wave`, `hop` (saltitante); as seções B, C... usam um contorno contrastante |
 | `leaps` | 0 a 1 (0,3): 0 = só graus conjuntos; 1 = saltos de até 4 graus |
@@ -180,7 +180,7 @@ Opções: `sound` (o `Sound.create` do jogo: dá o contexto de áudio, a entrada
 | `stop(fade)` | some em `fade` s (padrão 0,5; 0 a 8) e esquece o tema pedido |
 | `duck(nível, segundos)` | abaixa para `nível` (0 a 1) e **volta sozinho** depois de `segundos`; sem `segundos` fica abaixado até o próximo `duck`/`setDuck`. A descida leva ~0,1 s e a volta ~0,75 s. Um `duck` pedido antes do unlock também volta (o barramento agenda a volta ao nascer dentro da janela) e, se o relógio do sistema recuar durante um `duck` temporário (ajuste de hora), ele vale como vencido |
 | `setDuck(nível)` | nível fixo (pausa do jogo: `0.25`; para voltar: `1`); um `duck` temporário volta a esse nível |
-| `pause()` / `resume()` | aba escondida ou janela sem foco: some em 0,05 s e não agenda nada; `resume()` volta do **começo do compasso** em que parou (para os sons longos entrarem de novo) |
+| `pause()` / `resume()` | aba escondida ou janela sem foco: some em 0,05 s e não agenda nada; `resume()` volta do **começo do compasso** em que parou. O que já tinha começado antes desse compasso e ainda soava não é tocado de novo: as notas do pad (acordes de até 2 compassos) só voltam na próxima troca de acorde, então o pad pode faltar até o fim do acorde em curso (no máximo 1 compasso; 2,3 s no tema do menu), e uma rajada de vento ou chuvisco em curso também só volta no próximo evento da ambiência |
 | `setEnabled(bool)` / `isEnabled()` / `toggleEnabled()` | o botão Música; guarda `{"on":0|1}` em `cachorrinho.musica.v1` (ligada por padrão; leitura e gravação em `try/catch`; sem `storage` vale só a memória). Desligada, nada toca; ao ligar, o tema pedido volta do compasso em que estava |
 | `tick()` | confere o agendador agora; o jogo pode chamar depois de mudar o mudo do Sound (`som.setMuted`) para a música reagir na hora; sem isso reage em até ~120 ms |
 | `dispose()` | para tudo e solta os ganchos |
@@ -196,9 +196,16 @@ Comportamento garantido (conferido em `tests/music.test.js` com um AudioContext 
 * Só começa depois do 1º gesto: usa `sound.audio()` (que só devolve o contexto depois do `unlock`) e `sound.onUnlock(fn)`; um `unlock` tardio inicia o tema pedido na hora.
 * **Agendador:** a cada 120 ms agenda até 0,6 s à frente com `Music.render` (janelas de batidas), sem repetir nem pular notas; o laço dá a volta sem falha (as caudas do fim caem no começo do laço seguinte).
   Só há um `setInterval`, e só enquanto há tema pedido. Se o relógio do áudio fica para trás (aba em segundo plano), pula o tempo perdido em vez de despejar notas atrasadas.
-* **Contexto suspenso** (celular, aba em segundo plano): pede `resume()` no máximo uma vez por segundo (também depois de o relógio do sistema recuar), não agenda nada e, quando volta a rodar, continua sem mandar notas para o passado. **Contexto fechado e recriado** pelo Sound: monta o barramento no novo e recomeça o tema pedido.
+* **Contexto suspenso** (celular, aba em segundo plano): pede `resume()` no máximo uma vez por segundo (também depois de o relógio do sistema recuar), não agenda nada e, quando volta a rodar, continua sem mandar notas para o passado. **Contexto fechado e recriado** pelo Sound: monta o barramento no novo e recomeça o tema pedido (ver os limites abaixo: alguém precisa chamar `sound.unlock()`).
 * **Mudo** (`som.isMuted()`): não agenda nada, zera o barramento e some em 0,05 s; ao desmutar volta do começo do compasso em que parou. **Aba escondida / pausa de jogo:** o jogo chama `pause()`/`resume()` (e `setDuck(0.25)` na pausa do menu).
 * Desempenho: um ciclo cria poucas dezenas de nós (nenhum ciclo passou de 300 nos testes), há no máximo 14 notas soando, o ruído é um só buffer de 1 s por contexto, e todo oscilador é parado no fim.
+
+**Limites conhecidos do tocador:**
+
+* **Contexto de áudio fechado:** o tocador só se recupera de um `AudioContext` fechado se o jogo chamar `sound.unlock()` de novo. O jogo chama `sound.bindUnlock()` uma vez, e esse gancho se desliga assim que o som está rodando; depois disso ninguém
+  chama `unlock()`, e `Sound.audio()` devolve `null` com o contexto fechado: a música (e os efeitos) ficariam mudos até recarregar a página. Os navegadores não fecham o contexto sozinhos; o teste do contexto fechado chama `sound.unlock()` à mão.
+* **Retomada no meio de um som longo:** o `resume()` (e desmutar, ou ligar o botão Música) volta ao começo do compasso, mas não repete o que já tinha começado antes: o pad pode faltar por até 1 compasso e uma rajada de vento ou chuvisco em curso só volta no próximo evento.
+* **Relógio do sistema:** o tocador lê `Date.now` para o duck temporário, para o intervalo entre pedidos de `resume()`, para soltar do grafo os temas que saíram e para o registro de pedidos; a música em si anda pelo relógio do áudio. Se o relógio recuar, o duck temporário vale como vencido e o `resume()` não fica bloqueado; os temas que já saíram (em volume 0) só são soltos do grafo quando o relógio alcançar o valor antigo.
 
 **Quando chamar (desenho das músicas):** menu e telas de menu `play("menu")`; começar a Fase N `play("dog"+N)` (ou `cat`/`bird`); pausa `setDuck(0.25)` e `setDuck(1)` ao voltar; perder uma vida `duck(0.25, 0.8)`;
 vitória `stop(0.5)`; game over `stop(0.4)`; aba escondida `pause()` e `resume()`; botão Música `toggleEnabled()`; depois de `som.setMuted(...)` chame `musica.tick()`.
