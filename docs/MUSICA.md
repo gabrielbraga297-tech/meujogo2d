@@ -31,7 +31,7 @@ Arquivos: `js/music.js` (o motor, os temas `menu`, `dog1`, `cat1` e `bird1`), `t
 
 ## 2. A receita
 
-Todas as chaves menos `id` e `voices.lead` têm padrão. Valores fora da faixa tornam a receita inválida (nada é "corrigido" em silêncio).
+Todas as chaves menos `id` e `voices.lead` têm padrão. Valores fora da faixa e **chaves desconhecidas** (erro de digitação: o aviso diz onde está e sugere a chave parecida, como `chave desconhecida "intensty" em voices.bass; quis dizer "intensity"?`) tornam a receita inválida: nada é "corrigido" nem ignorado em silêncio. Uma letra de `prog` ou de `motif.rhythm` que a `form` não tem também é apontada.
 
 ```js
 { id: "dog7", animal: "dog", place: "Parque canino",
@@ -100,7 +100,7 @@ por instrumento; nunca há 3 notas iguais seguidas; a primeira nota cai no 1º t
 ## 4. Vozes
 
 `voices.lead` é obrigatório; as outras são opcionais (`null` ou ausente = não existe; a exceção é `bass`: ausente = baixo padrão, `null` = sem baixo).
-Todas têm `inst` (instrumento), `oct` (oitava da **tônica**; a nota C4 = 60 fica em `oct: 4`; de 1 a 7), `vel` (0,05 a 1: dinâmica) e `from` (0 a 1: a partir de que nível de seção a camada entra).
+Todas têm `inst` (instrumento), `oct` (oitava da **tônica**; a nota C4 = 60 fica em `oct: 4`; de 1 a 7), `vel` (0,05 a 1: dinâmica) e, menos a `lead` (que toca em todas as seções), `from` (0 a 1: a partir de que nível de seção a camada entra). Cada voz é um objeto (`ambience` também pode ser só o nome do tipo).
 
 | Voz | O que faz | Padrões |
 |---|---|---|

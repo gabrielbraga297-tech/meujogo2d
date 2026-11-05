@@ -105,6 +105,48 @@ test("validate: cada defeito de receita gera ao menos um problema em português;
     assert.throws(() => Music.score(r), RangeError, `${name}: score lança`);
   }
 });
+test("validate: chave desconhecida (erro de digitação) em qualquer nível da receita é apontada, com a chave certa sugerida; nada é ignorado em silêncio", () => {
+  const lead = { inst: "marimba" };
+  // [descrição, receita, chave errada, chave sugerida, onde]
+  const typos = [
+    ["topo: intensty", base({ intensty: 0.9 }), "intensty", "intensity", "na receita"], ["topo: swng", base({ swng: 0.5 }), "swng", "swing", "na receita"], ["topo: bmp", base({ bmp: 90 }), "bmp", "bpm", "na receita"],
+    ["topo: voice", base({ voice: { lead } }), "voice", "voices", "na receita"],
+    ["voices.lead: ocv", base({ voices: { lead: { inst: "marimba", ocv: 6 } } }), "ocv", "oct", "em voices.lead"],
+    ["voices.bas", base({ voices: { lead, bas: { inst: "bass" } } }), "bas", "bass", "em voices"],
+    ["voices.pad: frm", base({ voices: { lead, pad: { inst: "strings", frm: 0.9 } } }), "frm", "from", "em voices.pad"],
+    ["motif: countour", base({ motif: { countour: "hop" } }), "countour", "contour", "em motif"],
+    ["voices.perc: patern", base({ voices: { lead, perc: { kit: "woodblock", patern: "polka" } } }), "patern", "pattern", "em voices.perc"],
+    ["voices.bass: patern", base({ voices: { lead, bass: { inst: "bass", patern: "walk" } } }), "patern", "pattern", "em voices.bass"],
+    ["voices.ambience: vell", base({ voices: { lead, ambience: { kind: "wind", vell: 0.9 } } }), "vell", "vel", "em voices.ambience"],
+    ["voices.lead.rotate[0]: instr", base({ voices: { lead: { inst: "marimba", rotate: [{ inst: "flute" }, { instr: "flute" }] } } }), "instr", "inst", "em voices.lead.rotate[1]"],
+    ["voices.arp: shap", base({ voices: { lead, arp: { inst: "harp", shap: "up" } } }), "shap", "shape", "em voices.arp"],
+    ["voices.counter: abov", base({ voices: { lead, counter: { inst: "flute", abov: true } } }), "abov", "above", "em voices.counter"],
+  ];
+  typos.forEach(([name, r, wrong, right, where], idx) => {
+    const p = Music.validate(r), hit = p.find((x) => x.includes(`"${wrong}"`));
+    assert.ok(hit, `${name}: esperava apontar "${wrong}", veio ${JSON.stringify(p)}`);
+    assert.ok(hit.startsWith("chave desconhecida") && hit.includes(where) && hit.includes(`quis dizer "${right}"?`), `${name}: mensagem ${hit}`);
+    assert.throws(() => Music.score(r), RangeError, name + ": score lança");
+    const reg = Music.register(Object.assign({}, r, { id: "tk" + idx })); // register ignora a receita e a lista em errors
+    assert.strictEqual(reg.ok.length, 0, name + ": register recusa"); assert.ok(reg.errors[0].problems.some((x) => x.includes(`"${wrong}"`)), name);
+  });
+  // chave sem nenhuma parecida: lista as aceitas
+  assert.ok(Music.validate(base({ zzzzzzzz: 1 }))[0].includes("(aceitas: id, animal,"), "sem sugestão: mostra as chaves aceitas");
+  // valores que não são objeto, letras de seção que a forma não tem e from na melodia
+  assert.ok(Music.validate(base({ voices: { lead, pad: true } })).some((x) => x.includes("voices.pad precisa ser um objeto")));
+  assert.ok(Music.validate(base({ motif: 5 })).some((x) => x.includes("motif precisa ser um objeto")));
+  assert.ok(Music.validate(base({ prog: { A: "I IV", E: "V" } })).some((x) => x.includes("prog.E") && x.includes("ABAB")));
+  assert.ok(Music.validate(base({ motif: { rhythm: { A: ["x-x-xx-x"], E: ["x-x-xx-x"] } } })).some((x) => x.includes("motif.rhythm.E")));
+  assert.ok(Music.validate(base({ voices: { lead: { inst: "marimba", from: 0.5 } } })).some((x) => x.includes("voices.lead.from")));
+  // o que é válido segue válido: voz vazia usa os padrões, ambience pode ser só o nome, null tira a voz, todas as chaves de cada nível
+  const full = { id: "full", animal: "dog", place: "x", key: "G", mode: "mixolydian", bpm: 116, beats: 4, swing: 0.1, bars: 32, form: "AABA", prog: { A: "I VII IV I", B: "IV I VII I", default: "I IV" },
+    motif: { seed: 7, bars: 2, contour: "hop", leaps: 0.5, rests: 0.1, density: 0.7, rhythm: { A: ["x-x-xx-x"], B: ["x--x-x--"] } },
+    voices: { lead: { inst: "xylo", oct: 4, vel: 0.8, rotate: [{ inst: "xylo", oct: 4, vel: 0.8 }, { inst: "flute" }] }, counter: { inst: "flute", oct: 4, vel: 0.5, from: 0.6, above: false },
+      bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.8, from: 0 }, pad: { inst: "strings", oct: 3, vel: 0.5, from: 0.35 }, arp: { inst: "pluck", rate: 2, shape: "broken", oct: 4, vel: 0.5, from: 0.5 },
+      perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.55, from: 0.25 }, ambience: { kind: "wind", vel: 0.5 } }, intensity: 0.6, gain: 1, maxSilence: 3 };
+  assert.deepStrictEqual(Music.validate(full), []);
+  assert.deepStrictEqual(Music.validate(base({ voices: { lead, counter: {}, ambience: "rain", bass: null, pad: null } })), []);
+});
 test("receitas aceitam as formas de escrever o ritmo (texto, lista, objeto por letra), prog por letra ou lista e vozes nulas", () => {
   const ok = [
     base({ motif: { rhythm: "x-x-xx-x x--x-x--" } }), base({ motif: { rhythm: ["x-x-xx-x", "x--x-x--"] } }), base({ motif: { rhythm: { A: ["x-x-xx-x", "x--x-x--"], B: ["x--x-x-x", "x-x-----"] } } }),

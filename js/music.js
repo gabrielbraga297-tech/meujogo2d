@@ -122,6 +122,27 @@
   const isToneInst = (n) => INSTRUMENTS[n] === "tone" || INSTRUMENTS[n] === "bass"; // melodia/acordes podem usar timbres de baixo também
 
   // ---------- Receita: validação e valores padrão ----------
+  // As chaves que cada nível da receita aceita. Qualquer outra (erro de digitação) torna a receita inválida: nada é ignorado em silêncio.
+  const RECIPE_KEYS = Object.freeze("id animal place key mode bpm beats swing bars form prog motif voices intensity gain maxSilence".split(" "));
+  const MOTIF_KEYS = Object.freeze("seed bars contour leaps rests density rhythm".split(" "));
+  const VOICE_NAMES = Object.freeze("lead counter bass pad arp perc ambience".split(" "));
+  const VOICE_KEYS = Object.freeze({ lead: "inst oct vel rotate".split(" "), counter: "inst oct vel from above".split(" "), bass: "inst oct vel from pattern".split(" "), pad: "inst oct vel from".split(" "),
+    arp: "inst oct vel from rate shape".split(" "), perc: "kit pattern vel from".split(" "), ambience: "kind vel".split(" ") });
+  const ROTATE_KEYS = Object.freeze("inst oct vel".split(" "));
+  function editDistance(a, b) { // distância de Levenshtein (letras trocadas, faltando ou sobrando)
+    const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      let diag = prev[0];
+      prev[0] = i;
+      for (let j = 1; j <= b.length; j++) { const keep = prev[j]; prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1)); diag = keep; }
+    }
+    return prev[b.length];
+  }
+  function closestKey(key, allowed) { // a chave aceita mais parecida (até 2 letras de diferença), ou null
+    let best = null, bestD = 3;
+    for (const k of allowed) { const d = editDistance(String(key).toLowerCase(), k.toLowerCase()); if (d < bestD) { bestD = d; best = k; } }
+    return best;
+  }
   const ROMAN = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7 };
   // "I vi IV V7" -> [{ root (índice do grau, 0 = tônica), seventh }]; null se algum símbolo é inválido. Maiúscula ou minúscula tanto faz: a qualidade vem do modo.
   function parseProg(src) {
@@ -151,7 +172,17 @@
       }
       return v;
     };
+    // chaves que a receita não conhece: erro de digitação ou campo que não existe (em `where` = onde está, para a mensagem)
+    const unknownKeys = (obj, allowed, where) => {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+      for (const k of Object.keys(obj)) {
+        if (allowed.includes(k)) continue;
+        const near = closestKey(k, allowed);
+        bad(`chave desconhecida "${String(k).slice(0, 24)}" ${where}` + (near ? `; quis dizer "${near}"?` : ` (aceitas: ${allowed.join(", ")})`));
+      }
+    };
     const R = { raw: r };
+    unknownKeys(r, RECIPE_KEYS, "na receita");
     if (typeof r.id === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,30}$/.test(r.id)) R.id = r.id; else { bad("id precisa ser um texto como \"dog7\""); R.id = "x"; }
     R.animal = ["dog", "cat", "bird", "menu"].includes(r.animal) ? r.animal : (r.animal === undefined ? "menu" : (bad("animal precisa ser dog, cat, bird ou menu"), "menu"));
     R.place = typeof r.place === "string" ? r.place : "";
@@ -179,6 +210,9 @@
     // progressões: texto único, ou objeto por letra de seção ({ A: "...", B: "...", default: "..." })
     R.progs = {};
     const pr = r.prog === undefined || r.prog === null ? DEFAULT_PROG[mode] : r.prog;
+    if (pr && typeof pr === "object" && !Array.isArray(pr)) {
+      for (const k of Object.keys(pr)) if (k !== "default" && !R.form.includes(k)) bad(`prog.${String(k).slice(0, 12)}: a forma ${R.form.join("")} não tem essa letra de seção (use ${[...new Set(R.form)].join(", ")} ou default)`);
+    }
     const progFor = (letter) => {
       let src = pr;
       if (pr && typeof pr === "object" && !Array.isArray(pr)) src = pr[letter] !== undefined ? pr[letter] : (pr.default !== undefined ? pr.default : pr.A);
@@ -190,7 +224,9 @@
     for (const l of R.form) if (!R.progs[l]) R.progs[l] = progFor(l);
 
     // motivo
-    const m = r.motif && typeof r.motif === "object" ? r.motif : {};
+    if (r.motif !== undefined && r.motif !== null && (typeof r.motif !== "object" || Array.isArray(r.motif))) bad("motif precisa ser um objeto");
+    const m = r.motif && typeof r.motif === "object" && !Array.isArray(r.motif) ? r.motif : {};
+    unknownKeys(m, MOTIF_KEYS, "em motif");
     R.motif = { seed: 0, bars: num(m.bars, 2, 1, 4, "motif.bars", true), contour: m.contour === undefined ? "arch" : m.contour, leaps: num(m.leaps, 0.3, 0, 1, "motif.leaps"),
       rests: num(m.rests, 0.2, 0, 1, "motif.rests"), density: num(m.density, 0.5, 0, 1, "motif.density"), rhythm: null };
     if (!CONTOURS.includes(R.motif.contour)) { bad("motif.contour precisa ser " + CONTOURS.join(", ")); R.motif.contour = "arch"; }
@@ -207,7 +243,10 @@
       };
       if (typeof rh === "object" && !Array.isArray(rh)) {
         R.motif.rhythm = {};
-        for (const k of Object.keys(rh)) R.motif.rhythm[k] = bag(rh[k], "motif.rhythm." + k);
+        for (const k of Object.keys(rh)) {
+          if (!R.form.includes(k)) bad(`motif.rhythm.${String(k).slice(0, 12)}: a forma ${R.form.join("")} não tem essa letra de seção`);
+          R.motif.rhythm[k] = bag(rh[k], "motif.rhythm." + k);
+        }
         if (!R.motif.rhythm.A) bad("motif.rhythm por letra precisa ter a letra A");
       } else R.motif.rhythm = bag(rh, "motif.rhythm");
       const first = Array.isArray(R.motif.rhythm) ? R.motif.rhythm : R.motif.rhythm && R.motif.rhythm.A;
@@ -215,7 +254,18 @@
     }
 
     // vozes
-    const v = r.voices && typeof r.voices === "object" ? r.voices : {};
+    const v = r.voices && typeof r.voices === "object" && !Array.isArray(r.voices) ? r.voices : {};
+    if (r.voices !== undefined && r.voices !== null && v !== r.voices) bad("voices precisa ser um objeto");
+    unknownKeys(v, VOICE_NAMES, "em voices");
+    for (const name of VOICE_NAMES) { // cada voz é um objeto (ou null/ausente); o ambience também pode ser só o nome do tipo
+      const x = v[name];
+      if (x === undefined || x === null) continue;
+      if (typeof x !== "object" || Array.isArray(x)) { if (!(name === "ambience" && typeof x === "string")) bad(`voices.${name} precisa ser um objeto${name === "ambience" ? " ou o nome do ambiente" : ""} (ou null para não ter a voz)`); continue; }
+      unknownKeys(x, VOICE_KEYS[name], `em voices.${name}`);
+      if (name === "lead" && x.from !== undefined) bad("voices.lead.from não vale: a melodia toca em todas as seções");
+    }
+    if (v.lead && Array.isArray(v.lead.rotate)) v.lead.rotate.forEach((e, i) => { if (!e || typeof e !== "object" || Array.isArray(e)) bad(`voices.lead.rotate[${i}] precisa ser um objeto`); else unknownKeys(e, ROTATE_KEYS, `em voices.lead.rotate[${i}]`); });
+    else if (v.lead && v.lead.rotate !== undefined && v.lead.rotate !== null) bad("voices.lead.rotate precisa ser uma lista de { inst, oct, vel }");
     const inst = (val, def, name, okFn) => { if (val === undefined || val === null) return def; if (typeof val === "string" && Object.prototype.hasOwnProperty.call(INSTRUMENTS, val) && okFn(val)) return val; bad(`${name}: instrumento inválido (${String(val).slice(0, 14)})`); return def; };
     const vox = (spec, name, defInst, defOct, defVel, defFrom, okFn) => {
       const s = spec && typeof spec === "object" ? spec : {};
