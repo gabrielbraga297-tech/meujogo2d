@@ -1,16 +1,16 @@
 // Músicas tema do GATINHO: 20 receitas (cat1 a cat20), uma por fase, cada uma com o clima do lugar da fase (o campo `place` é o mesmo de js/cat-levels.js).
 // Contrato e molde: docs/MUSICA.md. Cada receita é só dado (tom, modo, andamento, forma, progressão, motivo, vozes, camadas); quem faz a partitura é js/music.js.
-// Estilo do bichinho (escolha de design, ninguém ouviu estas músicas): furtivo, elegante e malandro. Modos dórico, menor, menor harmônico, frígio, blues, pentatônicos
-// e uns poucos claros (lídio, mixolídio, maior) para os lugares abertos; balanço (swing); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima;
+// Estilo do bichinho (escolha de design; nenhuma pessoa ouviu estas músicas): furtivo, elegante e malandro. Modos dórico, menor, menor harmônico, frígio, blues, pentatônicos
+// e uns poucos claros (lídio, mixolídio, maior) para os lugares abertos; balanço (swing: nos comentários, leve até 0,2, médio de 0,25 a 0,3 e forte de 0,4 em diante); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima;
 // melodias com pausas e síncopas. Rampa: o andamento sobe da Fase 1 (84 bpm) à Fase 20 (132 bpm) e as camadas (`intensity`) ficam mais cheias; a Fase 11
 // (cães rastreadores), as noites (18 e 19) e a Fase 20 (final grande, "volta ao lar") têm mais camadas e tensão.
 // Os temas são distintos entre si: nenhum repete tom e modo, andamento, forma com o mesmo tamanho, nem o par (instrumento do solo, padrão do baixo).
-// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js (RMS perto de -22 dBFS, pico até 0,85; a exceção é o cat9, veja o comentário dele).
+// Registro: o mesmo id registrado depois substitui o tema de exemplo de js/music.js (cat1). `gain` de cada receita foi ajustado com tools/music-render/render.js (RMS perto de -22 dBFS do tema sozinho, a ganho 1 e sem o barramento do jogo).
 (function (root) {
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
   M.register([
-    // 1 Sala de estar: simples e aconchegante. Valsa lenta (3/4, 84 bpm) em sol dórico com acordes de sétima e balanço leve. Celesta no solo, baixo de seno
+    // 1 Sala de estar: simples e aconchegante. Valsa lenta (3/4, 84 bpm) em sol dórico com acordes de sétima e balanço médio (0,3). Celesta no solo, baixo de seno
     // ("uum-pá-pá"), escovas só a partir da repetição e um órgão suave; a flauta grave só entra na parte B. Poucas notas, frases que respiram.
     {
       id: "cat1", animal: "cat", place: "Sala de estar", key: "G", mode: "dorian", bpm: 84, beats: 3, swing: 0.3, bars: 32, form: "AABA",
@@ -26,7 +26,7 @@
       intensity: 0.5,
       gain: 1.33,
     },
-    // 2 Cozinha e despensa: ré menor, 88 bpm, balanço. Marimba no solo com ritmo cheio de pausas e síncopas, bloco de madeira marcando os contratempos como um relógio de parede
+    // 2 Cozinha e despensa: ré menor, 88 bpm, balanço médio (0,3). Marimba no solo com ritmo cheio de pausas e síncopas, bloco de madeira marcando os contratempos como um relógio de parede
     // e contrabaixo pizzicato em síncope (tresillo). A flauta entra nas partes B e o arpejo de cordas beliscadas só na última parte.
     {
       id: "cat2", animal: "cat", place: "Cozinha e despensa", key: "D", mode: "minor", bpm: 88, beats: 4, swing: 0.3, bars: 32, form: "ABAB",
@@ -142,8 +142,6 @@
     },
     // 9 Parque e lago: valsa (3/4, 108 bpm) em ré bemol pentatônico maior, o tema mais aberto e calmo da primeira metade. Flauta no solo, contrabaixo "uum-pá-pá", chocalho em valsa,
     // cordas macias, arpejo de harpa de três notas por compasso nas partes B e C e um sino agudo em descante na parte C.
-    // Nota sobre o ganho: o pico medido no render (0,896) vem de um clique de uma amostra no começo de um golpe de chocalho (em 20,56 s), que não muda com o `gain`; ele aparece
-    // porque o ganho de cada nota do motor começa em 1 até o primeiro evento. Sem esse clique o pico do tema é 0,497, e o `gain` poderia subir para cerca de 1,07 (RMS -22 dBFS).
     {
       id: "cat9", animal: "cat", place: "Parque e lago", key: "Db", mode: "pentMajor", bpm: 108, beats: 3, swing: 0.15, bars: 32, form: "ABCA",
       prog: { A: "I II V IV", B: "IV I II V", C: "V IV II I" },
@@ -157,7 +155,7 @@
         perc: { kit: "shaker", pattern: "waltz", vel: 0.3, from: 0.45 },
       },
       intensity: 0.5,
-      gain: 0.94,
+      gain: 1.07,
     },
     // 10 Armazém de grãos: si frígio (a segunda menor dá o ar sombrio), 110 bpm, forma curta ABA de 24 compassos. Órgão grave no solo com notas longas e muitas pausas,
     // baixo de serrilha em pedal (a raiz sustentada), batida de coração no bumbo macio, cordas, e um sino agudo em contracanto só na parte B. Pouco movimento, bastante espaço.
@@ -192,7 +190,7 @@
       intensity: 0.72,
       gain: 0.83,
     },
-    // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço leve, forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
+    // 12 Horta e galinheiro: lá bemol mixolídio, 112 bpm, balanço médio (0,25), forma curta AAB (24 compassos). Um respiro cômico depois da tensão da Fase 11: cordas beliscadas alternando
     // com marimba num ritmo de "cacarejo" (notas rápidas e curtas), baixo de triângulo só nos contratempos, bumbo macio e bloco de madeira nos tempos 2 e 4, flauta grave no final.
     {
       id: "cat12", animal: "cat", place: "Horta e galinheiro", key: "Ab", mode: "mixolydian", bpm: 112, beats: 4, swing: 0.25, bars: 24, form: "AAB",

@@ -1,8 +1,8 @@
 // Músicas tema do PASSARINHO: 20 receitas (bird1 a bird20), uma por fase, com o clima do lugar da fase (o campo `place` repete js/bird-levels.js).
 // Contrato das receitas: docs/MUSICA.md. Este arquivo só registra receitas em `Music` (js/music.js vem antes no navegador); o registro posterior substitui o tema de exemplo `bird1` do motor.
-// Escolhas de design (nada aqui foi ouvido por uma pessoa; as conferências são estruturais e medidas, ver tests/music-bird.test.js):
+// Escolhas de design (nenhuma pessoa ouviu estes temas; as conferências são estruturais e medidas, ver tests/music-bird.test.js):
 //   * Estilo do bichinho: leve e arejado; pentatônicas, lídio, maior e mixolídio no começo, modos menores a partir da Fase 11 (chegada dos gaviões); arpejos de harpa/celesta/sino,
-//     flauta e compassos soltos (6/8 e 3/4 em quase todas as fases, 4/4 nas fases de marcha, mata, fazenda, dunas, campos de altitude e no final); vento, água e grilos como ambiência;
+//     flauta e compassos soltos (13 das 20 fases em 6/8 ou 3/4; 4/4 nas outras 7: Horta e cerca (3), Parque e coreto (6), Mata de pinheiros (10), Fazenda e galinheiro (11), Dunas e restinga (14), Campos de altitude (17) e o final (20)); vento, água e grilos como ambiência;
 //     motivos curtos e ritmados, como cantos de pássaro, sem imitar nenhuma espécie.
 //   * Rampa: o andamento sobe de 76 (Fase 1) a 128 bpm (Fase 20) e a quantidade de camadas (`intensity`) também; as fases 18 (entardecer) e 19 (noite) desaceleram de propósito.
 //     No 6/8 o `bpm` é o pulso pontuado (dois por compasso), por isso as fases em 6/8 mais rápidas têm mais compassos para o laço durar o mesmo.
@@ -196,7 +196,7 @@
       },
       intensity: 0.5, gain: 1.52,
     },
-    // 14 Dunas e restinga: dó menor harmônico em 4/4 (118), violão seco (a 2ª aumentada dá o ar de deserto) que passa à flauta, baixo de pizzicato, tresillo de bumbo e bloco de madeira, cordas nas seções cheias e vento; forma ABCB.
+    // 14 Dunas e restinga: dó menor harmônico em 4/4 (118), violão seco (a 2ª aumentada dá o ar de deserto) que passa à flauta, baixo de pizzicato, bumbo nos tempos e bloco de madeira nos contratempos (padrão `offbeat`), cordas nas seções cheias e vento; forma ABCB.
     {
       id: "bird14", animal: "bird", place: "Dunas e restinga", key: "C", mode: "harmMinor", bpm: 118, beats: 4, swing: 0, bars: 32, form: "ABCB",
       prog: { A: "I IV V I", B: "VI IV V I", C: "IV VI V I" },

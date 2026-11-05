@@ -1,8 +1,8 @@
 // Músicas tema do CACHORRINHO: 20 receitas, uma por fase (dog1 a dog20), registradas em Music (js/music.js). O contrato da receita está em docs/MUSICA.md.
-// Escolhas de design (ninguém ouviu estes temas; os testes conferem só estrutura e medidas): alegre e saltitante nas primeiras fases (maiores, mixolídio e lídio,
+// Escolhas de design (nenhuma pessoa ouviu estes temas; os testes conferem só estrutura e medidas): alegre e saltitante nas primeiras fases (maiores, mixolídio e lídio,
 // marcha, polca e balanço leve, xilofone, marimba e cordas beliscadas, baixo caminhante, bloco de madeira); o andamento sobe da Fase 1 (92 bpm) à 20 (148 bpm), as camadas
-// entram aos poucos e as fases de perigo (Central da carrocinha, Beco dos gatos, Telhados à noite, Fortaleza) ganham urgência com modos menor, frígio, dórico e menor harmônico.
-// O `place` de cada receita é o lugar da fase em js/themes.js. Cada tema tem tom, modo, andamento, semente do motivo e combinação de solo, baixo e percussão próprios.
+// entram aos poucos e as fases de perigo (Central da carrocinha, Beco dos gatos, Telhados, Fortaleza) ganham urgência com modos menor (Central da carrocinha e Telhados), frígio (Beco dos gatos) e menor harmônico (Fortaleza); o único dórico do Cachorrinho é o do Bosque (Fase 14).
+// O `place` de cada receita é o lugar da fase em js/themes.js. Nos comentários, o balanço (`swing`) é leve até 0,2, médio de 0,25 a 0,3 e forte de 0,4 em diante. Cada tema tem tom, modo, andamento, semente do motivo e combinação de solo, baixo e percussão próprios.
 (function (root) {
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
@@ -65,7 +65,7 @@
       },
       intensity: 0.55, gain: 1,
     },
-    // 5 Condomínio: calçadão e jardins, balanço de tarde. Sol lídio, 107 bpm, ABAC (72 s), balanço forte (0,3). Flauta e marimba se revezam no motivo sincopado, contrabaixo
+    // 5 Condomínio: calçadão e jardins, balanço de tarde. Sol lídio, 107 bpm, ABAC (72 s), balanço médio (0,3). Flauta e marimba se revezam no motivo sincopado, contrabaixo
     // caminhante, escova em "ding, ding-a-ding" e celesta aguda de descante nas seções B e C.
     {
       id: "dog5", animal: "dog", place: "Condomínio", key: "G", mode: "lydian", bpm: 107, beats: 4, swing: 0.3, bars: 32, form: "ABAC",
@@ -168,7 +168,7 @@
       },
       intensity: 0.6, gain: 1.02,
     },
-    // 12 Pet shop: prateleiras coloridas e brinquedos. Dó lídio, 120 bpm, AABC (64 s), balanço forte. Marimba com campainhas (sino) no revezamento, baixo caminhante,
+    // 12 Pet shop: prateleiras coloridas e brinquedos. Dó lídio, 120 bpm, AABC (64 s), balanço médio (0,28). Marimba com campainhas (sino) no revezamento, baixo caminhante,
     // pratinho de escova, descante de flauta e arpejo de celesta que sobe e brilha nas seções B e C. Contorno ascendente, muitos saltos.
     {
       id: "dog12", animal: "dog", place: "Pet shop", key: "C", mode: "lydian", bpm: 120, beats: 4, swing: 0.28, bars: 32, form: "AABC",
@@ -244,7 +244,7 @@
       },
       intensity: 0.6, gain: 0.85,
     },
-    // 17 Estacionamento: asfalto, buzinas e cones, ritmo travado. Fá mixolídio, 136 bpm, ABAC (57 s). Marimba seca, baixo de serrilha em tresillo, bumbo macio com prato leve nos contratempos,
+    // 17 Estacionamento: asfalto, buzinas e cones, ritmo travado. Fá mixolídio, 136 bpm, ABAC (56,5 s). Marimba seca, baixo de serrilha em tresillo, bumbo macio com prato leve nos contratempos,
     // órgão grave de contramelodia (como buzina) e arpejo que desce. Ritmo quebrado, contorno que desce.
     {
       id: "dog17", animal: "dog", place: "Estacionamento", key: "F", mode: "mixolydian", bpm: 136, beats: 4, swing: 0, bars: 32, form: "ABAC",

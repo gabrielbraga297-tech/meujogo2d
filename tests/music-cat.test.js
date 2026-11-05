@@ -252,5 +252,5 @@ test("honestidade: o código e os comentários não afirmam que a música foi ou
   for (const bad of [/soa bem/i, /agrad[aá]vel/i, /foi ouvid/i, /ouvimos/i, /ficou (lindo|bonito|bom)/i, /\bA6\b/, /\bwip\b/i, /\bagente\b/i, /\bfrente\b/i]) assert.ok(!bad.test(SRC), String(bad));
 });
 
-console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes das músicas do gatinho passaram");
+console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes das músicas do Gatinho passaram");
 process.exit(failed ? 1 : 0);

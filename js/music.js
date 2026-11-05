@@ -16,6 +16,7 @@
 //      o tocador o chama aos pedaços (antecedência curta), os testes e a ferramenta de render o chamam num AudioContext falso ou num OfflineAudioContext real.
 //   3. Music.create({...}) é o tocador (barramento próprio, crossfade, duck, pausa, mudo, preferência, agendador por setInterval).
 // O gerador nunca usa números aleatórios do sistema nem o relógio: o mesmo tema soa igual toda vez.
+// Nenhuma pessoa ouviu estas músicas durante o desenvolvimento: os testes e as ferramentas de tools/music-render só medem propriedades (escala, laço, pico, volume, emenda).
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
@@ -122,6 +123,27 @@
   const isToneInst = (n) => INSTRUMENTS[n] === "tone" || INSTRUMENTS[n] === "bass"; // melodia/acordes podem usar timbres de baixo também
 
   // ---------- Receita: validação e valores padrão ----------
+  // As chaves que cada nível da receita aceita. Qualquer outra (erro de digitação) torna a receita inválida: nada é ignorado em silêncio.
+  const RECIPE_KEYS = Object.freeze("id animal place key mode bpm beats swing bars form prog motif voices intensity gain maxSilence".split(" "));
+  const MOTIF_KEYS = Object.freeze("seed bars contour leaps rests density rhythm".split(" "));
+  const VOICE_NAMES = Object.freeze("lead counter bass pad arp perc ambience".split(" "));
+  const VOICE_KEYS = Object.freeze({ lead: "inst oct vel rotate".split(" "), counter: "inst oct vel from above".split(" "), bass: "inst oct vel from pattern".split(" "), pad: "inst oct vel from".split(" "),
+    arp: "inst oct vel from rate shape".split(" "), perc: "kit pattern vel from".split(" "), ambience: "kind vel".split(" ") });
+  const ROTATE_KEYS = Object.freeze("inst oct vel".split(" "));
+  function editDistance(a, b) { // distância de Levenshtein (letras trocadas, faltando ou sobrando)
+    const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      let diag = prev[0];
+      prev[0] = i;
+      for (let j = 1; j <= b.length; j++) { const keep = prev[j]; prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1)); diag = keep; }
+    }
+    return prev[b.length];
+  }
+  function closestKey(key, allowed) { // a chave aceita mais parecida (até 2 letras de diferença), ou null
+    let best = null, bestD = 3;
+    for (const k of allowed) { const d = editDistance(String(key).toLowerCase(), k.toLowerCase()); if (d < bestD) { bestD = d; best = k; } }
+    return best;
+  }
   const ROMAN = { I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7 };
   // "I vi IV V7" -> [{ root (índice do grau, 0 = tônica), seventh }]; null se algum símbolo é inválido. Maiúscula ou minúscula tanto faz: a qualidade vem do modo.
   function parseProg(src) {
@@ -151,7 +173,17 @@
       }
       return v;
     };
+    // chaves que a receita não conhece: erro de digitação ou campo que não existe (em `where` = onde está, para a mensagem)
+    const unknownKeys = (obj, allowed, where) => {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+      for (const k of Object.keys(obj)) {
+        if (allowed.includes(k)) continue;
+        const near = closestKey(k, allowed);
+        bad(`chave desconhecida "${String(k).slice(0, 24)}" ${where}` + (near ? `; quis dizer "${near}"?` : ` (aceitas: ${allowed.join(", ")})`));
+      }
+    };
     const R = { raw: r };
+    unknownKeys(r, RECIPE_KEYS, "na receita");
     if (typeof r.id === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,30}$/.test(r.id)) R.id = r.id; else { bad("id precisa ser um texto como \"dog7\""); R.id = "x"; }
     R.animal = ["dog", "cat", "bird", "menu"].includes(r.animal) ? r.animal : (r.animal === undefined ? "menu" : (bad("animal precisa ser dog, cat, bird ou menu"), "menu"));
     R.place = typeof r.place === "string" ? r.place : "";
@@ -179,6 +211,9 @@
     // progressões: texto único, ou objeto por letra de seção ({ A: "...", B: "...", default: "..." })
     R.progs = {};
     const pr = r.prog === undefined || r.prog === null ? DEFAULT_PROG[mode] : r.prog;
+    if (pr && typeof pr === "object" && !Array.isArray(pr)) {
+      for (const k of Object.keys(pr)) if (k !== "default" && !R.form.includes(k)) bad(`prog.${String(k).slice(0, 12)}: a forma ${R.form.join("")} não tem essa letra de seção (use ${[...new Set(R.form)].join(", ")} ou default)`);
+    }
     const progFor = (letter) => {
       let src = pr;
       if (pr && typeof pr === "object" && !Array.isArray(pr)) src = pr[letter] !== undefined ? pr[letter] : (pr.default !== undefined ? pr.default : pr.A);
@@ -190,7 +225,9 @@
     for (const l of R.form) if (!R.progs[l]) R.progs[l] = progFor(l);
 
     // motivo
-    const m = r.motif && typeof r.motif === "object" ? r.motif : {};
+    if (r.motif !== undefined && r.motif !== null && (typeof r.motif !== "object" || Array.isArray(r.motif))) bad("motif precisa ser um objeto");
+    const m = r.motif && typeof r.motif === "object" && !Array.isArray(r.motif) ? r.motif : {};
+    unknownKeys(m, MOTIF_KEYS, "em motif");
     R.motif = { seed: 0, bars: num(m.bars, 2, 1, 4, "motif.bars", true), contour: m.contour === undefined ? "arch" : m.contour, leaps: num(m.leaps, 0.3, 0, 1, "motif.leaps"),
       rests: num(m.rests, 0.2, 0, 1, "motif.rests"), density: num(m.density, 0.5, 0, 1, "motif.density"), rhythm: null };
     if (!CONTOURS.includes(R.motif.contour)) { bad("motif.contour precisa ser " + CONTOURS.join(", ")); R.motif.contour = "arch"; }
@@ -207,7 +244,10 @@
       };
       if (typeof rh === "object" && !Array.isArray(rh)) {
         R.motif.rhythm = {};
-        for (const k of Object.keys(rh)) R.motif.rhythm[k] = bag(rh[k], "motif.rhythm." + k);
+        for (const k of Object.keys(rh)) {
+          if (!R.form.includes(k)) bad(`motif.rhythm.${String(k).slice(0, 12)}: a forma ${R.form.join("")} não tem essa letra de seção`);
+          R.motif.rhythm[k] = bag(rh[k], "motif.rhythm." + k);
+        }
         if (!R.motif.rhythm.A) bad("motif.rhythm por letra precisa ter a letra A");
       } else R.motif.rhythm = bag(rh, "motif.rhythm");
       const first = Array.isArray(R.motif.rhythm) ? R.motif.rhythm : R.motif.rhythm && R.motif.rhythm.A;
@@ -215,7 +255,18 @@
     }
 
     // vozes
-    const v = r.voices && typeof r.voices === "object" ? r.voices : {};
+    const v = r.voices && typeof r.voices === "object" && !Array.isArray(r.voices) ? r.voices : {};
+    if (r.voices !== undefined && r.voices !== null && v !== r.voices) bad("voices precisa ser um objeto");
+    unknownKeys(v, VOICE_NAMES, "em voices");
+    for (const name of VOICE_NAMES) { // cada voz é um objeto (ou null/ausente); o ambience também pode ser só o nome do tipo
+      const x = v[name];
+      if (x === undefined || x === null) continue;
+      if (typeof x !== "object" || Array.isArray(x)) { if (!(name === "ambience" && typeof x === "string")) bad(`voices.${name} precisa ser um objeto${name === "ambience" ? " ou o nome do ambiente" : ""} (ou null para não ter a voz)`); continue; }
+      unknownKeys(x, VOICE_KEYS[name], `em voices.${name}`);
+      if (name === "lead" && x.from !== undefined) bad("voices.lead.from não vale: a melodia toca em todas as seções");
+    }
+    if (v.lead && Array.isArray(v.lead.rotate)) v.lead.rotate.forEach((e, i) => { if (!e || typeof e !== "object" || Array.isArray(e)) bad(`voices.lead.rotate[${i}] precisa ser um objeto`); else unknownKeys(e, ROTATE_KEYS, `em voices.lead.rotate[${i}]`); });
+    else if (v.lead && v.lead.rotate !== undefined && v.lead.rotate !== null) bad("voices.lead.rotate precisa ser uma lista de { inst, oct, vel }");
     const inst = (val, def, name, okFn) => { if (val === undefined || val === null) return def; if (typeof val === "string" && Object.prototype.hasOwnProperty.call(INSTRUMENTS, val) && okFn(val)) return val; bad(`${name}: instrumento inválido (${String(val).slice(0, 14)})`); return def; };
     const vox = (spec, name, defInst, defOct, defVel, defFrom, okFn) => {
       const s = spec && typeof spec === "object" ? spec : {};
@@ -479,6 +530,14 @@
     for (let j = 0; j < k; j++) {
       const deg = first.deg + dir * (k - j);
       kept.push({ t: round6(barEnd - (k - j) * M.stepBeats), d: round6(M.stepBeats * 0.95), midi: degMidi(sc, deg, L.oct) + shift, v: round6(clamp(L.vel * 0.85, 0.05, 1)), voice: "lead", inst: lastInst, kind: "pickup", deg, bar: R.bars - 1 });
+    }
+    // De novo a regra das 3 notas iguais, agora sobre o que se ouve (o MIDI final, já com a escala do fim e a troca de instrumento do revezamento, que muda a oitava sem mudar o grau):
+    // a regra de cima compara graus e roda antes de a escala final entrar. A do meio dá um passo de grau para o lado, dentro da janela do instrumento (nunca igual às vizinhas).
+    for (let i = 2; i < kept.length; i++) {
+      const a = kept[i - 2], b = kept[i - 1], c = kept[i];
+      if (a.midi !== b.midi || b.midi !== c.midi) continue;
+      const d = clamp(b.deg + (b.deg + 1 <= dHi ? 1 : -1), dLo, dHi);
+      b.midi += degMidi(sc, d, L.oct) - degMidi(sc, b.deg, L.oct); b.deg = d; b.kind = "orn";
     }
     return kept;
   }
@@ -847,6 +906,7 @@
   // Cada instrumento tem `life(d, kind)` (segundos que a nota soa, contando a cauda; `d` = duração escrita em segundos) e
   // `play(kit, at, d, L, f, g, e)` (L = life já calculada, f = frequência em Hz, g = ganho final, e = o evento).
   // Os números são escolhas de design para um timbre simples (um par de osciladores + filtro + envelope), nenhum medido contra instrumento real.
+  const BASS_H2 = 0.35, BASS_H3 = 0.15;   // amplitude do 2º e do 3º harmônico dos baixos, relativa à do fundamental (escolha de design; ver o comentário dos baixos)
   const INST = {
     // cordas beliscadas (ukulele/violão de nylon): triângulo com filtro que fecha, mais uma serrilha levemente desafinada
     pluck: { life: (d) => clamp(0.3 + d * 0.6, 0.35, 1.3), play(k, at, d, L, f, g) {
@@ -898,23 +958,29 @@
       k.tone({ at, dur: L, f: f * 0.996, type: "sawtooth", lp: Math.min(f * 3.5, 2200), gain: 0.13 * g, a: 0.35, r: 0.4, sus: 1 });
       k.tone({ at, dur: L, f: f * 1.004, type: "sawtooth", lp: Math.min(f * 3.5, 2200), gain: 0.13 * g, a: 0.35, r: 0.4, sus: 1 });
     } },
-    // baixos: triângulo com o 2º harmônico (para o celular), seno puro, e serrilha filtrada com seno
+    // baixos: o alto-falante de um celular quase não toca abaixo de uns 150 Hz e muitas notas do baixo têm o fundamental abaixo de 100 Hz; por isso cada baixo leva também o 2º e o 3º
+    // harmônicos (BASS_H2 e BASS_H3 do fundamental): mesmo sem o fundamental a altura da nota continua se ouvindo. Triângulo; seno puro; serrilha filtrada com seno; pizzicato.
     bass: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "triangle", gain: 0.62 * g, a: 0.01, r: 0.06, sus: 0.6 });
-      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.16 * g, a: 0.01, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.62 * BASS_H2 * g, a: 0.01, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.62 * BASS_H3 * g, a: 0.01, r: 0.06, sus: 0.4 });
     } },
     bassSine: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "sine", gain: 0.75 * g, a: 0.012, r: 0.06, sus: 0.7 });
-      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.1 * g, a: 0.012, r: 0.06, sus: 0.6 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.75 * BASS_H2 * g, a: 0.012, r: 0.06, sus: 0.6 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.75 * BASS_H3 * g, a: 0.012, r: 0.06, sus: 0.5 });
     } },
     bassSaw: { life: (d) => clamp(d, 0.1, 8) + 0.06, play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "sawtooth", lp: f * 5, lp2: f * 2.2, q: 1.2, gain: 0.3 * g, a: 0.008, r: 0.06, sus: 0.5 });
       k.tone({ at, dur: L, f, type: "sine", gain: 0.4 * g, a: 0.008, r: 0.06, sus: 0.5 });
+      k.tone({ at, dur: L, f: f * 2, type: "sine", gain: 0.4 * BASS_H2 * g, a: 0.008, r: 0.06, sus: 0.45 });
+      k.tone({ at, dur: L, f: f * 3, type: "sine", gain: 0.4 * BASS_H3 * g, a: 0.008, r: 0.06, sus: 0.4 });
     } },
-    // contrabaixo pizzicato: nota que morre sozinha e uma batida grave de ruído no começo
+    // contrabaixo pizzicato: nota que morre sozinha (os harmônicos morrem antes do fundamental) e uma batida grave de ruído no começo
     contrabass: { life: (d) => clamp(0.35 + d * 0.25, 0.4, 1.0), play(k, at, d, L, f, g) {
       k.tone({ at, dur: L, f, type: "triangle", gain: 0.8 * g, a: 0.006, r: 0.05, sus: 0.03 });
-      k.tone({ at, dur: L * 0.5, f: f * 2, type: "sine", gain: 0.1 * g, a: 0.006, r: 0.04, sus: 0.03 });
+      k.tone({ at, dur: L * 0.6, f: f * 2, type: "sine", gain: 0.8 * BASS_H2 * g, a: 0.006, r: 0.04, sus: 0.03 });
+      k.tone({ at, dur: L * 0.4, f: f * 3, type: "sine", gain: 0.8 * BASS_H3 * g, a: 0.006, r: 0.03, sus: 0.03 });
       k.noise({ at, dur: 0.04, type: "lowpass", f: 400, q: 0.7, gain: 0.12 * g, a: 0.004, r: 0.02, sus: 0.1 });
     } },
     // percussão (o `kind` do evento é "low" = grave/marcação, "high" = agudo/contratempo, "ghost" = nota fantasma, "fill" = virada)
@@ -924,9 +990,13 @@
       k.tone({ at, dur: 0.04, f: f0 * 2.35, type: "sine", gain: 0.15 * g, a: 0.003, r: 0.01, sus: 0.03 });
       k.noise({ at, dur: 0.02, type: "bandpass", f: 3000, q: 1.5, gain: 0.12 * g, a: 0.003, r: 0.01, sus: 0.1 });
     } },
+    // bumbo macio: o 'tum' (senoide que cai de 135 a 48 Hz) quase não sai num alto-falante de celular; por isso leva também uma varredura curta uma oitava acima (270 a 96 Hz)
+    // e um estalo de ruído em torno de 1,1 kHz (15 ms), que um alto-falante pequeno reproduz
     softkick: { life: () => 0.28, play(k, at, d, L, f, g) {
       k.tone({ at, dur: 0.22, f: 135, f2: 48, type: "sine", gain: 0.95 * g, a: 0.004, r: 0.05, sus: 0.02 });
+      k.tone({ at, dur: 0.08, f: 270, f2: 96, type: "sine", gain: 0.3 * g, a: 0.004, r: 0.03, sus: 0.03 });
       k.noise({ at, dur: 0.03, type: "lowpass", f: 500, q: 0.7, gain: 0.1 * g, a: 0.004, r: 0.015, sus: 0.1 });
+      k.noise({ at, dur: 0.015, type: "bandpass", f: 1100, q: 0.9, gain: 0.5 * g, a: 0.003, r: 0.008, sus: 0.1 });
     } },
     brush: { life: (d, kind) => (kind === "low" ? 0.2 : 0.16), play(k, at, d, L, f, g, e) {
       if (e.kind === "low") k.noise({ at, dur: 0.18, type: "bandpass", f: 3200, q: 0.5, gain: 0.28 * g, a: 0.025, r: 0.06, sus: 0.3 });
@@ -1018,6 +1088,8 @@
   const BUS_GAIN = 0.45;          // ganho do barramento de música (relativo ao mestre dos sons)
   const FADE_DEFAULT = 0.7;       // crossfade entre temas (s)
   const START_LEAD = 0.06;        // folga ao começar um tema (s)
+  const DUCK_DOWN_TC = 0.04;      // constante de tempo (s) do duck ao abaixar (a descida leva ~0,1 s)
+  const DUCK_UP_TC = 0.25;        // e ao voltar (~0,75 s)
   const RESUME_RETRY_MS = 1000;   // de quanto em quanto tempo pede resume() a um contexto suspenso
   const MAX_EVENTS = 200;         // pedidos lembrados em `events`
   const finite = (x) => typeof x === "number" && Number.isFinite(x);
@@ -1038,7 +1110,8 @@
     let cur = null;                  // o tema soando: { id, score, node, live, pos (batida do laço até onde já agendamos), posTime (s do áudio dessa batida) }
     const fading = [];               // nós saindo: { node, endMs }
     let ctx = null, duckNode = null, bus = null, lastAllowed = null;
-    let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs }
+    let baseDuck = 1, temp = null;   // duck fixo e duck temporário { level, untilMs, ms (a duração pedida) }
+    let duckModel = { v: 1, t: 0, L: 1, tc: DUCK_DOWN_TC, later: [] }; // curva do ganho do duck (ver duckNow)
     let timer = null, lastResumeTry = -Infinity, offUnlock = null;
     const events = [];
 
@@ -1078,18 +1151,39 @@
         d.gain.value = duckValue();
         d.connect(b); b.connect(a.input);
         ctx = a.ctx; duckNode = d; bus = b;
+        duckModel = { v: d.gain.value, t: ctx.currentTime, L: d.gain.value, tc: DUCK_DOWN_TC, later: [] };
         cur = null; fading.length = 0; // o que existia era de outro contexto
+        if (activeTemp()) applyDuck(); // o barramento nasceu dentro da janela de um duck temporário (duck pedido antes do unlock, contexto recriado): agenda já a volta ao nível fixo
         return true;
       } catch { broken = true; ctx = null; bus = null; duckNode = null; return false; }
     }
-    function duckValue() { const tp = temp && temp.untilMs > now() ? temp : null; return tp ? tp.level : baseDuck; }
+    // O duck temporário que vale agora, ou null. Se o relógio do sistema voltou, `untilMs` fica muito além da duração pedida (mais de 1 s de folga): o duck vale como vencido em vez de ficar preso.
+    function activeTemp() { if (!temp) return null; const left = temp.untilMs - now(); return left > 0 && left <= temp.ms + 1000 ? temp : null; }
+    function duckValue() { const tp = activeTemp(); return tp ? tp.level : baseDuck; }
+    // O nível que o ganho do duck tem AGORA, calculado com a mesma curva que applyDuck agenda (setTargetAtTime): serve para congelar o volume efetivo de um
+    // tema que sai. Não lemos `gain.value` porque o navegador pode devolver o valor sem a automação; e não usamos o alvo (duckValue), que só vale depois da subida.
+    function duckNow() {
+      if (!ctx) return duckValue();
+      const T = ctx.currentTime, m = duckModel;
+      let v = m.v, t = m.t, L = m.L, tc = m.tc;
+      for (const s of m.later) {
+        if (s.t >= T) break;
+        v = L + (v - L) * Math.exp(-(s.t - t) / tc); t = s.t; L = s.L; tc = s.tc;
+      }
+      return L + (v - L) * Math.exp(-Math.max(0, T - t) / tc);
+    }
     function applyDuck() {
       if (!ctx || !duckNode) return;
       try {
-        const t = ctx.currentTime, p = duckNode.gain, tp = temp && temp.untilMs > now() ? temp : null;
+        const t = ctx.currentTime, p = duckNode.gain, tp = activeTemp(), target = tp ? tp.level : baseDuck, from = duckNow();
         p.cancelScheduledValues(t);
-        p.setTargetAtTime(tp ? tp.level : baseDuck, t, 0.04);
-        if (tp) p.setTargetAtTime(baseDuck, t + (tp.untilMs - now()) / 1000, 0.25);
+        p.setTargetAtTime(target, t, DUCK_DOWN_TC);
+        duckModel = { v: from, t, L: target, tc: DUCK_DOWN_TC, later: [] };
+        if (tp) {
+          const back = t + (tp.untilMs - now()) / 1000;
+          p.setTargetAtTime(baseDuck, back, DUCK_UP_TC);
+          duckModel.later.push({ t: back, L: baseDuck, tc: DUCK_UP_TC });
+        }
       } catch { try { duckNode.gain.value = duckValue(); } catch { /* nada a fazer */ } }
     }
     function applyBus(allowed) {
@@ -1104,8 +1198,11 @@
       try {
         const p = node.gain, t = ctx.currentTime, v = p.value;
         p.cancelScheduledValues(t);
-        p.setValueAtTime(v, t);
+        // O tema que sai congela o volume que se ouve agora (tema x duck) e passa a ir direto ao barramento: o duck deixa de valer para ele. Sem isso, ao voltar da
+        // pausa (duck 0,25 -> 1) o duck subiria enquanto o tema velho ainda desvanece e ele 'incharia' por uns 0,5 s.
+        p.setValueAtTime(v * duckNow(), t);
         p.linearRampToValueAtTime(0, t + f);
+        node.disconnect(); node.connect(bus);
       } catch { /* o nó some junto com o desligamento */ }
       fading.push({ node, endMs: now() + (f + 0.15) * 1000 });
     }
@@ -1172,7 +1269,8 @@
       if (a && ensureBus(a)) {
         const c = a.ctx, allowed = enabled && !paused && !isMuted();
         if (c.state !== "running") { // suspenso (aba em segundo plano, celular): pede para retomar de vez em quando, sem agendar nada
-          if (now() - lastResumeTry >= RESUME_RETRY_MS) { lastResumeTry = now(); try { const r = c.resume(); if (r && typeof r.catch === "function") r.catch(() => {}); } catch { /* o navegador recusou */ } }
+          const sinceTry = now() - lastResumeTry; // negativo se o relógio do sistema voltou: vale como vencido (senão nenhum resume() seria pedido até o relógio alcançar o valor antigo)
+          if (sinceTry >= RESUME_RETRY_MS || sinceTry < 0) { lastResumeTry = now(); try { const r = c.resume(); if (r && typeof r.catch === "function") r.catch(() => {}); } catch { /* o navegador recusou */ } }
         } else {
           applyBus(allowed);
           if (!allowed) silence();
@@ -1227,7 +1325,7 @@
       duck(level, seconds) {
         try {
           const lv = finite(level) ? clamp(level, 0, 1) : 0.25;
-          if (finite(seconds) && seconds > 0) temp = { level: lv, untilMs: now() + seconds * 1000 };
+          if (finite(seconds) && seconds > 0) temp = { level: lv, untilMs: now() + seconds * 1000, ms: seconds * 1000 };
           else { baseDuck = lv; temp = null; }
           applyDuck();
         } catch { /* ignora */ }
@@ -1330,7 +1428,7 @@
     intensity: 0.55,
   }]);
 
-  // ---------- temas de exemplo (substituídos pelos arquivos dos compositores) ----------
+  // ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------
   // Um de cada estilo, para provar o motor: js/music-dog.js, js/music-cat.js e js/music-bird.js registram os temas de verdade com os mesmos ids
   // (dog1, cat1, bird1, ...) e o registro posterior substitui estes.
   register([

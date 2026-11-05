@@ -44,14 +44,39 @@ test("carregar o módulo no Node não cria timers nem toca em AudioContext; o to
   assert.strictEqual(m.state, "unsupported");
   m.dispose();
 });
-test("os temas embutidos: menu primeiro, depois os três exemplos; ids únicos; get devolve null para id desconhecido", () => {
-  assert.deepStrictEqual(Music.ids().slice(0, 4), THEMES);
-  assert.strictEqual(new Set(Music.ids()).size, Music.ids().length);
+test("os temas embutidos (o menu e os três exemplos) estão registrados, sem ids repetidos (a conferência não depende da ordem do registro); get devolve null para id desconhecido", () => {
+  const ids = Music.ids();
+  for (const id of THEMES) assert.ok(ids.includes(id), id + " registrado");
+  assert.strictEqual(new Set(ids).size, ids.length);
   assert.strictEqual(Music.get("nao-existe"), null);
   assert.strictEqual(Music.get("menu").id, "menu");
 });
-test("o bloco dos temas de exemplo está marcado no código para os compositores substituírem", () => {
-  assert.ok(SRC.includes("// ---------- temas de exemplo (substituídos pelos arquivos dos compositores) ----------"));
+// Os intervalos dos modos escritos à mão, de um livro de teoria, SEM ler a tabela do motor: as conferências "todas as notas na escala" usam a mesma tabela do gerador (Music.scaleInfo) e por isso
+// não pegariam um modo escrito errado (por exemplo o dórico com a sexta menor, que é o eólio).
+test("modos e tons: os intervalos dos 10 modos e as notas de cada tom conferem com os escritos à mão (independentes da tabela do motor)", () => {
+  const byHand = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10], lydian: [0, 2, 4, 6, 7, 9, 11],
+    phrygian: [0, 1, 3, 5, 7, 8, 10], pentMajor: [0, 2, 4, 7, 9], pentMinor: [0, 3, 5, 7, 10], harmMinor: [0, 2, 3, 5, 7, 8, 11], blues: [0, 3, 5, 6, 7, 10] };
+  assert.deepStrictEqual(Object.keys(Music.MODES).sort(), Object.keys(byHand).sort());
+  for (const [mode, steps] of Object.entries(byHand)) { assert.deepStrictEqual([...Music.MODES[mode]], steps, mode); assert.deepStrictEqual([...Music.scaleInfo("C", mode).steps], steps, "scaleInfo " + mode); }
+  const keysByHand = { C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3, E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8, Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11 };
+  assert.deepStrictEqual({ ...Music.KEYS }, keysByHand);
+  // as notas (classes de altura) de alguns tons completos, contadas à mão no teclado: C=0 C#=1 D=2 D#=3 E=4 F=5 F#=6 G=7 G#=8 A=9 A#=10 B=11
+  const pcs = (key, mode) => [...Music.scaleInfo(key, mode).pcs].sort((a, b) => a - b);
+  assert.deepStrictEqual(pcs("G", "dorian"), [0, 2, 4, 5, 7, 9, 10], "sol dórico: G A Bb C D E F");
+  assert.deepStrictEqual(pcs("D", "lydian"), [1, 2, 4, 6, 8, 9, 11], "ré lídio: D E F# G# A B C#");
+  assert.deepStrictEqual(pcs("F#", "pentMinor"), [1, 4, 6, 9, 11], "fá# pentatônico menor: F# A B C# E");
+  assert.deepStrictEqual(pcs("A", "minor"), [0, 2, 4, 5, 7, 9, 11], "lá menor: só as teclas brancas");
+  assert.deepStrictEqual(pcs("E", "phrygian"), [0, 2, 4, 5, 7, 9, 11], "mi frígio: só as teclas brancas");
+  assert.deepStrictEqual(pcs("B", "dorian"), [1, 2, 4, 6, 8, 9, 11], "si dórico: B C# D E F# G# A (as mesmas notas de lá maior)");
+  assert.deepStrictEqual(pcs("C", "harmMinor"), [0, 2, 3, 5, 7, 8, 11], "dó menor harmônico: C D Eb F G Ab B");
+  assert.deepStrictEqual(pcs("G", "blues"), [0, 1, 2, 5, 7, 10], "sol blues: G Bb C Db D F");
+  // alturas: a tônica da oitava `oct` é a nota MIDI 12 x (oct + 1) + tom; os graus sobem pela escala e dão a volta na oitava
+  const sc = Music.scaleInfo("C", "major");
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6, 7, -1].map((d) => Music.degMidi(sc, d, 4)), [60, 62, 64, 65, 67, 69, 71, 72, 59]);
+  assert.strictEqual(Music.degMidi(Music.scaleInfo("A", "minor"), 0, 2), 45); assert.strictEqual(Music.midiHz(45), 110);
+});
+test("o bloco dos temas de exemplo está marcado no código (js/music-dog.js, js/music-cat.js e js/music-bird.js os substituem)", () => {
+  assert.ok(SRC.includes("// ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------"));
 });
 test("register: receita válida entra; inválida é ignorada com a lista de problemas; o mesmo id substitui e mantém a posição; guarda uma cópia", () => {
   const r = base({ id: "zz1" });
@@ -104,6 +129,48 @@ test("validate: cada defeito de receita gera ao menos um problema em português;
     assert.ok(p.length >= 1 && p.every((x) => typeof x === "string" && x.length > 5), `${name}: esperava problemas, veio ${JSON.stringify(p)}`);
     assert.throws(() => Music.score(r), RangeError, `${name}: score lança`);
   }
+});
+test("validate: chave desconhecida (erro de digitação) em qualquer nível da receita é apontada, com a chave certa sugerida; nada é ignorado em silêncio", () => {
+  const lead = { inst: "marimba" };
+  // [descrição, receita, chave errada, chave sugerida, onde]
+  const typos = [
+    ["topo: intensty", base({ intensty: 0.9 }), "intensty", "intensity", "na receita"], ["topo: swng", base({ swng: 0.5 }), "swng", "swing", "na receita"], ["topo: bmp", base({ bmp: 90 }), "bmp", "bpm", "na receita"],
+    ["topo: voice", base({ voice: { lead } }), "voice", "voices", "na receita"],
+    ["voices.lead: ocv", base({ voices: { lead: { inst: "marimba", ocv: 6 } } }), "ocv", "oct", "em voices.lead"],
+    ["voices.bas", base({ voices: { lead, bas: { inst: "bass" } } }), "bas", "bass", "em voices"],
+    ["voices.pad: frm", base({ voices: { lead, pad: { inst: "strings", frm: 0.9 } } }), "frm", "from", "em voices.pad"],
+    ["motif: countour", base({ motif: { countour: "hop" } }), "countour", "contour", "em motif"],
+    ["voices.perc: patern", base({ voices: { lead, perc: { kit: "woodblock", patern: "polka" } } }), "patern", "pattern", "em voices.perc"],
+    ["voices.bass: patern", base({ voices: { lead, bass: { inst: "bass", patern: "walk" } } }), "patern", "pattern", "em voices.bass"],
+    ["voices.ambience: vell", base({ voices: { lead, ambience: { kind: "wind", vell: 0.9 } } }), "vell", "vel", "em voices.ambience"],
+    ["voices.lead.rotate[0]: instr", base({ voices: { lead: { inst: "marimba", rotate: [{ inst: "flute" }, { instr: "flute" }] } } }), "instr", "inst", "em voices.lead.rotate[1]"],
+    ["voices.arp: shap", base({ voices: { lead, arp: { inst: "harp", shap: "up" } } }), "shap", "shape", "em voices.arp"],
+    ["voices.counter: abov", base({ voices: { lead, counter: { inst: "flute", abov: true } } }), "abov", "above", "em voices.counter"],
+  ];
+  typos.forEach(([name, r, wrong, right, where], idx) => {
+    const p = Music.validate(r), hit = p.find((x) => x.includes(`"${wrong}"`));
+    assert.ok(hit, `${name}: esperava apontar "${wrong}", veio ${JSON.stringify(p)}`);
+    assert.ok(hit.startsWith("chave desconhecida") && hit.includes(where) && hit.includes(`quis dizer "${right}"?`), `${name}: mensagem ${hit}`);
+    assert.throws(() => Music.score(r), RangeError, name + ": score lança");
+    const reg = Music.register(Object.assign({}, r, { id: "tk" + idx })); // register ignora a receita e a lista em errors
+    assert.strictEqual(reg.ok.length, 0, name + ": register recusa"); assert.ok(reg.errors[0].problems.some((x) => x.includes(`"${wrong}"`)), name);
+  });
+  // chave sem nenhuma parecida: lista as aceitas
+  assert.ok(Music.validate(base({ zzzzzzzz: 1 }))[0].includes("(aceitas: id, animal,"), "sem sugestão: mostra as chaves aceitas");
+  // valores que não são objeto, letras de seção que a forma não tem e from na melodia
+  assert.ok(Music.validate(base({ voices: { lead, pad: true } })).some((x) => x.includes("voices.pad precisa ser um objeto")));
+  assert.ok(Music.validate(base({ motif: 5 })).some((x) => x.includes("motif precisa ser um objeto")));
+  assert.ok(Music.validate(base({ prog: { A: "I IV", E: "V" } })).some((x) => x.includes("prog.E") && x.includes("ABAB")));
+  assert.ok(Music.validate(base({ motif: { rhythm: { A: ["x-x-xx-x"], E: ["x-x-xx-x"] } } })).some((x) => x.includes("motif.rhythm.E")));
+  assert.ok(Music.validate(base({ voices: { lead: { inst: "marimba", from: 0.5 } } })).some((x) => x.includes("voices.lead.from")));
+  // o que é válido segue válido: voz vazia usa os padrões, ambience pode ser só o nome, null tira a voz, todas as chaves de cada nível
+  const full = { id: "full", animal: "dog", place: "x", key: "G", mode: "mixolydian", bpm: 116, beats: 4, swing: 0.1, bars: 32, form: "AABA", prog: { A: "I VII IV I", B: "IV I VII I", default: "I IV" },
+    motif: { seed: 7, bars: 2, contour: "hop", leaps: 0.5, rests: 0.1, density: 0.7, rhythm: { A: ["x-x-xx-x"], B: ["x--x-x--"] } },
+    voices: { lead: { inst: "xylo", oct: 4, vel: 0.8, rotate: [{ inst: "xylo", oct: 4, vel: 0.8 }, { inst: "flute" }] }, counter: { inst: "flute", oct: 4, vel: 0.5, from: 0.6, above: false },
+      bass: { inst: "bass", pattern: "rootfifth", oct: 2, vel: 0.8, from: 0 }, pad: { inst: "strings", oct: 3, vel: 0.5, from: 0.35 }, arp: { inst: "pluck", rate: 2, shape: "broken", oct: 4, vel: 0.5, from: 0.5 },
+      perc: { kit: ["softkick", "woodblock"], pattern: "polka", vel: 0.55, from: 0.25 }, ambience: { kind: "wind", vel: 0.5 } }, intensity: 0.6, gain: 1, maxSilence: 3 };
+  assert.deepStrictEqual(Music.validate(full), []);
+  assert.deepStrictEqual(Music.validate(base({ voices: { lead, counter: {}, ambience: "rain", bass: null, pad: null } })), []);
 });
 test("receitas aceitam as formas de escrever o ritmo (texto, lista, objeto por letra), prog por letra ou lista e vozes nulas", () => {
   const ok = [
@@ -217,6 +284,24 @@ test("a melodia nunca repete a mesma nota 3 vezes seguidas, em nenhum modo, comp
   }
   assert.ok(total > 10000);
 });
+test("a melodia nunca repete o mesmo MIDI 3 vezes seguidas — também com o solo revezando instrumentos e oitavas, na escala final do laço e na emenda do laço", () => {
+  const keys = Object.keys(Music.KEYS);
+  let i = 0, total = 0;
+  const rotations = [undefined, [{ inst: "marimba" }, { inst: "flute", oct: 5 }], [{ inst: "xylo", oct: 4 }, { inst: "flute", oct: 5 }, { inst: "contrabass", oct: 3 }], [{ inst: "bell", oct: 5 }, { inst: "flute", oct: 4 }]];
+  for (const mode of Object.keys(Music.MODES)) for (const beats of [3, 4, 6]) for (const contour of Music.CONTOURS) for (const rot of rotations) {
+    const bpm = beats === 6 ? 70 : beats === 3 ? 126 : 112, secs = 32 * (beats === 6 ? 2 : beats) * 60 / bpm;
+    const r = { id: "w" + i, key: keys[i % keys.length], mode, bpm: secs > 100 ? Math.round(bpm * 1.2) : secs < 40 ? Math.round(bpm * 0.8) : bpm, beats, bars: 32, form: ["AABA", "ABAB", "AABC"][i % 3],
+      motif: { seed: i * 11 + 3, contour, leaps: (i % 5) / 4, rests: (i % 3) / 3 }, voices: { lead: rot ? { inst: "marimba", rotate: rot } : { inst: "marimba" } } };
+    const lead = Music.score(r).events.filter((e) => e.voice === "lead");
+    for (let k = 2; k < lead.length + 2; k++) { // + 2: a emenda (as duas últimas e a primeira; a última e as duas primeiras)
+      const a = lead[(k - 2) % lead.length], b = lead[(k - 1) % lead.length], c = lead[k % lead.length];
+      total++;
+      assert.ok(!(a.midi === b.midi && b.midi === c.midi), `receita ${i} (${mode} ${beats} ${contour} ${rot ? "revezando" : "um instrumento"}): 3 notas iguais (MIDI ${a.midi}) a partir de t=${a.t}`);
+    }
+    i++;
+  }
+  assert.ok(total > 20000 && i === 600);
+});
 test("o laço fecha no tom: o último compasso é o dominante, a melodia termina a até 3 graus da primeira nota e a cauda passa para o começo", () => {
   for (const id of THEMES) {
     const s = Music.score(id), sc = Music.scaleInfo(Music.get(id).key, Music.get(id).mode);
@@ -267,7 +352,7 @@ test("camadas por seção: a seção mais leve (A) não tem arpejo nem contracan
   assert.ok(hi.events.length > lo.events.length);
   assert.ok(Object.keys(hi.stats.byVoice).length > Object.keys(lo.stats.byVoice).length);
 });
-test("o baixo toca a raiz do acorde no 1º tempo de cada compasso (padrões com raiz no tempo forte) e os padrões têm o desenho pedido", () => {
+test("o baixo toca a raiz do acorde no 1º tempo de cada compasso (padrões com raiz no tempo forte) e os padrões têm a forma pedida", () => {
   for (const pattern of ["rootfifth", "walk", "pedal", "pizz", "sync"]) {
     const s = Music.score(base({ voices: { lead: { inst: "marimba" }, bass: { inst: "bass", pattern } } }));
     for (const h of s.harmony.slice(0, s.harmony.length - 1)) {
@@ -376,11 +461,45 @@ test("render: argumentos inválidos lançam TypeError; um navegador que recusa c
   const r = Music.render(sc, c, c.destination, 0);
   assert.ok(r.failed > 0 && r.count < sc.events.length);
 });
-test("a nota mais grave e a mais aguda dos 4 temas ficam na faixa do celular e do alto-falante (40 Hz a 4 kHz de fundamental, menos o 'f' da água)", () => {
+test("a nota mais grave e a mais aguda dos 4 temas ficam entre os MIDI 28 e 96 (41 Hz a 2 kHz de fundamental; é só a faixa das notas, não diz o que um alto-falante reproduz)", () => {
   for (const id of THEMES) {
     const midis = Music.scoreOf(id).events.filter((e) => e.midi !== null).map((e) => e.midi);
     assert.ok(Math.min(...midis) >= 28 && Math.max(...midis) <= 96, id + ": " + Math.min(...midis) + ".." + Math.max(...midis));
   }
+});
+// ---------- Baixo e bumbo no alto-falante do celular ----------
+// Um alto-falante de celular reproduz pouco abaixo de uns 150 Hz e muitas notas do baixo (49 a 92 Hz de fundamental) ficavam só no fundamental. Os baixos levam também o 2º e o 3º harmônicos
+// e o bumbo, um estalo de médios. Aqui se confere a estrutura de cada instrumento no grafo; a proporção de energia nos 61 temas está em tests/music-themes.test.js.
+const oneNote = (inst, midi, over) => rig.noteGraph(Object.assign({ t: 0, d: 1, midi, v: 0.8, voice: midi === null ? "perc" : "bass", inst, kind: midi === null ? "low" : "root" }, over), 120);
+test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônicos (amplitude de pelo menos 30% e 12% do fundamental), com poucos nós por nota", () => {
+  for (const inst of ["bass", "bassSine", "bassSaw", "contrabass"]) {
+    const midi = 40, f = Music.midiHz(midi), g = oneNote(inst, midi);
+    const osc = g.filter((x) => x.kind === "osc");
+    const at = (mult) => osc.filter((x) => Math.abs(x.src.frequency.events[0].v / f - mult) < 1e-9);
+    const pure = (mult) => at(mult).filter((x) => x.type === "sine");
+    // o fundamental de referência: o oscilador mais forte na frequência f (no bassSaw há duas fontes em f: serrilha e seno)
+    const fund = Math.max(...at(1).map((x) => x.peak));
+    assert.ok(pure(2).length === 1 && pure(3).length === 1, `${inst}: falta o 2º ou o 3º harmônico (senoides em ${at(2).length}/${at(3).length})`);
+    assert.ok(pure(2)[0].peak >= 0.3 * fund && pure(3)[0].peak >= 0.12 * fund, `${inst}: harmônicos fracos (${pure(2)[0].peak.toFixed(3)} e ${pure(3)[0].peak.toFixed(3)} contra ${fund.toFixed(3)})`);
+    assert.ok(pure(2)[0].peak < fund && pure(3)[0].peak < pure(2)[0].peak, `${inst}: o fundamental segue sendo o mais forte`);
+    const nodes = new Set(); for (const x of g) { nodes.add(x.src); nodes.add(x.gain); for (const b of x.filters) nodes.add(b); }
+    assert.ok(nodes.size <= 14, `${inst}: ${nodes.size} nós por nota`);
+  }
+});
+test("bumbo macio (softkick): continua o 'tum' (senoide de 135 a 48 Hz) e ganhou uma varredura uma oitava acima e um estalo de ruído em torno de 1 kHz curto (15 ms de envelope)", () => {
+  const g = oneNote("softkick", null), oscs = g.filter((x) => x.kind === "osc"), noises = g.filter((x) => x.kind === "buffer");
+  const tum = oscs.find((x) => x.src.frequency.events[0].v === 135);
+  assert.ok(tum && tum.type === "sine" && tum.src.frequency.events.some((e) => e.type === "exp" && e.v === 48), "o 'tum' de 135 a 48 Hz");
+  const sweep = oscs.find((x) => x.src.frequency.events[0].v >= 200);
+  assert.ok(sweep && sweep.src.frequency.events.some((e) => e.type === "exp" && e.v < sweep.src.frequency.events[0].v) && sweep.t1 - sweep.t0 < 0.15, "varredura curta que cai a partir de 200 Hz ou mais");
+  const click = noises.find((x) => x.filters[0] && x.filters[0].type === "bandpass" && x.filters[0].frequency.events[0].v >= 800);
+  assert.ok(click && click.t1 - click.t0 < 0.05, "estalo de ruído passa-banda a partir de 800 Hz, de uns 15 ms (a fonte dura o envelope mais 20 ms de folga)");
+  assert.ok(click.peak >= 0.4 * tum.peak, `o estalo não pode ser desprezível ao lado do 'tum' (${click.peak.toFixed(3)} contra ${tum.peak.toFixed(3)})`);
+  const e = rig.spectrumOf({ t: 0, d: 0.25, midi: null, v: 0.6, voice: "perc", inst: "softkick", kind: "low" }, 120);
+  assert.ok(rig.energyAbove(e, 150) >= 0.02, "pelo menos 2% da energia estimada do bumbo fica acima de 150 Hz (antes: 0%)");
+  assert.ok(rig.energyAbove(e, 150) < 0.5, "o 'tum' continua sendo o corpo do bumbo");
+  const nodes = new Set(); for (const x of g) { nodes.add(x.src); nodes.add(x.gain); for (const b of x.filters) nodes.add(b); }
+  assert.ok(nodes.size <= 14, nodes.size + " nós por bumbo");
 });
 
 // ---------- Acréscimos do Sound: audio() e onUnlock() ----------
@@ -523,11 +642,76 @@ test("tocador: trocar de tema faz crossfade de 0,7 s; o tema velho para de agend
   r.run(3000);
   assert.strictEqual(r.children(oldG), oldKids, "o tema velho não ganhou mais notas");
   assert.ok(r.children(newG) > 20);
-  assert.ok(oldG.disconnected === true, "solto do grafo depois do fade");
+  assert.ok(oldG.disconnected === true && oldG.out.length === 0, "solto do grafo depois do fade");
   assert.strictEqual(r.music.position.id, "dog1");
   r.music.play("cat1", { fade: 2 });
   const g3 = r.chain().themes.find((g) => !g.disconnected && g !== newG);
   const e3 = g3.gain.events; assert.ok(Math.abs(e3[e3.length - 1].t - e3[0].t - 2) < 1e-6, "fade pedido de 2 s");
+});
+// volume que se ouve de um nó de tema no instante T: o ganho dele vezes o do duck (se ainda passa por ele)
+const heard = (r, node, T) => (node.out.includes(r.chain().duck) ? rig.paramAt(r.chain().duck.gain, T) : 1) * rig.paramAt(node.gain, T);
+// o volume do tema que sai nunca sobe durante o fade, de t0 até `secs` s depois; devolve os valores (de 10 em 10 ms)
+function assertNeverRises(r, node, t0, secs, what) {
+  const vals = [];
+  for (let k = 0; k <= Math.round(secs * 100); k++) vals.push(heard(r, node, t0 + k * 0.01));
+  for (let k = 1; k < vals.length; k++) assert.ok(vals[k] <= vals[k - 1] + 1e-9, `${what}: o volume do tema que sai subiu em ${(k * 0.01).toFixed(2)} s (${vals[k - 1].toFixed(3)} -> ${vals[k].toFixed(3)})`);
+  return vals;
+}
+test("tocador: voltar da pausa para o menu — o tema que sai não 'incha': o volume que se ouve dele só desce, de 0,25 a 0, qualquer que seja a ordem setDuck/play", () => {
+  for (const order of ["setDuck e depois play (como o jogo faz)", "play e depois setDuck"]) {
+    const r = rigPlayer();
+    r.music.play("dog1"); r.run(3000);
+    r.music.setDuck(0.25); r.run(2000); // pausa do jogo: o tema da fase abafado
+    const t0 = r.ctx().currentTime, old = r.chain().themes[0];
+    assert.ok(Math.abs(heard(r, old, t0) - 0.25) < 1e-6, "antes de sair o tema se ouve a 0,25");
+    if (order.startsWith("setDuck")) { r.music.setDuck(1); r.music.play("menu"); } else { r.music.play("menu"); r.music.setDuck(1); }
+    const vals = assertNeverRises(r, old, t0, 0.8, order);
+    assert.ok(Math.abs(vals[0] - 0.25) < 1e-6, order + ": começa onde estava (0,25), sem salto: " + vals[0]);
+    assert.ok(Math.abs(heard(r, old, t0 + 0.35) - 0.125) < 1e-6, order + ": rampa linear de 0,7 s");
+    assert.ok(vals[70] < 1e-9, order + ": some em 0,7 s");
+    // o tema novo entra pelo duck, que volta a 1: termina no volume cheio
+    const themes = r.chain().themes, fresh = themes[themes.length - 1];
+    assert.ok(fresh.out.includes(r.chain().duck) && !old.out.includes(r.chain().duck));
+    assert.ok(Math.abs(heard(r, fresh, t0 + 3) - 1) < 1e-3, order + ": o menu chega a 1");
+  }
+});
+test("tocador: crossfade normal (sem duck) e stop(fade) seguem lineares; o duck não muda por causa da troca de tema", () => {
+  const r = rigPlayer();
+  r.music.play("menu"); r.run(3000);
+  const { duck } = r.chain(), nDuckEvents = duck.gain.events.length, t0 = r.ctx().currentTime, old = r.chain().themes[0];
+  r.music.play("dog1");
+  assert.strictEqual(duck.gain.events.length, nDuckEvents, "trocar de tema não mexe no duck");
+  const vals = assertNeverRises(r, old, t0, 0.8, "crossfade");
+  assert.ok(Math.abs(vals[0] - 1) < 1e-9 && vals[70] < 1e-9 && Math.abs(vals[35] - 0.5) < 1e-6, "1 -> 0 em linha reta em 0,7 s");
+  const themes = r.chain().themes, fresh = themes[themes.length - 1];
+  let prev = -1;
+  for (let k = 0; k <= 70; k++) { const x = heard(r, fresh, t0 + k * 0.01); assert.ok(x >= prev - 1e-9, "o tema novo só sobe"); prev = x; }
+  assert.ok(Math.abs(prev - 1) < 1e-9);
+  r.run(4000);
+  const t1 = r.ctx().currentTime;
+  r.music.stop(1);
+  assertNeverRises(r, fresh, t1, 1.1, "stop");
+  assert.ok(Math.abs(heard(r, fresh, t1 + 0.5) - 0.5) < 1e-6 && heard(r, fresh, t1 + 1) < 1e-9);
+});
+test("tocador: tema que sai com o duck em movimento (descendo, parado, voltando) congela o volume que se ouvia e nunca sobe — o modelo do duck bate com a automação", () => {
+  for (const wait of [0, 20, 100, 700, 800, 1000, 1500, 3000]) {
+    const r = rigPlayer();
+    r.music.play("menu"); r.run(2000);
+    const old = r.chain().themes[0], { duck } = r.chain();
+    r.music.duck(0.3, 0.8); r.run(wait);
+    const t0 = r.ctx().currentTime, want = rig.paramAt(duck.gain, t0);
+    r.music.stop(2); // fade longo: se o duck ainda subisse sobre o tema que sai ele incharia
+    const vals = assertNeverRises(r, old, t0, 2.1, "duck + " + wait + " ms");
+    assert.ok(Math.abs(vals[0] - want) < 1e-6, `duck + ${wait} ms: congelou ${vals[0].toFixed(4)}, o duck valia ${want.toFixed(4)}`);
+    assert.ok(vals[200] < 1e-9);
+  }
+  // pausa -> vitória (stop) com o duck fixo: sai a partir de 0,25
+  const q = rigPlayer();
+  q.music.play("dog1"); q.run(2000); q.music.setDuck(0.25); q.run(1000);
+  const t0 = q.ctx().currentTime, g = q.chain().themes[0];
+  q.music.stop(0.5);
+  const v = assertNeverRises(q, g, t0, 0.6, "pausa e vitória");
+  assert.ok(Math.abs(v[0] - 0.25) < 1e-6);
 });
 test("tocador: id desconhecido ou inválido devolve false e nada muda; tudo fica no log de pedidos", () => {
   const r = rigPlayer();
@@ -545,13 +729,14 @@ test("tocador: stop(fade) some em `fade` s (padrão 0,5), esquece o tema, para o
   assert.strictEqual(r.music.current, null); assert.strictEqual(r.music.state, "stopped");
   const e = g.gain.events; assert.strictEqual(e[e.length - 1].v, 0); assert.ok(Math.abs(e[e.length - 1].t - (t0 + 0.4)) < 1e-6);
   const kids = r.children(g);
+  assert.ok(g.out.length === 1 && g.out[0] === r.chain().bus, "o tema que sai vai direto ao barramento enquanto some (o duck não o afeta)");
   r.run(2000);
-  assert.strictEqual(r.children(g), kids, "sem notas novas"); assert.ok(g.disconnected);
+  assert.strictEqual(r.children(g), kids, "sem notas novas"); assert.ok(g.disconnected && g.out.length === 0, "solto do grafo depois do fade");
   assert.strictEqual(r.timers.count, 0, "timer parado");
   r.music.play("menu");
   assert.strictEqual(r.timers.count, 1);
   assert.strictEqual(r.chain().themes.filter((x) => !x.disconnected).length, 1);
-  r.music.stop(); const e2 = r.chain().themes.find((x) => !x.disconnected).gain.events; assert.ok(Math.abs(e2[e2.length - 1].t - e2[e2.length - 1 - 1].t - 0.5) < 1e-6, "padrão 0,5 s");
+  r.music.stop(); const themesNow = r.chain().themes, e2 = themesNow[themesNow.length - 1].gain.events; assert.ok(Math.abs(e2[e2.length - 1].t - e2[e2.length - 1 - 1].t - 0.5) < 1e-6, "padrão 0,5 s");
   r.music.stop(); // parar de novo não dá erro
 });
 test("tocador: duck(nível, segundos) abaixa e volta; setDuck é o nível fixo (pausa do jogo); duck sem tempo fica até mudar", () => {
@@ -580,6 +765,50 @@ test("tocador: duck antes do unlock vale quando o barramento nasce", () => {
   const r = rigPlayer({ unlock: false });
   r.music.setDuck(0.25); r.music.play("menu"); r.sound.unlock();
   assert.strictEqual(r.chain().duck.gain.value, 0.25);
+});
+test("tocador: duck temporário pedido antes do unlock (o barramento nasce dentro da janela do duck) volta sozinho ao nível fixo — não fica preso em 0,3", () => {
+  const r = rigPlayer({ unlock: false });
+  r.music.play("menu");
+  r.music.duck(0.3, 0.8);
+  r.run(200);
+  r.sound.unlock();
+  r.run(3000);
+  const { duck } = r.chain(), T = r.ctx().currentTime;
+  const targets = duck.gain.events.filter((e) => e.type === "target");
+  assert.deepStrictEqual(targets.map((e) => e.v), [0.3, 1], "abaixa e agenda a volta");
+  assert.ok(Math.abs(targets[1].t - targets[0].t - 0.6) < 1e-6, "volta 0,6 s depois (0,8 s do pedido menos os 0,2 s que passaram)");
+  assert.ok(Math.abs(rig.paramAt(duck.gain, T) - 1) < 1e-3, "3 s depois o duck vale 1: " + rig.paramAt(duck.gain, T));
+  // duck FIXO antes do unlock continua sem agendar nada (o nível já nasce certo)
+  const q = rigPlayer({ unlock: false });
+  q.music.setDuck(0.25); q.music.play("menu"); q.sound.unlock();
+  assert.strictEqual(q.chain().duck.gain.events.length, 0); assert.strictEqual(q.chain().duck.gain.value, 0.25);
+  // e um duck temporário que já venceu antes do unlock não faz nada
+  const w = rigPlayer({ unlock: false });
+  w.music.play("menu"); w.music.duck(0.3, 0.5); w.now.add(2000); w.sound.unlock();
+  assert.strictEqual(w.chain().duck.gain.value, 1); assert.strictEqual(w.chain().duck.gain.events.length, 0);
+});
+test("tocador: se o relógio do sistema volta (ajuste de hora) durante um duck temporário, o duck vale como vencido e não fica preso por uma hora", () => {
+  const r = rigPlayer();
+  r.music.play("menu"); r.run(300);
+  const { duck } = r.chain();
+  r.music.duck(0.3, 0.8); r.run(200);
+  r.now.add(-3600e3); // o relógio volta 1 h
+  r.music.setDuck(1); r.run(5000);
+  const T = r.ctx().currentTime;
+  assert.ok(Math.abs(rig.paramAt(duck.gain, T) - 1) < 1e-3, "5 s depois o duck vale 1: " + rig.paramAt(duck.gain, T));
+  assert.ok(duck.gain.events.filter((e) => e.type === "target").every((e) => e.t < T + 5), "nenhuma volta agendada para daqui a uma hora");
+  // o nível fixo novo vale mesmo com o relógio recuado
+  const q = rigPlayer();
+  q.music.play("menu"); q.run(300);
+  q.music.duck(0.3, 0.8); q.run(200); q.now.add(-3600e3);
+  q.music.setDuck(0.5); q.run(5000);
+  assert.ok(Math.abs(rig.paramAt(q.chain().duck.gain, q.ctx().currentTime) - 0.5) < 1e-3);
+  // um recuo pequeno (menos de 1 s além da duração) não derruba um duck legítimo
+  const w = rigPlayer();
+  w.music.play("menu"); w.run(300);
+  w.music.duck(0.3, 0.8); w.run(100); w.now.add(-500); w.music.duck(0.2, 0.8);
+  const ev = w.chain().duck.gain.events.filter((e) => e.type === "target");
+  assert.deepStrictEqual(ev.slice(-2).map((e) => e.v), [0.2, 1], "duck normal depois de um recuo pequeno");
 });
 test("tocador: pausa (aba escondida) some depressa, não agenda nada e o resume volta do começo do compasso em que parou", () => {
   const r = rigPlayer();
@@ -681,6 +910,21 @@ test("tocador: contexto suspenso — pede resume() sem inundar (1 por segundo), 
     assert.strictEqual(q.music.state, "suspended");
   }
 });
+test("tocador: contexto suspenso e o relógio do sistema volta 10 min — o resume() continua sendo pedido (1 por segundo), não fica bloqueado até o relógio alcançar o valor antigo", () => {
+  const r = rigPlayer({ fake: { state: "suspended", neverRunning: true } });
+  r.music.play("menu");
+  r.run(2500);
+  const r0 = r.fake.resumes;
+  assert.ok(r0 >= 2, "antes do ajuste já pedia: " + r0);
+  r.now.add(-600e3); // ajuste de hora: 10 min para trás
+  // (os timers falsos andam pelo relógio falso e ficariam parados 10 min; num navegador o setInterval segue em frente. Por isso os ciclos são chamados à mão, de 1 em 1 s.)
+  for (let i = 0; i < 5; i++) { r.now.add(1000); r.ctx().currentTime += 1; r.music.tick(); }
+  const asked = r.fake.resumes - r0;
+  assert.ok(asked >= 4 && asked <= 6, `depois de o relógio voltar pediu ${asked} vezes em 5 s (esperado 1 por segundo)`);
+  // e quando o contexto volta a rodar, o tema começa
+  r.ctx().state = "running"; r.music.tick();
+  assert.strictEqual(r.music.state, "playing");
+});
 test("tocador: contexto fechado por fora e recriado pelo Sound — a música monta o barramento no contexto novo e recomeça o tema pedido", () => {
   const r = rigPlayer();
   r.music.play("menu"); r.run(2000);
@@ -771,7 +1015,7 @@ test("tocador: um passo de agendamento cria poucos nós (nada de alocação em l
 const Analyze = require("../tools/music-render/analyze.js");
 const SR = 8000;
 const sine = (n, f, a, ph = 0) => { const x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = a * Math.sin(2 * Math.PI * f * i / SR + ph); return x; };
-test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 do desenho das músicas", () => {
+test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 (do tema sozinho, a ganho 1)", () => {
   const m = Analyze.analyze(sine(SR * 4, 440, 0.5), SR, { barSeconds: 2 });
   assert.ok(Math.abs(m.peak - 0.5) < 1e-3);
   assert.ok(Math.abs(m.rmsDb - (20 * Math.log10(0.5 / Math.SQRT2))) < 0.05, "RMS de uma senoide: pico / raiz de 2");

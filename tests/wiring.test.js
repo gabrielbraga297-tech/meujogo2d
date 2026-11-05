@@ -206,8 +206,10 @@ test("js/game.js: setState e showScreen terminam chamando musicSync(); perder um
   assert.ok(/get music\(\) \{ return music; \}/.test(gameCode), "__game.music expõe o tocador para os testes");
   const html = read("index.html");
   for (const id of ["btn-music", "btn-music-pause"]) assert.ok(html.includes(`id="${id}"`), `o index.html tem #${id}`);
-  const open = (gameSrc.match(/^\s*\/\/ ===== MÚSICA: integração =====\s*$/gm) || []).length, close = (gameSrc.match(/^\s*\/\/ ===== fim MÚSICA: integração =====\s*$/gm) || []).length;
-  assert.ok(open >= 3 && open === close, `as regiões de bloco de js/game.js abrem e fecham (${open} e ${close})`);
+  const open = (gameSrc.match(/^\s*\/\/ ===== Música =====\s*$/gm) || []).length, close = (gameSrc.match(/^\s*\/\/ ===== fim Música =====\s*$/gm) || []).length;
+  assert.ok(open >= 3 && open === close, `as regiões de música de js/game.js abrem e fecham (${open} e ${close})`);
+  const stray = gameSrc.split("\n").map((l, i) => [i + 1, l]).filter(([, l]) => /=====\s*(fim )?(Música|MÚSICA)/.test(l) && !/^\s*\/\/ ===== (fim )?Música =====\s*$/.test(l));
+  assert.deepStrictEqual(stray, [], "os marcadores de música ficam em linha própria, com o nome neutro (nunca no meio de uma frase nem com rótulo de trabalho)");
 });
 
 test("musicSync() decide o tema de cada estado (rodando o código de js/game.js com um tocador de mentira): menu, fase, pausa, vitória, derrota, recomeço e fase sem tema", () => {

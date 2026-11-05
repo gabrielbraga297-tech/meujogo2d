@@ -2,7 +2,7 @@
 // Entrada: o áudio mono de um tema renderizado (1 laço + cauda) em Float32Array. A medida é feita no laço "em regime": a cauda que passa do fim do laço é
 // somada ao começo (é o que o tocador faz ao emendar o laço seguinte), então a emenda é medida de verdade.
 
-// Limites do desenho das músicas. rmsTargetDb é o nível-alvo do RMS do tema sozinho (ganho 1, sem o barramento do jogo): todos os temas ficam em alvo ± rmsTol.
+// Limites das medidas (docs/MUSICA.md, seção 8). rmsTargetDb é o nível-alvo do RMS do tema sozinho (ganho 1, sem o barramento do jogo): todos os temas ficam em alvo ± rmsTol.
 const LIMITS = Object.freeze({ peak: 0.9, rmsTargetDb: -22, rmsTol: 4, dc: 0.01, silence: 3, seamExtraDb: 3, click: 1.5, silentLevel: 0.001 });
 
 const db = (x) => 20 * Math.log10(Math.max(x, 1e-9));
@@ -77,6 +77,28 @@ function check(m, opts) {
   return f;
 }
 
+// Detector de ganhos que não escalam (usado por tools/music-render/scale.js). `a` e `b` são o MESMO tema renderizado com dois volumes (ganho g e g / ratio). Se tudo no motor é linear,
+// a - ratio * b é zero em toda amostra; uma amostra que não escala (um clique: o ganho de uma nota que começa fora de 0 deixa passar a 1ª amostra da fonte, e isso não muda com o volume)
+// aparece como resíduo grande. `tol` é o resíduo (em amplitude, 1 = fundo de escala) a partir do qual a amostra conta como fora de escala (0,01 = -40 dBFS: um clique menor passa).
+// Devolve { samples, bad (quantas amostras passam de tol), worst (o maior resíduo), at (índice da pior), peak (maior |a|), lengthMismatch }.
+function scaleResidual(a, b, ratio, tol) {
+  if (a.length !== b.length) return { samples: Math.min(a.length, b.length), bad: 0, worst: 0, at: 0, peak: 0, lengthMismatch: true };
+  let bad = 0, worst = 0, at = 0, peak = 0;
+  for (let i = 0; i < a.length; i++) {
+    const r = Math.abs(a[i] - ratio * b[i]), v = Math.abs(a[i]);
+    if (r > tol) bad++;
+    if (r > worst) { worst = r; at = i; }
+    if (v > peak) peak = v;
+  }
+  return { samples: a.length, bad, worst, at, peak, lengthMismatch: false };
+}
+// As falhas (textos em português) de um resultado de scaleResidual; `sr` é a taxa de amostragem, para dizer em que segundo está a pior amostra
+function scaleFails(res, sr) {
+  if (res.lengthMismatch) return ["os dois renders têm tamanhos diferentes: não dá para comparar"];
+  if (res.bad === 0) return [];
+  return [`${res.bad} amostra(s) que não escalam com o volume (a pior: resíduo ${res.worst.toFixed(3)} em ${(res.at / sr).toFixed(3)} s)`];
+}
+
 // WAV de 16 bits, mono, a partir de Float32Array (valores fora de -1..1 são cortados). Devolve um Buffer.
 function wav16(x, sr) {
   const n = x.length, buf = Buffer.alloc(44 + n * 2);
@@ -87,4 +109,4 @@ function wav16(x, sr) {
   return buf;
 }
 
-module.exports = { LIMITS, fold, analyze, check, wav16, db };
+module.exports = { LIMITS, fold, analyze, check, scaleResidual, scaleFails, wav16, db };

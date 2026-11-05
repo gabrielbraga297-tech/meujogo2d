@@ -234,7 +234,7 @@ test("ganho: cada receita tem o `gain` calibrado no render real, entre 0,6 e 1,5
 // ---------- Texto ----------
 test("honestidade: o arquivo não promete como a música soa nem cita fontes", () => {
   assert.ok(!/soa bem|soam bem|agrad[aá]vel|foi ouvid|foram ouvid|ficou lind|bonita|maravilhos|et al\.|doi\.org|\((19|20)\d\d\)/i.test(SRC), "texto com promessa de como soa ou citação");
-  assert.ok(/ninguém ouviu/i.test(SRC), "o cabeçalho diz que ninguém ouviu os temas");
+  assert.ok(/nenhuma pessoa ouviu/i.test(SRC), "o cabeçalho diz que nenhuma pessoa ouviu os temas");
   assert.ok(!/\b(wip|agente|frente|A6)\b/i.test(SRC), "sem rótulos internos de trabalho");
 });
 
