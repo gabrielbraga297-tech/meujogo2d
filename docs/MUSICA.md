@@ -5,16 +5,16 @@ nenhum arquivo de áudio, nenhuma biblioteca, nenhuma rede. Cada tema é uma **r
 um gerador **determinístico** (sem números aleatórios do sistema, sem relógio) transforma a receita numa **partitura**, e o tocador agenda a partitura em laço.
 O mesmo tema soa igual toda vez, e os testes conferem a estrutura da música sem precisar ouvi-la.
 
-Arquivos: `js/music.js` (o motor, os temas `menu`, `dog1`, `cat1` e `bird1`), `tests/music.test.js` e `tests/music-rig.js` (testes e ajudas), `tools/music-render/`
-(render real no Chromium, calibração e verificação ao vivo), e os acréscimos `audio()` e `onUnlock()` em `js/sound.js` (nenhum efeito sonoro mudou).
+Arquivos: `js/music.js` (o motor, o tema `menu` e três temas de exemplo, `dog1`, `cat1` e `bird1`, que `js/music-dog.js`, `js/music-cat.js` e `js/music-bird.js` substituem pelos 60 temas das fases), `tests/music.test.js`, `tests/music-themes.test.js`,
+`tests/music-render.test.js` e `tests/music-rig.js` (testes e ajudas), `tools/music-render/` (render real no Chromium, conferência de escala, calibração e verificação ao vivo), e os acréscimos `audio()` e `onUnlock()` em `js/sound.js` (nenhum efeito sonoro mudou).
 
 > O que foi e o que não foi conferido: ninguém ouviu estas músicas. As conferências são **estruturais** (notas dentro da escala, âmbito, duração, laço, vozes) e **medidas**
-> (pico, RMS, silêncio e emenda do laço, num OfflineAudioContext real do Chromium). Elas não dizem se uma música "fica boa"; os WAVs gravados por `tools/music-render` existem para o dono ouvir.
+> (pico, RMS, silêncio e emenda do laço, num OfflineAudioContext real do Chromium). Elas não dizem se uma música "fica boa". Os WAVs que `tools/music-render` grava não fazem parte do repositório: para ouvir um tema, basta jogar a fase ou rodar o render.
 
 ## 1. Registrar temas
 
 ```js
-// js/music-dog.js (os compositores seguem este molde; o mesmo id registrado depois substitui o anterior, inclusive os de exemplo de js/music.js)
+// js/music-dog.js (quem cria um tema segue este molde; o mesmo id registrado depois substitui o anterior, inclusive os de exemplo de js/music.js)
 (function (root) {
   const M = root.Music || (typeof require === "function" ? require("./music.js") : null);
   if (!M) return;
@@ -27,7 +27,7 @@ Arquivos: `js/music.js` (o motor, os temas `menu`, `dog1`, `cat1` e `bird1`), `t
 * `Music.get(id)` devolve a receita guardada (não altere) ou `null`. `Music.ids()` lista os ids na ordem em que foram registrados (um id substituído mantém a posição).
 * `Music.validate(receita)` devolve a lista de problemas em português (vazia = válida). `Music.score(receita | id)` gera a partitura e **lança** `RangeError` se a receita é inválida.
 * `Music.scoreOf(id)` devolve a partitura de um id registrado (guarda as 4 últimas em memória) ou `null`; nunca lança.
-* No navegador `js/music.js` vem **antes** dos arquivos dos compositores. Em Node todos usam `require("../js/music.js")` e enxergam o mesmo registro.
+* No navegador `js/music.js` vem **antes** dos arquivos dos temas (`js/music-dog.js` e os outros). Em Node todos usam `require("../js/music.js")` e enxergam o mesmo registro.
 
 ## 2. A receita
 
@@ -123,7 +123,7 @@ Todas têm `inst` (instrumento), `oct` (oitava da **tônica**; a nota C4 = 60 fi
 
 `perc.kit` pode ser uma lista `[grave, agudo]` (ex.: `["softkick", "woodblock"]`); com um só nome serve aos dois papéis (o bumbo ignora as batidas agudas; um padrão só de batidas agudas com bumbo fica sem notas e a conferência avisa).
 
-**Padrões do baixo** (`bass.pattern`, em 4/4; em 3/4 e 6/8 há versões do mesmo desenho): `rootfifth` raiz-quinta-raiz-quinta ("uum-pá"), `walk` raiz, nota de passagem, quinta e
+**Padrões do baixo** (`bass.pattern`, em 4/4; em 3/4 e 6/8 há versões do mesmo padrão): `rootfifth` raiz-quinta-raiz-quinta ("uum-pá"), `walk` raiz, nota de passagem, quinta e
 aproximação da raiz seguinte, `pedal` a raiz sustentada o compasso inteiro, `offbeat` só nos contratempos, `sync` síncopa (tresillo: raiz, oitava, quinta), `pizz` meio a dois (raiz longa, quinta no 3º tempo,
 fantasmas curtos e aproximação), `waltz` raiz grave e quintas leves (em 3/4: "uum-pá-pá"; nos outros compassos vira `rootfifth`).
 
@@ -207,7 +207,7 @@ Comportamento garantido (conferido em `tests/music.test.js` com um AudioContext 
 * **Retomada no meio de um som longo:** o `resume()` (e desmutar, ou ligar o botão Música) volta ao começo do compasso, mas não repete o que já tinha começado antes: o pad pode faltar por até 1 compasso e uma rajada de vento ou chuvisco em curso só volta no próximo evento.
 * **Relógio do sistema:** o tocador lê `Date.now` para o duck temporário, para o intervalo entre pedidos de `resume()`, para soltar do grafo os temas que saíram e para o registro de pedidos; a música em si anda pelo relógio do áudio. Se o relógio recuar, o duck temporário vale como vencido e o `resume()` não fica bloqueado; os temas que já saíram (em volume 0) só são soltos do grafo quando o relógio alcançar o valor antigo.
 
-**Quando chamar (desenho das músicas):** menu e telas de menu `play("menu")`; começar a Fase N `play("dog"+N)` (ou `cat`/`bird`); pausa `setDuck(0.25)` e `setDuck(1)` ao voltar; perder uma vida `duck(0.25, 0.8)`;
+**Quando chamar:** menu e telas de menu `play("menu")`; começar a Fase N `play("dog"+N)` (ou `cat`/`bird`); pausa `setDuck(0.25)` e `setDuck(1)` ao voltar; perder uma vida `duck(0.3, 0.8)`;
 vitória `stop(0.5)`; game over `stop(0.4)`; aba escondida `pause()` e `resume()`; botão Música `toggleEnabled()`; depois de `som.setMuted(...)` chame `musica.tick()`.
 
 ## 8. Conferências e ferramentas
@@ -229,21 +229,25 @@ toda voz declarada toca alguma nota; **<= 14 vozes ao mesmo tempo** (contagem in
 `stop` com valores finitos, chega à saída, todo envelope começa e termina em 0 e não há nós demais por nota. Também há o AudioContext falso rigoroso (`makeFake`, que lança em rampa exponencial para valor <= 0, tempo negativo,
 `start` duplo...), `clock`, `memStorage` e `makeTimers` (timers manuais) para testar o tocador.
 
-**Render real** (`tools/music-render/render.js`, Chromium + `OfflineAudioContext` 44100 Hz mono, sob `flock`):
+**Render real** (`tools/music-render/render.js`, Chromium + `OfflineAudioContext` 44100 Hz mono; precisa do Playwright e de um Chromium):
 
 ```
-MUSIC_LOCK=<pasta de trabalho>/browser.lock NODE_PATH=/opt/node-tools/node_modules CHROMIUM_PATH=/opt/pw-browsers/chromium \
-  node tools/music-render/render.js [ids...] [--out pasta] [--files a.js,b.js] [--tail s] [--loops n] [--no-wav]
+NODE_PATH=/caminho/dos/node_modules CHROMIUM_PATH=/caminho/do/chromium \
+  node tools/music-render/render.js [ids...] [--out pasta] [--files a.js,b.js] [--tail s] [--loops n] [--no-wav] [--json arquivo] [--resume] [--timeout s]
 ```
 
+Para vários processos não abrirem o navegador ao mesmo tempo, aponte `MUSIC_LOCK` (ou `PREVIEW_LOCK`) para um arquivo de trava: o script se reexecuta sob `flock` nele.
 Sem `ids` renderiza todos os temas registrados (`js/music.js` mais `js/music-dog.js`, `js/music-cat.js` e `js/music-bird.js`, se existirem). Cada tema é renderizado sozinho, com ganho 1 e sem o barramento do jogo, 1 laço + 4 s de cauda;
-a medida é feita no laço "em regime" (a cauda é somada ao começo, como o tocador faz). Grava `<id>.wav` (16 bits) e `relatorio.json` em `--out` (padrão: `$MUSIC_OUT`, ou `musicas/wav` ao lado do arquivo de `MUSIC_LOCK`).
+a medida é feita no laço "em regime" (a cauda é somada ao começo, como o tocador faz). Grava `<id>.wav` (16 bits) e `relatorio.json` em `--out` (padrão: `$MUSIC_OUT`, ou `musicas/wav` ao lado do arquivo de `MUSIC_LOCK`, ou a pasta temporária).
+`--json arquivo` grava o relatório em outro lugar. O relatório é regravado **depois de cada tema**: um travamento ou uma interrupção não perde o que já foi medido, e `--resume` lê o relatório que já existe, pula os temas
+que estão nele (os que deram tempo-limite são refeitos) e continua. Cada tema tem um **tempo-limite** (`--timeout s`, padrão 180): se estoura, o navegador é fechado e aberto de novo e o tema é tentado uma vez mais; se falha de novo,
+vira falha no relatório (`timedOut`) e o script segue com os outros. (Um render real dos 61 temas já travou uma vez no meio, sem erro; é para isso que serve.) A lógica sem navegador (`tools/music-render/runner.js`) é testada em `tests/music-render.test.js`.
 Imprime uma tabela e **sai com código 1** se algum limite falhar:
 
 | Medida | Limite |
 |---|---|
 | pico | <= 0,9 |
-| RMS (dBFS, banda cheia) | entre -26 e -18 (alvo -22 +- 4), para todos os temas |
+| RMS (dBFS, banda cheia) | entre -26 e -18 (alvo -22 +- 4), para todos os temas; é o nível do **tema sozinho a ganho 1**: no jogo ainda há o barramento (0,45, cerca de -7 dB) e o volume mestre |
 | DC | \|DC\| < 0,01 |
 | maior silêncio (quadros de 20 ms abaixo de 0,001, contando a volta do laço) | < `maxSilence` (3 s) |
 | emenda do laço | salto de nível (janelas de 250 ms antes e depois) no máximo 3 dB acima do maior salto dos outros compassos; degrau entre amostras na emenda <= 1,5 x o maior do resto |
@@ -260,12 +264,32 @@ A coluna "ganho sug." é o `gain` da receita que levaria o RMS ao alvo sem passa
 
 ## 9. Como compor uma receita (roteiro)
 
-1. Escolha o lugar e o clima (desenho das músicas) e traduza em **modo, tom e andamento** (a rampa de andamento da Fase 1 à 20 e os picos de clima das fases-chave estão no desenho). Dois temas não podem repetir (tom, modo, andamento, solo, padrão do baixo).
+1. Escolha o lugar e o clima e traduza em **modo, tom e andamento** (o estilo de cada bichinho e a rampa de andamento da Fase 1 à 20 estão na seção 10). Dois temas não podem repetir (tom, modo, andamento, solo, padrão do baixo).
 2. Escreva `prog` (uma progressão por letra; 4 acordes por seção de 8 compassos é o comum), um `motif` com **semente própria** e, se quiser um ritmo seu, `rhythm`. Varie `contour`, `leaps` e `rests` entre os temas.
 3. Escolha as vozes: um solo, um baixo (`pattern` combinando com o gênero: `rootfifth`/`walk` para o cachorrinho, `pizz`/`sync` para o gato, `waltz`/`pedal` para o passarinho), e só as camadas que a fase pede
    (use `intensity` e `from` para as seções A serem mais leves que as B/C). A ambiência é para quando o lugar pede (vento, grilos, chuva, água).
-4. Rode `checkRecipe` em cada receita e `checkDistinct` / `checkTempoRamp` no conjunto (no teste do compositor: `tests/music-<animal>.test.js`).
-5. Rode `tools/music-render/render.js` nos seus temas; corrija `gain` pelo "ganho sug." e confira que nenhum limite falha. Os WAVs ficam para o dono ouvir.
+4. Rode `checkRecipe` em cada receita e `checkDistinct` / `checkTempoRamp` no conjunto (no teste do bichinho: `tests/music-<animal>.test.js`).
+5. Rode `tools/music-render/render.js` nos seus temas; corrija `gain` pelo "ganho sug." e confira que nenhum limite falha. Os WAVs não vão para o repositório.
 
-Limites a lembrar: nenhuma nota fora do modo (o gerador garante), laço de 40 a 100 s, até 14 vozes, a melodia em até 2 oitavas por instrumento, nada de melodia conhecida (o desenho pede música ORIGINAL;
-o gerador não conhece nenhuma melodia, mas a escolha do `rhythm` e da `seed` é sua).
+Limites a lembrar: nenhuma nota fora do modo (o gerador garante), laço de 40 a 100 s, até 14 vozes, a melodia em até 2 oitavas por instrumento, nada de melodia conhecida (as músicas devem ser ORIGINAIS: o gerador não conhece nenhuma melodia, mas a escolha do `rhythm` e da `seed` é de quem cria o tema, e não há comparação automática com melodias conhecidas).
+
+## 10. Estilo e rampa de andamento por bichinho
+
+É um guia de escolhas de quem cria os temas, não uma regra do motor: as receitas atuais o seguem e os testes de cada bichinho conferem a rampa de andamento (`checkTempoRamp`, seção 8). Nada aqui foi ouvido por ninguém; o estilo musical é escolha de design.
+
+| Tema | Estilo | Andamento (bpm) |
+|---|---|---|
+| Menu | acolhedor e curioso: modo maior, andamento médio; marimba, flauta e contrabaixo pizzicato se revezam no motivo, sem que nenhum domine | 104 (fá maior, 4/4) |
+| Cachorrinho | alegre, saltitante e brincalhão: maiores, mixolídio e lídio; marcha, polca e balanço leve; xilofone, marimba e cordas beliscadas; baixo caminhante e bloco de madeira. Nas fases avançadas, mais urgência: o andamento sobe, entram modos menores e mais camadas; a noite e a fortaleza têm tom mais sério | 92 (Fase 1) a 148 (Fase 20) |
+| Gatinho | furtivo, elegante e malandro: dórico, menor, menor harmônico, frígio, blues e pentatônicos (alguns modos claros para os lugares abertos); balanço (swing); contrabaixo pizzicato, escovas, celesta, flauta grave, acordes de sétima; mais silêncio e síncopas | 84 (Fase 1) a 132 (Fase 20) |
+| Passarinho | leve e arejado: pentatônicas, lídio, maior e mixolídio no começo, modos menores a partir da Fase 11; arpejos de harpa, celesta e sino, flauta com vibrato, compassos soltos (13 das 20 fases em 6/8 ou 3/4); vento, água e grilos como ambiência; motivos curtos e ritmados como cantos de pássaro, sem imitar nenhuma espécie | 76 (Fase 1) a 128 (Fase 20) |
+
+**Rampa.** O andamento e a densidade (`intensity`, camadas) sobem **em tendência** da Fase 1 à 20 (correlação de Spearman entre a fase e o andamento medida nas receitas: 0,97 no Cachorrinho, 0,99 no Gatinho e 0,66 no Passarinho; o teste do Passarinho
+aceita 0,6 ou mais), com picos de clima nas fases-chave: a 11 (chegada dos inimigos mais fortes), as noites (18 e 19) e a 20 (final grande, alegre e "volta ao lar"). Há **recuos de propósito**, em que o tema da fase é mais lento que o da anterior:
+
+* Cachorrinho: Fase 9 (Praia, 110 bpm depois de 118), Fase 12 (Pet shop, 120 depois de 130) e Fase 14 (Bosque, 122 depois de 126);
+* Gatinho: Fase 12 (Horta e galinheiro, 112 depois de 116) e Fase 17 (Praia e dunas, 119 depois de 123);
+* Passarinho: as Fases 18 (Entardecer nos telhados, 82 bpm) e 19 (Noite na floresta, 90 bpm), bem abaixo da 17 (124 bpm); a 20 volta a 128.
+
+No 6/8 o `bpm` é o pulso pontuado (dois por compasso), por isso as fases em 6/8 mais rápidas têm mais compassos para o laço durar o mesmo.
+

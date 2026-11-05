@@ -2,7 +2,7 @@
 // Entrada: o áudio mono de um tema renderizado (1 laço + cauda) em Float32Array. A medida é feita no laço "em regime": a cauda que passa do fim do laço é
 // somada ao começo (é o que o tocador faz ao emendar o laço seguinte), então a emenda é medida de verdade.
 
-// Limites do desenho das músicas. rmsTargetDb é o nível-alvo do RMS do tema sozinho (ganho 1, sem o barramento do jogo): todos os temas ficam em alvo ± rmsTol.
+// Limites das medidas (docs/MUSICA.md, seção 8). rmsTargetDb é o nível-alvo do RMS do tema sozinho (ganho 1, sem o barramento do jogo): todos os temas ficam em alvo ± rmsTol.
 const LIMITS = Object.freeze({ peak: 0.9, rmsTargetDb: -22, rmsTol: 4, dc: 0.01, silence: 3, seamExtraDb: 3, click: 1.5, silentLevel: 0.001 });
 
 const db = (x) => 20 * Math.log10(Math.max(x, 1e-9));

@@ -1427,7 +1427,7 @@
     intensity: 0.55,
   }]);
 
-  // ---------- temas de exemplo (substituídos pelos arquivos dos compositores) ----------
+  // ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------
   // Um de cada estilo, para provar o motor: js/music-dog.js, js/music-cat.js e js/music-bird.js registram os temas de verdade com os mesmos ids
   // (dog1, cat1, bird1, ...) e o registro posterior substitui estes.
   register([

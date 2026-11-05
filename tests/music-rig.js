@@ -1,5 +1,5 @@
 // Ajudas de teste das músicas tema (sem navegador): AudioContext FALSO rigoroso e as conferências estruturais de uma receita.
-// Os testes de js/music.js e os dos compositores (tests/music-<animal>.test.js) reaproveitam isto:
+// Os testes de js/music.js e os de cada bichinho (tests/music-<animal>.test.js) reaproveitam isto:
 //   const rig = require("./music-rig.js");
 //   const falhas = rig.checkRecipe(receita);            // lista de textos; vazia = tudo certo
 //   const falhasDoGrupo = rig.checkDistinct(receitas);  // ninguém compartilha tom/modo/andamento/solo/baixo; melodias diferentes entre si
@@ -254,7 +254,7 @@ function checkRender(score, label = "") {
   return fails;
 }
 
-// A lista de todas as conferências estruturais de uma receita (desenho das músicas, "Conferências automáticas"). Devolve [] se tudo passa.
+// A lista de todas as conferências estruturais de uma receita (docs/MUSICA.md, seção 8). Devolve [] se tudo passa.
 //   opts: { render: false para pular a renderização no contexto falso (mais rápido) }
 function checkRecipe(recipe, opts = {}) {
   const id = recipe && recipe.id ? recipe.id : "?";

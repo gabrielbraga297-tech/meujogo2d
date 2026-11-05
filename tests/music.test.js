@@ -50,8 +50,8 @@ test("os temas embutidos: menu primeiro, depois os três exemplos; ids únicos; 
   assert.strictEqual(Music.get("nao-existe"), null);
   assert.strictEqual(Music.get("menu").id, "menu");
 });
-test("o bloco dos temas de exemplo está marcado no código para os compositores substituírem", () => {
-  assert.ok(SRC.includes("// ---------- temas de exemplo (substituídos pelos arquivos dos compositores) ----------"));
+test("o bloco dos temas de exemplo está marcado no código (js/music-dog.js, js/music-cat.js e js/music-bird.js os substituem)", () => {
+  assert.ok(SRC.includes("// ---------- temas de exemplo (substituídos pelos arquivos dos bichinhos) ----------"));
 });
 test("register: receita válida entra; inválida é ignorada com a lista de problemas; o mesmo id substitui e mantém a posição; guarda uma cópia", () => {
   const r = base({ id: "zz1" });
@@ -327,7 +327,7 @@ test("camadas por seção: a seção mais leve (A) não tem arpejo nem contracan
   assert.ok(hi.events.length > lo.events.length);
   assert.ok(Object.keys(hi.stats.byVoice).length > Object.keys(lo.stats.byVoice).length);
 });
-test("o baixo toca a raiz do acorde no 1º tempo de cada compasso (padrões com raiz no tempo forte) e os padrões têm o desenho pedido", () => {
+test("o baixo toca a raiz do acorde no 1º tempo de cada compasso (padrões com raiz no tempo forte) e os padrões têm a forma pedida", () => {
   for (const pattern of ["rootfifth", "walk", "pedal", "pizz", "sync"]) {
     const s = Music.score(base({ voices: { lead: { inst: "marimba" }, bass: { inst: "bass", pattern } } }));
     for (const h of s.harmony.slice(0, s.harmony.length - 1)) {
@@ -444,7 +444,7 @@ test("a nota mais grave e a mais aguda dos 4 temas ficam entre os MIDI 28 e 96 (
 });
 // ---------- Baixo e bumbo no alto-falante do celular ----------
 // Um alto-falante de celular reproduz pouco abaixo de uns 150 Hz e muitas notas do baixo (49 a 92 Hz de fundamental) ficavam só no fundamental. Os baixos levam também o 2º e o 3º harmônicos
-// e o bumbo, um estalo de médios. Aqui se confere o desenho de cada instrumento no grafo; a proporção de energia nos 61 temas está em tests/music-themes.test.js.
+// e o bumbo, um estalo de médios. Aqui se confere a estrutura de cada instrumento no grafo; a proporção de energia nos 61 temas está em tests/music-themes.test.js.
 const oneNote = (inst, midi, over) => rig.noteGraph(Object.assign({ t: 0, d: 1, midi, v: 0.8, voice: midi === null ? "perc" : "bass", inst, kind: midi === null ? "low" : "root" }, over), 120);
 test("baixos: além do fundamental, cada instrumento soa o 2º e o 3º harmônicos (amplitude de pelo menos 40% e 20% do fundamental), com poucos nós por nota", () => {
   for (const inst of ["bass", "bassSine", "bassSaw", "contrabass"]) {
@@ -990,7 +990,7 @@ test("tocador: um passo de agendamento cria poucos nós (nada de alocação em l
 const Analyze = require("../tools/music-render/analyze.js");
 const SR = 8000;
 const sine = (n, f, a, ph = 0) => { const x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = a * Math.sin(2 * Math.PI * f * i / SR + ph); return x; };
-test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 do desenho das músicas", () => {
+test("analyze: pico, RMS em dBFS, DC e o alvo de -22 dBFS +- 4 (do tema sozinho, a ganho 1)", () => {
   const m = Analyze.analyze(sine(SR * 4, 440, 0.5), SR, { barSeconds: 2 });
   assert.ok(Math.abs(m.peak - 0.5) < 1e-3);
   assert.ok(Math.abs(m.rmsDb - (20 * Math.log10(0.5 / Math.SQRT2))) < 0.05, "RMS de uma senoide: pico / raiz de 2");
