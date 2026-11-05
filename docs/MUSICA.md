@@ -95,7 +95,7 @@ contrastantes (contorno e ritmo mudam); a repetição de uma letra repete a melo
 | `rhythm` | opcional. Um padrão **por compasso**: texto com espaços (`"x-x-xx-x x--x-x--"`), lista (`["x-x-xx-x", "x--x-x--"]`) ou objeto por letra de seção (`{ A: [...], B: [...] }`). `x` = nota, `-` = segura a anterior, `.` = pausa. Cada padrão tem `passos` caracteres (4/4: 8; 3/4: 6; 6/8: 6) ou o dobro (semicolcheias); o primeiro padrão começa em `x`. Sem `rhythm` o ritmo é sorteado de uma lista de células por compasso |
 
 Garantias da melodia: todas as notas estão na escala do modo; as notas dos tempos fortes são, em geral, notas do acorde do compasso; o âmbito (da mais grave à mais aguda) é de **no máximo 2 oitavas**
-por instrumento; nunca há 3 notas iguais seguidas; a primeira nota cai no 1º tempo.
+por instrumento; nunca há 3 notas iguais seguidas (conferido pela altura, o MIDI: também na troca de instrumento do `rotate`, na escala final e na emenda do laço); a primeira nota cai no 1º tempo.
 
 ## 4. Vozes
 

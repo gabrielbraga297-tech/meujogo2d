@@ -36,5 +36,23 @@ test(`baixo: a fração da energia acima de 150 Hz é de pelo menos ${BASS_MIN_F
   assert.ok(median >= BASS_MEDIAN_FRACTION, `mediana ${(median * 100).toFixed(1)}%`);
 });
 
+// Nunca 3 notas iguais seguidas na melodia, nos 61 temas, contando o que se ouve: a altura (MIDI), não o grau (no revezamento de instrumentos a oitava muda e o grau, não). Três maneiras de olhar:
+// a melodia toda em ordem de tempo ("total"), cada trecho seguido de um mesmo instrumento ("por instrumento"; o revezamento passa a frase de um instrumento a outro) e a emenda do laço
+// (as duas últimas notas com a primeira e a última com as duas primeiras). Antes do conserto dog14 (final do laço: última nota longa + primeira da escala curta) e bird7 (troca do revezamento) falhavam.
+test("melodia: nunca 3 notas iguais (MIDI) seguidas — no total, em cada trecho de um instrumento e na emenda do laço — em nenhum dos 61 temas", () => {
+  const bad = [];
+  for (const id of IDS) {
+    const lead = Music.scoreOf(id).events.filter((e) => e.voice === "lead"), n = lead.length;
+    for (let i = 2; i < n + 2; i++) { // total, com a emenda
+      const a = lead[(i - 2) % n], b = lead[(i - 1) % n], c = lead[i % n];
+      if (a.midi === b.midi && b.midi === c.midi) bad.push(`${id}: total, MIDI ${a.midi} a partir de t=${a.t}${i >= n ? " (emenda do laço)" : ""}`);
+    }
+    let run = [];
+    const flush = () => { for (let i = 2; i < run.length; i++) if (run[i].midi === run[i - 1].midi && run[i - 1].midi === run[i - 2].midi) bad.push(`${id}: ${run[i].inst}, MIDI ${run[i].midi} a partir de t=${run[i - 2].t}`); run = []; };
+    for (const e of lead) { if (run.length && run[run.length - 1].inst !== e.inst) flush(); run.push(e); }
+    flush();
+  }
+  assert.deepStrictEqual(bad, []);
+});
 console.log(failed ? `\n${failed} falha(s)` : "\nTodas as conferências dos 61 temas passaram");
 process.exit(failed ? 1 : 0);

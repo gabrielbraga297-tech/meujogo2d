@@ -259,6 +259,24 @@ test("a melodia nunca repete a mesma nota 3 vezes seguidas, em nenhum modo, comp
   }
   assert.ok(total > 10000);
 });
+test("a melodia nunca repete o mesmo MIDI 3 vezes seguidas — também com o solo revezando instrumentos e oitavas, na escala final do laço e na emenda do laço", () => {
+  const keys = Object.keys(Music.KEYS);
+  let i = 0, total = 0;
+  const rotations = [undefined, [{ inst: "marimba" }, { inst: "flute", oct: 5 }], [{ inst: "xylo", oct: 4 }, { inst: "flute", oct: 5 }, { inst: "contrabass", oct: 3 }], [{ inst: "bell", oct: 5 }, { inst: "flute", oct: 4 }]];
+  for (const mode of Object.keys(Music.MODES)) for (const beats of [3, 4, 6]) for (const contour of Music.CONTOURS) for (const rot of rotations) {
+    const bpm = beats === 6 ? 70 : beats === 3 ? 126 : 112, secs = 32 * (beats === 6 ? 2 : beats) * 60 / bpm;
+    const r = { id: "w" + i, key: keys[i % keys.length], mode, bpm: secs > 100 ? Math.round(bpm * 1.2) : secs < 40 ? Math.round(bpm * 0.8) : bpm, beats, bars: 32, form: ["AABA", "ABAB", "AABC"][i % 3],
+      motif: { seed: i * 11 + 3, contour, leaps: (i % 5) / 4, rests: (i % 3) / 3 }, voices: { lead: rot ? { inst: "marimba", rotate: rot } : { inst: "marimba" } } };
+    const lead = Music.score(r).events.filter((e) => e.voice === "lead");
+    for (let k = 2; k < lead.length + 2; k++) { // + 2: a emenda (as duas últimas e a primeira; a última e as duas primeiras)
+      const a = lead[(k - 2) % lead.length], b = lead[(k - 1) % lead.length], c = lead[k % lead.length];
+      total++;
+      assert.ok(!(a.midi === b.midi && b.midi === c.midi), `receita ${i} (${mode} ${beats} ${contour} ${rot ? "revezando" : "um instrumento"}): 3 notas iguais (MIDI ${a.midi}) a partir de t=${a.t}`);
+    }
+    i++;
+  }
+  assert.ok(total > 20000 && i === 600);
+});
 test("o laço fecha no tom: o último compasso é o dominante, a melodia termina a até 3 graus da primeira nota e a cauda passa para o começo", () => {
   for (const id of THEMES) {
     const s = Music.score(id), sc = Music.scaleInfo(Music.get(id).key, Music.get(id).mode);

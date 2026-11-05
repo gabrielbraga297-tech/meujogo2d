@@ -530,6 +530,14 @@
       const deg = first.deg + dir * (k - j);
       kept.push({ t: round6(barEnd - (k - j) * M.stepBeats), d: round6(M.stepBeats * 0.95), midi: degMidi(sc, deg, L.oct) + shift, v: round6(clamp(L.vel * 0.85, 0.05, 1)), voice: "lead", inst: lastInst, kind: "pickup", deg, bar: R.bars - 1 });
     }
+    // De novo a regra das 3 notas iguais, agora sobre o que se ouve (o MIDI final, já com a escala do fim e a troca de instrumento do revezamento, que muda a oitava sem mudar o grau):
+    // a regra de cima compara graus e roda antes de a escala final entrar. A do meio dá um passo de grau para o lado, dentro da janela do instrumento (nunca igual às vizinhas).
+    for (let i = 2; i < kept.length; i++) {
+      const a = kept[i - 2], b = kept[i - 1], c = kept[i];
+      if (a.midi !== b.midi || b.midi !== c.midi) continue;
+      const d = clamp(b.deg + (b.deg + 1 <= dHi ? 1 : -1), dLo, dHi);
+      b.midi += degMidi(sc, d, L.oct) - degMidi(sc, b.deg, L.oct); b.deg = d; b.kind = "orn";
+    }
     return kept;
   }
 
