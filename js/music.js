@@ -1268,7 +1268,8 @@
       if (a && ensureBus(a)) {
         const c = a.ctx, allowed = enabled && !paused && !isMuted();
         if (c.state !== "running") { // suspenso (aba em segundo plano, celular): pede para retomar de vez em quando, sem agendar nada
-          if (now() - lastResumeTry >= RESUME_RETRY_MS) { lastResumeTry = now(); try { const r = c.resume(); if (r && typeof r.catch === "function") r.catch(() => {}); } catch { /* o navegador recusou */ } }
+          const sinceTry = now() - lastResumeTry; // negativo se o relógio do sistema voltou: vale como vencido (senão nenhum resume() seria pedido até o relógio alcançar o valor antigo)
+          if (sinceTry >= RESUME_RETRY_MS || sinceTry < 0) { lastResumeTry = now(); try { const r = c.resume(); if (r && typeof r.catch === "function") r.catch(() => {}); } catch { /* o navegador recusou */ } }
         } else {
           applyBus(allowed);
           if (!allowed) silence();

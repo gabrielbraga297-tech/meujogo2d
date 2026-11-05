@@ -196,7 +196,7 @@ Comportamento garantido (conferido em `tests/music.test.js` com um AudioContext 
 * Só começa depois do 1º gesto: usa `sound.audio()` (que só devolve o contexto depois do `unlock`) e `sound.onUnlock(fn)`; um `unlock` tardio inicia o tema pedido na hora.
 * **Agendador:** a cada 120 ms agenda até 0,6 s à frente com `Music.render` (janelas de batidas), sem repetir nem pular notas; o laço dá a volta sem falha (as caudas do fim caem no começo do laço seguinte).
   Só há um `setInterval`, e só enquanto há tema pedido. Se o relógio do áudio fica para trás (aba em segundo plano), pula o tempo perdido em vez de despejar notas atrasadas.
-* **Contexto suspenso** (celular, aba em segundo plano): pede `resume()` no máximo uma vez por segundo, não agenda nada e, quando volta a rodar, continua sem mandar notas para o passado. **Contexto fechado e recriado** pelo Sound: monta o barramento no novo e recomeça o tema pedido.
+* **Contexto suspenso** (celular, aba em segundo plano): pede `resume()` no máximo uma vez por segundo (também depois de o relógio do sistema recuar), não agenda nada e, quando volta a rodar, continua sem mandar notas para o passado. **Contexto fechado e recriado** pelo Sound: monta o barramento no novo e recomeça o tema pedido.
 * **Mudo** (`som.isMuted()`): não agenda nada, zera o barramento e some em 0,05 s; ao desmutar volta do começo do compasso em que parou. **Aba escondida / pausa de jogo:** o jogo chama `pause()`/`resume()` (e `setDuck(0.25)` na pausa do menu).
 * Desempenho: um ciclo cria poucas dezenas de nós (nenhum ciclo passou de 300 nos testes), há no máximo 14 notas soando, o ruído é um só buffer de 1 s por contexto, e todo oscilador é parado no fim.
 

@@ -885,6 +885,21 @@ test("tocador: contexto suspenso — pede resume() sem inundar (1 por segundo), 
     assert.strictEqual(q.music.state, "suspended");
   }
 });
+test("tocador: contexto suspenso e o relógio do sistema volta 10 min — o resume() continua sendo pedido (1 por segundo), não fica bloqueado até o relógio alcançar o valor antigo", () => {
+  const r = rigPlayer({ fake: { state: "suspended", neverRunning: true } });
+  r.music.play("menu");
+  r.run(2500);
+  const r0 = r.fake.resumes;
+  assert.ok(r0 >= 2, "antes do ajuste já pedia: " + r0);
+  r.now.add(-600e3); // ajuste de hora: 10 min para trás
+  // (os timers falsos andam pelo relógio falso e ficariam parados 10 min; num navegador o setInterval segue em frente. Por isso os ciclos são chamados à mão, de 1 em 1 s.)
+  for (let i = 0; i < 5; i++) { r.now.add(1000); r.ctx().currentTime += 1; r.music.tick(); }
+  const asked = r.fake.resumes - r0;
+  assert.ok(asked >= 4 && asked <= 6, `depois de o relógio voltar pediu ${asked} vezes em 5 s (esperado 1 por segundo)`);
+  // e quando o contexto volta a rodar, o tema começa
+  r.ctx().state = "running"; r.music.tick();
+  assert.strictEqual(r.music.state, "playing");
+});
 test("tocador: contexto fechado por fora e recriado pelo Sound — a música monta o barramento no contexto novo e recomeça o tema pedido", () => {
   const r = rigPlayer();
   r.music.play("menu"); r.run(2000);
