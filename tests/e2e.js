@@ -1,6 +1,8 @@
 // Teste de ponta a ponta no navegador (Chromium headless).
 // Uso: npm i playwright && node tests/e2e.js   (CHROMIUM_PATH opcional)
-const { chromium } = require("playwright");
+const { chromium, firefox, webkit } = require("playwright");
+// BROWSER=firefox ou BROWSER=webkit roda a mesma suíte noutro motor (o padrão é o Chromium); PLAYWRIGHT_BROWSERS_PATH aponta onde estão baixados. O WebKit do Playwright é o motor do Safari, mas não é o Safari.
+const ENGINE = { chromium, firefox, webkit }[process.env.BROWSER || "chromium"];
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -71,10 +73,10 @@ const { MAP, free, find, bfs, distances } = G1; // as seções antigas usam a Fa
 
 let failed = 0;
 const ok = (cond, msg) => { console.log((cond ? "OK   " : "FAIL ") + msg); if (!cond) failed++; };
-const only = process.argv[2]; // opcional: roda só as seções cujo título contém este texto
+const only = process.argv[2]; // opcional: roda só as seções cujo título contém este texto (com SECTION_EXACT=1, só a seção cujo título é exatamente este: serve a tools/run-sections.js)
 let sectionsRun = 0;
 async function section(title, fn) {
-  if (only && !title.includes(only)) return;
+  if (only && !(process.env.SECTION_EXACT ? title === only : title.includes(only))) return;
   sectionsRun++;
   try { await fn(); } catch (e) { failed++; console.log(`FAIL (erro em "${title}"): ${String(e.message).split("\n")[0]}`); }
 }
@@ -104,7 +106,7 @@ const PAGE_HELPERS = () => {
 };
 
 (async () => {
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const browser = await ENGINE.launch(ENGINE === chromium && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   // (0.18.0) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
   // As páginas abertas com `realCat: true` (seção "0.18.0 · Gatinho: mecânicas") recebem os mapas de verdade.
