@@ -29,6 +29,21 @@ function titles() {
   return out;
 }
 
+// Seções que NÃO são comparáveis fora do Chromium (conferido em 06/11/2026 no Firefox 155): comparam hashes de pixels tirados no Chromium (cada motor desenha com o seu antialiasing), usam o protocolo do Chrome (CDP)
+// ou dependem de a IA dos rastreadores e gaviões andar exatamente igual (a precisão de Math.hypot/atan2 muda de um motor para outro e, em 10 s de jogo, 3 de 12 fases testadas já divergem). O executor as lista à parte
+// ("diferença esperada de motor") e só conta como falha as demais.
+const ENGINE_DIFFERENCES = [
+  ["0.18.0 · Gatinho: desenho e ambientes", "hashes de pixels do Cachorrinho tirados no Chromium"],
+  ["0.18.0 · Gatinho: sons e skins", "os pedidos de som das cenas dependem do andar dos inimigos"],
+  ["0.18.0 · Gatinho: correções da auditoria 3", "usa o protocolo do Chrome (CDP) para simular toque"],
+  ["0.19.0 · skins dos objetos do Cachorrinho: com todas as categorias no padrão", "hashes de pixels tirados no Chromium"],
+  ["0.19.0 · Skins do Gatinho: com TODAS as categorias no padrão", "hashes de pixels tirados no Chromium"],
+  ["0.19.0 · Skins do Gatinho: as skins do Gatinho não aparecem no Cachorrinho", "hashes de pixels tirados no Chromium"],
+  ["0.20.0 · Passarinho (integração): robô", "o resultado do robô depende do andar dos gaviões"],
+  ["0.20.0 · Skins do Passarinho: as skins do Passarinho não aparecem no Cachorrinho", "hashes de pixels tirados no Chromium"],
+];
+const engineNote = (title) => (process.env.BROWSER && process.env.BROWSER !== "chromium" ? (ENGINE_DIFFERENCES.find(([t]) => title.startsWith(t)) || [])[1] : undefined);
+
 const all = titles().filter((t) => !val("--only") || t.includes(val("--only")));
 if (flag("--list")) { console.log(all.join("\n")); console.log(`\n${all.length} seção(ões)`); process.exit(0); }
 
@@ -70,7 +85,8 @@ for (const t of all) {
 }
 
 const rows = all.map((t) => done.get(t)).filter(Boolean);
-const bad = rows.filter((r) => r.fail || r.exit !== 0);
-console.log(`\n${rows.length} de ${all.length} seções registradas; ${rows.reduce((s, r) => s + r.ok, 0)} verificações ok; ${bad.length} seção(ões) com falha`);
+const failed = rows.filter((r) => r.fail || r.exit !== 0), expected = failed.filter((r) => engineNote(r.title)), bad = failed.filter((r) => !engineNote(r.title));
+console.log(`\n${rows.length} de ${all.length} seções registradas; ${rows.reduce((s, r) => s + r.ok, 0)} verificações ok; ${bad.length} seção(ões) com falha${expected.length ? ` e ${expected.length} com diferença esperada de motor` : ""}`);
+for (const r of expected) console.log(`~ diferença esperada de motor: ${r.title.slice(0, 100)} (${engineNote(r.title)})`);
 for (const r of bad) { console.log(`- ${r.title.slice(0, 120)} (saída ${r.exit}, ${r.fail} falha(s))`); for (const f of r.fails) console.log("    " + f); }
 process.exit(bad.length ? 1 : 0);

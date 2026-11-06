@@ -8,7 +8,19 @@ const path = require("path");
 const os = require("os");
 
 const root = path.resolve(__dirname, "..");
-const URL = "file://" + path.join(root, "index.html");
+let URL = "file://" + path.join(root, "index.html");
+// Firefox e WebKit não deixam o teste interceptar (`route`) arquivos de uma página aberta por file://; nesses motores (ou com HTTP_SERVER=1) o jogo é servido por um servidor local simples. O Chromium segue em file://.
+const USE_HTTP = process.env.HTTP_SERVER === "1" || (!!process.env.BROWSER && process.env.BROWSER !== "chromium");
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8" };
+function startStatic() {
+  const http = require("http");
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent((req.url || "/").split("?")[0]).replace(/^\/+/, "") || "index.html", file = path.resolve(root, rel);
+    if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end("não achei"); return; }
+    res.writeHead(200, { "content-type": MIME[path.extname(file)] || "application/octet-stream", "cache-control": "no-store" }); fs.createReadStream(file).pipe(res);
+  });
+  return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
+}
 const src = fs.readFileSync(path.join(root, "js/game.js"), "utf8");
 const mapOf = (n) => eval(src.match(new RegExp(`const MAP_${n} = (\\[[\\s\\S]*?\\]);`))[1]);
 const R = 18, C = 25;
@@ -106,6 +118,8 @@ const PAGE_HELPERS = () => {
 };
 
 (async () => {
+  const staticServer = USE_HTTP ? await startStatic() : null;
+  if (staticServer) URL = `http://127.0.0.1:${staticServer.address().port}/index.html`;
   const browser = await ENGINE.launch(ENGINE === chromium && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   // (0.18.0) js/cat-levels.js (os mapas de verdade do Gatinho) liga o Gatinho no jogo: com ele o Gatinho está pronto, com as 20 fases dele. As seções antigas testam o ENCANAMENTO com as fases de TESTE do Gatinho
   // (a cópia das do Cachorrinho, `enableTestAnimal`) e o Gatinho "Em breve" que existe quando esse arquivo não carrega: para elas o arquivo é ignorado (window.CatLevels fica indefinido).
@@ -11723,6 +11737,7 @@ const PAGE_HELPERS = () => {
   if (errs.length) failed++;
   if (only && sectionsRun === 0) { failed++; console.log(`FAIL nenhuma seção tem "${only}" no título (um filtro que não casa com nada não vale como "tudo passou")`); }
   await browser.close();
+  if (staticServer) staticServer.close();
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes passaram");
   process.exit(failed ? 1 : 0);
 })();
