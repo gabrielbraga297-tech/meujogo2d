@@ -1,7 +1,8 @@
 // Mede a dificuldade das fases com robôs (tools/difficulty/probe-page.js no Cachorrinho e no Gatinho; tests/bird-robot-page.js no Passarinho): joga cada fase em várias sementes e imprime,
 // por fase, quantas vezes o robô foi pego, quanto demorou e quantas vezes chegou ao fim. Serve de RÉGUA para comparar fases do mesmo bichinho (não diz o quanto uma pessoa vai sofrer).
 // O jogo anda por quadros simulados (1/60 s), então o resultado não depende do relógio da máquina: a mesma semente dá o mesmo resultado.
-// Uso:  node tools/difficulty/run.js [--animals dog,cat,bird] [--levels 1-20] [--seeds 8] [--cap 900] [--out resultado.json]
+// Uso:  node tools/difficulty/run.js [--animals dog,cat,bird] [--levels 1-20] [--seeds 8] [--cap 900] [--immortal] [--out resultado.json]
+//   --immortal  o robô recupera as vidas a cada golpe: assim ele sempre termina a fase (ou estoura o tempo) e a medida é "quantos golpes até terminar", sem o teto do número de vidas.
 //   Variáveis: NODE_PATH (onde está o playwright), CHROMIUM_PATH, BROWSER (firefox|webkit), como no tests/e2e.js. Rode sob `flock` se mais de um processo abrir o navegador.
 const path = require("path");
 const fs = require("fs");
@@ -13,7 +14,7 @@ const args = process.argv.slice(2);
 const val = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 const animals = val("--animals", "dog,cat,bird").split(",");
 const [lo, hi] = val("--levels", "1-20").split("-").map(Number);
-const seeds = Number(val("--seeds", "8")), cap = Number(val("--cap", "900")), out = val("--out", null);
+const immortal = args.includes("--immortal"), seeds = Number(val("--seeds", "8")), cap = Number(val("--cap", "900")), out = val("--out", null);
 const ENGINE = { chromium, firefox, webkit }[process.env.BROWSER || "chromium"];
 const ROOT = path.join(__dirname, "../..");
 
@@ -28,6 +29,7 @@ const ROOT = path.join(__dirname, "../..");
       page.on("pageerror", (e) => errs.push(e.message));
       await page.goto("file://" + path.join(ROOT, "index.html"));
       await page.waitForTimeout(150);
+      if (immortal) await page.evaluate(() => { const g = window.__game; if (!g.__orig) { g.__orig = g.tick; g.tick = (dt) => { g.__orig(dt); if (g.state === "playing" && g.lives < 2) g.setLives(g.maxLives); }; } });
       const rows = [];
       for (let seed = 1; seed <= seeds; seed++) {
         if (animal === "bird") {
