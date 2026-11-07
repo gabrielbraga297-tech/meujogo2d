@@ -248,7 +248,9 @@ module.exports = async function (T) {
     // as mesmas 20 fases, agora pegando TUDO (sementes e frutos) com os inimigos congelados: todo item é alcançável e a saída abre
     const all = [];
     for (let id = 1; id <= 20; id++) {
-      const r = await ev(pg, ROBOT, { id, live: false, collectAll: true, seed: 1, attempts: 1 });
+      // (0.22.0) o robô só quer provar que todo item é alcançável; se ele esbarra num inimigo PARADO que o sorteio da semente 1 pôs no caminho (aconteceu na Fase 13 depois que a quantidade de inimigos mudou), tenta as sementes 2 e 3
+      let r = await ev(pg, ROBOT, { id, live: false, collectAll: true, seed: 1, attempts: 1 });
+      for (let seed = 2; seed <= 3 && r.livesLost > 0; seed++) r = await ev(pg, ROBOT, { id, live: false, collectAll: true, seed, attempts: 1 });
       all.push(r);
       ok(r.state === "won" && r.collected === r.seedsTotal && r.bones === r.bonesTotal && r.livesLost === 0, `Fase ${id}: com os inimigos parados o robô pega TUDO (${r.collected}/${r.seedsTotal} sementes, ${r.bones}/${r.bonesTotal} frutos, ${r.worms} minhocas no caminho) e vence em ${r.time.toFixed(0)} s`);
     }

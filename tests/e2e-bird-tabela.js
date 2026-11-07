@@ -72,7 +72,7 @@ module.exports = async function (T) {
       if (size !== `${l.cols}×${l.rows}`) diffs.push(`fase ${l.id}: mapa ${size} ≠ ${l.cols}×${l.rows}`);
       if (l.like !== l.id) diffs.push(`fase ${l.id}: as regras vêm da fase ${l.like} do Cachorrinho, não da ${l.id}`);
       if (num(cats) !== l.cats || l.live.cats !== l.cats) diffs.push(`fase ${l.id}: gatos de quintal ${cats} ≠ ${l.cats} (montada) / ${l.live.cats} (jogando)`);
-      if ((hawks === "—" ? 0 : num(hawks)) !== l.hawks || l.live.hawks !== l.hawks || l.hawks !== l.dog.hawksLike || !l.live.hawk) diffs.push(`fase ${l.id}: gaviões ${hawks} ≠ ${l.hawks} (montada) / ${l.live.hawks} (jogando) / ${l.dog.hawksLike} (gatos inimigos da fase do Cachorrinho)`);
+      if ((hawks === "—" ? 0 : num(hawks)) !== l.hawks || l.live.hawks !== l.hawks || (l.hawks > 0) !== (l.dog.hawksLike > 0) || !l.live.hawk) diffs.push(`fase ${l.id}: gaviões ${hawks} ≠ ${l.hawks} (montada) / ${l.live.hawks} (jogando) / ${l.dog.hawksLike} (gatos inimigos da fase do Cachorrinho: só precisa haver, a quantidade de gaviões é própria desde a 0.22.0)`);
       if (num(seeds) !== l.seeds || l.live.seeds !== l.seeds) diffs.push(`fase ${l.id}: sementes ${seeds} ≠ ${l.seeds} (montada) / ${l.live.seeds} (jogando)`);
       if ((fruits === "—" ? 0 : num(fruits)) !== l.fruits || l.live.fruits !== l.fruits) diffs.push(`fase ${l.id}: frutos ${fruits} ≠ ${l.fruits} (montada) / ${l.live.fruits} (jogando)`);
       if ((worms === "—" ? 0 : num(worms)) !== l.worms || l.live.worms !== l.worms) diffs.push(`fase ${l.id}: minhocas ${worms} ≠ ${l.worms} (montada) / ${l.live.worms} (jogando)`);
