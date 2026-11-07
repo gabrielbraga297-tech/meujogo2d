@@ -5,7 +5,7 @@ Versão atual: o **Cachorrinho**, o **Gatinho** e o **Passarinho** estão pronto
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.23.0 · 07/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.24.0 · 07/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -1079,6 +1079,7 @@ tests/bird-table.test.js confere a tabela das fases do Passarinho do README com 
 tests/skins-bird.test.js testes unitários das skins dos objetos do Passarinho (Node, com um ctx de mentira)
 tests/e2e-economy.js  a seção "0.23.0 · economia" do e2e: quanto cada vitória rende na tela de vitória e na carteira, os preços que não mudaram e as contas com o catálogo
 tests/e2e-update.js   a seção "0.23.0 · atualização" do e2e: o aviso de versão nova no menu
+tests/biology.test.js as referências de biologia (o JSON é o que a lista do script manda; sem rede)
 tests/update.test.js  o aviso de versão nova, o selo ?v=<commit> e o workflow, sem navegador
 tests/e2e-ramp.js     a seção "0.22.0 · dificuldade escalonada" do e2e: os inimigos que o jogo põe em cada fase são os de tools/difficulty/ramp.json e o README explica a régua
 tests/difficulty-ramp.test.js a regra de dificuldade (nenhuma fase anterior mais difícil; 18 e 19 entre a 17 e a 20) sobre os números gravados, sem navegador
@@ -1094,6 +1095,8 @@ tests/ab-sounds.js    A/B de sons do Cachorrinho: cenas fixas e a lista de pedid
 tools/cat-preview/    prévias e capturas do Gatinho (art.html, themes1/2.html, shoot-art.js, shoot-themes*.js e shoot-game.js, que fotografa o jogo de verdade)
 tools/bird-preview/   prévias e capturas do Passarinho (art.html, themes.html, shoot-art.js, shoot-themes.js e bench.js)
 js/update.js          o aviso de versão nova (UpdateCheck: lê a build de js/version.js sem cache e compara; nunca lança erro)
+tools/biology/        as referências da «Biologia por trás» (0.24.0): lookup.py (procura e mostra artigos no Europe PMC e no Crossref) e build_refs.py (monta e confere docs/biologia/referencias.json)
+docs/biologia/        referencias.json: as referências abertas e conferidas (resumo lido), as conferidas sem apoio e as pistas antigas não encontradas
 tools/publish/        cache-bust.py (o selo ?v=<commit> nos endereços, usado pelo workflow), build-artifact.py (monta o jogo num único arquivo HTML, com o código curto do commit no lugar de build "dev") e smoke.js (abre essa página no Chromium e confere que não há erros e que a Fase 1 de cada bichinho anda)
 tools/difficulty/     a régua de dificuldade das fases (0.22.0): run.js (joga as fases com o robô e imprime/grava as medições), probe-page.js (o robô do Cachorrinho e do Gatinho), summary.js (tabela e comparação antes/depois), ramp.js (R, a regra e as contagens; build/check/table) e ramp.json (as medições gravadas que tests/difficulty-ramp.test.js confere)
 tools/run-sections.js executa a suíte do navegador uma seção por vez, com registro retomável e a lista de diferenças esperadas de motor (Firefox e WebKit)
@@ -1137,6 +1140,7 @@ node tests/records.test.js
 node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
+node tests/biology.test.js        # as referências conferidas da «Biologia por trás» (o JSON é o que o script manda; sem rede) (0.24.0)
 node tests/update.test.js        # o aviso de versão nova e o selo ?v=<commit> dos endereços (precisa de python3) (0.23.0)
 node tests/difficulty-ramp.test.js  # a regra de dificuldade das 60 fases sobre tools/difficulty/ramp.json e se as contagens de inimigos gravadas são as do jogo (0.22.0)
 node tests/sound.test.js
