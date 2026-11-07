@@ -84,8 +84,10 @@ test("segunda conferência: o que o Passarinho herda (a tabela do Gatinho: condi
     assert.strictEqual(c("Condição para avançar"), g[3], tag + ": condição");
     assert.strictEqual(c("Velocidade dos gatos (sem ! / com !)"), g[9], tag + ": velocidade dos gatos");
     assert.strictEqual(c("Velocidade dos gaviões (anda / persegue)"), lv.hawks ? g[10] : "—", tag + ": velocidade dos gaviões");
-    assert.strictEqual(lv.hawks, g[10] === "—" ? 0 : Number(g[5]), tag + ": gaviões = rastreadores do Gatinho");
-    assert.strictEqual(lv.cats, Number(g[4]), tag + ": gatos = cães de guarda do Gatinho");
+    // gatos e gaviões: iguais aos cães e rastreadores do Gatinho até a Fase 10; da 11 em diante (0.22.0) são os da medição de dificuldade (tools/difficulty/ramp.json) e só precisam ficar perto
+    const gh = g[10] === "—" ? 0 : Number(g[5]);
+    if (lv.id <= 10) { assert.strictEqual(lv.hawks, gh, tag + ": gaviões = rastreadores do Gatinho"); assert.strictEqual(lv.cats, Number(g[4]), tag + ": gatos = cães de guarda do Gatinho"); }
+    else { assert.ok(lv.hawks > 0 && Math.abs(lv.hawks - gh) <= 5, tag + `: gaviões ${lv.hawks} longe dos rastreadores ${gh} do Gatinho`); assert.ok(Math.abs(lv.cats - Number(g[4])) <= 5, tag + `: gatos ${lv.cats} longe dos cães ${g[4]} do Gatinho`); }
     assert.strictEqual(lv.seeds, Number(g[6]), tag + ": sementes = ratinhos do Gatinho");
     assert.strictEqual(c("Vidas máx."), g[12], tag);
     assert.strictEqual(c("Perda por vida"), g[13], tag);

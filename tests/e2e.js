@@ -11003,7 +11003,7 @@ const PAGE_HELPERS = () => {
     }
     ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tests/wiring.test.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
     // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
-    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
+    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music|ramp)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
     const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
     ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
     // ---- a trava do armazenamento: o que ela protege e o que não protege (a conta local não é segurança de verdade) ----
@@ -11730,7 +11730,8 @@ const PAGE_HELPERS = () => {
   // ----------------------------------------------------------------------------------------------------------------------------
   // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por assunto (tests/e2e-bird-<assunto>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
   // (0.21.0) as seções da música tema ficam em tests/e2e-music.js (títulos "música: ..."), carregado do mesmo jeito
-  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music)\.js$/.test(n)).sort()) {
+  // (0.22.0) a seção da dificuldade escalonada fica em tests/e2e-ramp.js
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music|ramp)\.js$/.test(n)).sort()) {
     await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
   }
   console.log("erros JS:", errs);

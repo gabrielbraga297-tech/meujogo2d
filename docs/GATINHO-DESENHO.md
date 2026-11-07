@@ -41,13 +41,13 @@ Velocidade do gatinho: 252 px/s × `catSpeed` (0,8 na F1, 0,9 na F3, depois 1); 
 | 10 | Armazém de grãos | 55×41 | 6 | — | 40 | 5 | 3 | 4 | 2 | 2050 | corredores de prateleiras (T) onde os ratos vivem |
 | 11 | Celeiro e curral | 57×41 | 5 | 2 | 44 | 5 | 4 | 4 | 4 | 2300 + missão | rastreadores; missão: todos os novelos |
 | 12 | Horta e galinheiro | 57×41 | 5 | 3 | 46 | 5 | 4 | 4 | 4 | 2450 + missão | missão: 34 ratinhos |
-| 13 | Borda da mata | 57×43 | 6 | 3 | 48 | 6 | 4 | 7 | 3 | 2650 + missão | muitas árvores; cães rastreadores |
-| 14 | Riacho e pedras | 57×43 | 6 | 4 | 50 | 6 | 4 | 4 | 8 | 2800 + missão | travessia com água |
+| 13 | Borda da mata | 57×43 | 5 | 3 | 48 | 6 | 4 | 7 | 3 | 2650 + missão | muitas árvores; cães rastreadores |
+| 14 | Riacho e pedras | 57×43 | 5 | 4 | 50 | 6 | 4 | 4 | 8 | 2800 + missão | travessia com água |
 | 15 | Vila de pescadores | 59×43 | 6 | 4 | 52 | 6 | 4 | 4 | 5 | 3000 + missão | redes e barcos (X) |
 | 16 | Docas do porto | 59×45 | 7 | 5 | 54 | 7 | 5 | 5 | 7 | 3200 + missão | contêineres (T), cais molhado |
 | 17 | Praia e dunas | 61×45 | 7 | 5 | 56 | 7 | 5 | 3 | 8 | 3400 + missão | areia aberta: poucos abrigos |
-| 18 | Telhados à noite | 61×45 | 7 | 6 | 58 | 7 | 5 | 8 | 0 | 3600 + missão | noite (visão reduzida), telhados |
-| 19 | Mercado à noite | 61×45 | 8 | 6 | 60 | 8 | 5 | 5 | 6 | 3800 + missão | noite e chuva |
+| 18 | Telhados à noite | 61×45 | 8 | 6 | 58 | 7 | 5 | 8 | 0 | 3600 + missão | noite (visão reduzida), telhados |
+| 19 | Mercado à noite | 61×45 | 9 | 6 | 60 | 8 | 5 | 5 | 6 | 3800 + missão | noite e chuva |
 | 20 | A casa grande (final) | 63×47 | 8 | 7 | 62 | 8 | 5 | 6 | 6 | 4000 + missão | tudo junto; volta ao lar |
 Vidas máx., perda por vida e bônus de missão: iguais aos do cachorrinho (5…10; 50/200/250/300/325…400; +200…+650).
 

@@ -38,14 +38,14 @@ Velocidade do passarinho: 252 px/s × `birdSpeed` (0,8 na F1, 0,9 na F3, depois 
 | 10 | Mata de pinheiros | 55×41 | 6 | — | 40 | 5 | 3 | 4 | 2 | 2050 | sim | troncos e sub-bosque (muros M), muitos galhos |
 | 11 | Fazenda e galinheiro | 57×41 | 5 | 2 | 44 | 5 | 4 | 4 | 4 | 2300 + missão | sim | gaviões; missão: todos os frutos |
 | 12 | Margem do rio | 57×41 | 5 | 3 | 46 | 5 | 4 | 4 | 4 | 2450 + missão | sim | missão: 34 sementes |
-| 13 | Pântano e vitórias-régias | 57×43 | 6 | 3 | 48 | 6 | 4 | 7 | 3 | 2650 + missão | sim | muitos galhos (vitórias-régias), gaviões |
-| 14 | Dunas e restinga | 57×43 | 6 | 4 | 50 | 6 | 4 | 4 | 8 | 2800 + missão | sim | ventos de duna |
-| 15 | Falésias e ninhos | 59×43 | 6 | 4 | 52 | 6 | 4 | 4 | 5 | 3000 + missão | sim | rochas (paredes), muros de pedra, correntes de ar |
-| 16 | Vila de pescadores e redes | 59×45 | 7 | 5 | 54 | 7 | 5 | 5 | 7 | 3200 + missão | sim | redes (X), mastros (galhos), varais (M) |
-| 17 | Campos de altitude | 61×45 | 7 | 5 | 56 | 7 | 5 | 3 | 8 | 3400 + missão | sim | campo aberto, muros de pedra, poucos abrigos |
-| 18 | Entardecer nos telhados | 61×45 | 7 | 6 | 58 | 7 | 5 | 8 | — | 3600 + missão | sim | luz laranja que escurece (visão reduzida) |
-| 19 | Noite na floresta | 61×45 | 8 | 6 | 60 | 8 | 5 | 5 | 6 | 3800 + missão | sim | noite: halo em volta do passarinho |
-| 20 | O grande ninho | 63×47 | 8 | 7 | 62 | 8 | 5 | 6 | 6 | 4000 + missão | sim | tudo junto; volta ao lar |
+| 13 | Pântano e vitórias-régias | 57×43 | 5 | 3 | 48 | 6 | 4 | 7 | 3 | 2650 + missão | sim | muitos galhos (vitórias-régias), gaviões |
+| 14 | Dunas e restinga | 57×43 | 6 | 3 | 50 | 6 | 4 | 4 | 8 | 2800 + missão | sim | ventos de duna |
+| 15 | Falésias e ninhos | 59×43 | 6 | 5 | 52 | 6 | 4 | 4 | 5 | 3000 + missão | sim | rochas (paredes), muros de pedra, correntes de ar |
+| 16 | Vila de pescadores e redes | 59×45 | 8 | 7 | 54 | 7 | 5 | 5 | 7 | 3200 + missão | sim | redes (X), mastros (galhos), varais (M) |
+| 17 | Campos de altitude | 61×45 | 7 | 4 | 56 | 7 | 5 | 3 | 8 | 3400 + missão | sim | campo aberto, muros de pedra, poucos abrigos |
+| 18 | Entardecer nos telhados | 61×45 | 8 | 6 | 58 | 7 | 5 | 8 | — | 3600 + missão | sim | luz laranja que escurece (visão reduzida) |
+| 19 | Noite na floresta | 61×45 | 5 | 5 | 60 | 8 | 5 | 5 | 6 | 3800 + missão | sim | noite: halo em volta do passarinho |
+| 20 | O grande ninho | 63×47 | 10 | 8 | 62 | 8 | 5 | 6 | 6 | 4000 + missão | sim | tudo junto; volta ao lar |
 Vidas máx., perda por vida e bônus de missão: iguais aos do Gatinho (5…10; 50/200/250/300/325…400; +200…+650). A coluna "G" e a coluna "Vento" são a QUANTIDADE DE GRUPOS (galho: 1 a 3 tiles cada; vento: 2 a 8 tiles cada).
 
 ## Como os mapas são desenhados

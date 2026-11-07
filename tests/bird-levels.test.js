@@ -29,8 +29,8 @@ const each = (fn) => { const bad = []; for (const lv of LEVELS) { try { fn(lv); 
 const EXPECTED = {
   1: [25, 18, 1, 0, 5, 0, 0, 0, 0], 2: [25, 18, 2, 0, 7, 2, 1, 0, 0], 3: [25, 18, 2, 0, 7, 2, 1, 1, 2], 4: [41, 29, 3, 0, 15, 2, 2, 2, 3], 5: [41, 29, 3, 0, 20, 2, 2, 4, 0],
   6: [49, 33, 3, 0, 24, 3, 3, 2, 2], 7: [49, 37, 4, 0, 28, 3, 3, 2, 3], 8: [55, 39, 5, 0, 32, 4, 3, 3, 5], 9: [55, 39, 5, 0, 36, 4, 3, 5, 6], 10: [55, 41, 6, 0, 40, 5, 3, 4, 2],
-  11: [57, 41, 5, 2, 44, 5, 4, 4, 4], 12: [57, 41, 5, 3, 46, 5, 4, 4, 4], 13: [57, 43, 6, 3, 48, 6, 4, 7, 3], 14: [57, 43, 6, 4, 50, 6, 4, 4, 8], 15: [59, 43, 6, 4, 52, 6, 4, 4, 5],
-  16: [59, 45, 7, 5, 54, 7, 5, 5, 7], 17: [61, 45, 7, 5, 56, 7, 5, 3, 8], 18: [61, 45, 7, 6, 58, 7, 5, 8, 0], 19: [61, 45, 8, 6, 60, 8, 5, 5, 6], 20: [63, 47, 8, 7, 62, 8, 5, 6, 6],
+  11: [57, 41, 5, 2, 44, 5, 4, 4, 4], 12: [57, 41, 5, 3, 46, 5, 4, 4, 4], 13: [57, 43, 5, 3, 48, 6, 4, 7, 3], 14: [57, 43, 6, 3, 50, 6, 4, 4, 8], 15: [59, 43, 6, 5, 52, 6, 4, 4, 5],
+  16: [59, 45, 8, 7, 54, 7, 5, 5, 7], 17: [61, 45, 7, 4, 56, 7, 5, 3, 8], 18: [61, 45, 8, 6, 58, 7, 5, 8, 0], 19: [61, 45, 5, 5, 60, 8, 5, 5, 6], 20: [63, 47, 10, 8, 62, 8, 5, 6, 6],
 };
 // mínimos do desenho (os mesmos de bird_core.py): parte de M entre as paredes de dentro e economia média dos atalhos
 const MSHARE_MIN = { 7: 0.85, 8: 0.45, 9: 0.3, 10: 0.35, 13: 0.3, 15: 0.25, 16: 0.3, 17: 0.5, 19: 0.35 }, MSHARE_DEFAULT = 0.4;
@@ -109,7 +109,10 @@ test("a configuração copiada do Gatinho bate com a dele: like, vidas extras, v
     assert.deepStrictEqual(lv.extraLives, c.extraLives, "vidas extras");
     assert.strictEqual(lv.birdSpeed, c.catSpeed, "velocidade");
     assert.deepStrictEqual(lv.fruitMix, c.boneMix, "tipos de fruto");
-    assert.deepStrictEqual([lv.cats, lv.hawks, lv.seeds, lv.fruits, lv.worms], [c.dogs, c.trackers, c.rations, c.bones, c.balls], "mesmos números do Gatinho (cães/rastreadores/ratinhos/novelos/camundongos)");
+    assert.deepStrictEqual([lv.seeds, lv.fruits, lv.worms], [c.rations, c.bones, c.balls], "mesmos números do Gatinho (ratinhos/novelos/camundongos)");
+    // gatos e gaviões: até a Fase 10 são os cães do Gatinho; da Fase 11 em diante (0.22.0) cada bichinho tem a CONTAGEM que a medição de dificuldade pediu (tools/difficulty/ramp.json), por isso só se exige que fique perto da do Gatinho
+    if (lv.id <= 10) assert.deepStrictEqual([lv.cats, lv.hawks], [c.dogs, c.trackers], "até a Fase 10: mesmos cães/rastreadores do Gatinho");
+    else assert.ok(Math.abs(lv.cats - c.dogs) <= 5 && Math.abs(lv.hawks - c.trackers) <= 5, `gatos ${lv.cats}/gaviões ${lv.hawks} longe dos cães ${c.dogs}/rastreadores ${c.trackers} do Gatinho`);
   });
 });
 

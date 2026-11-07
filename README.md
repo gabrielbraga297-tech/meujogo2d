@@ -5,7 +5,7 @@ Versão atual: o **Cachorrinho**, o **Gatinho** e o **Passarinho** estão pronto
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.21.0 · 05/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.22.0 · 07/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -35,14 +35,14 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 10 | chegar a 2050 pontos na fase (a saída abre) e sair | 6 | 40 | 5 | 87,85 / 175,69 px/s | 252 px/s |
 | 11 | chegar a 2300 pontos na fase **e cumprir a missão** (pegar todos os 5 ossos); só então a saída abre — e sair | 5 | 44 | 5 | 89,32 / 178,62 px/s | 252 px/s |
 | 12 | chegar a 2450 pontos na fase **e cumprir a missão** (pegar 34 das 46 rações); só então a saída abre — e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
-| 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 6 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
-| 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos); só então a saída abre — e sair | 6 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
-| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 6 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
+| 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 5 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
+| 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos); só então a saída abre — e sair | 7 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
+| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 7 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
 | 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
 | 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e pegar 40 das 56 rações); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
-| 18 | chegar a 3600 pontos na fase **e cumprir a missão** (pegar 46 das 58 rações); só então a saída abre — e sair | 8 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
-| 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 48 das 60 rações); só então a saída abre — e sair | 8 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
-| 20 | chegar a 4000 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 52 das 62 rações); só então a saída abre — e sair | 8 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
+| 18 | chegar a 3600 pontos na fase **e cumprir a missão** (pegar 46 das 58 rações); só então a saída abre — e sair | 7 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
+| 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 48 das 60 rações); só então a saída abre — e sair | 7 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
+| 20 | chegar a 4000 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 52 das 62 rações); só então a saída abre — e sair | 9 | 62 | 8 | 102,49 / 204,97 px/s | 252 px/s |
 
 - A velocidade do cachorrinho **sobe 10% a cada osso pego** (até o fim da fase). Os números acima são a velocidade base de cada fase (na 0.7.0 a do cachorrinho é 0,7 × a da 0.6.0: 360 → 252 px/s; a Fase 3 usa 90% e as Fases 4 e 5 usam 94,5%; os agentes da carrocinha ganharam +10% em todas as fases).
 - Um **carteiro** atingido pelo cachorrinho com poder volta ao centro do mapa, fica tonto por 2 s e depois foge a **50% da velocidade de fuga** (0,625 × a velocidade de patrulha da tabela, ou seja 37,8 px/s na Fase 2) até o poder acabar.
@@ -85,16 +85,16 @@ Cidades cada vez maiores, a partir da Fase 6: mais rações, mais ossos, **mais 
 Da **Fase 9 até a Fase 20** o cachorrinho **renasce onde morreu** (se um bloco ou parede estiver em cima, é empurrado para o lado livre mais perto), com a proteção de 2 s de sempre; os agentes da carrocinha voltam aos postos. Os mapas foram gerados por script e conferidos: em **qualquer** posição das peças móveis todo o chão continua ligado.
 
 ### Fases 11 a 20 (0.15.4)
-Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 8 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Todas têm **gatos** (de 2 a 7, veja *Os gatos*). Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
+Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a 117 quarteirões), com **mais becos sem saída** (19 até 35), mais rações, mais ossos, **de 5 a 9 agentes da carrocinha** (velocidade da Fase 10 mais 2% por fase), alcance do "!" de 16 a 20 quadrados, as peças móveis cada vez mais rápidas e **mais pontos para passar** (2300 até 4000, com perda de 300 a 400 por vida). Todas têm 6 portas e 6 paredes que se movem (sorteadas a cada jogo, de 5 a 6 de cada), 3 caminhos sem célula em comum do início à saída e o cachorrinho renasce onde morreu. Todas têm **gatos** (de 2 a 7, veja *Os gatos*). Cada fase é um **lugar novo** (veja *Ambientes*). A Fase 20 ainda não tem o chefão (fica para um próximo capítulo).
 
 | | Fase 11 | Fase 12 | Fase 13 | Fase 14 | Fase 15 | Fase 16 | Fase 17 | Fase 18 | Fase 19 | Fase 20 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
 | Bolinhas (+50 cada) | 4 | 4 | 4 | 4 | 4 | 5 | 5 | 5 | 5 | 5 |
-| Agentes da carrocinha (no centro do mapa) | 5 | 5 | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
+| Agentes da carrocinha (no centro do mapa) | 5 | 5 | 5 | 7 | 7 | 7 | 7 | 7 | 7 | 9 |
 | Ossos de tipo novo (além de 3 comuns) | ouro, gelo | gelo, turbo | ouro, gelo, ímã | ouro, turbo, ímã | gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | 2 ouros, gelo, turbo, ímã | ouro, 2 gelos, turbo, ímã |
-| Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 4 | 5 | 5 | 6 | 6 | 7 |
+| Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 5 | 5 | 5 | 6 | 6 | 7 |
 | Velocidade dos gatos (patrulha / perseguição px/s; ouvido em passos) | 130 / 200; 7 | 132 / 203; 7 | 134 / 205; 7 | 135 / 208; 7 | 137 / 211; 8 | 139 / 214; 8 | 141 / 216; 8 | 143 / 219; 8 | 144 / 222; 9 | 146 / 224; 9 |
 | Vidas escondidas (sorteio por jogo) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
 | Alcance do "!" | 16 quadrados | 16 | 17 | 17 | 18 | 18 | 19 | 19 | 20 | 20 |
@@ -220,7 +220,7 @@ A fase de cada categoria é a **primeira do jogo em que o objeto existe**, e um 
 **Testes:** `node tests/records.test.js` (a carteira por categoria, a liberação, o formato e a validação), `node tests/skins.test.js` (o catálogo), `node tests/skins-bird.test.js` (as skins do Passarinho: preços, textos, campos visuais, o desenho de `js/bird-art.js` com cada skin, as cores-chave dos frutos, o ninho verde e vermelho, o pelo claro na noite e o `from` de cada categoria conferido com `js/bird-levels.js`) e, no navegador, `node tests/e2e.js "Skins do Passarinho"` (os mostruários e a lojinha do Passarinho) e `node tests/e2e.js "Lojinha única"` (as abas, o teclado e os rótulos para leitor de tela, o bloqueio e a liberação por fase com o exemplo dos gatos, a carteira única, comprar/usar/guardar por categoria, os tamanhos de tela 320×568, 360×640, 390×780, 740×390, 568×320 e 1000×700, e a conferência da fase `from` com os mapas).
 
 ## Os gatos (0.15.5, Fases 11 a 20)
-Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 4, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
+Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 5, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
 
 - **É mais rápido:** 130 px/s patrulhando e 200 px/s perseguindo na Fase 11, até 146 e 224 na Fase 20 (o cachorrinho anda 252 px/s, mais 10% por osso). Ao ver o cachorrinho a menos de 4 tiles ele dá o **bote**: 1,3 × a velocidade por 0,7 s (e espera 3 s para o próximo).
 - **Ouve:** além de ver (o alcance de visão é o do "!" da fase mais 4 tiles), ele **ouve** o cachorrinho a até 7 passos (8 e 9 nas Fases 15 e 19), **mesmo atrás de paredes**. O agente só persegue o que vê.
@@ -755,13 +755,13 @@ Cópia técnica da tabela que é entregue ao dono a cada versão (conferida por 
 | 10 | Armazém de grãos | 55×41 | 2050 pontos | 6 | — | 40 | 5 | 3 | 87,85 / 175,69 | — | 252 | 5 | 300 | — | — | — |
 | 11 | Celeiro e curral | 57×41 | 2300 pontos + missão | 5 | 2 | 44 | 5 | 4 | 89,32 / 178,62 | 130 / 200 | 252 | 6 | 300 | todos os novelos | 200 | — |
 | 12 | Horta e galinheiro | 57×41 | 2450 pontos + missão | 5 | 3 | 46 | 5 | 4 | 90,78 / 181,55 | 132 / 203 | 252 | 6 | 300 | 34 ratinhos | 250 | — |
-| 13 | Borda da mata | 57×43 | 2650 pontos + missão | 6 | 3 | 48 | 6 | 4 | 92,24 / 184,48 | 134 / 205 | 252 | 7 | 325 | 36 ratinhos | 300 | — |
-| 14 | Riacho e pedras | 57×43 | 2800 pontos + missão | 6 | 4 | 50 | 6 | 4 | 93,71 / 187,4 | 135 / 208 | 252 | 7 | 325 | todos os novelos | 350 | — |
+| 13 | Borda da mata | 57×43 | 2650 pontos + missão | 5 | 3 | 48 | 6 | 4 | 92,24 / 184,48 | 134 / 205 | 252 | 7 | 325 | 36 ratinhos | 300 | — |
+| 14 | Riacho e pedras | 57×43 | 2800 pontos + missão | 5 | 4 | 50 | 6 | 4 | 93,71 / 187,4 | 135 / 208 | 252 | 7 | 325 | todos os novelos | 350 | — |
 | 15 | Vila de pescadores | 59×43 | 3000 pontos + missão | 6 | 4 | 52 | 6 | 4 | 95,17 / 190,33 | 137 / 211 | 252 | 8 | 350 | 40 ratinhos | 400 | — |
 | 16 | Docas do porto | 59×45 | 3200 pontos + missão | 7 | 5 | 54 | 7 | 5 | 96,64 / 193,26 | 139 / 214 | 252 | 8 | 350 | 44 ratinhos | 450 | — |
 | 17 | Praia e dunas | 61×45 | 3400 pontos + missão | 7 | 5 | 56 | 7 | 5 | 98,1 / 196,19 | 141 / 216 | 252 | 9 | 375 | todos os novelos + 40 ratinhos | 500 | — |
-| 18 | Telhados à noite | 61×45 | 3600 pontos + missão | 7 | 6 | 58 | 7 | 5 | 99,57 / 199,12 | 143 / 219 | 252 | 9 | 375 | 46 ratinhos | 550 | sim |
-| 19 | Mercado à noite | 61×45 | 3800 pontos + missão | 8 | 6 | 60 | 8 | 5 | 101,03 / 202,05 | 144 / 222 | 252 | 10 | 400 | todos os novelos + 48 ratinhos | 600 | sim |
+| 18 | Telhados à noite | 61×45 | 3600 pontos + missão | 8 | 6 | 58 | 7 | 5 | 99,57 / 199,12 | 143 / 219 | 252 | 9 | 375 | 46 ratinhos | 550 | sim |
+| 19 | Mercado à noite | 61×45 | 3800 pontos + missão | 9 | 6 | 60 | 8 | 5 | 101,03 / 202,05 | 144 / 222 | 252 | 10 | 400 | todos os novelos + 48 ratinhos | 600 | sim |
 | 20 | A casa grande | 63×47 | 4000 pontos + missão | 8 | 7 | 62 | 8 | 5 | 102,49 / 204,97 | 146 / 224 | 252 | 10 | 400 | todos os novelos + 52 ratinhos | 650 | — |
 
 ## Biologia por trás do Gatinho (0.18.0)
@@ -916,14 +916,14 @@ Cópia técnica da tabela que é entregue ao dono a cada versão (conferida por 
 | 10 | Mata de pinheiros | 55×41 | 2050 pontos | 6 | — | 40 | 5 | 3 | 87,85 / 175,69 | — | 252 | 5 | 300 | — | — | — | 4 | 2 | 5× voo alto |
 | 11 | Fazenda e galinheiro | 57×41 | 2300 pontos + missão | 5 | 2 | 44 | 5 | 4 | 89,32 / 178,62 | 130 / 200 | 252 | 6 | 300 | todos os frutos | 200 | — | 4 | 4 | 3× voo alto, 1× escudo, 1× ar frio |
 | 12 | Margem do rio | 57×41 | 2450 pontos + missão | 5 | 3 | 46 | 5 | 4 | 90,78 / 181,55 | 132 / 203 | 252 | 6 | 300 | 34 sementes | 250 | — | 4 | 4 | 3× voo alto, 1× ar frio, 1× rajada |
-| 13 | Pântano e vitórias-régias | 57×43 | 2650 pontos + missão | 6 | 3 | 48 | 6 | 4 | 92,24 / 184,48 | 134 / 205 | 252 | 7 | 325 | 36 sementes | 300 | — | 7 | 3 | 3× voo alto, 1× escudo, 1× ar frio, 1× ímã |
-| 14 | Dunas e restinga | 57×43 | 2800 pontos + missão | 6 | 4 | 50 | 6 | 4 | 93,71 / 187,4 | 135 / 208 | 252 | 7 | 325 | todos os frutos | 350 | — | 4 | 8 | 3× voo alto, 1× escudo, 1× rajada, 1× ímã |
-| 15 | Falésias e ninhos | 59×43 | 3000 pontos + missão | 6 | 4 | 52 | 6 | 4 | 95,17 / 190,33 | 137 / 211 | 252 | 8 | 350 | 40 sementes | 400 | — | 4 | 5 | 3× voo alto, 1× ar frio, 1× rajada, 1× ímã |
-| 16 | Vila de pescadores e redes | 59×45 | 3200 pontos + missão | 7 | 5 | 54 | 7 | 5 | 96,64 / 193,26 | 139 / 214 | 252 | 8 | 350 | 44 sementes | 450 | — | 5 | 7 | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
-| 17 | Campos de altitude | 61×45 | 3400 pontos + missão | 7 | 5 | 56 | 7 | 5 | 98,1 / 196,19 | 141 / 216 | 252 | 9 | 375 | todos os frutos + 40 sementes | 500 | — | 3 | 8 | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
-| 18 | Entardecer nos telhados | 61×45 | 3600 pontos + missão | 7 | 6 | 58 | 7 | 5 | 99,57 / 199,12 | 143 / 219 | 252 | 9 | 375 | 46 sementes | 550 | entardecer | 8 | — | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
-| 19 | Noite na floresta | 61×45 | 3800 pontos + missão | 8 | 6 | 60 | 8 | 5 | 101,03 / 202,05 | 144 / 222 | 252 | 10 | 400 | todos os frutos + 48 sementes | 600 | noite | 5 | 6 | 3× voo alto, 2× escudo, 1× ar frio, 1× rajada, 1× ímã |
-| 20 | O grande ninho | 63×47 | 4000 pontos + missão | 8 | 7 | 62 | 8 | 5 | 102,49 / 204,97 | 146 / 224 | 252 | 10 | 400 | todos os frutos + 52 sementes | 650 | — | 6 | 6 | 3× voo alto, 1× escudo, 2× ar frio, 1× rajada, 1× ímã |
+| 13 | Pântano e vitórias-régias | 57×43 | 2650 pontos + missão | 5 | 3 | 48 | 6 | 4 | 92,24 / 184,48 | 134 / 205 | 252 | 7 | 325 | 36 sementes | 300 | — | 7 | 3 | 3× voo alto, 1× escudo, 1× ar frio, 1× ímã |
+| 14 | Dunas e restinga | 57×43 | 2800 pontos + missão | 6 | 3 | 50 | 6 | 4 | 93,71 / 187,4 | 135 / 208 | 252 | 7 | 325 | todos os frutos | 350 | — | 4 | 8 | 3× voo alto, 1× escudo, 1× rajada, 1× ímã |
+| 15 | Falésias e ninhos | 59×43 | 3000 pontos + missão | 6 | 5 | 52 | 6 | 4 | 95,17 / 190,33 | 137 / 211 | 252 | 8 | 350 | 40 sementes | 400 | — | 4 | 5 | 3× voo alto, 1× ar frio, 1× rajada, 1× ímã |
+| 16 | Vila de pescadores e redes | 59×45 | 3200 pontos + missão | 8 | 7 | 54 | 7 | 5 | 96,64 / 193,26 | 139 / 214 | 252 | 8 | 350 | 44 sementes | 450 | — | 5 | 7 | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
+| 17 | Campos de altitude | 61×45 | 3400 pontos + missão | 7 | 4 | 56 | 7 | 5 | 98,1 / 196,19 | 141 / 216 | 252 | 9 | 375 | todos os frutos + 40 sementes | 500 | — | 3 | 8 | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
+| 18 | Entardecer nos telhados | 61×45 | 3600 pontos + missão | 8 | 6 | 58 | 7 | 5 | 99,57 / 199,12 | 143 / 219 | 252 | 9 | 375 | 46 sementes | 550 | entardecer | 8 | — | 3× voo alto, 1× escudo, 1× ar frio, 1× rajada, 1× ímã |
+| 19 | Noite na floresta | 61×45 | 3800 pontos + missão | 5 | 5 | 60 | 8 | 5 | 101,03 / 202,05 | 144 / 222 | 252 | 10 | 400 | todos os frutos + 48 sementes | 600 | noite | 5 | 6 | 3× voo alto, 2× escudo, 1× ar frio, 1× rajada, 1× ímã |
+| 20 | O grande ninho | 63×47 | 4000 pontos + missão | 10 | 8 | 62 | 8 | 5 | 102,49 / 204,97 | 146 / 224 | 252 | 10 | 400 | todos os frutos + 52 sementes | 650 | — | 6 | 6 | 3× voo alto, 1× escudo, 2× ar frio, 1× rajada, 1× ímã |
 
 ## Biologia por trás do Passarinho (0.20.0)
 
@@ -990,6 +990,8 @@ Tudo é guardado no navegador do aparelho (`localStorage`). Se o navegador bloqu
 ## Tela e aparelhos
 O jogo ocupa o máximo da tela mantendo a proporção 25:18 e fica nítido em telas de alta densidade. Em telas pequenas (celular em pé) a câmera aproxima e segue o cachorrinho; em celular deitado ou tablet o controle de toque fica ao lado ou abaixo do jogo. A altura do placar é medida para o jogo caber sem rolar a página. Para ver os controles de toque no computador, abra `index.html?touch=1`.
 
+**Navegadores testados (0.22.0).** A suíte completa roda no **Chromium** (o navegador de referência), no **Firefox 155** (181 seções, 3109 verificações, nenhuma falha inesperada) e no **WebKit 26.6 do Playwright** (181 seções, 3103 verificações, nenhuma falha inesperada). Em Firefox e WebKit o executor `tools/run-sections.js` separa as falhas de verdade das **diferenças esperadas de motor** (12 seções no WebKit, 8 no Firefox): hashes de pixels tirados no Chromium (cada motor suaviza as bordas do seu jeito), seções que usam o protocolo do Chrome para simular toque, o andar dos inimigos (a precisão de `Math.hypot` e `Math.atan2` muda de um motor para outro e, em 10 s de jogo, 3 de 12 fases já divergem), o tempo de um quadro no WebKit sem placa de vídeo e o relógio do `AudioContext` num WebKit sem placa de som. **O WebKit do Playwright não é o Safari:** é o mesmo motor num Linux de testes, mas sem as fontes, o áudio, o toque e a barra de endereços de um iPhone ou de um Mac; **o Safari de verdade nunca foi testado**. A auditoria desta versão achou um defeito real que só o WebKit mostrou (a lojinha em telas baixas, por causa de `scroll-padding-top` fixo) e ele foi corrigido.
+
 ## Estrutura
 ```
 index.html            canvas, placar (HTML) e todas as telas (menu, bichinhos, fases, como jogar, pontuações, nome, pausa, vitória, derrota)
@@ -1054,6 +1056,8 @@ tests/bird-art.test.js testes unitários dos desenhos do Passarinho (Node, com u
 tests/bird-themes-1.test.js testes dos ambientes do Passarinho, Fases 1 a 10 (Node); tests/bird-themes-2.test.js, Fases 11 a 20; tests/bird-themes-harness.js não é um teste: é o ctx de mentira que os dois usam
 tests/bird-table.test.js confere a tabela das fases do Passarinho do README com js/bird-levels.js e com a tabela do Gatinho (Node)
 tests/skins-bird.test.js testes unitários das skins dos objetos do Passarinho (Node, com um ctx de mentira)
+tests/e2e-ramp.js     a seção "0.22.0 · dificuldade escalonada" do e2e: os inimigos que o jogo põe em cada fase são os de tools/difficulty/ramp.json e o README explica a régua
+tests/difficulty-ramp.test.js a regra de dificuldade (nenhuma fase anterior mais difícil; 18 e 19 entre a 17 e a 20) sobre os números gravados, sem navegador
 tests/e2e-music.js    seções "música:" do e2e (carregadas pelo tests/e2e.js): o tema de cada situação, abafar, parar, recomeçar, mudo, botão Música e tecla N, aba escondida, sem Web Audio, falhas do tocador, o AudioContext real e o tamanho dos botões
 tests/e2e-bird-*.js   seções do e2e do Passarinho, uma por assunto (carregadas pelo tests/e2e.js): motor, integração, skins e a tabela das fases; tests/fixtures/ tem as 5 fases e o BirdArt de teste que as do motor usam
 tests/bird-robot-page.js o robô que joga as fases do Passarinho no navegador, andando de verdade até a vitória (função de página, usada por tests/e2e-bird-integracao.js)
@@ -1065,17 +1069,36 @@ tests/ab-dog.js       A/B de pixels do Cachorrinho: hash do canvas com a mesma s
 tests/ab-sounds.js    A/B de sons do Cachorrinho: cenas fixas e a lista de pedidos de som; ab-sounds-0170.json é a referência de antes dos sons do Gatinho (usado pelo e2e)
 tools/cat-preview/    prévias e capturas do Gatinho (art.html, themes1/2.html, shoot-art.js, shoot-themes*.js e shoot-game.js, que fotografa o jogo de verdade)
 tools/bird-preview/   prévias e capturas do Passarinho (art.html, themes.html, shoot-art.js, shoot-themes.js e bench.js)
+tools/difficulty/     a régua de dificuldade das fases (0.22.0): run.js (joga as fases com o robô e imprime/grava as medições), probe-page.js (o robô do Cachorrinho e do Gatinho), summary.js (tabela e comparação antes/depois), ramp.js (R, a regra e as contagens; build/check/table) e ramp.json (as medições gravadas que tests/difficulty-ramp.test.js confere)
+tools/run-sections.js executa a suíte do navegador uma seção por vez, com registro retomável e a lista de diferenças esperadas de motor (Firefox e WebKit)
 tools/skin-preview/   capturas das skins dos objetos com o jogo de verdade: shoot.js (objetos do Cachorrinho), cat-skins.js (objetos do Gatinho) e bird-skins.js (objetos do Passarinho)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
 
+## Dificuldade das fases (0.22.0)
+Pedido do dono (06/11/2026): as Fases **18 e 19** de cada bichinho ficam **menos difíceis que a 20** e **levemente mais difíceis que a 17**, e **nenhuma fase anterior pode ser mais difícil que uma posterior** (a dificuldade sobe proporcionalmente). Antes disso a medição mostrava o contrário em vários pontos (por exemplo, no Cachorrinho a 13, a 18 e a 19 eram mais difíceis que a 20; no Passarinho a 13, a 14 e a 19 passavam da 20).
+
+**A régua.** Um jogador-robô (`tools/difficulty/probe-page.js` no Cachorrinho e no Gatinho; `tests/bird-robot-page.js` no Passarinho, que conhece voo, galhos e vento) joga cada fase em 24 sementes com **vidas infinitas** (`--immortal`: ele continua depois de cada golpe) e o jogo anda por quadros simulados de 1/60 s, então **a mesma semente dá sempre o mesmo resultado**. Em cada partida conta-se `golpes ÷ minutos de jogo`; **R = a média dessas taxas, com cada partida limitada a 6 golpes por minuto** (uma partida em que o robô fica preso apanhando de um inimigo não decide sozinha a fase: sem o limite a Fase 17 do Cachorrinho media 6,6 e parecia mais difícil que a 20, só por causa de 1 partida de 22 golpes por minuto). Quanto maior o R, mais a fase castiga um jogador que presta atenção só em parte. **R é uma régua para comparar fases do mesmo bichinho, não o quanto uma pessoa sofre** (o robô não enxerga a escuridão das noites, não usa lugares altos nem poças de propósito e não aprende).
+
+**A regra** (conferida por `node tests/difficulty-ramp.test.js` sobre os números gravados em `tools/difficulty/ramp.json`): para qualquer par de fases `i < j` do mesmo bichinho, `R(j) ≥ R(i) − folga`, com folga = o maior entre 0,6 golpe/min e 30% de `R(i)` (a medição tem ruído); e `R(17) ≤ R(18) ≤ R(19) ≤ R(20)` com a mesma folga. O teste também falha se alguém mudar a quantidade de inimigos de uma fase sem medir de novo (as contagens gravadas precisam ser as do jogo), e a seção `0.22.0 · dificuldade escalonada` do e2e confere que o motor põe, em cada fase, os mesmos inimigos da medição.
+
+**Como se ajustou:** só a **quantidade de inimigos** das Fases 13 a 20 (os mapas ficam como estavam; ao somar um inimigo ele nasce longe do início, da saída e dos outros postos, e ao tirar um tira-se o último posto do mapa). As contagens ficam nas listas de cada bichinho (`vetsOf(n, k)` e `cats` de cada fase em `js/game.js`; `dogs`/`trk` em `tools/catmaze/gen_cat.py` e `cats`/`hawks` em `tools/birdmaze/gen_bird.py`, que regeram `js/cat-levels.js` e `js/bird-levels.js`). Como cada mapa tem o seu desenho, **a quantidade de inimigos não sobe sempre de fase em fase** (por exemplo, no Passarinho a Fase 19 tem menos inimigos que a 16): o que sobe é a dificuldade medida. Até a Fase 10 o Passarinho continua com os mesmos números do Gatinho; da 11 em diante cada bichinho tem os seus.
+
+TABELA_R
+
+**Para medir de novo** (depois de mexer em inimigos ou mapas): `node tools/difficulty/run.js --animals dog --levels 1-20 --seeds 24 --immortal --out dog.json` (idem `cat` e `bird`; sob `flock` se rodar mais de um por vez; `--resume` continua de onde parou), `node tools/difficulty/ramp.js build dog.json cat.json bird.json > tools/difficulty/ramp.json` e `node tests/difficulty-ramp.test.js`. `node tools/difficulty/ramp.js table` imprime a tabela legível e `node tools/difficulty/summary.js a.json --vs b.json` compara duas medições fase a fase.
+
+**Limites honestos.** O robô é só uma régua: as Fases 18 e 19 do Gatinho e do Passarinho são de noite e uma pessoa as sente mais difíceis do que o robô mostra (por isso, nelas, a escolha foi ficar do lado mais fácil da folga). Com 24 sementes a medição ainda oscila uns 0,3 a 0,6 golpe/min entre uma rodada e outra, e uma fase de R muito baixo (a maioria das primeiras) nem tem golpes suficientes para separar uma da outra. Quem vai dizer se a sequência *parece* certa é o dono jogando.
+
 ## Testes
+**Outros navegadores:** `BROWSER=firefox` ou `BROWSER=webkit` (com `PLAYWRIGHT_BROWSERS_PATH` apontando para onde estão baixados) roda o mesmo `tests/e2e.js` (o jogo é servido por um HTTP local, porque esses motores não interceptam arquivos `file://`). Para a suíte inteira, uma seção por vez, com um registro retomável de cada uma, use `node tools/run-sections.js --out resultado.jsonl [--resume] [--redo-failed] [--lock arquivo] [--only trecho] [--list]`; ele termina com código 1 só se houver falha inesperada.
 ```
 node tests/auth.test.js        # unitários, só precisam do Node
 node tests/records.test.js
 node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
+node tests/difficulty-ramp.test.js  # a regra de dificuldade das 60 fases sobre tools/difficulty/ramp.json e se as contagens de inimigos gravadas são as do jogo (0.22.0)
 node tests/sound.test.js
 node tests/music.test.js        # o motor das músicas tema (contrato, gerador, render e tocador, com um áudio de mentira)
 node tests/music-dog.test.js    # as receitas das músicas do Cachorrinho (estrutura, escala, laço, andamento); tests/music-cat.test.js e tests/music-bird.test.js, o mesmo para os outros; tests/music-themes.test.js (os 61 temas) e tests/music-render.test.js (as ferramentas de render)
