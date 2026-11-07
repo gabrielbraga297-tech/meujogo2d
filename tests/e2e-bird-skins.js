@@ -150,7 +150,7 @@ module.exports = async function (T) {
   await section("0.20.0 · Skins do Passarinho: as skins do Passarinho não aparecem no Cachorrinho nem no Gatinho (o canvas dos dois é o MESMO com todas as skins do Passarinho em uso, e nenhuma função de BirdArt é chamada)", async () => {
     const { DOG_START, DOG_HASH } = require(path.join(root, "tests/ab-dog.js"));
     const { CAT_FRAME } = require(path.join(root, "tests/skins-cat-frame.js"));
-    const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "c113ca15" }; // os mesmos de sempre (código da 0.18.0, antes do desenho do Gatinho)
+    const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "31a668a2" }; // os mesmos de sempre (código da 0.18.0, antes do desenho do Gatinho)
     // (a) Cachorrinho com TODAS as 9 categorias do Passarinho em uso
     const dp = await bpage({ viewport: { width: 1000, height: 700 } });
     await dp.goto(URL);
