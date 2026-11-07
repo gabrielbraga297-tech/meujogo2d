@@ -22,20 +22,20 @@ module.exports = async function (T) {
     // ---- Fase 1, primeira vez, sem perder vida: 4 + 1 = 5, mais 2
     await ev(pg, () => { __game.setAnimal("dog"); __game.start(1); __game.noCatch = true; });
     await finish(pg, 10);
-    ok(await ev(pg, () => __game.state) === "won" && await treat(pg) === "Petiscos ganhos! +7 petscoin (fase nova +5 · sem perder vida +2). Você tem 7. Troque por skins na Lojinha, no menu." && await wallet(pg) === 7, `Fase 1, primeira vez, sem perder vida: +5 e +2 (${await treat(pg)})`);
+    ok(await ev(pg, () => __game.state) === "won" && await treat(pg) === "Petiscos ganhos! +7 petscoin (você tem 7). Fase nova +5 · sem perder vida +2. Troque por skins na Lojinha, no menu." && await wallet(pg) === 7, `Fase 1, primeira vez, sem perder vida: +5 e +2 (${await treat(pg)})`);
     // ---- a mesma fase de novo, no mesmo tempo: sem recorde, 1 petisco
     await ev(pg, () => { __game.start(1); __game.noCatch = true; }); await finish(pg, 10);
-    ok(/^Petisco ganho! \+1 petscoin \(jogar de novo sem recorde \+1\)\. Você tem 8\./.test(await treat(pg)) && await wallet(pg) === 8, `repetir a Fase 1 sem melhorar rende 1 (${await treat(pg)})`);
+    ok(/^Petisco ganho! \+1 petscoin \(você tem 8\)\. Jogar de novo sem recorde \+1\./.test(await treat(pg)) && await wallet(pg) === 8, `repetir a Fase 1 sem melhorar rende 1 (${await treat(pg)})`);
     // ---- de novo, em menos tempo (mais pontos de bônus de tempo ou o mesmo em menos tempo): recorde, metade de 5 = 3, mais 2
     await ev(pg, () => { __game.start(1); __game.noCatch = true; }); await finish(pg, 2);
-    ok(/^Petiscos ganhos! \+5 petscoin \(recorde batido \+3 · sem perder vida \+2\)\. Você tem 13\./.test(await treat(pg)) && await wallet(pg) === 13, `bater o recorde da Fase 1 rende 3 + 2 (${await treat(pg)})`);
+    ok(/^Petiscos ganhos! \+5 petscoin \(você tem 13\)\. Recorde batido \+3 · sem perder vida \+2\./.test(await treat(pg)) && await wallet(pg) === 13, `bater o recorde da Fase 1 rende 3 + 2 (${await treat(pg)})`);
     // ---- Fase 20 do Cachorrinho, primeira vez: 4 + 20 = 24, mais 2
     await ev(pg, () => { __game.start(20); __game.noCatch = true; }); await finish(pg, 20);
-    ok(/^Petiscos ganhos! \+26 petscoin \(fase nova \+24 · sem perder vida \+2\)\. Você tem 39\./.test(await treat(pg)) && await wallet(pg) === 39, `Fase 20, primeira vez: +24 e +2 (${await treat(pg)})`);
+    ok(/^Petiscos ganhos! \+26 petscoin \(você tem 39\)\. Fase nova \+24 · sem perder vida \+2\./.test(await treat(pg)) && await wallet(pg) === 39, `Fase 20, primeira vez: +24 e +2 (${await treat(pg)})`);
     // ---- a carteira é única: a Fase 1 do Gatinho e a do Passarinho também são "primeira vez" (o progresso é de cada jogo)
     for (const [animal, want] of [["cat", 46], ["bird", 53]]) {
       await ev(pg, (a) => { __game.setAnimal(a); __game.start(1); __game.noCatch = true; }, animal); await finish(pg, 10);
-      ok(/^Petiscos ganhos! \+7 petscoin \(fase nova \+5/.test(await treat(pg)) && await wallet(pg) === want, `${animal === "cat" ? "Gatinho" : "Passarinho"}, Fase 1, primeira vez: +7 na mesma carteira (${await treat(pg)})`);
+      ok(/^Petiscos ganhos! \+7 petscoin \(você tem \d+\)\. Fase nova \+5/.test(await treat(pg)) && await wallet(pg) === want, `${animal === "cat" ? "Gatinho" : "Passarinho"}, Fase 1, primeira vez: +7 na mesma carteira (${await treat(pg)})`);
     }
     // ---- perder uma vida tira os +2 (aqui a vida é perdida por contato de verdade)
     await ev(pg, () => { __game.setAnimal("dog"); __game.start(2); __game.noCatch = false; __game.freezeVets = false; });
@@ -43,7 +43,7 @@ module.exports = async function (T) {
     ok(lost > 0, `na Fase 2 o cachorrinho perde uma vida de verdade (${lost})`);
     await finish(pg, 10);
     const t2 = await treat(pg);
-    ok(/^Petiscos ganhos! \+6 petscoin \(fase nova \+6\)\. Você tem 59\./.test(t2) && !/sem perder vida/.test(t2) && await wallet(pg) === 59, `com uma vida perdida a primeira vez da Fase 2 rende só +6, sem os +2 (${t2})`);
+    ok(/^Petiscos ganhos! \+6 petscoin \(você tem 59\)\. Fase nova \+6\./.test(t2) && !/sem perder vida/.test(t2) && await wallet(pg) === 59, `com uma vida perdida a primeira vez da Fase 2 rende só +6, sem os +2 (${t2})`);
     await pg.context().close();
 
     // ---- os preços NÃO mudaram e o ganho acompanha o catálogo

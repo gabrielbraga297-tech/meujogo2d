@@ -440,3 +440,8 @@ body.touch.sprint-on .rotate-tip { padding-right: 90px; } /* o botão Correr (76
 @media (prefers-reduced-motion: reduce) {
   .heart, #toast, .save-status { transition: none; }
 }
+
+/* (0.23.0) a vitória diz de onde veio cada petscoin ("Fase nova +5 · sem perder vida +2"); em telas estreitas ou baixas esse trecho sai da vista, sem sair do leitor de tela, para a vitória caber sem rolar */
+@media (max-width: 380px), (max-height: 420px) {
+  .treat-why { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+}

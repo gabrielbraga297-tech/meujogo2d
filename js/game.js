@@ -3398,8 +3398,8 @@
     }
     { // 0.15.9, 0.23.0: ao completar a fase o jogador ganha petiscos (= petscoin), guardados na carteira dele; quantos: Records.winTreats (fase nova, recorde batido ou repetida; +2 sem perder vida)
       const me2 = accountGone() ? "" : gamePlayer, tr = Records.winTreats(levelId, { first: !!(res && res.first), newPersonal: !!(res && res.newPersonal), livesLost }), w = me2 ? store.addTreats(me2, tr.total) : null;
-      const why = (tr.kind === "first" ? `fase nova +${tr.base}` : tr.kind === "record" ? `recorde batido +${tr.base}` : `jogar de novo sem recorde +${tr.base}`) + (tr.perfect ? ` · sem perder vida +${tr.perfect}` : "");
-      if (w) $("win-treat").replaceChildren(`${tr.total === 1 ? "Petisco ganho!" : "Petiscos ganhos!"} +${tr.total} petscoin (${why}). Você tem ${w.treats}.`, el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (a dica some nas telas baixas, para a vitória caber sem rolar)
+      const why = (tr.kind === "first" ? `Fase nova +${tr.base}` : tr.kind === "record" ? `Recorde batido +${tr.base}` : `Jogar de novo sem recorde +${tr.base}`) + (tr.perfect ? ` · sem perder vida +${tr.perfect}` : "") + ".";
+      if (w) $("win-treat").replaceChildren(`${tr.total === 1 ? "Petisco ganho!" : "Petiscos ganhos!"} +${tr.total} petscoin (você tem ${w.treats}).`, el("span", "treat-why", ` ${why}`), el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (de onde veio cada petscoin some das telas estreitas, para a vitória caber sem rolar; a dica some nas telas baixas)
       else $("win-treat").textContent = gone ? "" : "Sem nome de usuário: os petiscos desta fase não foram guardados. Escolha um nome no menu para juntar petiscos.";
     }
     showScreen("win");

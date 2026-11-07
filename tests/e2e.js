@@ -6605,7 +6605,7 @@ const PAGE_HELPERS = () => {
   const hex3 = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const mix3 = (a, b, t) => { const pa = hex3(a), pb = hex3(b); return pa.map((v, k) => Math.round(v + (pb[k] - v) * t)); }; // o mesmo cálculo do jogo (mixHex)
   // (0.23.0) o texto da vitória: aqui o rendimento está fixado em 1 por vitória (veja realTreats em browser.newContext), que cai em "jogar de novo sem recorde"
-  const TREAT = (n) => `Petisco ganho! +1 petscoin (jogar de novo sem recorde +1). Você tem ${n}. Troque por skins na Lojinha, no menu.`;
+  const TREAT = (n) => `Petisco ganho! +1 petscoin (você tem ${n}). Jogar de novo sem recorde +1. Troque por skins na Lojinha, no menu.`;
   const NO_NAME_TREAT = "Sem nome de usuário: os petiscos desta fase não foram guardados. Escolha um nome no menu para juntar petiscos.";
   const BAL = (n, name = "Totó") => `${name}, você tem ${n} petscoin (${n} ${n === 1 ? "petisco" : "petiscos"}).`;
   const walletOf = (pg, name = "Totó") => pg.evaluate((n) => Records.createStore(localStorage).wallet(n), name); // a carteira como está guardada (outra cópia do armazenamento)
@@ -8648,7 +8648,7 @@ const PAGE_HELPERS = () => {
       canvas: document.getElementById("game").getAttribute("aria-label"), pad: document.getElementById("pad").getAttribute("aria-label"),
     }));
     const orig = await snap();
-    ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /1 petisco/.test(orig.shop) && /10 petscoin/.test(orig.shop) && /em qualquer jogo/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
+    ok(JSON.stringify(orig.labels.slice(0, 5)) === JSON.stringify(["FASE ", "RAÇÕES ", "OSSOS ", "BOLINHAS ", "PONTOS "]) && /^Área do jogo: um cachorrinho coleta tigelas de ração e ossos/.test(orig.canvas) && /Objetivo:<\/strong> ajude o cachorrinho a pegar todas as tigelas de ração/.test(orig.howto) && /petiscos/.test(orig.shop) && /10 petscoin/.test(orig.shop) && /em qualquer jogo/.test(orig.shop), "ponto de partida: a página traz os textos do Cachorrinho");
     // ---- jogando o Cachorrinho (Fase 2): placar, avisos, vitória, derrota ----
     await ev(page, () => { __game.start(2); __game.freezeVets = true; __game.items.forEach((it) => { it.life = false; }); });
     const hudDog = await ev(page, () => ({ prey: document.getElementById("hud-items").parentNode.textContent, bones: document.getElementById("hud-bones").parentNode.textContent, balls: document.getElementById("hud-balls").parentNode.textContent, power: document.getElementById("hud-power").parentNode.textContent, aria: document.getElementById("hud-power-item").getAttribute("aria-label"), toast: document.getElementById("toast").textContent }));
@@ -10029,7 +10029,7 @@ const PAGE_HELPERS = () => {
     await ev(cp, () => { Records.createStore(localStorage).addTreats("Totó", 12); __game.setAnimal("cat"); });
     await cp.click("#btn-shop");
     ok(await cp.textContent("#shop-title") === "Lojinha de skins" && await cp.getAttribute("#shop", "aria-labelledby") === "shop-title" && await cp.getByRole("heading", { name: "Lojinha de skins" }).isVisible(), "a lojinha é única: o título é o mesmo no Gatinho e no Cachorrinho (e a tela continua rotulada para leitor de tela)");
-    ok(/1 petisco/.test(await cp.textContent("#shop-help")) && /10 petscoin/.test(await cp.textContent("#shop-help")) && !/gatinho|cachorrinho/i.test(await cp.textContent("#shop-help")), "a ajuda da lojinha é geral (1 petisco por fase, mínimo de 10 petscoin) e não cita um bichinho só");
+    ok(/petiscos/.test(await cp.textContent("#shop-help")) && /10 petscoin/.test(await cp.textContent("#shop-help")) && !/gatinho|cachorrinho/i.test(await cp.textContent("#shop-help")), "a ajuda da lojinha é geral (1 petisco por fase, mínimo de 10 petscoin) e não cita um bichinho só");
     ok(await cp.getAttribute("#shop-game-cat", "aria-selected") === "true" && await cp.getAttribute("#shop-cat-cat", "aria-selected") === "true" && await cp.getAttribute("#shop-game-dog", "aria-selected") === "false", "com o Gatinho escolhido a lojinha abre na aba do Gatinho e na categoria do próprio gatinho");
     ok(await cp.textContent("#shop-balance") === BAL(12), `o saldo é o da carteira única: "${await cp.textContent("#shop-balance")}"`);
     let cards = await shopCards(cp);
