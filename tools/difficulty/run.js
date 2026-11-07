@@ -46,8 +46,9 @@ const ROOT = path.join(__dirname, "../..");
       const ok = rows.filter((r) => !r.error), won = ok.filter((r) => r.state === "won").length;
       const lost = ok.map((r) => r.livesLost), mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
       const fh = ok.filter((r) => r.firstHit !== null).map((r) => r.firstHit), tm = ok.map((r) => r.time);
+      const sorted = [...lost].sort((x, y) => x - y), median = sorted.length ? (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2 : NaN;
       const rate = ok.reduce((n, r) => n + r.hits, 0) / Math.max(1, ok.reduce((n, r) => n + r.time, 0)) * 60; // golpes por minuto de jogo
-      console.log(`F${String(id).padStart(2)}: ${won}/${ok.length} vitórias, perdeu ${mean(lost).toFixed(2)} vidas [${Math.min(...lost)}-${Math.max(...lost)}], 1º golpe ${fh.length ? mean(fh).toFixed(0) + " s" : "-"}, ${rate.toFixed(2)} golpes/min, tempo ${mean(tm).toFixed(0)} s${rows.some((r) => r.error) ? "  ERRO: " + rows.find((r) => r.error).error : ""}${errs.length ? "  (erros de página: " + errs[0] + ")" : ""}`);
+      console.log(`F${String(id).padStart(2)}: ${won}/${ok.length} vitórias, perdeu ${mean(lost).toFixed(2)} vidas (mediana ${median}) [${Math.min(...lost)}-${Math.max(...lost)}], 1º golpe ${fh.length ? mean(fh).toFixed(0) + " s" : "-"}, ${rate.toFixed(2)} golpes/min, tempo ${mean(tm).toFixed(0)} s${rows.some((r) => r.error) ? "  ERRO: " + rows.find((r) => r.error).error : ""}${errs.length ? "  (erros de página: " + errs[0] + ")" : ""}`);
     }
   }
   await browser.close();
