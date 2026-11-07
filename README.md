@@ -37,7 +37,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 12 | chegar a 2450 pontos na fase **e cumprir a missão** (pegar 34 das 46 rações); só então a saída abre — e sair | 5 | 46 | 5 | 90,78 / 181,55 px/s | 252 px/s |
 | 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 5 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
 | 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos); só então a saída abre — e sair | 7 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
-| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 7 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
+| 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 8 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
 | 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
 | 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e pegar 40 das 56 rações); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
 | 18 | chegar a 3600 pontos na fase **e cumprir a missão** (pegar 46 das 58 rações); só então a saída abre — e sair | 7 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
@@ -92,9 +92,9 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
 | Bolinhas (+50 cada) | 4 | 4 | 4 | 4 | 4 | 5 | 5 | 5 | 5 | 5 |
-| Agentes da carrocinha (no centro do mapa) | 5 | 5 | 5 | 7 | 7 | 7 | 7 | 7 | 7 | 9 |
+| Agentes da carrocinha (no centro do mapa) | 5 | 5 | 5 | 7 | 8 | 7 | 7 | 7 | 7 | 9 |
 | Ossos de tipo novo (além de 3 comuns) | ouro, gelo | gelo, turbo | ouro, gelo, ímã | ouro, turbo, ímã | gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | 2 ouros, gelo, turbo, ímã | ouro, 2 gelos, turbo, ímã |
-| Gatos (a partir da Fase 11) | 2 | 3 | 3 | 4 | 6 | 5 | 5 | 6 | 6 | 7 |
+| Gatos (a partir da Fase 11) | 2 | 3 | 3 | 5 | 6 | 5 | 5 | 6 | 6 | 7 |
 | Velocidade dos gatos (patrulha / perseguição px/s; ouvido em passos) | 130 / 200; 7 | 132 / 203; 7 | 134 / 205; 7 | 135 / 208; 7 | 137 / 211; 8 | 139 / 214; 8 | 141 / 216; 8 | 143 / 219; 8 | 144 / 222; 9 | 146 / 224; 9 |
 | Vidas escondidas (sorteio por jogo) | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 | 3 ou 4 |
 | Alcance do "!" | 16 quadrados | 16 | 17 | 17 | 18 | 18 | 19 | 19 | 20 | 20 |
@@ -220,7 +220,7 @@ A fase de cada categoria é a **primeira do jogo em que o objeto existe**, e um 
 **Testes:** `node tests/records.test.js` (a carteira por categoria, a liberação, o formato e a validação), `node tests/skins.test.js` (o catálogo), `node tests/skins-bird.test.js` (as skins do Passarinho: preços, textos, campos visuais, o desenho de `js/bird-art.js` com cada skin, as cores-chave dos frutos, o ninho verde e vermelho, o pelo claro na noite e o `from` de cada categoria conferido com `js/bird-levels.js`) e, no navegador, `node tests/e2e.js "Skins do Passarinho"` (os mostruários e a lojinha do Passarinho) e `node tests/e2e.js "Lojinha única"` (as abas, o teclado e os rótulos para leitor de tela, o bloqueio e a liberação por fase com o exemplo dos gatos, a carteira única, comprar/usar/guardar por categoria, os tamanhos de tela 320×568, 360×640, 390×780, 740×390, 568×320 e 1000×700, e a conferência da fase `from` com os mapas).
 
 ## Os gatos (0.15.5, Fases 11 a 20)
-Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 4, 6, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
+Um inimigo novo, **mais ágil e mais esperto que o agente da carrocinha**. Há **2 gatos na Fase 11** e a quantidade sobe até **7 na Fase 20** (2, 3, 3, 5, 6, 5, 5, 6, 6 e 7). Cada gato tem uma pelagem (laranja, cinza, preta ou branca com manchas) e anda de tile em tile como o agente, mas:
 
 - **É mais rápido:** 130 px/s patrulhando e 200 px/s perseguindo na Fase 11, até 146 e 224 na Fase 20 (o cachorrinho anda 252 px/s, mais 10% por osso). Ao ver o cachorrinho a menos de 4 tiles ele dá o **bote**: 1,3 × a velocidade por 0,7 s (e espera 3 s para o próximo).
 - **Ouve:** além de ver (o alcance de visão é o do "!" da fase mais 4 tiles), ele **ouve** o cachorrinho a até 7 passos (8 e 9 nas Fases 15 e 19), **mesmo atrás de paredes**. O agente só persegue o que vê.
@@ -1082,13 +1082,13 @@ Pedido do dono (06/11/2026): as Fases **18 e 19** de cada bichinho ficam **menos
 
 **A regra** (conferida por `node tests/difficulty-ramp.test.js` sobre os números gravados em `tools/difficulty/ramp.json`): para qualquer par de fases `i < j` do mesmo bichinho, `R(j) ≥ R(i) − folga`, com folga = o maior entre 0,6 golpe/min e 30% de `R(i)` (a medição tem ruído); e `R(17) ≤ R(18) ≤ R(19) ≤ R(20)` com a mesma folga. O teste também falha se alguém mudar a quantidade de inimigos de uma fase sem medir de novo (as contagens gravadas precisam ser as do jogo), e a seção `0.22.0 · dificuldade escalonada` do e2e confere que o motor põe, em cada fase, os mesmos inimigos da medição.
 
-**Como se ajustou:** só a **quantidade de inimigos** das Fases 13 a 20 (os mapas ficam como estavam; ao somar um inimigo ele nasce longe do início, da saída e dos outros postos, e ao tirar um tira-se o último posto do mapa). As contagens ficam nas listas de cada bichinho (`vetsOf(n, k)` e `cats` de cada fase em `js/game.js`; `dogs`/`trk` em `tools/catmaze/gen_cat.py` e `cats`/`hawks` em `tools/birdmaze/gen_bird.py`, que regeram `js/cat-levels.js` e `js/bird-levels.js`). Como cada mapa tem o seu desenho, **a quantidade de inimigos não sobe sempre de fase em fase** (por exemplo, no Passarinho a Fase 19 tem menos inimigos que a 16): o que sobe é a dificuldade medida. Até a Fase 10 o Passarinho continua com os mesmos números do Gatinho; da 11 em diante cada bichinho tem os seus.
+**Como se ajustou:** só a **quantidade de inimigos** das Fases 13 a 20 (os mapas ficam como estavam; um agente da carrocinha a mais nasce num posto livre da **praça da carrocinha** (como manda o desenho das fases do Cachorrinho), um gato, cão ou gavião a mais nasce longe do início, da saída e dos outros postos, e ao tirar um agente tira-se o último posto da praça). As contagens ficam nas listas de cada bichinho (`vetsOf(n, k)` e `cats` de cada fase em `js/game.js`; `dogs`/`trk` em `tools/catmaze/gen_cat.py` e `cats`/`hawks` em `tools/birdmaze/gen_bird.py`, que regeram `js/cat-levels.js` e `js/bird-levels.js`). Como cada mapa tem o seu desenho, **a quantidade de inimigos não sobe sempre de fase em fase** (por exemplo, no Passarinho a Fase 19 tem menos inimigos que a 16): o que sobe é a dificuldade medida. Até a Fase 10 o Passarinho continua com os mesmos números do Gatinho; da 11 em diante cada bichinho tem os seus.
 
 **Resultado da medição final** (24 sementes por fase, vidas infinitas; as Fases 1 a 10 não mudaram e ficam entre 0 e 0,6 nos três bichinhos, em `tools/difficulty/ramp.json`):
 
 | R (golpes/min) | F11 | F12 | F13 | F14 | F15 | F16 | F17 | F18 | F19 | F20 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Cachorrinho | 1,82 | 2,42 | 2,21 | 2,46 | 1,94 | 3,24 | 3,20 | 3,42 | 3,32 | 4,05 |
+| Cachorrinho | 1,82 | 2,42 | 2,21 | 2,09 | 1,94 | 3,24 | 3,20 | 3,42 | 3,32 | 3,53 |
 | Gatinho | 0,41 | 0,19 | 0,42 | 0,55 | 0,46 | 0,41 | 0,53 | 0,19 | 0,74 | 1,12 |
 | Passarinho | 0,45 | 0,89 | 1,19 | 1,23 | 0,99 | 1,02 | 1,25 | 1,02 | 1,57 | 1,67 |
 
