@@ -1,5 +1,7 @@
 # R3 — Locomoção, corpo e água do gato doméstico (PISTAS, nada verificado)
 
+> **Atualização 0.24.0 (07/11/2026): a rede passou a liberar o Europe PMC e o Crossref.** O texto abaixo é o registro da busca de 22 a 23/10/2026 (feita sem acesso aos artigos) e **as pistas dele continuam NÃO VERIFICADAS**, exceto as que foram procuradas de novo e conferidas: essas estão em [`docs/biologia/referencias.json`](../biologia/referencias.json) (com o que o resumo sustenta e o que não sustenta) e na tabela «Biologia por trás do Gatinho» do README. As pistas que não foram encontradas estão na lista `nao_encontradas` desse arquivo.
+
 ## AVISO GERAL (leia primeiro)
 
 - **Nenhum artigo foi aberto.** WebFetch falhou com ENOTFOUND em todos os hosts testados (PMC, PubMed, Europe PMC, doi.org, Crossref, OpenAlex, nature.com, mdpi, plos, Wikipedia). O curl pelo proxy do ambiente recebeu 403 nos hosts acadêmicos. O coordenador confirmou que a política de rede bloqueia esses sites. Não tentei contornar.

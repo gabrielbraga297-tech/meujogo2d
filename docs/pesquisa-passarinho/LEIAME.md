@@ -1,5 +1,7 @@
 # Pesquisa de biologia do Passarinho (0.20.0): TEMAS E PALAVRAS-CHAVE NÃO VERIFICADOS
 
+> **Atualização 0.24.0 (07/11/2026): a rede passou a liberar o Europe PMC e o Crossref.** O texto abaixo é o registro dos temas de 29/10/2026 (quando nenhuma busca tinha sido feita) e **continua NÃO VERIFICADO**, exceto o que foi procurado em 07/11/2026 e conferido: isso está em [`docs/biologia/referencias.json`](../biologia/referencias.json) (com o que o resumo sustenta e o que não sustenta) e na tabela «Biologia por trás do Passarinho» do README. Onde o texto diz que nenhum artigo foi aberto, vale a data da frase.
+
 **Regra do dono do projeto:** as características do Passarinho devem ter por base **artigos científicos revisados por pares, em periódicos reconhecidos, publicados entre out/2021 e out/2026**, e cada artigo só pode ser citado depois de **aberto e conferido** (autores, ano, periódico, número exato).
 
 **O que aconteceu:** durante a construção do Passarinho (29/10/2026) a **rede do ambiente de desenvolvimento continuou bloqueando os sites de artigos** (os mesmos que bloquearam a pesquisa do Gatinho) e **nenhuma busca foi feita** para o Passarinho. Por isso **nenhum artigo foi aberto e nada aqui está verificado**. Ao contrário de `docs/pesquisa-gatinho/`, estes arquivos **não trazem nenhuma referência** (nenhum autor, ano, periódico, volume ou DOI): nada foi achado, então nada pode ser transcrito. O que há é o que se precisa para procurar bem **quando houver acesso**: o que o jogo faz (escolha de design), as **perguntas** que a literatura teria de responder, as **palavras-chave de busca** (em inglês e em português), o **tipo de estudo esperado** e as **lacunas** (o que não se deve afirmar).
@@ -24,3 +26,13 @@
 7. **P2, forrageio**: um estudo recente de forrageio de aves de solo (minhocas) e de aves que comem sementes e frutos.
 
 Depois de abrir cada um: conferir autores, ano, periódico, volume e páginas, DOI e o número; **promover ao README só o que for confirmado**; atualizar "Biologia por trás do Passarinho" e marcar o que continuar sem fonte como "escolha de design". Enquanto isso, **nenhum arquivo daqui pode dizer "verificado"** nem citar um artigo como se aberto (`node tests/honesty.test.js` confere).
+
+
+## Buscas feitas em 07/11/2026 (Atualização 9 · 0.24.0)
+Ferramenta: `tools/biology/lookup.py` (Europe PMC e Crossref). Em cada busca se olharam o título, o ano (2021 a 2026) e o resumo; o que serviu virou entrada de `docs/biologia/referencias.json` (montada por `tools/biology/build_refs.py`).
+- **P3, gatos domésticos e aves:** serviram as sínteses sobre a dieta de gatos de vida livre e sobre as presas que gatos trazem para casa (as mesmas do Gatinho, com as aves incluídas).
+- **P3, aves de rapina:** serviu um estudo do gavião-europeu e das aves que ele caça; outras buscas por «predação de aves pequenas por aves de rapina» devolveram só estudos sem relação com o jogo.
+- **P1, custo de energia do voo:** serviu um estudo de aves voando em túnel de vento; sobre fôlego e arrancada nada foi achado.
+- **P4, abrigo:** serviu um estudo de onde aves dormem à noite numa cidade; outro, sobre escolha de poleiro em picanços, foi conferido e não serve. **P4, vento e rajadas:** as buscas só devolveram trabalhos de engenharia (aeronaves) e nenhum estudo de aves pequenas.
+- **P5, luz e atividade ao entardecer e à noite:** nada adequado foi achado além do estudo de dormitórios.
+- **P2, forrageio:** as buscas por frugívoros e granívoros devolveram redes ecológicas e um estudo de uma ave canora doméstica que mostra só a habilidade com sementes mudando com a idade; sobre minhocas serviu só um estudo de vibrações no solo, que foi conferido e não serve.

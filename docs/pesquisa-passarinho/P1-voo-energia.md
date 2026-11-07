@@ -1,5 +1,7 @@
 # P1: Voo, gasto de energia e bater asas (Atualização 5 · 0.20.0): TEMAS NÃO VERIFICADOS
 
+> **Atualização 0.24.0 (07/11/2026): a rede passou a liberar o Europe PMC e o Crossref.** O texto abaixo é o registro dos temas de 29/10/2026 (quando nenhuma busca tinha sido feita) e **continua NÃO VERIFICADO**, exceto o que foi procurado em 07/11/2026 e conferido: isso está em [`docs/biologia/referencias.json`](../biologia/referencias.json) (com o que o resumo sustenta e o que não sustenta) e na tabela «Biologia por trás do Passarinho» do README. Onde o texto diz que nenhum artigo foi aberto, vale a data da frase.
+
 **Status: NÃO VERIFICADO.** Nenhum artigo foi aberto; esta página não cita nenhum (veja `LEIAME.md`). São perguntas e palavras-chave para procurar quando houver acesso.
 
 ## O que o jogo faz (escolha de design)

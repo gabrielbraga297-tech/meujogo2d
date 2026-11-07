@@ -1,5 +1,7 @@
 # R2 — Sons (bioacústica): gato, filhote, ronronar, chiado, rato/camundongo, cão, passarinho
 
+> **Atualização 0.24.0 (07/11/2026): a rede passou a liberar o Europe PMC e o Crossref.** O texto abaixo é o registro da busca de 22 a 23/10/2026 (feita sem acesso aos artigos) e **as pistas dele continuam NÃO VERIFICADAS**, exceto as que foram procuradas de novo e conferidas: essas estão em [`docs/biologia/referencias.json`](../biologia/referencias.json) (com o que o resumo sustenta e o que não sustenta) e na tabela «Biologia por trás do Gatinho» do README. As pistas que não foram encontradas estão na lista `nao_encontradas` desse arquivo.
+
 > **STATUS GERAL: NENHUM ARTIGO FOI ABERTO. NADA AQUI ESTÁ VERIFICADO.**
 > A política de rede do ambiente bloqueou (403 / DNS) todos os sites acadêmicos (nature.com, cell.com, doi.org, PMC, Europe PMC, PubMed, ScienceDirect, MDPI, PLOS, Frontiers, repositórios de universidades, bioacoustica.org). O WebFetch falhou em todas as tentativas e eu não contornei o bloqueio (conforme o aviso do coordenador).
 > Tudo abaixo vem de **resumos gerados pela ferramenta WebSearch (modo extended)**, que lê trechos de páginas. Isso é **PISTA, não fonte**. Onde duas buscas deram resultados diferentes sobre o mesmo artigo, marquei **CONFLITO**. Números marcados "intro" são frases da introdução de um artigo citando OUTROS trabalhos, não medições do artigo.

@@ -1,5 +1,7 @@
-// Honestidade científica do Gatinho (0.18.0) e do Passarinho (0.20.0). Uso: node tests/honesty.test.js
-// A rede do ambiente de desenvolvimento bloqueou os sites de artigos: NENHUM artigo foi aberto e nada do Gatinho nem do Passarinho está verificado em fonte. Este teste impede que o projeto volte a parecer o contrário:
+// Honestidade científica do Gatinho (0.18.0), do Passarinho (0.20.0) e, desde a 0.24.0, do Cachorrinho. Uso: node tests/honesty.test.js
+// ATUALIZAÇÃO 0.24.0: a rede passou a liberar o Europe PMC e o Crossref e as referências de docs/biologia/referencias.json foram conferidas (o RESUMO foi lido; o texto completo, não). Os itens 1 a 5 abaixo
+// foram reescritos para o regime novo (veja a seção «Biologia conferida (0.24.0)» do arquivo): citação só de referência da lista, «escolha de design» em todas as linhas, nada fora da lista verificado.
+// Texto original (0.18.0/0.20.0, quando nenhum artigo tinha sido aberto), que continua valendo para o que está FORA da lista:
 //  1. nenhuma citação de artigo (et al., doi, ano entre parênteses) no README, no CHANGELOG, no código, no index.html nem nos documentos de docs/: elas só podem estar em docs/pesquisa-gatinho/ (as pistas, marcadas "não verificado");
 //  2. nenhuma pista de docs/pesquisa-gatinho/ marcada "Verificado: SIM";
 //  3. a tabela "Biologia por trás do Gatinho" do README diz "escolha de design" em todas as linhas e ninguém diz que TODO traço é "inspirado em literatura" (só algumas linhas têm uma pista, não verificada).
@@ -131,88 +133,107 @@ test("há arquivos para conferir (README, CHANGELOG, index.html, js/*.js e docs/
   assert.ok(fs.existsSync(path.join(root, "docs/pesquisa-gatinho/LEIAME.md")));
 });
 
-test("nenhuma citação de artigo (et al., doi.org, 10.xxxx/, ano entre parênteses) fora de docs/pesquisa-gatinho/", () => {
-  const bad = [];
-  for (const f of FILES) {
-    read(f).split("\n").forEach((line, i) => {
-      for (const m of line.matchAll(CITATION)) {
-        if (ALLOWED.some((a) => a.file === f && a.line.test(line) && a.match.test(m[0]))) continue;
-        bad.push(`${f}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`);
-      }
-    });
+// ======================================================= Biologia conferida (0.24.0) =======================================================
+// A partir da 0.24.0 há referências abertas e conferidas (o RESUMO foi lido; o texto completo, não): ficam em docs/biologia/referencias.json (montado por tools/biology/build_refs.py). As regras:
+//  - toda citação de artigo (et al., doi, ano entre parênteses) no README, no CHANGELOG, nos documentos e no código é de uma referência dessa lista (apoio, sem apoio ou não encontrada);
+//  - nenhuma tabela «Biologia por trás» diz mais do que a lista: a Situação de cada traço continua «escolha de design» e as seções dizem que só o resumo foi lido e que nada fora da lista está verificado;
+//  - as pistas antigas (docs/pesquisa-*) seguem NÃO VERIFICADAS e nunca marcadas «Verificado: SIM».
+const REFS_FILE = "docs/biologia/referencias.json";
+const refsData = () => JSON.parse(read(REFS_FILE));
+const ALL_REFS = () => { const d = refsData(); return [...d.refs, ...d.sem_apoio]; };
+const family = (r) => r.authors[0].split(" ")[0];
+const NOT_FOUND_MARK = /n[ãa]o (foi |foram )?(encontrad|confirmad)|N[ÃA]O ABERTO/i;
+
+test("docs/biologia/referencias.json: cada referência tem autores, ano de 2021 a 2026, periódico, DOI, nível «resumo», data da conferência, o que sustenta e o que NÃO sustenta", () => {
+  const d = refsData();
+  assert.ok(d.refs.length >= 10, "esperava pelo menos 10 referências com apoio (achou " + d.refs.length + ")");
+  const ids = new Set(), dois = new Set();
+  for (const r of d.refs) {
+    for (const k of ["id", "journal", "doi", "title", "checked_on", "supports", "limits"]) assert.ok(typeof r[k] === "string" && r[k].length > 3, `${r.id}: falta ${k}`);
+    assert.ok(Array.isArray(r.authors) && r.authors.length >= 1, `${r.id}: sem autores`);
+    assert.ok(Number.isInteger(r.year) && r.year >= 2021 && r.year <= 2026, `${r.id}: ano ${r.year}`);
+    assert.ok(/^10\.\d{4,9}\//.test(r.doi), `${r.id}: DOI ${r.doi}`);
+    assert.ok(r.level === "resumo" || r.level === "texto completo", `${r.id}: nível ${r.level}`);
+    assert.ok(r.peer_reviewed === true && /^\d{4}-\d{2}-\d{2}$/.test(r.checked_on), `${r.id}: revisado por pares e data`);
+    assert.ok(Array.isArray(r.games) && r.games.length >= 1 && r.games.every((g) => ["dog", "cat", "bird"].includes(g)) && Array.isArray(r.traits) && r.traits.length >= 1, `${r.id}: jogos e traços`);
+    assert.ok(!ids.has(r.id) && !dois.has(r.doi), `${r.id}: id ou DOI repetido`); ids.add(r.id); dois.add(r.doi);
+    if (r.level === "resumo") assert.ok(!/texto completo (foi|foram) lid/i.test(r.supports + r.limits), `${r.id}: nível «resumo» mas o texto diz que leu o texto completo`);
   }
-  assert.deepStrictEqual(bad, [], "citação fora da pasta de pesquisa (use só as pistas de docs/pesquisa-gatinho/):\n     " + bad.join("\n     "));
+  for (const r of d.sem_apoio) assert.ok(r.id && /^10\./.test(r.doi) && r.why && r.year >= 2021 && r.year <= 2026 && !ids.has(r.id), `sem_apoio ${r.id}`);
+  assert.ok(Array.isArray(d.nao_encontradas) && d.nao_encontradas.length >= 1 && d.nao_encontradas.every((x) => /n[ãa]o encontrado/i.test(x)), "nao_encontradas deve listar pistas «não encontrado»");
 });
 
-test("a exceção explícita existe de verdade (README cita doi.org só na lista de sites bloqueados)", () => {
-  const hits = read("README.md").split("\n").filter((l) => /doi\.org/.test(l));
-  assert.ok(hits.length >= 1 && hits.every((l) => ALLOWED[0].line.test(l)), "a exceção do teste não corresponde a nenhuma linha do README (ou há doi.org em outro lugar)");
-});
-
-test("nenhuma pista de docs/pesquisa-gatinho/ está marcada como \"Verificado: SIM\"", () => {
-  const files = list("docs/pesquisa-gatinho", /\.md$/);
-  assert.ok(files.length >= 6, "faltam arquivos da pesquisa: " + files.join(", "));
+test("toda citação de artigo (et al., doi, 10.xxxx/, ano entre parênteses) no README, CHANGELOG, documentos e código é de uma referência da lista (ou diz «não encontrado»)", () => {
+  const refs = ALL_REFS(), fams = refs.map(family), dois = refs.map((r) => r.doi.toLowerCase());
   const bad = [];
-  for (const f of files) read(f).split("\n").forEach((line, i) => { if (/Verificado: *SIM/i.test(line)) bad.push(`${f}:${i + 1}: ${line.trim().slice(0, 100)}`); });
-  assert.deepStrictEqual(bad, []);
+  for (const f of FILES) read(f).split("\n").forEach((line, i) => {
+    for (const m of line.matchAll(CITATION)) {
+      const low = line.toLowerCase();
+      if (NOT_FOUND_MARK.test(line) || fams.some((x) => line.includes(x)) || dois.some((x) => low.includes(x))) continue;
+      bad.push(`${f}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`);
+    }
+  });
+  assert.deepStrictEqual(bad, [], "citação que não está em docs/biologia/referencias.json:\n     " + bad.join("\n     "));
 });
 
-test("a tabela \"Biologia por trás do Gatinho\" do README tem \"escolha de design\" em todas as linhas", () => {
-  const readme = read("README.md"), a = readme.indexOf("## Biologia por trás do Gatinho");
-  assert.ok(a >= 0, "falta a seção Biologia por trás do Gatinho");
-  const rest = readme.slice(a + 5), b = rest.search(/\n## /), sec = b < 0 ? rest : rest.slice(0, b);
+test("o README só cita [id] de referências que existem e cada referência com apoio aparece na seção «Biologia por trás» do jogo dela", () => {
+  const d = refsData(), readme = read("README.md"), ids = new Set(d.refs.map((r) => r.id));
+  const sec = { cat: section(readme, "Biologia por trás do Gatinho (0.18.0)"), bird: section(readme, "Biologia por trás do Passarinho (0.20.0)"), dog: section(readme, "Biologia por trás do Cachorrinho (0.24.0)") };
+  for (const [g, t] of Object.entries(sec)) assert.ok(t, "falta a seção Biologia por trás do jogo " + g);
+  for (const [g, t] of Object.entries(sec)) for (const m of t.matchAll(/\[([a-z]+\d{4})\]/g)) assert.ok(ids.has(m[1]), `${g}: [${m[1]}] não existe em referencias.json`);
+  for (const r of d.refs) for (const g of r.games) assert.ok(sec[g].includes(`[${r.id}]`), `a referência ${r.id} deveria aparecer como [${r.id}] na seção do jogo ${g}`);
+  for (const r of d.sem_apoio) for (const g of r.games) assert.ok(sec[g].includes(family(r)), `a referência sem apoio ${r.id} deveria ser mencionada na seção do jogo ${g}`);
+  assert.ok(!/\[[a-z]+\d{4}\]/.test(sec.dog), "o Cachorrinho não tem referência com apoio: a seção dele não pode citar nenhuma");
+});
+
+const BIO_RULES = (name, sec) => {
+  assert.ok(sec, "falta a seção Biologia por trás do " + name);
+  assert.ok(/Em 07\/11\/2026 a rede do ambiente de desenvolvimento passou a liberar o Europe PMC e o Crossref/.test(sec), name + ": a seção deve dizer quando e como as referências foram buscadas");
+  assert.ok(/o \*\*resumo\*\* foi aberto e lido/.test(sec) && /\*\*O texto completo não foi lido\*\*/.test(sec), name + ": a seção deve dizer que só o resumo foi lido e que o texto completo não foi lido");
+  assert.ok(/\*\*Nada fora dessa lista está verificado\*\*/.test(sec) && /\*\*todo traço continua sendo uma escolha de design\*\*/.test(sec), name + ": a seção deve dizer que nada fora da lista está verificado e que todo traço é escolha de design");
   const rows = sec.split("\n").filter((l) => /^\|/.test(l) && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
-  assert.ok(rows.length >= 9 && /Situação/.test(rows[0].join("|")), "tabela com cabeçalho e pelo menos 8 traços (achou " + rows.length + " linhas)");
-  for (const r of rows.slice(1)) assert.ok(/escolha de design/i.test(r[r.length - 1]), `a linha "${r[0]}" não diz "escolha de design" na Situação ("${r[r.length - 1]}")`);
-  assert.ok(/nenhum artigo foi aberto/i.test(sec) && /nada abaixo está verificado/i.test(sec), "a seção deve dizer que nenhum artigo foi aberto e nada está verificado");
+  assert.ok(rows.length >= 6 && /Base conferida/.test(rows[0].join("|")) && /Situação/.test(rows[0].join("|")), name + ": tabela com «Base conferida» e «Situação» e pelo menos 5 traços (achou " + rows.length + " linhas)");
+  for (const r of rows.slice(1)) assert.ok(/^(escolha de design|o poder é pura escolha de design)/i.test(r[r.length - 1]), `${name}: a linha "${r[0]}" não começa com «escolha de design» na Situação ("${r[r.length - 1]}")`);
+  return rows;
+};
+test("a tabela «Biologia por trás do Gatinho» do README: «escolha de design» em todas as linhas, só o resumo lido, nada fora da lista verificado, arrancada e pelo molhado sem base", () => {
+  const readme = read("README.md"), sec = section(readme, "Biologia por trás do Gatinho (0.18.0)");
+  BIO_RULES("Gatinho", sec);
+  assert.ok(/nada recente achado/.test(sec) && /só análogos de outros mamíferos/.test(sec), "a tabela deve dizer que a arrancada e o pelo molhado não têm base");
+  assert.ok(/Pistas antigas que não se confirmaram/.test(sec), "a seção deve listar as pistas antigas que não se confirmaram");
 });
-
-test("ninguém diz que TODO traço do Gatinho é \"inspirado em literatura\" (só há pista, não verificada, onde a tabela do README indica; a arrancada e o pelo molhado não têm nem pista)", () => {
-  const bad = [];
-  for (const f of [...FILES, ...list("docs/pesquisa-gatinho", /\.md$/), ...BIRD_FILES()]) read(f).split("\n").forEach((line, i) => { if (/(todo|todos os) (o )?(traço|traços|números?)[^.|]{0,200}inspirad[ao]s? em literatura/i.test(line) || /TODOS OS NÚMEROS[^.]{0,80}INSPIRAD/.test(line)) bad.push(`${f}:${i + 1}: ${line.trim().slice(0, 110)}`); });
-  assert.deepStrictEqual(bad, [], "afirmação exagerada:\n     " + bad.join("\n     "));
-  const r = read("README.md");
-  assert.ok(/nada recente achado/.test(r) && /só análogos de outros mamíferos/.test(r), "a tabela deve dizer que a arrancada e o pelo molhado não têm pista");
-});
-
-// ======================================================= Passarinho (0.20.0) =======================================================
-test("Passarinho: docs/pesquisa-passarinho/ existe, com o LEIAME e P1 a P5, e cada arquivo diz que é NÃO VERIFICADO e que nenhum artigo foi aberto", () => {
-  const files = BIRD_FILES();
-  assert.ok(files.includes(BIRD_DIR + "/LEIAME.md"), "falta " + BIRD_DIR + "/LEIAME.md");
-  for (const n of [1, 2, 3, 4, 5]) assert.ok(files.some((f) => new RegExp(`/P${n}-[^/]+\\.md$`).test(f)), `falta o arquivo P${n}-*.md em ${BIRD_DIR}`);
-  assert.ok(files.length >= 6, "faltam arquivos da pesquisa: " + files.join(", "));
-  for (const f of files) {
-    const t = read(f);
-    assert.ok(/N[ÃA]O VERIFICAD[OA]/i.test(t), `${f}: deve dizer que é NÃO VERIFICADO`);
-    assert.ok(/nenhum artigo (foi|foram)? ?aberto|nenhum artigo foi aberto|esta página não cita nenhum/i.test(t), `${f}: deve dizer que nenhum artigo foi aberto`);
-  }
-  assert.ok(/nenhuma busca foi feita|nenhuma busca/i.test(read(BIRD_DIR + "/LEIAME.md")), "o LEIAME deve dizer que nenhuma busca foi feita (não há pista achada, só temas)");
-});
-
-test("Passarinho: nenhuma citação de artigo em docs/pesquisa-passarinho/ (et al., doi.org, 10.xxxx/, ano entre parênteses), a não ser em linha que diga \"NÃO ABERTO\"", () => {
-  const bad = [];
-  for (const f of BIRD_FILES()) read(f).split("\n").forEach((line, i) => { for (const m of line.matchAll(CIT_BIRD)) if (!/N[ÃA]O ABERTO/.test(line)) bad.push(`${f}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`); });
-  assert.deepStrictEqual(bad, [], "citação sem \"NÃO ABERTO\":\n     " + bad.join("\n     "));
-});
-
-test("Passarinho: nenhum arquivo de pesquisa está marcado como \"Verificado: SIM\"", () => {
-  const bad = [];
-  for (const f of BIRD_FILES()) read(f).split("\n").forEach((line, i) => { if (/Verificad[oa]: *SIM/i.test(line)) bad.push(`${f}:${i + 1}: ${line.trim().slice(0, 100)}`); });
-  assert.deepStrictEqual(bad, []);
-});
-
-test("Passarinho: a tabela \"Biologia por trás do Passarinho\" do README tem \"escolha de design\" em todas as linhas e a seção diz que nenhum artigo foi aberto e que nada está verificado", () => {
+test("a tabela «Biologia por trás do Passarinho» do README: «escolha de design» em todas as linhas, só o resumo lido, pistas P1 a P5 apontam para arquivos que existem", () => {
   const sec = section(read("README.md"), "Biologia por trás do Passarinho (0.20.0)");
-  assert.ok(sec, "falta a seção Biologia por trás do Passarinho (0.20.0)");
-  const rows = sec.split("\n").filter((l) => /^\|/.test(l) && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
-  assert.ok(rows.length >= 11 && /Situação/.test(rows[0].join("|")), "tabela com cabeçalho e pelo menos 10 traços (achou " + rows.length + " linhas)");
-  for (const r of rows.slice(1)) assert.ok(/^escolha de design/i.test(r[r.length - 1]), `a linha "${r[0]}" não começa com "escolha de design" na Situação ("${r[r.length - 1]}")`);
-  assert.ok(/nenhum artigo foi aberto/i.test(sec) && /nada abaixo está verificado/i.test(sec), "a seção deve dizer que nenhum artigo foi aberto e nada abaixo está verificado");
-  assert.ok(/nenhum autor, ano, periódico, volume ou DOI é citado/i.test(sec), "a seção deve dizer que a coluna de pistas não cita autor, ano, periódico, volume nem DOI");
-  // as pistas apontam para arquivos que existem (P1 a P5)
+  BIO_RULES("Passarinho", sec);
   const files = BIRD_FILES(), refs = [...new Set([...sec.matchAll(/\(P(\d+)\)/g)].map((m) => m[1]))];
-  assert.ok(refs.length >= 4, "a coluna de pistas deve apontar para P1 a P5 (achou " + refs.join(",") + ")");
+  assert.ok(refs.length >= 4, "a coluna de base deve apontar para P1 a P5 (achou " + refs.join(",") + ")");
   for (const n of refs) assert.ok(files.some((f) => new RegExp(`/P${n}-[^/]+\\.md$`).test(f)), `a tabela cita (P${n}) e o arquivo P${n}-*.md não existe em ${BIRD_DIR}`);
+});
+test("a seção «Biologia por trás do Cachorrinho»: sem referência com apoio, «escolha de design» em todas as linhas e a busca de 07/11/2026 dita", () => {
+  const sec = section(read("README.md"), "Biologia por trás do Cachorrinho (0.24.0)");
+  BIO_RULES("Cachorrinho", sec);
+  assert.ok(/nenhuma referência foi achada que sustente o que o jogo faz/.test(sec), "a seção deve dizer que nada sustentou o jogo");
+});
+test("as pistas antigas: docs/pesquisa-gatinho/ e docs/pesquisa-passarinho/ têm o aviso da atualização 0.24.0 em todos os arquivos e nenhum está marcado «Verificado: SIM»", () => {
+  const files = [...list("docs/pesquisa-gatinho", /\.md$/), ...BIRD_FILES()];
+  assert.ok(files.length >= 12, "faltam arquivos da pesquisa: " + files.join(", "));
+  const bad = [];
+  for (const f of files) { const t = read(f); if (!/Atualização 0\.24\.0 \(07\/11\/2026\)/.test(t)) bad.push(f + ": sem o aviso da atualização 0.24.0"); if (/Verificad[oa]: *SIM/i.test(t)) bad.push(f + ": marcado Verificado: SIM"); }
+  assert.deepStrictEqual(bad, []);
+  assert.ok(/Buscas feitas em 07\/11\/2026/.test(read(BIRD_DIR + "/LEIAME.md")) && /Resultado da conferência de 07\/11\/2026/.test(read("docs/pesquisa-gatinho/LEIAME.md")), "os dois LEIAME devem trazer o resultado das buscas de 07/11/2026");
+});
+test("ninguém diz que TODO traço é «inspirado em literatura» nem que o texto completo foi lido", () => {
+  const bad = [];
+  for (const f of [...FILES, ...list("docs/pesquisa-gatinho", /\.md$/), ...BIRD_FILES()]) read(f).split("\n").forEach((line, i) => {
+    if (/(todo|todos os) (o )?(traço|traços|números?)[^.|]{0,200}inspirad[ao]s? em literatura/i.test(line) || /TODOS OS NÚMEROS[^.]{0,80}INSPIRAD/.test(line)) bad.push(`${f}:${i + 1}: ${line.trim().slice(0, 100)}`);
+    if (/texto completo (foi|foram|de todas|das referências) (lid|aberto)/i.test(line) && !/n[ãa]o/i.test(line)) bad.push(`${f}:${i + 1}: diz que leu o texto completo: ${line.trim().slice(0, 100)}`);
+  });
+  assert.deepStrictEqual(bad, [], "afirmação exagerada:\n     " + bad.join("\n     "));
+});
+test("Passarinho: nenhuma citação de artigo em docs/pesquisa-passarinho/ (et al., doi.org, 10.xxxx/, ano entre parênteses), a não ser em linha que diga \"NÃO ABERTO\" ou «não encontrado»", () => {
+  const bad = [];
+  for (const f of BIRD_FILES()) read(f).split("\n").forEach((line, i) => { for (const m of line.matchAll(CIT_BIRD)) if (!NOT_FOUND_MARK.test(line)) bad.push(`${f}:${i + 1}: "${m[0]}" em "${line.trim().slice(0, 90)}..."`); });
+  assert.deepStrictEqual(bad, [], "citação sem \"NÃO ABERTO\":\n     " + bad.join("\n     "));
 });
 
 const ALL_BIRD = () => [...birdTexts().map((x) => ({ ...x, code: false })), ...birdCode().map((x) => ({ ...x, code: true }))];

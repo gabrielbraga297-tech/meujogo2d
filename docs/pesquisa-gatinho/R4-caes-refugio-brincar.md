@@ -1,5 +1,7 @@
 # R4 — Gato diante de CÃES, REFÚGIO EM LUGARES ALTOS/ESCONDERIJOS, BRINCAR, novelo/fio, caixas, GPS
 
+> **Atualização 0.24.0 (07/11/2026): a rede passou a liberar o Europe PMC e o Crossref.** O texto abaixo é o registro da busca de 22 a 23/10/2026 (feita sem acesso aos artigos) e **as pistas dele continuam NÃO VERIFICADAS**, exceto as que foram procuradas de novo e conferidas: essas estão em [`docs/biologia/referencias.json`](../biologia/referencias.json) (com o que o resumo sustenta e o que não sustenta) e na tabela «Biologia por trás do Gatinho» do README. As pistas que não foram encontradas estão na lista `nao_encontradas` desse arquivo.
+
 > **AVISO IMPORTANTE (leia primeiro).** Nesta sessão o WebFetch falhou em todos os hosts (getaddrinfo ENOTFOUND) e o curl foi recusado pelo proxy (403). O coordenador confirmou que a rede bloqueia os sites acadêmicos. **NENHUM artigo abaixo foi aberto.** Tudo vem de resumos produzidos pelo WebSearch (texto de busca, às vezes com trecho do resumo do artigo), que pode conter erros de transcrição. Portanto:
 > - Todo item está **NÃO ABERTO / não verificado**. Nada está marcado como verificado.
 > - Os números abaixo são **PISTAS** para conferir quando houver rede. Não devem ir para o README nem para o jogo antes da conferência.
