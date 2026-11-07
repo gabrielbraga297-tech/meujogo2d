@@ -10,9 +10,10 @@ module.exports = async function (T) {
     await fresh(pg, { name: "Totó" });
     const hidden = () => ev(pg, () => document.getElementById("btn-update").classList.contains("hidden"));
     ok(await hidden() && (await pg.textContent("#btn-update")).includes("versão nova"), "no começo o aviso de versão nova está escondido");
-    // sem forçar, num arquivo local (file:) nem pergunta: nada de rede
-    const calls = await ev(pg, async () => { let n = 0; const r = await __game.checkForUpdate({ current: "abc1234", fetchFn: async () => { n++; return { ok: true, text: async () => 'build: "def5678"' }; } }); return { n, r }; });
-    ok(calls.n === 0 && calls.r === false && await hidden(), `fora de http/https o jogo não pergunta ao servidor (${JSON.stringify(calls)})`);
+    // sem forçar: num arquivo local (file:, como no Chromium do e2e) nem pergunta, nada de rede; servido por http (Firefox e WebKit do e2e usam um servidor local) pergunta uma vez e, com a MESMA build, não avisa
+    const isHttp = await ev(pg, () => /^https?:$/.test(location.protocol));
+    const calls = await ev(pg, async () => { let n = 0; const r = await __game.checkForUpdate({ current: "abc1234", fetchFn: async () => { n++; return { ok: true, text: async () => 'build: "abc1234"' }; } }); return { n, r }; });
+    ok(calls.n === (isHttp ? 1 : 0) && calls.r === false && await hidden(), `${isHttp ? "servido por http o jogo pergunta uma vez ao servidor e, com a mesma build, não avisa" : "fora de http/https o jogo não pergunta ao servidor"} (${JSON.stringify(calls)})`);
     // build "dev": nunca pergunta
     const dev = await ev(pg, async () => { let n = 0; const r = await __game.checkForUpdate({ force: true, current: "dev", fetchFn: async () => { n++; return { ok: true, text: async () => 'build: "def5678"' }; } }); return { n, r }; });
     ok(dev.n === 0 && dev.r === false && await hidden(), `com a build "dev" (pasta de desenvolvimento) não há pergunta nem aviso (${JSON.stringify(dev)})`);
