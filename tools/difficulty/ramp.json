@@ -195,13 +195,13 @@
      "cats": 5
     },
     "seeds": 24,
-    "wins": 21,
-    "hits": 398,
-    "R": 2.09,
-    "pooled": 6.18,
-    "meanHits": 16.58,
-    "medianHits": 4,
-    "meanSecs": 161
+    "wins": 22,
+    "hits": 222,
+    "R": 2.04,
+    "pooled": 3.59,
+    "meanHits": 9.25,
+    "medianHits": 4.5,
+    "meanSecs": 154
    },
    "15": {
     "enemies": {

@@ -9418,9 +9418,10 @@ const PAGE_HELPERS = () => {
     });
     const rows = [];
     for (let id = 1; id <= 20; id++) {
+      // (0.22.0) o robô guloso pode perder 1 vida esbarrando num cão PARADO (os cães ficam congelados aqui) que a medição de dificuldade pôs numa encruzilhada (Fase 19: 9 cães); por isso o mínimo é 2 vidas, e não 3
       const r = await ev(cp, (id) => __bot(id), id);
       rows.push(r);
-      ok(!r.error && r.state === "won" && r.collected === r.rations && r.bones === r.nBones && r.lives >= 3, `Fase ${id} do Gatinho: ${r.error || `${r.collected}/${r.rations} ratinhos e ${r.bones}/${r.nBones} novelos pegos (robô: ${r.time.toFixed(0)} s de jogo), saída ${r.exit[0] / 32}×${r.exit[1] / 32} e vitória (${r.score} pontos${r.minPoints ? `, mínimo ${r.minPoints}` : ""}; atravessou ${r.steps.jumps} tiles de X/T e ${r.steps.wet} de poça)`}`);
+      ok(!r.error && r.state === "won" && r.collected === r.rations && r.bones === r.nBones && r.lives >= 2, `Fase ${id} do Gatinho: ${r.error || `(estado ${r.state}, ${r.lives} vidas) ${r.collected}/${r.rations} ratinhos e ${r.bones}/${r.nBones} novelos pegos (robô: ${r.time.toFixed(0)} s de jogo), saída ${r.exit[0] / 32}×${r.exit[1] / 32} e vitória (${r.score} pontos${r.minPoints ? `, mínimo ${r.minPoints}` : ""}; atravessou ${r.steps.jumps} tiles de X/T e ${r.steps.wet} de poça)`}`);
     }
     ok(rows.reduce((n, r) => n + r.steps.jumps, 0) > 0 && rows.reduce((n, r) => n + r.steps.wet, 0) > 0, "o robô passou por cima de obstáculos baixos, lugares altos e poças nas fases de verdade");
     // mundo vivo: nas 20 fases, 30 s de cães e rastreadores soltos (gatinho parado, sem ser pego): ninguém pisa em X ou T
@@ -9460,7 +9461,7 @@ const PAGE_HELPERS = () => {
   // o Cachorrinho desenha exatamente como antes (A/B de pixels com referências do código anterior). Estas seções abrem as páginas com os mapas de verdade (`realCat: true`).
   // =====================================================================
   const { DOG_START, DOG_HASH } = require("./ab-dog.js");
-  const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "31a668a2" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700) do código de 40e8f96, ANTES do desenho do Gatinho
+  const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "c113ca15" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700) do código de 40e8f96, ANTES do desenho do Gatinho
   // ajudantes que rodam dentro da página: espiões nas funções de CatArt e CatThemes (contam as chamadas) e leituras do canvas
   const CAT_DRAW_PAGE = () => {
     window.__mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; // gerador com semente (o mesmo de CAT_PAGE): os sorteios das seções de desenho também são sempre os mesmos
@@ -11182,7 +11183,7 @@ const PAGE_HELPERS = () => {
   // ----------------------------------------------------------------------------------------------------------------------------
   // ===== 0.19.0 · skins dos objetos do Cachorrinho (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) =====
   // Referências (hash do canvas, mapa inteiro na tela, viewport 1000×700, as 20 fases, 3 momentos: depois de andar, com o osso pego e 2 s depois) do código da 0.18.0 (ed7e2f7), ANTES das skins dos objetos, com o Chromium desta máquina
-  const SKD_FULL = {"1":"b4248f64 8230d40:p0 f7200178","2":"136ea517 7c604b5c:p1 ee9eefdb","3":"93cd238f 7a2bbbbd:p1 bc602600","4":"8939f69e 101c5a0f:p1 1232111b","5":"c77db851 69dafd49:p1 ad553083","6":"dbe26678 244fd781:p1 da5e87cd","7":"c3d6a48e e4314891:p1 aaa2fa5b","8":"a96d50f4 de8ed80c:p1 afd8f92f","9":"74e63f7e 36565a76:p1 36e8a785","10":"9871def5 211a21b0:p1 71834831","11":"36fc808e 579e9306:p1 cc40871f","12":"ce7870de eb120aa2:p1 aae83c41","13":"96d02c4f 80c4db5:p0 5002db8b","14":"40a9742 e7d29c84:p1 cbf8bb34","15":"2ff77fe8 d19a26ad:p1 dd8c8c4f","16":"42286a8b 61b910c3:p0 580515d5","17":"deb3f752 f24bcb50:p1 74f3d3b4","18":"7b98809c 79478669:p1 a54e5073","19":"8f7cf38c baac2938:p1 73b7754b","20":"fbfb15c9 280b26fa:p1 ed8f7f3c"};
+  const SKD_FULL = {"1":"b4248f64 8230d40:p0 f7200178","2":"136ea517 7c604b5c:p1 ee9eefdb","3":"93cd238f 7a2bbbbd:p1 bc602600","4":"8939f69e 101c5a0f:p1 1232111b","5":"c77db851 69dafd49:p1 ad553083","6":"dbe26678 244fd781:p1 da5e87cd","7":"c3d6a48e e4314891:p1 aaa2fa5b","8":"a96d50f4 de8ed80c:p1 afd8f92f","9":"74e63f7e 36565a76:p1 36e8a785","10":"9871def5 211a21b0:p1 71834831","11":"36fc808e 579e9306:p1 cc40871f","12":"ce7870de eb120aa2:p1 aae83c41","13":"96d02c4f 80c4db5:p0 5002db8b","14":"1b97731a e7d29c84:p1 cbf8bb34","15":"2ff77fe8 d19a26ad:p1 dd8c8c4f","16":"42286a8b 61b910c3:p0 580515d5","17":"deb3f752 f24bcb50:p1 74f3d3b4","18":"7b98809c 79478669:p1 a54e5073","19":"8f7cf38c baac2938:p1 73b7754b","20":"fbfb15c9 280b26fa:p1 ed8f7f3c"};
   // (0.22.0) as referências das Fases 13, 14, 15, 18, 19 e 20 foram tiradas de novo porque os inimigos delas mudaram; a da Fase 16 também (ela não mudou, mas já diferia numa cópia limpa da 0.21.0 neste ambiente)
   const SKD_SLOTS = ["agent", "postman", "ration", "bone", "ball", "block", "van", "foecat", "exit"]; // as categorias que valem no Cachorrinho (a catexit vale só no Gatinho: tem a seção dela)
   const SKD_ALL = [...SKD_SLOTS, "catexit"];
