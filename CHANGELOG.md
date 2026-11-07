@@ -4,7 +4,7 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
-## 0.24.0 — 07/11/2026 (em preparação)
+## 0.24.0 — 07/11/2026
 **Atualização 9 · Referências de biologia.**
 Pedido do dono: as características, os sons, os objetos e as fases de cada bichinho devem vir de **traços genéricos da espécie, com base em artigos científicos revisados por pares, de periódicos reconhecidos, dos últimos 5 anos, citados no README**; antes, nada estava verificado porque a rede bloqueava os sites de artigos. Em 07/11/2026 o dono liberou o acesso (Europe PMC e Crossref) e esta versão **procurou e conferiu** as referências.
 - **O que foi conferido, e como:** para cada referência os dados (autores, ano, periódico, volume, páginas, DOI) foram buscados no Crossref e no Europe PMC e conferidos com o título esperado, e o **resumo foi aberto e lido**. **O texto completo não foi lido** (nível «resumo» em todas). Resultado em `docs/biologia/referencias.json`, montado e conferido por `tools/biology/build_refs.py` (`tools/biology/lookup.py` procura e mostra artigos): **13 referências com apoio**, **5 conferidas sem apoio** (existem, mas não sustentam nada do jogo) e **4 pistas antigas não encontradas**.
