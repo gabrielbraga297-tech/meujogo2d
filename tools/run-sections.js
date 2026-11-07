@@ -41,8 +41,13 @@ const ENGINE_DIFFERENCES = [
   ["0.19.0 · Skins do Gatinho: as skins do Gatinho não aparecem no Cachorrinho", "hashes de pixels tirados no Chromium"],
   ["0.20.0 · Passarinho (integração): robô", "o resultado do robô depende do andar dos gaviões"],
   ["0.20.0 · Skins do Passarinho: as skins do Passarinho não aparecem no Cachorrinho", "hashes de pixels tirados no Chromium"],
+  // só no WebKit (conferido em 07/11/2026 no WebKit 26.6 do Playwright, que NÃO é o Safari de verdade):
+  ["0.18.0 · Gatinho: desenho e ambientes", "o WebKit sem placa de vídeo leva 22–26 ms por quadro (limite do teste: 12–16 ms) além dos hashes de pixels", "webkit"],
+  ["0.19.0 · skins dos objetos do Cachorrinho: cada skin muda os pixels", "10 a 20 px de brilho suavizado caem fora da caixa do objeto no desenho do WebKit (0 no Chromium)", "webkit"],
+  ["0.19.0 · skins dos objetos do Cachorrinho: em cinco tamanhos de tela", "mesma diferença de brilho suavizado do WebKit", "webkit"],
+  ["música: no AudioContext real do Chromium", "o teste mede o relógio do AudioContext, que no WebKit sem placa de som não anda (a conferir no Safari real)", "webkit"],
 ];
-const engineNote = (title) => (process.env.BROWSER && process.env.BROWSER !== "chromium" ? (ENGINE_DIFFERENCES.find(([t]) => title.startsWith(t)) || [])[1] : undefined);
+const engineNote = (title) => (process.env.BROWSER && process.env.BROWSER !== "chromium" ? (ENGINE_DIFFERENCES.find(([t, , only]) => title.startsWith(t) && (!only || only === process.env.BROWSER)) || [])[1] : undefined);
 
 const all = titles().filter((t) => !val("--only") || t.includes(val("--only")));
 if (flag("--list")) { console.log(all.join("\n")); console.log(`\n${all.length} seção(ões)`); process.exit(0); }

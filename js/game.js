@@ -3236,7 +3236,9 @@
   function revealShopPanel() {
     const sh = $("shop"), first = $("shop-list").firstElementChild, head = sh.querySelector(".shop-head"), back = sh.querySelector(".menu-list"), keep = document.activeElement;
     if (!first || !head || !back) return;
-    const headH = head.offsetHeight + (parseFloat(getComputedStyle(sh).paddingTop) || 0), backTop = back.getBoundingClientRect().top, fr = first.getBoundingClientRect();
+    const headH = head.offsetHeight + (parseFloat(getComputedStyle(sh).paddingTop) || 0);
+    sh.style.scrollPaddingTop = `${Math.ceil(headH)}px`; // (Safari/WebKit: depois do foco ele rola de novo para a aba ficar a 'scroll-padding-top' do alto; os 90 px do CSS desfaziam a rolagem acima e escondiam o começo da lista em telas baixas)
+    const backTop = back.getBoundingClientRect().top, fr = first.getBoundingClientRect();
     let d = fr.top + Math.min(fr.height, 120) - backTop; // > 0: o começo do cartão está abaixo da dobra
     if (d > 0) {
       if (keep && keep.getBoundingClientRect && sh.contains(keep)) d = Math.min(d, keep.getBoundingClientRect().top - headH); // a aba focada continua à vista
