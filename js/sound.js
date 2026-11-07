@@ -441,8 +441,8 @@
     },
 
     // ================= Sons do Passarinho (0.20.0) =================
-    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte (nenhum artigo foi aberto: a rede do ambiente de
-    // desenvolvimento estava bloqueada). São sons genéricos de "passarinho" feitos para soar agradáveis a uma criança; nada muda por skin, só pela fase
+    // ATENÇÃO (honestidade): todos os números abaixo são ESCOLHAS DE DESIGN, NÃO VERIFICADAS em fonte (nenhum artigo conferido em docs/biologia/referencias.json
+    // trata de sons de aves). São sons genéricos de "passarinho" feitos para soar agradáveis a uma criança; nada muda por skin, só pela fase
     // da vida (chirp1 filhote -> chirp2 jovem -> chirp3 adulto, como bark1/2/3 do cachorrinho e cmeow1/2/3 do gatinho). Nenhum lembra espécie nenhuma.
 
     // Pio do filhote (ao completar a fase): "pi-piu" agudo e curtinho. Duas sílabas de senoide: um "pi" que sobe (3000 -> 3800 Hz) e um "piu" que sobe
