@@ -100,7 +100,7 @@
   const BALL_R = 8, BALL_SCARE = 3 * TILE, BALL_FRICTION = 150, BALL_MAX = 8;
   const ballKick = (levelNumber) => 180 + 8 * levelNumber; // px/s do chute: 196 na Fase 2 até 340 na Fase 20 (o cachorrinho anda 200 a 252 px/s; a bolinha perde velocidade rápido)
   const BALL_COLORS = ["#ff5a5a", "#ffd23f", "#4fc3ff", "#7be07b"];
-  // Skins do cachorrinho (0.15.9): a lojinha vende por petiscos (1 petisco por fase completada = 1 petscoin); o preço mínimo é Records.MIN_SKIN_PRICE (10).
+  // Skins do cachorrinho (0.15.9): a lojinha vende por petiscos (petisco = petscoin; quanto cada vitória rende: Records.winTreats); o preço mínimo é Records.MIN_SKIN_PRICE (10).
   // `tan`/`dark`: pelo do corpo e das orelhas/patas/rabo, [filhote, adulto]; `collar`: coleira fixa (sem isso a coleira muda com o crescimento); `acc`: acessório; `spots`: manchas.
   const SKINS = [
     { id: "", name: "Caramelo", price: 0, text: "o cachorrinho de sempre (grátis)" },
@@ -3100,7 +3100,7 @@
   }
   function openAnimals() { renderAnimals(); showScreen("animals"); }
 
-  // ---------- Lojinha única (0.15.9; ampliada na 0.19.0): petiscos (1 por fase completada = 1 petscoin) por skins de todos os bichinhos e objetos dos jogos ----------
+  // ---------- Lojinha única (0.15.9; ampliada na 0.19.0): petiscos (= petscoin; Records.winTreats) por skins de todos os bichinhos e objetos dos jogos ----------
   // Abas por JOGO (Cachorrinho | Gatinho | Passarinho; um jogo que não está pronto aparece desligado, "em breve") e, dentro do jogo, CATEGORIAS (o bichinho, os agentes da carrocinha, as rações...; o catálogo é o js/skins.js). A carteira de petscoin é uma só.
   // Cada categoria libera quando o jogador ALCANÇA a fase em que o objeto aparece NAQUELE jogo (store.reachedLevel); antes disso ela aparece apagada, com cadeado, e não vende (o armazenamento também recusa: "locked").
   // O mostruário de cada categoria é `PREVIEW[categoria]` (canvas 216 × 156): as do bichinho estão aqui; as dos objetos vêm mais abaixo, neste mesmo arquivo (os mostruários das skins dos objetos do Cachorrinho e do Gatinho); sem uma, desenha um mostruário simples com o nome da categoria.
@@ -3396,10 +3396,11 @@
       $("win-general").textContent = "";
       $("win-total").textContent = "";
     }
-    { // 0.15.9: ao completar a fase o cachorrinho ganha 1 petisco (1 petscoin), guardado na carteira do jogador
-      const me2 = accountGone() ? "" : gamePlayer, w = me2 ? store.addTreats(me2, 1) : null;
-      if (w) $("win-treat").replaceChildren(`Petisco ganho! +1 petscoin (você tem ${w.treats}).`, el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (a dica some nas telas baixas, para a vitória caber sem rolar)
-      else $("win-treat").textContent = gone ? "" : "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+    { // 0.15.9, 0.23.0: ao completar a fase o jogador ganha petiscos (= petscoin), guardados na carteira dele; quantos: Records.winTreats (fase nova, recorde batido ou repetida; +2 sem perder vida)
+      const me2 = accountGone() ? "" : gamePlayer, tr = Records.winTreats(levelId, { first: !!(res && res.first), newPersonal: !!(res && res.newPersonal), livesLost }), w = me2 ? store.addTreats(me2, tr.total) : null;
+      const why = (tr.kind === "first" ? `fase nova +${tr.base}` : tr.kind === "record" ? `recorde batido +${tr.base}` : `jogar de novo sem recorde +${tr.base}`) + (tr.perfect ? ` · sem perder vida +${tr.perfect}` : "");
+      if (w) $("win-treat").replaceChildren(`${tr.total === 1 ? "Petisco ganho!" : "Petiscos ganhos!"} +${tr.total} petscoin (${why}). Você tem ${w.treats}.`, el("span", "long-hint", " Troque por skins na Lojinha, no menu.")); // (a dica some nas telas baixas, para a vitória caber sem rolar)
+      else $("win-treat").textContent = gone ? "" : "Sem nome de usuário: os petiscos desta fase não foram guardados. Escolha um nome no menu para juntar petiscos.";
     }
     showScreen("win");
   }

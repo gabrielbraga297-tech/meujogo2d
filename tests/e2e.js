@@ -133,8 +133,11 @@ const PAGE_HELPERS = () => {
     ${FIX("bird-art-fixture.js")}
     (() => { let T; Object.defineProperty(window, "Themes", { configurable: true, get: () => T, set: (v) => { if (v && typeof v.of === "function" && !v.__birdWrapped) { const of0 = v.of; v = Object.assign({}, v, { of: (id, animal) => (animal === "bird" && window.__birdThemeFixture ? window.__birdThemeFixture : of0(id, animal)), __birdWrapped: true }); } T = v; } }); })();`;
   browser.newContext = async (o = {}) => {
-    const { realCat, realBird, ...opts } = o;
+    const { realCat, realBird, realTreats, ...opts } = o;
     const c = await rawNewContext(opts);
+    // (0.23.0) até a 0.22.0 cada vitória rendia 1 petscoin e as seções antigas (pausa, derrota, recarregar, duas contas...) contam petiscos de 1 em 1: nelas o rendimento fica em 1 (Records.winTreats trocado ao carregar);
+    // só as páginas abertas com `realTreats: true` (seção "0.23.0 · economia") veem o rendimento de verdade.
+    if (!realTreats) await c.addInitScript(() => { let R; Object.defineProperty(window, "Records", { configurable: true, get: () => R, set: (v) => { R = v; if (v && typeof v.winTreats === "function") v.winTreats = () => ({ kind: "again", base: 1, perfect: 0, total: 1 }); } }); });
     if (!realCat) await c.addInitScript(() => { Object.defineProperty(window, "CatLevels", { configurable: true, get: () => undefined, set: () => {} }); });
     if (!realBird) await c.addInitScript(() => { Object.defineProperty(window, "BirdLevels", { configurable: true, get: () => undefined, set: () => {} }); });
     else if (realBird === "levels") await c.addInitScript({ content: `${FIX("bird-levels-fixture.js")}\nObject.defineProperty(window, "BirdLevels", { configurable: true, get: () => window.__BIRD_FIXTURE_LEVELS, set: () => {} });\nObject.defineProperty(window, "BirdArt", { configurable: true, get: () => undefined, set: () => {} });` }); // só as fases das fixtures: sem BirdArt nem ambiente (os desenhos de reserva do motor; js/bird-art.js, carregado pelo index.html, é escondido)
@@ -6601,8 +6604,9 @@ const PAGE_HELPERS = () => {
   const SKIN_SPEC = [["", "Caramelo", 0], ["cinza", "Cinza-prata", 10], ["dalmata", "Dálmata", 12], ["chocolate", "Chocolate", 15], ["dourado", "Dourado", 20], ["arco-iris", "Arco-íris", 25], ["pirata", "Pirata", 30], ["astronauta", "Astronauta", 40], ["super", "Super-cão", 50]];
   const hex3 = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const mix3 = (a, b, t) => { const pa = hex3(a), pb = hex3(b); return pa.map((v, k) => Math.round(v + (pb[k] - v) * t)); }; // o mesmo cálculo do jogo (mixHex)
-  const TREAT = (n) => `Petisco ganho! +1 petscoin (você tem ${n}). Troque por skins na Lojinha, no menu.`;
-  const NO_NAME_TREAT = "Sem nome de usuário: o petisco desta fase não foi guardado. Escolha um nome no menu para juntar petiscos.";
+  // (0.23.0) o texto da vitória: aqui o rendimento está fixado em 1 por vitória (veja realTreats em browser.newContext), que cai em "jogar de novo sem recorde"
+  const TREAT = (n) => `Petisco ganho! +1 petscoin (jogar de novo sem recorde +1). Você tem ${n}. Troque por skins na Lojinha, no menu.`;
+  const NO_NAME_TREAT = "Sem nome de usuário: os petiscos desta fase não foram guardados. Escolha um nome no menu para juntar petiscos.";
   const BAL = (n, name = "Totó") => `${name}, você tem ${n} petscoin (${n} ${n === 1 ? "petisco" : "petiscos"}).`;
   const walletOf = (pg, name = "Totó") => pg.evaluate((n) => Records.createStore(localStorage).wallet(n), name); // a carteira como está guardada (outra cópia do armazenamento)
   // dá a carteira ao jogador: `treats` petscoin (sobram exatamente eles) e as skins `owned` já compradas, com `equip` em uso; recarrega a página
@@ -6634,16 +6638,16 @@ const PAGE_HELPERS = () => {
 
     // ---- a documentação bate com o catálogo ----
     const docs = fs.readFileSync(path.join(root, "docs/LOJINHA.md"), "utf8"), readme = fs.readFileSync(path.join(root, "README.md"), "utf8"), changelog = fs.readFileSync(path.join(root, "CHANGELOG.md"), "utf8"), recSrc = fs.readFileSync(path.join(root, "js/records.js"), "utf8");
-    const rows = docs.split("## Skins por bichinho")[0].split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin");
+    const rows = docs.split("## Skins por bichinho")[0].split("## Catálogo (0.15.9)")[1].split("\n").filter((l) => l.startsWith("| ") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((x) => x.trim())).filter((r) => r[0] !== "Skin");
     ok(JSON.stringify(rows.map((r) => [r[0], /grátis/.test(r[1]) ? 0 : Number(r[1])])) === JSON.stringify(cat.map((k) => [k.name, k.price])), `a tabela de docs/LOJINHA.md lista as mesmas skins e preços do jogo, na mesma ordem (${rows.map((r) => `${r[0]} ${r[1]}`).join(", ")})`);
-    ok(/MIN_SKIN_PRICE = 10/.test(docs) && /99999/.test(docs) && new RegExp(`${recSrc.match(/MAX_OWNED = (\d+)/)[1]} skins`).test(docs) && /1 petisco[^.]*fase completada/.test(docs), "docs/LOJINHA.md cita o preço mínimo (10), os limites da carteira (99999 petiscos e as skins do código) e 1 petisco por fase completada");
+    ok(/MIN_SKIN_PRICE = 10/.test(docs) && /99999/.test(docs) && new RegExp(`${recSrc.match(/MAX_OWNED = (\d+)/)[1]} skins`).test(docs) && /petiscos?[^.]*fase/.test(docs) && /Economia da lojinha \(0\.23\.0\)/.test(docs), "docs/LOJINHA.md cita o preço mínimo (10), os limites da carteira (99999 petiscos e as skins do código), os petiscos por fase e a seção de economia (0.23.0)");
     const rd = readme.slice(readme.indexOf("## Petiscos, petscoin e lojinha de skins"), readme.indexOf("## Os gatos"));
     ok(rd.length > 300 && cat.slice(1).every((k) => rd.includes(`${k.name} (${k.price})`)) && /Caramelo/.test(rd) && /grátis/.test(rd) && /MIN_SKIN_PRICE = 10/.test(rd) && /1 petisco = 1 petscoin/.test(rd), "o README tem a seção Petiscos, petscoin e lojinha de skins com os mesmos preços do jogo");
     const cl = changelog.slice(changelog.indexOf("## 0.15.9"), changelog.indexOf("## 0.15.8"));
     ok(/9 skins/.test(cl) && cat.slice(1).every((k) => cl.includes(`${k.name} ${k.price}`)) && /Caramelo \(grátis\)/.test(cl) && /1 petisco/.test(cl), "o CHANGELOG da 0.15.9 lista as skins e os preços do jogo");
     await page.click("#btn-howto");
     const how = await page.textContent("#howto");
-    ok(/Petiscos e skins:/.test(how) && /1 petisco/.test(how) && /petscoin/.test(how) && /Lojinha de skins/.test(how) && /10 petscoin/.test(how), "o Como jogar explica os petiscos, o petscoin e a Lojinha de skins (a partir de 10 petscoin)");
+    ok(/Petiscos e skins:/.test(how) && /petiscos/.test(how) && /petscoin/.test(how) && /Lojinha de skins/.test(how) && /10 petscoin/.test(how), "o Como jogar explica os petiscos, o petscoin e a Lojinha de skins (a partir de 10 petscoin)");
     await page.click("#btn-howto-back");
   });
 
@@ -6784,7 +6788,7 @@ const PAGE_HELPERS = () => {
     await page.click("#btn-shop");
     ok(await page.isVisible("#shop") && await page.isHidden("#menu") && await ev(page, () => document.body.dataset.screen) === "shop" && await ev(page, () => __game.state) === "menu", "o botão abre a Lojinha (o jogo continua no estado de menu)");
     ok(await page.textContent("#shop-title") === "Lojinha de skins" && await page.getAttribute("#shop", "aria-labelledby") === "shop-title" && await page.getByRole("heading", { name: "Lojinha de skins" }).isVisible(), "a tela tem o título Lojinha de skins (rotulada para leitor de tela)");
-    ok(await bal() === BAL(37) && /1 petisco/.test(await page.textContent("#shop-help")) && /10 petscoin/.test(await page.textContent("#shop-help")) && await msg() === "", `o saldo diz "${await bal()}" e a ajuda explica 1 petisco = 1 petscoin e o mínimo de 10`);
+    ok(await bal() === BAL(37) && /petiscos/.test(await page.textContent("#shop-help")) && /10 petscoin/.test(await page.textContent("#shop-help")) && await msg() === "", `o saldo diz "${await bal()}" e a ajuda explica 1 petisco = 1 petscoin e o mínimo de 10`);
     ok(await page.getAttribute("#shop-msg", "role") === "status" && await page.getAttribute("#shop-msg", "aria-live") === "polite", "as mensagens da lojinha são anunciadas por leitor de tela (role=status)");
 
     // ---- os 9 cartões ----
@@ -11004,7 +11008,7 @@ const PAGE_HELPERS = () => {
     }
     ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tests/wiring.test.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
     // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
-    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music|ramp)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
+    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
     const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
     ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
     // ---- a trava do armazenamento: o que ela protege e o que não protege (a conta local não é segurança de verdade) ----
@@ -11736,7 +11740,7 @@ const PAGE_HELPERS = () => {
   // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por assunto (tests/e2e-bird-<assunto>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
   // (0.21.0) as seções da música tema ficam em tests/e2e-music.js (títulos "música: ..."), carregado do mesmo jeito
   // (0.22.0) a seção da dificuldade escalonada fica em tests/e2e-ramp.js
-  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music|ramp)\.js$/.test(n)).sort()) {
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy)\.js$/.test(n)).sort()) {
     await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
   }
   console.log("erros JS:", errs);

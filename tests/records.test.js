@@ -1428,6 +1428,36 @@ test("skins por bichinho: a carteira do cachorrinho de dados antigos (sem eqa ne
   });
 }
 
+// ---------- economia da lojinha (0.23.0): quanto cada vitória rende ----------
+test("winTreats: primeira vez = 4 + fase; recorde = metade (para cima); repetir sem recorde = 1; sem perder vida +2 (só na primeira vez e no recorde)", () => {
+  const t = (level, o) => R.winTreats(level, o);
+  assert.deepStrictEqual(t(1, { first: true, livesLost: 1 }), { kind: "first", base: 5, perfect: 0, total: 5 });
+  assert.deepStrictEqual(t(1, { first: true, livesLost: 0 }), { kind: "first", base: 5, perfect: 2, total: 7 });
+  assert.deepStrictEqual(t(20, { first: true, livesLost: 3 }), { kind: "first", base: 24, perfect: 0, total: 24 });
+  assert.deepStrictEqual(t(7, { newPersonal: true, livesLost: 0 }), { kind: "record", base: 6, perfect: 2, total: 8 }, "11 / 2 = 5,5, arredondado para cima = 6");
+  assert.deepStrictEqual(t(20, { newPersonal: true, livesLost: 2 }), { kind: "record", base: 12, perfect: 0, total: 12 });
+  assert.deepStrictEqual(t(12, { livesLost: 0 }), { kind: "again", base: 1, perfect: 0, total: 1 }, "repetir sem recorde rende 1, mesmo sem perder vida");
+  assert.strictEqual(t(5, { first: true, newPersonal: true, livesLost: 0 }).kind, "first", "a primeira vez também é recorde, mas vale como primeira vez");
+});
+test("winTreats: fase fora de 1 a 20 ou sem número vira a mais próxima, e nunca devolve menos de 1 nem mais de 1000 (o limite de addTreats)", () => {
+  assert.strictEqual(R.winTreats(0, { first: true }).base, 5);
+  assert.strictEqual(R.winTreats(99, { first: true }).base, 24);
+  assert.strictEqual(R.winTreats(undefined, { first: true }).base, 5);
+  assert.strictEqual(R.winTreats(3).total, 1);
+  for (let n = 1; n <= 20; n++) for (const o of [{ first: true, livesLost: 0 }, { newPersonal: true, livesLost: 0 }, {}]) { const x = R.winTreats(n, o).total; assert.ok(Number.isInteger(x) && x >= 1 && x <= 1000, `fase ${n}: ${x}`); }
+});
+test("winTreats: a primeira volta pelas 20 fases rende 290 (330 sem perder vida) e a carteira soma de verdade", () => {
+  let a = 0, b = 0;
+  for (let n = 1; n <= 20; n++) { a += R.winTreats(n, { first: true, livesLost: 1 }).total; b += R.winTreats(n, { first: true, livesLost: 0 }).total; }
+  assert.strictEqual(a, 290); assert.strictEqual(b, 330);
+  const st = R.createStore(memStorage());
+  for (let n = 1; n <= 20; n++) st.addTreats("Totó", R.winTreats(n, { first: true, livesLost: 1 }).total);
+  assert.strictEqual(st.wallet("Totó").treats, 290);
+});
+test("winTreats: as constantes e o preço mínimo continuam os de sempre (os preços não mudaram)", () => {
+  assert.strictEqual(R.MIN_SKIN_PRICE, 10); assert.strictEqual(R.TREAT_BASE, 4); assert.strictEqual(R.TREAT_PERFECT, 2); assert.strictEqual(R.TREAT_AGAIN, 1);
+});
+
 Promise.all(pending).then(() => {
   console.log(failed ? `\n${failed} falha(s)` : "\nTodos os testes unitários passaram");
   process.exit(failed ? 1 : 0);

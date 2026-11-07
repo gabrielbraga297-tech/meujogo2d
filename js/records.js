@@ -32,9 +32,21 @@
 
   // Pontuação da fase = 100 por ração + bônus de tempo − 50 por vida perdida − 100 por cada nova tentativa
   // (reinício depois de perder todas as vidas). PODE FICAR NEGATIVA.
-  // Petiscos (0.15.9): 1 petisco por fase completada = 1 PETSCOIN; as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
+  // Petiscos (0.15.9): petisco = PETSCOIN (1 para 1; quanto cada vitória rende: winTreats, 0.23.0); as skins da lojinha custam no mínimo MIN_SKIN_PRICE petscoin.
   // (0.19.0) MAX_OWNED: skins por jogador (o catálogo da lojinha única passa de 80; eram 60 até a 0.18.0); MAX_SLOTS: categorias diferentes com skins compradas ou em uso; MAX_REACH: a última fase de cada jogo.
   const MIN_SKIN_PRICE = 10, MAX_TREATS = 99999, MAX_OWNED = 200, MAX_SLOTS = 40, MAX_REACH = 20;
+  // (0.23.0) ECONOMIA: quanto cada vitória rende em petscoin. Até a 0.22.0 era 1 por vitória, e o catálogo inteiro (126 skins pagas, 2478 petscoin no total, de 10 a 50 cada) ficava longe demais: uma volta pelas
+  // 20 fases de um jogo rendia 20 petscoin. Agora: a PRIMEIRA vez que a fase é concluída rende 4 + o número da fase (de 5 na Fase 1 a 24 na Fase 20: 290 por jogo, cerca de 35% do catálogo daquele jogo);
+  // jogar de novo e BATER o recorde pessoal rende a metade disso (arredondada para cima); jogar de novo sem bater o recorde rende 1 (como antes: repetir a Fase 1 sem melhorar não enche a carteira);
+  // e terminar a fase sem perder nenhuma vida soma +2 (só na primeira vez e no recorde). Os preços das skins não mudam.
+  const TREAT_BASE = 4, TREAT_PERFECT = 2, TREAT_AGAIN = 1;
+  function winTreats(level, o = {}) {
+    const n = Number.isInteger(level) ? Math.max(1, Math.min(MAX_REACH, level)) : 1, full = TREAT_BASE + n;
+    const kind = o.first ? "first" : o.newPersonal ? "record" : "again";
+    const base = kind === "first" ? full : kind === "record" ? Math.ceil(full / 2) : TREAT_AGAIN;
+    const perfect = kind !== "again" && o.livesLost === 0 ? TREAT_PERFECT : 0;
+    return { kind, base, perfect, total: base + perfect };
+  }
   const isSkinId = (id) => typeof id === "string" && /^[a-z0-9-]{1,24}$/.test(id);
   // (0.18.0, 0.19.0) A carteira é ÚNICA e as skins são por CATEGORIA ("slot": o bichinho, os agentes da carrocinha, as rações...; veja js/skins.js). As do Cachorrinho ("dog", o bichinho) ficam com o id puro ("cinza", como sempre)
   // e as das outras categorias ficam com o prefixo da categoria ("cat:cinza", "agent:azul"), para não colidirem (o Gatinho tem Cinza, Pirata e Astronauta como o Cachorrinho). Uma skin guardada é, então,
@@ -548,7 +560,7 @@
         const p = progressOf(data.progress[nameKey(name)], game);
         return p && Number.isInteger(p.unlocked) ? Math.max(1, Math.min(MAX_REACH, p.unlocked)) : 1;
       },
-      // +n petiscos (1 por fase completada); devolve a carteira ou null (sem jogador ou n inválido)
+      // +n petiscos (quantos: Records.winTreats); devolve a carteira ou null (sem jogador ou n inválido)
       addTreats(name, n = 1) {
         const k = nameKey(canonical(name));
         if (!k || !Number.isInteger(n) || n < 1 || n > 1000) return null;
@@ -602,6 +614,6 @@
   }
 
   return { createStore, sanitizeName, isValidName, nameKey, formatTime, timeBonus, levelPoints, isBetter, byBest, cleanBest,
-    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, MIN_SKIN_PRICE, MAX_TREATS, MAX_OWNED, MAX_SLOTS, MAX_REACH, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS,
+    BONUS_MAX, RATION_POINTS, BONE_POINTS, POSTMAN_POINTS, BALL_POINTS, TREAT_BASE, TREAT_PERFECT, TREAT_AGAIN, winTreats, MIN_SKIN_PRICE, MAX_TREATS, MAX_OWNED, MAX_SLOTS, MAX_REACH, LIFE_PENALTY, RETRY_PENALTY, MAX_RETRIES, MAX_NAME, MAX_POINTS,
     DEFAULT_ANIMAL }; // (0.18.0) DEFAULT_ANIMAL: o bichinho padrão ("dog"); board.js e game.js usam este, em vez de repetir o texto
 });

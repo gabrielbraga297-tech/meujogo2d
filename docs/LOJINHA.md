@@ -2,14 +2,36 @@
 
 > Pedido do dono do projeto (0.15.9): *"Ao completar a fase, o cachorrinho ganha 1 petisco. Esse petisco poderá ser trocado por uma skin para o cachorrinho (portanto comece a planejar uma lojinha de skins com "valores" em petisco. Petscoin). 1 petisco = 1 petscoin. O valor mínimo da skin deve ser de 10 petscoin."*
 >
+> Pedido do dono do projeto (Atualização 8, 0.23.0, 06/11/2026): *"Atualize o ganho de petscoin de modo que não fique incompatível com os preços praticados"* (os preços não mudam).
+>
 > Pedido do dono do projeto (Atualização 4, 0.19.0): *"Acrescente novas skins na loja. Inclusive skins dos outros personagens e objetos que aparecem nas fases (as skins devem ficar liberadas para compra à medida que o jogador passa de fase). Então se não tem gatinhos na fase atual do jogador, ele ainda não pode comprar skins de gatinhos. As lojas não precisam ser separadas: pode ser uma loja só para compra de skins ou objetos ou outras coisas, para vários animaizinhos ou objetos e seres que aparecem durante os jogos e fases."*
 
 ## Moeda
 - **Petisco = Petscoin** (1 para 1). Aparece no jogo como **petscoin** (saldo) e como **petisco** (o que se ganha).
-- **Como ganhar:** **1 petisco a cada fase completada** (toda vez que a tela de vitória aparece, inclusive ao jogar de novo uma fase para melhorar o recorde), em qualquer jogo. Quem não tem nome de usuário não guarda o petisco (a tela de vitória avisa).
+- **Como ganhar (0.23.0, veja "Economia" abaixo):** a cada vitória, em qualquer jogo: **a primeira vez que a fase é concluída rende `4 + o número da fase`** (5 na Fase 1 … 24 na Fase 20), **bater o recorde pessoal numa fase já concluída rende a metade** disso (arredondada para cima), **jogar de novo sem bater o recorde rende 1**, e **terminar sem perder nenhuma vida soma +2** (na primeira vez e no recorde). Até a 0.22.0 era sempre 1 petisco por vitória. Quem não tem nome de usuário não guarda os petiscos (a tela de vitória avisa).
 - **Onde fica:** na carteira do jogador (`wallet` em `js/records.js`, no `localStorage`): `{ t: petiscos, own: [skins compradas], eq: skin em uso }` (e `eqa`, a skin em uso das outras categorias; veja **Lojinha única**). Apagar a conta apaga a carteira. Máximo de 99999 petiscos e 200 skins por jogador.
 - **Uma carteira para todos os jogos:** o petisco de uma fase concluída no Cachorrinho, no Gatinho ou no Passarinho vai para o mesmo saldo, e o saldo é o mesmo em todas as abas da lojinha.
 - **Preço mínimo e máximo:** `MIN_SKIN_PRICE = 10`. A compra é recusada se o preço for menor (`buySkin`), e o teste confere todo o catálogo. O catálogo (`Skins.register`) também recusa uma skin mais cara que o maior saldo possível (99999 petscoin, `Skins.MAX_PRICE`), que nunca poderia ser comprada.
+
+## Economia da lojinha (0.23.0)
+**O problema.** O catálogo tem **126 skins pagas que somam 2478 petscoin** (de 10 a 50 cada, média 19,7: Cachorrinho 44 skins / 863, Gatinho 39 / 771, Passarinho 43 / 844), e cada vitória rendia 1 petscoin: uma volta pelas 20 fases de um jogo juntava 20, **menos de 3% do catálogo daquele jogo**; a skin mais barata (10) pedia 10 vitórias e a mais cara (50), 50.
+
+**A regra** (`Records.winTreats(fase, { first, newPersonal, livesLost })`, em `js/records.js`; os preços não mudam):
+
+| Vitória | Petscoin |
+|---|---|
+| Primeira vez que conclui a fase (a primeira pontuação dela) | `4 + fase` (5 na Fase 1, 14 na Fase 10, 24 na Fase 20) |
+| Jogar de novo e bater o recorde pessoal (mais pontos, ou os mesmos pontos em menos tempo) | metade do valor da primeira vez, arredondada para cima (3 na Fase 1, 12 na Fase 20) |
+| Jogar de novo sem bater o recorde | 1 |
+| Terminar sem perder nenhuma vida (primeira vez e recorde) | +2 |
+
+**Contas feitas** (`tests/e2e-economy.js` confere com o catálogo de verdade):
+- **Primeira volta pelas 20 fases de um jogo:** 290 petscoin (330 se nenhuma fase perder vida): **de 34% a 38% do catálogo daquele jogo** sem nenhuma volta perfeita e de 38% a 43% com todas perfeitas. As três voltas somam 870 a 990 (35% a 40% dos 2478).
+- **Quantas fases novas por skin** (só pelas primeiras vezes, sem voltas perfeitas): uma skin de 10 sai com 2 fases (5 + 6 = 11), uma de 20 com 4 fases (5 + 6 + 7 + 8 = 26) e uma de 50 com 7 fases (as 7 primeiras rendem 56).
+- **O resto do catálogo** (cerca de 1600 petscoin depois das três primeiras voltas) vem de bater recordes: cada recorde rende em média 7,5 petscoin (a metade da primeira vez, arredondada para cima), ou 9,5 se a fase for perfeita, ou seja, de 170 a 215 recordes batidos. Repetir uma fase sem melhorar rende 1, de propósito: repetir a Fase 1 mil vezes não esvazia a lojinha.
+- Cada categoria continua abrindo na fase em que o objeto aparece (a liberação por fase não mudou).
+
+**Limites honestos.** Os números são escolhas de design, não vêm de medição com jogadores: o objetivo era "o ganho acompanha os preços", e o ritmo certo (muito rápido tira a graça, muito lento cansa) quem decide é o dono jogando; a fórmula está num lugar só (`winTreats` e as três constantes `TREAT_*`), fácil de ajustar. Quem já tinha petscoin continua com o mesmo saldo.
 
 ## Catálogo (0.15.9)
 | Skin | Preço | Como é |
@@ -61,7 +83,7 @@ A lojinha é uma só: skins **dos bichinhos e dos objetos que aparecem nas fases
 - **Categoria bloqueada:** aparece na lista de abas **apagada, com cadeado e a fase** (*Gatos 🔒 Fase 11*) e, ao abrir, mostra só **Libera ao chegar à Fase N do Cachorrinho** (e em que fase o jogador está), sem cartões nem botões de comprar. Uma skin que abre mais tarde que a categoria (campo `from` da skin, nunca antes) mostra *Skin escondida* e o bloqueio no próprio cartão, e a compra é recusada até o jogador alcançar a fase dela. Nenhuma skin do catálogo usa isso hoje; um teste de navegador confere o comportamento com uma skin de teste (`node tests/e2e.js "Lojinha única: skin com fase própria"`).
 - **Foco e rolagem:** ao abrir, o foco fica na aba do jogo aberto (sempre à vista no alto; um botão *Comprar* lá embaixo podia ficar fora da tela, e o Enter comprava sem o jogador ver). O conteúdo fica alinhado ao topo, para a barra de abas não pular ao trocar entre uma categoria longa e uma bloqueada, e, depois de abrir uma categoria ou outro jogo, a tela rola o mínimo para mostrar o começo da lista (pelo menos 60 px do primeiro cartão, entre o saldo e o Voltar fixos) sem tirar o foco da aba. Abaixo de 300 px de largura as abas dos jogos passam para mais de uma linha.
 - **Teclado e leitor de tela:** as categorias do próprio bichinho se chamam *O cachorrinho* e *O gatinho* para o leitor de tela (o texto na tela é o mesmo da aba do jogo), e as abas são `tablist` / `tab` com `aria-selected`, e o painel (`tabpanel`) é rotulado pela aba aberta; ← → (e Início e Fim) andam entre as abas, ↑ ↓ passam pela aba aberta e entram na lista, Tab vai da aba aberta direto para os cartões; a aba bloqueada se chama, por exemplo, *Gatos, bloqueada. Libera ao chegar à Fase 11 do Cachorrinho*; o foco não se perde ao trocar de aba nem ao comprar. Cabe em 320×568, 360×640, 390×780, 740×390, 568×320 e 1000×700 sem rolagem lateral, com alvos de toque de 44 px (40 px nas telas baixas).
-- O menu mostra *Petscoin: N* junto das fases concluídas, e a tela de vitória diz *Petisco ganho! +1 petscoin (você tem N)*.
+- O menu mostra *Petscoin: N* junto das fases concluídas, e a tela de vitória diz, por exemplo, *Petiscos ganhos! +11 petscoin (fase nova +9 · sem perder vida +2). Você tem N.*
 
 ### Categorias e fases de liberação
 A categoria libera quando o jogador **alcançou a fase em que o objeto aparece pela primeira vez, no jogo dele**: alcançar a Fase N é ter concluído a N−1 (sem nada concluído vale a Fase 1; o máximo é a 20). O progresso é de cada jogo: o do Gatinho não libera categorias do Cachorrinho e o do Cachorrinho não libera as do Gatinho. Exemplo: quem não chegou à Fase 11 do Cachorrinho não compra skins de gatos; ao concluir a Fase 10 do Cachorrinho a categoria *Gatos* libera.
