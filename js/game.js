@@ -1243,7 +1243,7 @@
       id: 15, title: "Fase 15", map: MAP_15, balls: 4, vets: vetsOf(15, 7), rations: 52, bones: 6, extraLives: [3, 4], bonusStep: 20, dogSpeed: 1.0,
       alertTiles: 18, lifePenalty: 350, minPoints: 3000, bonePower: 35, crush: true, respawnInPlace: true, blockEvery: 3, blockRange: { door: [5, 6], wall: [5, 6] },
       note: "mais um bom pedaço de labirinto para explorar",
-      cats: [[24,15],[7,42],[13,22],[60,29],[41,42]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
+      cats: [[24,15],[7,42],[13,22],[60,29],[41,42],[45,2]], cat: { speed: 137, chaseSpeed: 211, hear: 8 },
       lifeCap: 8, mission: { rations: 40 }, missionBonus: 400,
       boneMix: ["scare", "scare", "scare", "ice", "turbo", "magnet"],
       maze: { x: [[1, 3], [6, 3], [12, 3], [17, 3], [23, 3], [28, 3], [34, 7], [43, 3], [49, 3], [54, 3], [59, 3], [65, 3], [71, 3]], y: [[1, 3], [7, 3], [13, 4], [20, 5], [28, 3], [34, 4], [41, 3]], p: [0, 1], e: [12, 5] },

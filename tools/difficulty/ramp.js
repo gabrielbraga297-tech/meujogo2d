@@ -1,7 +1,7 @@
 // RAMPA DE DIFICULDADE (0.22.0): contas sobre as medições de tools/difficulty/run.js e a regra que o jogo promete ao dono.
 // A REGRA (pedido de 06/11/2026): em cada bichinho, nenhuma fase anterior é mais difícil que uma posterior (a dificuldade sobe proporcionalmente) e as Fases 18 e 19 ficam
 // LEVEMENTE mais difíceis que a 17 e MENOS difíceis que a 20. "Difícil" aqui é o que o robô de tools/difficulty mede, com vidas infinitas (--immortal): em cada partida (uma semente) a taxa de golpes é
-// golpes ÷ minutos de jogo; R é a MÉDIA dessas taxas com cada partida limitada a CAP = 6 golpes/min (uma partida em que o robô fica preso apanhando de um inimigo não decide sozinha a fase; sem o limite,
+// golpes ÷ minutos de jogo (no mínimo 1 minuto); R é a MÉDIA dessas taxas com cada partida limitada a CAP = 6 golpes/min (uma partida em que o robô fica preso apanhando de um inimigo não decide sozinha a fase; sem o limite,
 // a Fase 17 do Cachorrinho media 6,6 golpes/min (acima da 20, que media 3,4) só porque uma das 12 partidas teve 22 golpes/min; a mediana dela era 2,7). É uma régua para comparar fases do mesmo bichinho, não o quanto uma pessoa sofre (o robô não enxerga a escuridão das noites).
 // Como a medição tem ruído (e as fases iniciais quase não têm golpes), a comparação aceita uma folga: a fase seguinte pode medir até TOL(R) abaixo da anterior, onde TOL(R) = max(0,6; 0,3 × R).
 //
@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = path.join(__dirname, "../..");
 
-const TOL_MIN = 0.6, TOL_FRAC = 0.3, CAP = 6; // (CAP: golpes por minuto, no máximo, que uma partida soma ao R)
+const TOL_MIN = 0.6, TOL_FRAC = 0.3, CAP = 6, MIN_SECS = 60; // (CAP: golpes por minuto, no máximo, que uma partida soma ao R; MIN_SECS: uma partida de menos de 1 minuto conta como 1 minuto, senão 1 golpe numa fase de 13 s valeria 4 golpes/min)
 const tol = (r) => Math.max(TOL_MIN, TOL_FRAC * r);
 const ANIMALS = ["dog", "cat", "bird"];
 const KEYS = { dog: ["agents", "cats"], cat: ["dogs", "trackers"], bird: ["cats", "hawks"] };
@@ -50,7 +50,7 @@ function summarize(rows) {
     for (const [id, rs] of Object.entries(levels)) {
       const hits = rs.reduce((n, r) => n + r.hits, 0), secs = rs.reduce((n, r) => n + r.time, 0);
       const lost = rs.map((r) => r.livesLost).sort((x, y) => x - y);
-      const rates = rs.map((r) => Math.min(CAP, (r.hits / Math.max(1, r.time)) * 60));
+      const rates = rs.map((r) => Math.min(CAP, (r.hits / Math.max(MIN_SECS, r.time)) * 60));
       out[animal][id] = {
         seeds: rs.length, wins: rs.filter((r) => r.state === "won").length, hits,
         R: Math.round((rates.reduce((n, x) => n + x, 0) / rates.length) * 100) / 100,
@@ -92,7 +92,7 @@ function stale(table) { // as contagens gravadas precisam ser as do jogo: mudou 
   return bad;
 }
 
-module.exports = { tol, ANIMALS, KEYS, countsNow, summarize, violations, stale, TOL_MIN, TOL_FRAC, CAP };
+module.exports = { MIN_SECS, tol, ANIMALS, KEYS, countsNow, summarize, violations, stale, TOL_MIN, TOL_FRAC, CAP };
 
 if (require.main === module) {
   const [cmd, ...rest] = process.argv.slice(2);
