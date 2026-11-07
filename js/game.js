@@ -3476,6 +3476,26 @@
     return `Versão ${v.number}${stage}${m ? ` · ${m[3]}/${m[2]}/${m[1]}` : ""}${v.build && v.build !== "dev" ? ` · build ${v.build}` : ""}`;
   }
 
+  // (0.23.0) Aviso de versão nova (js/update.js): pergunta ao servidor, sem usar o que o navegador guardou, qual é a build de js/version.js. Só no site publicado (http/https com build de commit); na pasta de desenvolvimento
+  // (build "dev"), no arquivo local e na página montada num arquivo só nada acontece. Pergunta uma vez ao abrir (depois de 4 s) e quando a aba volta a ficar visível, no máximo a cada 5 minutos.
+  let updateAskedAt = 0, updateFound = false;
+  function showUpdateNote() { updateFound = true; $("btn-update").classList.remove("hidden"); }
+  async function checkForUpdate(o = {}) { // `o` só serve para os testes: fetchFn, current e force (ignora o protocolo e o intervalo)
+    const U = window.UpdateCheck, v = window.GAME_VERSION, now = Date.now();
+    if (!U || updateFound) return updateFound;
+    const current = o.current !== undefined ? o.current : v && v.build;
+    if (!o.force && (!/^https?:$/.test(location.protocol) || now - updateAskedAt < U.MIN_GAP_MS)) return false;
+    if (!U.isCommit(current)) return false;
+    updateAskedAt = now;
+    const url = new URL("js/version.js", location.href); url.searchParams.set("t", String(now));
+    const found = await U.check({ fetchFn: o.fetchFn || ((u, init) => fetch(u, init)), current, url: url.href });
+    if (found) showUpdateNote();
+    return found;
+  }
+  $("btn-update").addEventListener("click", () => { try { saveNow(); } catch { /* segue mesmo assim */ } location.reload(); }); // (recarregar pergunta de novo ao servidor pelos arquivos; o jogo em andamento já foi salvo)
+  setTimeout(() => { checkForUpdate(); }, 4000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkForUpdate(); });
+
   function foundedText() { // (0.17.0) "Fundado em 06/10/2026": dia em que o jogo foi criado (js/version.js: founded)
     const v = window.GAME_VERSION, m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((v && v.founded) || "");
     return m ? `Fundado em ${m[3]}/${m[2]}/${m[1]}` : "";
@@ -5051,6 +5071,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
   const levelSummary = (list) => list.map((l) => ({ id: l.id, title: l.title, map: l.map.slice(), vets: l.vets.map((v) => ({ ...v })), rations: l.rations, bones: l.bones, extraLives: l.extraLives.slice(), bonusStep: l.bonusStep, dogSpeed: l.dogSpeed, alertTiles: l.alertTiles, lifePenalty: l.lifePenalty, minPoints: l.minPoints, bonePower: l.bonePower, crush: l.crush, touchEase: l.touchEase && { ...l.touchEase }, respawnInPlace: !!l.respawnInPlace, blockRange: l.blockRange && JSON.parse(JSON.stringify(l.blockRange)), note: l.note, maze: l.maze && JSON.parse(JSON.stringify(l.maze)), blocks: l.blocks.map((b) => ({ ...b })), balls: l.balls ?? 0, cats: (l.cats || []).map((c) => c.slice()), cat: l.cat && { ...l.cat }, lifeCap: l.lifeCap ?? MAX_LIVES, mission: l.mission && { ...l.mission }, missionBonus: l.missionBonus ?? 0 }));
   // gancho de depuração/testes
   window.__game = {
+    checkForUpdate, get updateFound() { return updateFound; }, // (0.23.0) ganchos do aviso de versão nova
     get state() { return state; }, get player() { return player; }, get collected() { return collected; },
     get items() { return items; }, get vets() { return vets; }, get cats() { return cats; }, get skin() { return skinId; }, get skins() { return SKINS.map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get catSkins() { return skinsOf("cat").map((k) => ({ id: k.id, name: k.name, price: k.price })); }, get balls() { return balls; }, set balls(v) { balls = v; }, get fx() { return { ...fx }; }, set fx(v) { fx = { shield: 0, ice: 0, turbo: 0, magnet: 0, ...v }; }, set catOverride(v) { catOverride = v; }, set catsThaw(v) { catsThaw = !!v; }, catTarget(i) { return catTarget(cats[i]); }, exitSteps(c, r) { return lv.exitDist[r * COLS + c]; }, get exit() { return exitRect; }, get score() { return score; },
     get reinforceOffer() { return offerIds.slice(); }, set offerFixed(v) { offerFixed = v; },

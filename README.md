@@ -5,7 +5,7 @@ Versão atual: o **Cachorrinho**, o **Gatinho** e o **Passarinho** estão pronto
 Jogo 2D feito com HTML5 Canvas e JavaScript puro, sem dependências nem etapa de build.
 
 ## Versão
-A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.22.0 · 07/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
+A versão do jogo aparece no **menu inicial** (canto inferior esquerdo), por exemplo "Versão 0.23.0 · 07/11/2026", e, na linha pequena do crédito (canto de baixo à direita), "Fundado em 06/10/2026" (o dia em que o jogo foi criado, `founded` em `js/version.js`). No GitHub Pages ela também mostra o código do commit ("· build abc1234"), que diz exatamente qual atualização está no ar. O histórico de mudanças está no [`CHANGELOG.md`](CHANGELOG.md); para publicar uma atualização, mude `js/version.js` e o `CHANGELOG.md` (o teste `node tests/version.test.js` confere se combinam).
 
 ## Como jogar
 - **Online:** https://gabrielbraga297-tech.github.io/meujogo2d/ (disponível depois de ativar o GitHub Pages; veja abaixo).
@@ -1056,6 +1056,9 @@ tests/bird-art.test.js testes unitários dos desenhos do Passarinho (Node, com u
 tests/bird-themes-1.test.js testes dos ambientes do Passarinho, Fases 1 a 10 (Node); tests/bird-themes-2.test.js, Fases 11 a 20; tests/bird-themes-harness.js não é um teste: é o ctx de mentira que os dois usam
 tests/bird-table.test.js confere a tabela das fases do Passarinho do README com js/bird-levels.js e com a tabela do Gatinho (Node)
 tests/skins-bird.test.js testes unitários das skins dos objetos do Passarinho (Node, com um ctx de mentira)
+tests/e2e-economy.js  a seção "0.23.0 · economia" do e2e: quanto cada vitória rende na tela de vitória e na carteira, os preços que não mudaram e as contas com o catálogo
+tests/e2e-update.js   a seção "0.23.0 · atualização" do e2e: o aviso de versão nova no menu
+tests/update.test.js  o aviso de versão nova, o selo ?v=<commit> e o workflow, sem navegador
 tests/e2e-ramp.js     a seção "0.22.0 · dificuldade escalonada" do e2e: os inimigos que o jogo põe em cada fase são os de tools/difficulty/ramp.json e o README explica a régua
 tests/difficulty-ramp.test.js a regra de dificuldade (nenhuma fase anterior mais difícil; 18 e 19 entre a 17 e a 20) sobre os números gravados, sem navegador
 tests/e2e-music.js    seções "música:" do e2e (carregadas pelo tests/e2e.js): o tema de cada situação, abafar, parar, recomeçar, mudo, botão Música e tecla N, aba escondida, sem Web Audio, falhas do tocador, o AudioContext real e o tamanho dos botões
@@ -1069,12 +1072,20 @@ tests/ab-dog.js       A/B de pixels do Cachorrinho: hash do canvas com a mesma s
 tests/ab-sounds.js    A/B de sons do Cachorrinho: cenas fixas e a lista de pedidos de som; ab-sounds-0170.json é a referência de antes dos sons do Gatinho (usado pelo e2e)
 tools/cat-preview/    prévias e capturas do Gatinho (art.html, themes1/2.html, shoot-art.js, shoot-themes*.js e shoot-game.js, que fotografa o jogo de verdade)
 tools/bird-preview/   prévias e capturas do Passarinho (art.html, themes.html, shoot-art.js, shoot-themes.js e bench.js)
-tools/publish/        build-artifact.py (monta o jogo num único arquivo HTML, com o código curto do commit no lugar de build "dev") e smoke.js (abre essa página no Chromium e confere que não há erros e que a Fase 1 de cada bichinho anda)
+js/update.js          o aviso de versão nova (UpdateCheck: lê a build de js/version.js sem cache e compara; nunca lança erro)
+tools/publish/        cache-bust.py (o selo ?v=<commit> nos endereços, usado pelo workflow), build-artifact.py (monta o jogo num único arquivo HTML, com o código curto do commit no lugar de build "dev") e smoke.js (abre essa página no Chromium e confere que não há erros e que a Fase 1 de cada bichinho anda)
 tools/difficulty/     a régua de dificuldade das fases (0.22.0): run.js (joga as fases com o robô e imprime/grava as medições), probe-page.js (o robô do Cachorrinho e do Gatinho), summary.js (tabela e comparação antes/depois), ramp.js (R, a regra e as contagens; build/check/table) e ramp.json (as medições gravadas que tests/difficulty-ramp.test.js confere)
 tools/run-sections.js executa a suíte do navegador uma seção por vez, com registro retomável e a lista de diferenças esperadas de motor (Firefox e WebKit)
 tools/skin-preview/   capturas das skins dos objetos com o jogo de verdade: shoot.js (objetos do Cachorrinho), cat-skins.js (objetos do Gatinho) e bird-skins.js (objetos do Passarinho)
 .github/workflows/pages.yml   publicação no GitHub Pages
 ```
+
+## Atualização sem cache velho (0.23.0)
+O navegador guarda cada arquivo do jogo por alguns minutos (o GitHub Pages manda guardar por 10), então logo depois de uma atualização podia haver uma página nova com um script velho, ou alguém com o jogo aberto há horas. Duas defesas:
+- **Selo de versão nos endereços.** Ao publicar no GitHub Pages, o workflow (`.github/workflows/pages.yml`) roda `python3 tools/publish/cache-bust.py _site <código do commit>` e cada script e o CSS do `index.html` ganham o código do commit no fim do endereço: `js/game.js?v=abc1234`, `css/style.css?v=abc1234`. Um commit novo muda todos os endereços de uma vez, então o navegador baixa tudo de novo e não monta a versão nova com um arquivo velho que guardou. O script só mexe nessas linhas, rodar duas vezes dá o mesmo resultado e recusa um código que não seja de commit; na pasta de desenvolvimento e ao abrir `index.html` direto nada muda. (**Limite:** o próprio `index.html` continua sujeito aos 10 minutos do GitHub Pages. Um aparelho que abre o jogo dentro desse prazo depois de uma publicação pode receber o `index.html` antigo; os endereços antigos que o navegador ainda guarda dão a versão antiga, mas um arquivo que ele já soltou é buscado no servidor, que responde com o arquivo novo mesmo para o endereço antigo, e aí ainda pode sair uma mistura por alguns minutos. Quem cobre esse caso é o aviso de versão nova, abaixo: ele pergunta ao servidor sem cache e o toque recarrega tudo.)
+- **Aviso de versão nova.** `js/update.js` pergunta ao servidor, sem usar o que o navegador guardou (`cache: "no-store"`), qual é a `build` de `js/version.js`. Se for outro código de commit, o menu mostra **"Tem uma versão nova do jogo. Toque aqui para atualizar."**; o toque salva o jogo e recarrega a página. Pergunta uma vez ao abrir (depois de 4 s) e quando a aba volta a ficar visível, no máximo a cada 5 minutos. **Só no site publicado** (http/https com build de commit): na pasta de desenvolvimento (`build: "dev"`), em arquivo local e na página montada num arquivo só nunca há pergunta nem aviso, e qualquer falha (sem internet, resposta estranha) é silenciosa.
+- **Testes:** `node tests/update.test.js` (Node: leitura da build, regra «só dois códigos de commit diferentes», falhas silenciosas, o script de selo e o workflow) e `node tests/e2e.js "0.23.0 · atualização"` (o aviso no menu em 4 tamanhos de tela, o botão que recarrega e o silêncio nos casos sem aviso).
+- **Limite honesto:** o aviso e o selo foram testados com o servidor de mentira e com o script; **nenhum deles rodou ainda no GitHub Pages de verdade** (isso só acontece quando a `main` for publicada).
 
 ## Dificuldade das fases (0.22.0)
 Pedido do dono (06/11/2026): as Fases **18 e 19** de cada bichinho ficam **menos difíceis que a 20** e **levemente mais difíceis que a 17**, e **nenhuma fase anterior pode ser mais difícil que uma posterior** (a dificuldade sobe proporcionalmente). Antes disso a medição mostrava o contrário em vários pontos (por exemplo, no Cachorrinho a 13, a 18 e a 19 eram mais difíceis que a 20; no Passarinho a 13, a 14 e a 19 passavam da 20).
@@ -1105,6 +1116,7 @@ node tests/records.test.js
 node tests/accounts.test.js
 node tests/board.test.js
 node tests/version.test.js
+node tests/update.test.js        # o aviso de versão nova e o selo ?v=<commit> dos endereços (precisa de python3) (0.23.0)
 node tests/difficulty-ramp.test.js  # a regra de dificuldade das 60 fases sobre tools/difficulty/ramp.json e se as contagens de inimigos gravadas são as do jogo (0.22.0)
 node tests/sound.test.js
 node tests/music.test.js        # o motor das músicas tema (contrato, gerador, render e tocador, com um áudio de mentira)

@@ -29,6 +29,9 @@ jobs:
           # carimba o código curto do commit na versão mostrada no menu (js/version.js: build "dev" -> "abc1234")
           sed -i "s/build: \"dev\"/build: \"${GITHUB_SHA::7}\"/" _site/js/version.js
           grep -q "build: \"${GITHUB_SHA::7}\"" _site/js/version.js
+          # cada script e o CSS ganham ?v=<commit> no endereço: o navegador não monta a versão nova com um arquivo velho que guardou (tools/publish/cache-bust.py)
+          python3 tools/publish/cache-bust.py _site "${GITHUB_SHA::7}"
+          grep -q "js/game.js?v=${GITHUB_SHA::7}" _site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

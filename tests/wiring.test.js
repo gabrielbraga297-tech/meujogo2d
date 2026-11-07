@@ -41,7 +41,7 @@ test("index.html: js/skins.js vem antes de js/skins-dog.js, js/skins-cat.js e js
   assert.ok(at("js/skins-dog.js") < at("js/game.js") && at("js/skins-cat.js") < at("js/game.js") && at("js/skins-bird.js") < at("js/game.js"), "as skins dos objetos antes de game.js");
   assert.ok(at("js/skins-cat.js") < at("js/skins-bird.js"), "a ordem dos arquivos de skins é a dos jogos: Cachorrinho, Gatinho, Passarinho");
   assert.ok(at("js/records.js") < at("js/game.js") && at("js/cat-art.js") < at("js/game.js") && at("js/bird-art.js") < at("js/game.js"), "records.js, cat-art.js e bird-art.js antes de game.js");
-  for (const f of ["js/profiles.js", "js/sound.js", "js/themes.js", "js/version.js"]) assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`);
+  for (const f of ["js/profiles.js", "js/sound.js", "js/themes.js", "js/version.js", "js/update.js"]) assert.ok(at(f) < at("js/game.js"), `${f} antes de game.js`);
 });
 
 test("index.html: os arquivos do Passarinho vêm na ordem certa (ambientes depois de themes.js e dos do Gatinho; arte depois de cat-art.js e antes de profiles.js; mapas depois dos do Gatinho; tudo antes de game.js)", () => {
