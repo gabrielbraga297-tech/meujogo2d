@@ -4,7 +4,7 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
-## 0.22.0 — 07/11/2026 (em preparação)
+## 0.22.0 — 07/11/2026
 **Atualização 7 · Dificuldade escalonada.**
 Pedido do dono: as **Fases 18 e 19** de cada bichinho ficam **menos difíceis que a 20 e levemente mais difíceis que a 17**, e **todas as fases de todos os bichinhos escalonam proporcionalmente**: nenhuma fase anterior pode ser mais difícil que uma posterior. Esta versão **mede** a dificuldade com um jogador-robô, **ajusta a quantidade de inimigos** onde a sequência estava torta e **fixa a regra em teste**. Também fecha a pendência do **Firefox e do Safari** (veja a última linha) e corrige um defeito que só o WebKit mostrou.
 - **A régua (`tools/difficulty/`):** um robô que desvia dos inimigos e pega os itens (o do Passarinho conhece voo, galhos e vento) joga cada fase em 24 sementes **com vidas infinitas**, em quadros simulados de 1/60 s (a mesma semente dá sempre o mesmo resultado, em qualquer máquina). **R** é a média, por partida, de **golpes por minuto** (cada partida limitada a 6). É uma **régua para comparar fases do mesmo bichinho, não o quanto uma pessoa sofre**: o robô não enxerga a escuridão das noites e não usa lugares altos nem poças de propósito.
