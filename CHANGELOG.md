@@ -4,6 +4,9 @@ A versão aparece no **menu inicial** do jogo (canto inferior esquerdo), por exe
 
 Para publicar uma atualização: troque `number` e `date` em `js/version.js` e acrescente a versão aqui, no topo (o teste `node tests/version.test.js` confere se os dois combinam). Correções pequenas aumentam o último número (0.5.0 → 0.5.1); novidades aumentam o do meio (0.5.0 → 0.6.0).
 
+
+**Protótipo fora das versões (12/11/2026): Teste 01 de adaptação (2,5D).** Uma única fase do Cachorrinho (a Fase 2, Campo) em 2,5D, numa pasta à parte (`teste-01-adaptacao/`, gerada por `tools/prototipo25d/build.py`) e numa página publicada à parte; **o jogo e a versão (0.24.0) não mudaram**. O chão e o mapa seguem iguais e só as paredes ganharam altura, com sombras e silhueta de quem passa atrás; as mesmas 7 jogadas (1480 quadros) dão o mesmo estado no jogo original e no teste; nada é guardado no aparelho; sem erro no Chromium, no Firefox e no WebKit do Playwright. Limites: só as paredes `#` têm relevo, só o Campo foi visto, ninguém jogou ainda, sem teste em celular de verdade nem no Safari de verdade. Detalhes na seção «Teste 01 de adaptação (2,5D)» do README. Se o dono gostar, o 2,5D entra por partes, em atualizações numeradas, uma por vez.
+
 ## 0.24.0 — 07/11/2026
 **Atualização 9 · Referências de biologia.**
 Pedido do dono: as características, os sons, os objetos e as fases de cada bichinho devem vir de **traços genéricos da espécie, com base em artigos científicos revisados por pares, de periódicos reconhecidos, dos últimos 5 anos, citados no README**; antes, nada estava verificado porque a rede bloqueava os sites de artigos. Em 07/11/2026 o dono liberou o acesso (Europe PMC e Crossref) e esta versão **procurou e conferiu** as referências.

@@ -1,0 +1,5 @@
+/* Teste 01 de adaptação (2,5D): ajustes de página; o resto é o css do jogo (../css/style.css). */
+#wrap { aspect-ratio: 800 / 590; } /* o campo tem 14 px de altura a mais em cima (a altura das paredes): 25 colunas × 32 px por 18 linhas × 32 px + 14 px */
+/* O teste não salva, não tem pontuações nem próxima fase: some tudo o que for disso */
+#btn-save-hud, #save-status, #btn-save, #btn-win-scores,
+#win-personal, #win-general, #win-total, #win-treat, #win-extra { display: none !important; }
