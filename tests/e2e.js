@@ -237,7 +237,7 @@ const PAGE_HELPERS = () => {
     const edge = [...G2.MAP[0], ...G2.MAP[17], ...G2.MAP.map((r) => r[0]), ...G2.MAP.map((r) => r[24])];
     ok(edge.every((ch) => ch === "#"), "Fase 2: cercada por paredes");
     const gl = await (async () => { await fresh(page); return ev(page, () => __game.levels.map((l) => ({ id: l.id, maps: l.map.join("\n"), vets: l.vets.length }))); })();
-    ok(gl.length === 20 && gl.slice(5, 10).map((l) => l.vets).join() === "3,4,5,5,6" && gl.slice(10).map((l) => l.vets).join() === "5,5,5,7,8,7,7,7,7,9" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as vinte fases, as cinco primeiras com os mapas e agentes da carrocinha esperados, as Fases 6 a 10 com 3, 4, 5, 5 e 6 agentes e as Fases 11 a 20 com 5, 5, 5, 7, 8, 7, 7, 7, 7 e 9 (0.22.0)");
+    ok(gl.length === 20 && gl.slice(5, 10).map((l) => l.vets).join() === "3,4,5,5,6" && gl.slice(10).map((l) => l.vets).join() === "5,5,5,7,8,6,7,7,7,9" && gl[0].maps === m1 && gl[1].maps === m2 && gl[2].maps === G3.MAP.join("\n") && gl[3].maps === G4.MAP.join("\n") && gl[4].maps === G5.MAP.join("\n") && gl[0].vets === 1 && gl[1].vets === 2 && gl[2].vets === 2 && gl[3].vets === 3 && gl[4].vets === 3, "o jogo carrega as vinte fases, as cinco primeiras com os mapas e agentes da carrocinha esperados, as Fases 6 a 10 com 3, 4, 5, 5 e 6 agentes e as Fases 11 a 20 com 5, 5, 5, 7, 8, 6, 7, 7, 7 e 9 (0.22.0; a Fase 16 passou a ter 6 na 0.25.0)");
   });
 
   // =====================================================================
@@ -1977,7 +1977,7 @@ const PAGE_HELPERS = () => {
     await finishNow(page, 10);
     ok(await ev(page, () => __game.state) === "won" && Number(await page.textContent("#win-points")) === 2500 && /Fase 5 concluída/.test(await page.textContent("#win-title")), "Fase 5 pegando tudo sem perder vida: 2000 (rações) + 300 (ossos) + 200 (bônus) = 2500 pontos");
     ok(await page.isVisible("#btn-next") && /Fase 6/.test(await page.textContent("#btn-next")), "depois da Fase 5 vem a Fase 6: o botão Próxima fase aparece");
-    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await finishNow(page, 10);
+    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await ev(page, () => { __game.noCatch = true; }); await finishNow(page, 10); // (0.25.0: perde UMA vida de propósito; depois ninguém pega o cachorrinho: os itens ficam no meio das ruas e o caminho pode passar por um agente parado)
     ok(Number(await page.textContent("#win-points")) === 2300 && /vidas perdidas: 200/.test(await page.textContent("#win-breakdown")), "com 1 vida perdida (−200 na Fase 5): 2300 pontos");
 
     // ---- escolha de fase ----
@@ -3494,6 +3494,9 @@ const PAGE_HELPERS = () => {
 
     // telas longas: o botão Voltar fica sempre à vista
     await ev(page, () => { sessionStorage.setItem("keepSave", ""); localStorage.removeItem("cachorrinho.save.v1"); const st = Records.createStore(localStorage); st.setPlayer("Totó"); for (let l = 1; l <= 9; l++) st.completeLevel("Totó", l); });
+    await page.reload();
+    // (0.25.0: a partida que estava rodando guarda o jogo ao recarregar, porque os inimigos agora chegam ao cachorrinho parado e ele perde uma vida em tempo real; o teste quer o menu SEM jogo salvo: apaga o que foi guardado e recarrega de novo, já no menu)
+    await ev(page, () => { for (const k of Object.keys(localStorage)) if (/\.save\./.test(k)) localStorage.removeItem(k); });
     await page.reload(); await page.evaluate(PAGE_HELPERS);
     for (const [w, h] of [[320, 568], [1280, 720]]) {
       await page.setViewportSize({ width: w, height: h });
@@ -4104,7 +4107,7 @@ const PAGE_HELPERS = () => {
     await fresh(page);
     const LV = await ev(page, () => __game.levels.map((l) => ({ id: l.id, map: l.map, maze: l.maze, blocks: l.blocks, nv: l.vets.length })));
     const SIZE = { 1: [25, 18], 2: [25, 18], 3: [25, 18], 4: [41, 29], 5: [43, 29], 6: [51, 31], 7: [51, 39], 8: [53, 39], 9: [61, 39], 10: [63, 41], 11: [65, 41], 12: [67, 41], 13: [71, 43], 14: [73, 43], 15: [75, 45], 16: [75, 49], 17: [77, 49], 18: [79, 51], 19: [81, 51], 20: [83, 53] };
-    const NV = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6, 11: 5, 12: 5, 13: 5, 14: 7, 15: 8, 16: 7, 17: 7, 18: 7, 19: 7, 20: 9 }; // (0.22.0: contagens da dificuldade escalonada)
+    const NV = { 1: 1, 2: 2, 3: 2, 4: 3, 5: 3, 6: 3, 7: 4, 8: 5, 9: 5, 10: 6, 11: 5, 12: 5, 13: 5, 14: 7, 15: 8, 16: 6, 17: 7, 18: 7, 19: 7, 20: 9 }; // (0.22.0: contagens da dificuldade escalonada; 0.25.0: a Fase 16 passou de 7 para 6 agentes)
     const DOORS = { 1: 0, 2: 0, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 6, 10: 6 }, WALLS = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 3, 6: 4, 7: 4, 8: 5, 9: 6, 10: 6 };
     for (let n = 11; n <= 20; n++) { DOORS[n] = 6; WALLS[n] = 6; }
     const ROUTES = { 1: 3, 2: 2, 3: 2 }; for (let n = 4; n <= 20; n++) ROUTES[n] = 3;
