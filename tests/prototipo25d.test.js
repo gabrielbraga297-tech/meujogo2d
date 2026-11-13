@@ -47,6 +47,13 @@ test("o jogo de verdade não ganhou nada do teste (index.html e js/ não mencion
 test("a versão do jogo não mudou por causa do teste (js/version.js segue sem a marca do teste)", () => {
   assert.ok(!/teste/i.test(read("js", "version.js").replace(/\/\/.*$/gm, "")));
 });
+test("a proporção do campo no CSS do teste (800 / (576 + H25)) bate com a altura das paredes H25 do game25d.js", () => {
+  const h = /const H25 = (\d+);/.exec(read(...JS));
+  assert.ok(h, "H25 não encontrado em game25d.js");
+  const css = /aspect-ratio:\s*800\s*\/\s*(\d+)/.exec(read("teste-01-adaptacao", "teste.css"));
+  assert.ok(css, "aspect-ratio não encontrado em teste.css");
+  assert.strictEqual(+css[1], 576 + +h[1], `H25 = ${h[1]} pede 800 / ${576 + +h[1]}, mas teste.css tem 800 / ${css[1]}`);
+});
 test("o game25d.js só difere do js/game.js nas trocas listadas: no máximo 16 linhas do jogo foram trocadas (git diff), o resto é idêntico", () => {
   const r = spawnSync("git", ["diff", "--no-index", "--numstat", "--", "js/game.js", "teste-01-adaptacao/game25d.js"], { cwd: ROOT, encoding: "utf8" });
   const m = /^(\d+)\t(\d+)\t/.exec(r.stdout || "");

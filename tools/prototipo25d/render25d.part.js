@@ -2,8 +2,8 @@
   // Este trecho NÃO faz parte do jogo: tools/prototipo25d/build.py o encaixa na cópia de js/game.js que vira teste-01-adaptacao/game25d.js.
   // Projeção oblíqua: o CHÃO e o mapa ficam exatamente como são (o andar, as colisões e os controles não mudam). Só o que tem altura (as paredes "#") é
   // desenhado "para cima" (H25 px): o topo (a mesma peça do ambiente, mais clara) e a face da frente (a parte de baixo da mesma peça, mais escura).
-  // As sombras vão para o chão, e quem está mais ao norte é desenhado primeiro. Atrás de uma parede alta o cachorrinho e os agentes aparecem como
-  // uma silhueta, para a parede nunca esconder o que importa. Nada aqui mexe nas regras.
+  // As sombras vão para o chão, e quem está mais ao norte é desenhado primeiro: quem está ao norte de uma parede fica atrás dela. Com paredes de 6 px a parede só
+  // esconde os pés de quem encosta nela pelo norte, então nada importante some (e nada vira "fantasma"). Nada aqui mexe nas regras.
   let wall25 = null; // as paredes da fase já desenhadas, uma faixa por linha do mapa: { lv, sx, rows: [canvas ou null], base: [y de cada faixa em px do aparelho] }
 
   function wallRows25(sx) {
@@ -58,20 +58,28 @@
     ctx.restore();
   }
 
-  // A figura `a` ({ x, y = onde pisa, ghost, f }) está parcialmente atrás de uma parede? (a parede da linha de baixo sobe H25 px por cima dela)
-  function hidden25(a) {
-    const row = Math.floor(a.y / TILE) + 1;
-    if (row >= ROWS || a.y + 3 <= row * TILE - H25) return false;
-    const w = lv.bld[row];
-    return !!(w && (w[Math.floor((a.x - 9) / TILE)] || w[Math.floor((a.x + 9) / TILE)]));
+  // Ração e osso nunca aparecem cortados pela parede. O corpo da ração desce até 8 px abaixo do centro (a tigela) e o do osso até 10,5 px (o joelho de baixo, com o contorno), sempre contando o balanço
+  // de 2 px. Se isso passar da borda da parede do quadrado de baixo (ela cobre a partir de 32 − H25), o desenho sobe só o que falta, e só enquanto o balanço descer demais. A sombra no chão pode
+  // ficar atrás da parede (está no chão, atrás dela). O item em si (onde está, quanto vale, o que faz) não muda.
+  function item25(it) {
+    const c = Math.floor((it.x + 8) / TILE), r = Math.floor((it.y + 8) / TILE);
+    let up = 0;
+    if (r + 1 < ROWS && lv.bld[r + 1][c]) {
+      const bob = calm ? 0 : Math.sin(time * 4 + it.x) * 2;
+      up = Math.max(0, it.y + 8 + bob + (it.bone ? 10.5 : 8) - ((r + 1) * TILE - H25));
+    }
+    const y0 = it.y; it.y = y0 - up;
+    try { (it.bone ? drawBone : drawKibble)(it); } finally { it.y = y0; }
   }
 
-  // Desenha as paredes e as figuras juntas, do norte para o sul: cada figura entra depois das paredes até a linha dela e antes das paredes mais ao sul.
+  // Desenha as paredes e as figuras juntas, do norte para o sul. Cada figura tem `y` = onde ela pisa; quem pisa na linha r ou ao norte dela (até o limite exato da linha de baixo)
+  // entra antes da parede da linha r + 1, ou seja, atrás dela; quem encosta numa parede pelo norte (y igual ao topo dela) também fica atrás, nunca "em cima".
   function paint25(list, sx, c0, c1, r0, r1) {
     const wr = wallRows25(sx);
+    const rowOf = (a) => Math.ceil(a.y / TILE) - 1;
     list.sort((a, b) => a.y - b.y);
     let i = 0;
-    const upTo = (row) => { while (i < list.length && Math.floor(list[i].y / TILE) < row) { list[i].f(); i++; } };
+    const upTo = (row) => { while (i < list.length && rowOf(list[i]) < row) { list[i].f(); i++; } };
     const xs = Math.round(c0 * TILE * sx), xe = Math.round((c1 + 1) * TILE * sx);
     for (let r = r0; r <= Math.min(ROWS - 1, r1 + 1); r++) {
       upTo(r);
@@ -79,7 +87,6 @@
       if (cv) ctx.drawImage(cv, xs, 0, xe - xs, cv.height, xs / sx, wr.base[r] / sx, (xe - xs) / sx, cv.height / sx); // 1 pixel da faixa = 1 pixel do aparelho: nada borrado
     }
     upTo(Infinity);
-    for (const a of list) if (a.ghost && hidden25(a)) { ctx.globalAlpha = 0.7; a.f(); ctx.globalAlpha = 1; } // a silhueta de quem está atrás de uma parede
   }
   // ===== fim do TESTE 01 DE ADAPTAÇÃO (2,5D) ===============================================================================================================
 

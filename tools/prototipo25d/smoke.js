@@ -9,7 +9,7 @@ const { chromium } = require("playwright");
   await pg.click("#btn-t01-play"); await pg.waitForTimeout(600);
   const st = await pg.evaluate(() => ({ state: __game.state, level: __game.level, vets: __game.vets.length, hud: document.getElementById("hud-level").textContent }));
   await b.close();
-  const ok = title === "Teste 01 de adaptação" && screen === "teste01" && st.state === "playing" && st.level === 2 && st.vets === 2 && st.hud === "01" && errs.length === 0;
+  const ok = title === "Teste 01 de adaptação" && screen === "teste01" && st.state === "playing" && st.level === 1 && st.vets === 1 && st.hud === "01" && errs.length === 0;
   console.log(ok ? "smoke ok" : "smoke FALHOU", JSON.stringify({ title, screen, ...st, errs }));
   process.exit(ok ? 0 : 1);
 })();

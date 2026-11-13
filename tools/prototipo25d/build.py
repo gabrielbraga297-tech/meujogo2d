@@ -15,7 +15,7 @@ PART = (pathlib.Path(__file__).resolve().parent / "render25d.part.js").read_text
 JS = [
     ("altura das paredes (px) e espaço a mais em cima da tela para o topo da parede de cima aparecer",
      "  const VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE;",
-     "  const H25 = 14;                                      // (teste 01 de adaptação, 2,5D) altura das paredes em px; o mapa ganha esse espaço a mais em cima\n"
+     "  const H25 = 6;                                       // (teste 01 de adaptação, 2,5D) altura das paredes em px; o mapa ganha esse espaço a mais em cima. Com 6 px a parede nunca encosta no desenho de uma ração ou de um osso: eles descem até 26 px do quadrado (com o balanço de 2 px) e a parede do quadrado de baixo só cobre a partir de 32 − 6 = 26\n"
      "  const VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE + H25;"),
     ("o teste não lê nem guarda nada: não mexe no progresso do jogo de verdade",
      "  function safeStorage() { try { return window.localStorage; } catch { return null; } }",
@@ -26,9 +26,9 @@ JS = [
     ("voltar ao menu leva à tela do teste (só esta fase)",
      '    hintTimer = 0; $("toast").classList.remove("show");\n    renderMenu();\n    showScreen("menu");\n',
      '    hintTimer = 0; $("toast").classList.remove("show");\n    showScreen("teste01"); // (teste 01 de adaptação) a tela inicial é a do teste: só esta fase\n'),
-    ("o nome da fase de teste",
-     '{ id: 2, title: "Fase 2", balls: 1,',
-     '{ id: 2, title: "Teste 01 de adaptação", balls: 1,'),
+    ("o nome da fase de teste (a Fase 1 do Cachorrinho: a mais simples)",
+     '{ id: 1, title: "Fase 1", map: MAP_1,',
+     '{ id: 1, title: "Teste 01 de adaptação", map: MAP_1,'),
     ("o placar mostra TESTE 01 em vez do número da fase",
      'setHud("lv", hudEl.level, String(levelId));',
      'setHud("lv", hudEl.level, "01"); // (teste 01 de adaptação)'),
@@ -49,13 +49,13 @@ JS = [
      "      for (const b of balls) if (!b.taken) drawBall(b);\n"
      "      for (const v of vets) drawVet(v);\n"
      "      for (const c of cats) drawCat(c);\n",
-     "      { // (teste 01 de adaptação, 2,5D) tudo o que tem altura é desenhado junto com as paredes, do norte para o sul (y = onde pisa; ghost = silhueta atrás de parede)\n"
+     "      { // (teste 01 de adaptação, 2,5D) tudo o que tem altura é desenhado junto com as paredes, do norte para o sul (y = onde pisa)\n"
      "        const q25 = [];\n"
-     "        for (const it of items) if (!it.taken) q25.push({ y: it.y + 13, x: it.x + 8, ghost: true, f: () => (it.bone ? drawBone : drawKibble)(it) });\n"
-     "        for (const b of balls) if (!b.taken) q25.push({ y: b.y + BALL_R, x: b.x, ghost: true, f: () => drawBall(b) });\n"
-     "        for (const v of vets) q25.push({ y: v.cy + 12, x: v.cx, ghost: true, f: () => drawVet(v) });\n"
-     "        for (const c of cats) q25.push({ y: c.cy + 12, x: c.cx, ghost: true, f: () => drawCat(c) });\n"
-     "        if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) q25.push({ y: player.y + player.h / 2 + 10, x: player.x + player.w / 2, ghost: true, f: () => drawDog(player) });\n"
+     "        for (const it of items) if (!it.taken) q25.push({ y: it.y + 13, f: () => item25(it) });\n"
+     "        for (const b of balls) if (!b.taken) q25.push({ y: b.y + BALL_R, f: () => drawBall(b) });\n"
+     "        for (const v of vets) q25.push({ y: v.cy + 12, f: () => drawVet(v) });\n"
+     "        for (const c of cats) q25.push({ y: c.cy + 12, f: () => drawCat(c) });\n"
+     "        if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) q25.push({ y: player.y + player.h / 2 + 10, f: () => drawDog(player) });\n"
      "        paint25(q25, sx, c0, c1, r0, r1);\n"
      "      }\n"),
     ("o cachorrinho já foi desenhado na fila (paint25)",
@@ -63,7 +63,7 @@ JS = [
      "    } else if (!blink) { /* (teste 01 de adaptação, 2,5D) o cachorrinho já foi desenhado por paint25, na ordem de profundidade */ }"),
     ("o botão da tela do teste começa a fase",
      "  reset();\n  fitCanvas();\n  if (typeof ResizeObserver",
-     "  $(\"btn-t01-play\").addEventListener(\"click\", () => begin(2, { player: \"Teste\" })); // (teste 01 de adaptação) começa a única fase\n  reset();\n  fitCanvas();\n  if (typeof ResizeObserver"),
+     "  $(\"btn-t01-play\").addEventListener(\"click\", () => begin(1, { player: \"Teste\" })); // (teste 01 de adaptação) começa a única fase\n  reset();\n  fitCanvas();\n  if (typeof ResizeObserver"),
     ("o módulo do desenho em relevo entra antes do draw()",
      '  function draw() {\n    if (state === "menu" || !solids) return;',
      PART + '  function draw() {\n    if (state === "menu" || !solids) return;'),

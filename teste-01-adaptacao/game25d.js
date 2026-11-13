@@ -4,7 +4,7 @@
 
   const TILE = 32;
   const VIEW_COLS = 25, VIEW_ROWS = 18;                // o que a tela mostra de uma vez (em tiles) quando não há zoom; mapas maiores rolam, seguindo o cachorro
-  const H25 = 14;                                      // (teste 01 de adaptação, 2,5D) altura das paredes em px; o mapa ganha esse espaço a mais em cima
+  const H25 = 6;                                       // (teste 01 de adaptação, 2,5D) altura das paredes em px; o mapa ganha esse espaço a mais em cima. Com 6 px a parede nunca encosta no desenho de uma ração ou de um osso: eles descem até 26 px do quadrado (com o balanço de 2 px) e a parede do quadrado de baixo só cobre a partir de 32 − 6 = 26
   const VIEW_W = VIEW_COLS * TILE, VIEW_H = VIEW_ROWS * TILE + H25;
   // Tamanho do mapa da fase em jogo (cada fase tem o seu: veja `cols`/`rows` em buildLevel); mudam em reset().
   let COLS = VIEW_COLS, ROWS = VIEW_ROWS, WORLD_W = VIEW_W, WORLD_H = VIEW_H;
@@ -1022,8 +1022,8 @@
     // alertTiles = a que distância (em quadrados) o agente liga o "!"; blockEvery = segundos entre uma mudança de lado dos blocos e a próxima
     // lifePenalty = pontos perdidos por vida perdida (padrão 50); minPoints = pontos mínimos na fase para passar (padrão 0); bonePower = segundos do poder do osso (0 = sem poder);
     // crush = os blocos esmagam o cachorro (sem o poder do osso); note = frase curta na escolha de fase
-    { id: 1, title: "Fase 1", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 0.8, alertTiles: alertTilesFor(1), maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
-    { id: 2, title: "Teste 01 de adaptação", balls: 1, map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
+    { id: 1, title: "Teste 01 de adaptação", map: MAP_1, vets: [BASE_VET], rations: 5, bones: 0, extraLives: [1, 1], bonusStep: 10, dogSpeed: 0.8, alertTiles: alertTilesFor(1), maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [6, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
+    { id: 2, title: "Fase 2", balls: 1, map: MAP_2, vets: [PHASE2_VET, PHASE2_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 10, dogSpeed: 1, alertTiles: alertTilesFor(2), bonePower: 30, note: "ossos que dão poder", maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, maze: { x: [[1, 3], [7, 3], [11, 3], [16, 3], [21, 3]], y: [[1, 3], [5, 3], [10, 3], [14, 3]], p: [0, 1], e: [4, 2] }, blocks: [] },
     {
       id: 3, title: "Fase 3", map: MAP_3, balls: 1, vets: [PHASE3_VET, PHASE3_VET], rations: 7, bones: 2, extraLives: [1, 2], bonusStep: 20, dogSpeed: 0.9, alertTiles: alertTilesFor(3), blockEvery: BLOCK_EVERY, bonePower: 30, blockRange: { door: [1, 2] }, note: "ossos, poder e blocos móveis",
       touchEase: { vet: 0.9, dog: 1.05 }, // jogando com o controle de toque (menos preciso), a Fase 3 fica um pouco mais fácil: agentes 10% mais lentos e cachorrinho 5% mais rápido
@@ -4545,8 +4545,8 @@
   // Este trecho NÃO faz parte do jogo: tools/prototipo25d/build.py o encaixa na cópia de js/game.js que vira teste-01-adaptacao/game25d.js.
   // Projeção oblíqua: o CHÃO e o mapa ficam exatamente como são (o andar, as colisões e os controles não mudam). Só o que tem altura (as paredes "#") é
   // desenhado "para cima" (H25 px): o topo (a mesma peça do ambiente, mais clara) e a face da frente (a parte de baixo da mesma peça, mais escura).
-  // As sombras vão para o chão, e quem está mais ao norte é desenhado primeiro. Atrás de uma parede alta o cachorrinho e os agentes aparecem como
-  // uma silhueta, para a parede nunca esconder o que importa. Nada aqui mexe nas regras.
+  // As sombras vão para o chão, e quem está mais ao norte é desenhado primeiro: quem está ao norte de uma parede fica atrás dela. Com paredes de 6 px a parede só
+  // esconde os pés de quem encosta nela pelo norte, então nada importante some (e nada vira "fantasma"). Nada aqui mexe nas regras.
   let wall25 = null; // as paredes da fase já desenhadas, uma faixa por linha do mapa: { lv, sx, rows: [canvas ou null], base: [y de cada faixa em px do aparelho] }
 
   function wallRows25(sx) {
@@ -4601,20 +4601,28 @@
     ctx.restore();
   }
 
-  // A figura `a` ({ x, y = onde pisa, ghost, f }) está parcialmente atrás de uma parede? (a parede da linha de baixo sobe H25 px por cima dela)
-  function hidden25(a) {
-    const row = Math.floor(a.y / TILE) + 1;
-    if (row >= ROWS || a.y + 3 <= row * TILE - H25) return false;
-    const w = lv.bld[row];
-    return !!(w && (w[Math.floor((a.x - 9) / TILE)] || w[Math.floor((a.x + 9) / TILE)]));
+  // Ração e osso nunca aparecem cortados pela parede. O corpo da ração desce até 8 px abaixo do centro (a tigela) e o do osso até 10,5 px (o joelho de baixo, com o contorno), sempre contando o balanço
+  // de 2 px. Se isso passar da borda da parede do quadrado de baixo (ela cobre a partir de 32 − H25), o desenho sobe só o que falta, e só enquanto o balanço descer demais. A sombra no chão pode
+  // ficar atrás da parede (está no chão, atrás dela). O item em si (onde está, quanto vale, o que faz) não muda.
+  function item25(it) {
+    const c = Math.floor((it.x + 8) / TILE), r = Math.floor((it.y + 8) / TILE);
+    let up = 0;
+    if (r + 1 < ROWS && lv.bld[r + 1][c]) {
+      const bob = calm ? 0 : Math.sin(time * 4 + it.x) * 2;
+      up = Math.max(0, it.y + 8 + bob + (it.bone ? 10.5 : 8) - ((r + 1) * TILE - H25));
+    }
+    const y0 = it.y; it.y = y0 - up;
+    try { (it.bone ? drawBone : drawKibble)(it); } finally { it.y = y0; }
   }
 
-  // Desenha as paredes e as figuras juntas, do norte para o sul: cada figura entra depois das paredes até a linha dela e antes das paredes mais ao sul.
+  // Desenha as paredes e as figuras juntas, do norte para o sul. Cada figura tem `y` = onde ela pisa; quem pisa na linha r ou ao norte dela (até o limite exato da linha de baixo)
+  // entra antes da parede da linha r + 1, ou seja, atrás dela; quem encosta numa parede pelo norte (y igual ao topo dela) também fica atrás, nunca "em cima".
   function paint25(list, sx, c0, c1, r0, r1) {
     const wr = wallRows25(sx);
+    const rowOf = (a) => Math.ceil(a.y / TILE) - 1;
     list.sort((a, b) => a.y - b.y);
     let i = 0;
-    const upTo = (row) => { while (i < list.length && Math.floor(list[i].y / TILE) < row) { list[i].f(); i++; } };
+    const upTo = (row) => { while (i < list.length && rowOf(list[i]) < row) { list[i].f(); i++; } };
     const xs = Math.round(c0 * TILE * sx), xe = Math.round((c1 + 1) * TILE * sx);
     for (let r = r0; r <= Math.min(ROWS - 1, r1 + 1); r++) {
       upTo(r);
@@ -4622,7 +4630,6 @@
       if (cv) ctx.drawImage(cv, xs, 0, xe - xs, cv.height, xs / sx, wr.base[r] / sx, (xe - xs) / sx, cv.height / sx); // 1 pixel da faixa = 1 pixel do aparelho: nada borrado
     }
     upTo(Infinity);
-    for (const a of list) if (a.ghost && hidden25(a)) { ctx.globalAlpha = 0.7; a.f(); ctx.globalAlpha = 1; } // a silhueta de quem está atrás de uma parede
   }
   // ===== fim do TESTE 01 DE ADAPTAÇÃO (2,5D) ===============================================================================================================
 
@@ -4679,13 +4686,13 @@
     } else if (birdDraw) {
       drawBirdActors(); // (Passarinho: postos, sementes, frutos, minhocas, gatos de quintal e gaviões)
     } else {
-      { // (teste 01 de adaptação, 2,5D) tudo o que tem altura é desenhado junto com as paredes, do norte para o sul (y = onde pisa; ghost = silhueta atrás de parede)
+      { // (teste 01 de adaptação, 2,5D) tudo o que tem altura é desenhado junto com as paredes, do norte para o sul (y = onde pisa)
         const q25 = [];
-        for (const it of items) if (!it.taken) q25.push({ y: it.y + 13, x: it.x + 8, ghost: true, f: () => (it.bone ? drawBone : drawKibble)(it) });
-        for (const b of balls) if (!b.taken) q25.push({ y: b.y + BALL_R, x: b.x, ghost: true, f: () => drawBall(b) });
-        for (const v of vets) q25.push({ y: v.cy + 12, x: v.cx, ghost: true, f: () => drawVet(v) });
-        for (const c of cats) q25.push({ y: c.cy + 12, x: c.cx, ghost: true, f: () => drawCat(c) });
-        if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) q25.push({ y: player.y + player.h / 2 + 10, x: player.x + player.w / 2, ghost: true, f: () => drawDog(player) });
+        for (const it of items) if (!it.taken) q25.push({ y: it.y + 13, f: () => item25(it) });
+        for (const b of balls) if (!b.taken) q25.push({ y: b.y + BALL_R, f: () => drawBall(b) });
+        for (const v of vets) q25.push({ y: v.cy + 12, f: () => drawVet(v) });
+        for (const c of cats) q25.push({ y: c.cy + 12, f: () => drawCat(c) });
+        if (!(started && invuln > 0 && !calm && Math.floor(time * 10) % 2 === 0)) q25.push({ y: player.y + player.h / 2 + 10, f: () => drawDog(player) });
         paint25(q25, sx, c0, c1, r0, r1);
       }
       if (fx.ice > 0) for (const e of everyone()) drawIce(e); // congelados pelo osso de gelo
@@ -5232,7 +5239,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     padPoll(dt = 1 / 60) { pollGamepad(dt); }, parseSave(sv, a) { return !!parseSnapshot(sv, a); }, start(id, o) { begin(id ?? levelId, o); }, save: saveNow, setLives(n) { lives = clamp(Math.round(n), 1, maxLivesNow()); },
   };
 
-  $("btn-t01-play").addEventListener("click", () => begin(2, { player: "Teste" })); // (teste 01 de adaptação) começa a única fase
+  $("btn-t01-play").addEventListener("click", () => begin(1, { player: "Teste" })); // (teste 01 de adaptação) começa a única fase
   reset();
   fitCanvas();
   if (typeof ResizeObserver === "function") {
