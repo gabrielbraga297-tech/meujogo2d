@@ -1191,13 +1191,13 @@ Pedido do dono (06/11/2026): as Fases **18 e 19** de cada bichinho ficam **menos
 
 **Como se ajustou:** só a **quantidade de inimigos** das Fases 13 a 20 (os mapas ficam como estavam; um agente da carrocinha a mais nasce num posto livre da **praça da carrocinha** (como manda o desenho das fases do Cachorrinho), um gato, cão ou gavião a mais nasce longe do início, da saída e dos outros postos, e ao tirar um agente tira-se o último posto da praça). As contagens ficam nas listas de cada bichinho (`vetsOf(n, k)` e `cats` de cada fase em `js/game.js`; `dogs`/`trk` em `tools/catmaze/gen_cat.py` e `cats`/`hawks` em `tools/birdmaze/gen_bird.py`, que regeram `js/cat-levels.js` e `js/bird-levels.js`). Como cada mapa tem o seu desenho, **a quantidade de inimigos não sobe sempre de fase em fase** (por exemplo, no Passarinho a Fase 19 tem menos inimigos que a 16): o que sobe é a dificuldade medida. Até a Fase 10 o Passarinho continua com os mesmos números do Gatinho; da 11 em diante cada bichinho tem os seus.
 
-**Resultado da medição final** (24 sementes por fase, vidas infinitas; as Fases 1 a 10 ficam entre 0 e 0,6 nos três bichinhos, em `tools/difficulty/ramp.json`):
+**Resultado da medição final** (vidas infinitas; 24 sementes por fase na 0.22.0, e o Cachorrinho, o Gatinho e o Passarinho foram medidos de novo na 0.25.0, na 0.26.0 e na 0.27.0, estes dois com 60 sementes nas Fases 11 a 20; as Fases 1 a 10 ficam entre 0 e 0,6 nos três bichinhos, em `tools/difficulty/ramp.json`):
 
 | R (golpes/min) | F11 | F12 | F13 | F14 | F15 | F16 | F17 | F18 | F19 | F20 |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Cachorrinho (0.25.0; régua corrigida) | 0,49 | 1,13 | 0,99 | 1,59 | 1,99 | 1,80 | 1,92 | 2,07 | 1,66 | 2,43 |
 | Gatinho (0.26.0; 0.22.0 media 0,41 · 0,19 · 0,42 · 0,55 · 0,46 · 0,41 · 0,53 · 0,19 · 0,74 · 1,12) | 0,51 | 0,36 | 0,52 | 0,47 | 0,41 | 0,44 | 0,38 | 0,07 | 0,89 | 1,01 |
-| Passarinho (0.22.0) | 0,45 | 0,89 | 1,19 | 1,23 | 0,99 | 1,02 | 1,25 | 1,02 | 1,57 | 1,67 |
+| Passarinho (0.27.0; 0.22.0 media 0,45 · 0,89 · 1,19 · 1,23 · 0,99 · 1,02 · 1,25 · 1,02 · 1,57 · 1,67) | 0,36 | 0,53 | 0,63 | 1,13 | 0,73 | 0,81 | 0,90 | 0,82 | 1,61 | 1,70 |
 
 **O Cachorrinho medido de novo na 0.25.0 (mapa livre).** Os inimigos passaram a nascer espalhados e a andar o mapa todo, então a régua foi refeita, e no caminho apareceu **um defeito da própria régua**: o robô (`tools/difficulty/probe-page.js`) tratava as **caixas X** (muretas que só o gato pula; 13 a 38 por fase nas Fases 11 a 20) como chão, planejava o caminho por cima delas e ficava **empurrando a caixa** até um agente chegar; na Fase 12 isso virava uma espiral de dezenas de mortes (R de 3,9 a 8,7 só por isso). Agora as caixas X são parede para o robô (só no Cachorrinho; o Gatinho e o Passarinho não foram refeitos). A linha do Cachorrinho da tabela acima é a **nova**, medida com a régua corrigida no código final (12 sementes nas Fases 1 a 10, 24 nas 11 a 20). Para comparar de verdade, medi o **código da 0.24.0 com a mesma régua corrigida**:
 
