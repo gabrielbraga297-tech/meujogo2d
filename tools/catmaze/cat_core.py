@@ -620,6 +620,41 @@ def free_neighbors(m, x, y):
     return sum(1 for dx, dy in D4 if m.at(x + dx, y + dy) in DOG)
 
 
+def _rnd(seed):
+    """gerador de números de 0 a 1 que NÃO depende da versão do Python (o mesmo mulberry32 do JavaScript)"""
+    st = [seed & 0xFFFFFFFF]
+
+    def nxt():
+        st[0] = (st[0] + 0x6D2B79F5) & 0xFFFFFFFF
+        t = st[0]
+        t = ((t ^ (t >> 15)) * (1 | t)) & 0xFFFFFFFF
+        t = ((t + (((t ^ (t >> 7)) * (61 | t)) & 0xFFFFFFFF)) ^ t) & 0xFFFFFFFF
+        return ((t ^ (t >> 14)) & 0xFFFFFFFF) / 4294967296
+    return nxt
+
+
+def spread_points(pool, first, k, n):
+    """k pontos da lista `pool`, o mais espalhados possível (amostragem uniforme): em ordem embaralhada por uma semente da fase `n` (os de `first` na frente),
+    aceita cada ponto a pelo menos D de distância (reta) dos já aceitos; vale a MAIOR D (de 40 para baixo, de 0,5 em 0,5) com que cabem k. None se não couber com D >= 3.
+    A ordem do resultado também é embaralhada (quem recebe V e quem recebe R)."""
+    rnd = _rnd(1234567 + n * 7919)
+    fs = set(first)
+    a = sorted([(rnd(), t) for t in pool if t in fs])
+    b = sorted([(rnd(), t) for t in pool if t not in fs])
+    order = [t for _, t in a] + [t for _, t in b]
+    d = 40.0
+    while d >= 3:
+        acc = []
+        for t in order:
+            if all(math.hypot(t[0] - c[0], t[1] - c[1]) >= d for c in acc):
+                acc.append(t)
+                if len(acc) == k:
+                    out = sorted([(rnd(), c) for c in acc])
+                    return [c for _, c in out]
+        d -= 0.5
+    return None
+
+
 def place_posts(m, rng, sp, band=None):
     """P no começo (esquerda), depois os postos V e R longe de P, da saída e uns dos outros"""
     W, H = m.W, m.H
@@ -642,34 +677,24 @@ def place_posts(m, rng, sp, band=None):
     P = rng.choice(cands)
     m.g[P[1]][P[0]] = 'P'
     need = sp['dogs'] + sp['trk']
-    dd = bfs(m, [P], DOG)
-    mind = max(8, sp['alert'] + 1)
-    spacing = 6 if W >= 41 else 5
-    pool = [(x, y) for y in range(1, H - 1) for x in range(1, W - 1)
-            if calm(x, y) and math.hypot(x - P[0], y - P[1]) > mind and max(abs(x - P[0]), abs(y - P[1])) >= 8
-            and max(abs(x - ex[0]), abs(y - ex[1] - 1)) >= 7]
-    slots = [s for s in m.slots if s in set(pool)]
-    chosen = []
-
-    def far_enough(t, sp_):
-        return all(max(abs(t[0] - c[0]), abs(t[1] - c[1])) >= sp_ for c in chosen)
-    for sp_ in (spacing, spacing - 1, spacing - 2, 3):
-        chosen = []
-        order_slots = slots[:]
-        rng.shuffle(order_slots)
-        rest = [p for p in pool if p not in set(slots)]
-        rng.shuffle(rest)
-        for t in order_slots + rest:
-            if len(chosen) >= need:
-                break
-            if far_enough(t, sp_):
-                chosen.append(t)
-        if len(chosen) >= need:
+    # (0.26.0, mapa livre) os postos V e R ficam em tiles com FOLGA (nenhum dos 8 vizinhos é parede, X, T ou poça), longe do início (alcance do "!" + 6, e pelo menos 12) e da saída (11 do centro dela)
+    # e bem ESPALHADOS: a amostragem uniforme acha a maior distância mínima D entre dois postos com que cabem todos (os lugares bons que o estilo marcou, `m.slots`, entram primeiro).
+    # Só os postos mudam: o resto do mapa já está pronto e este sorteio não usa o `rng` do gerador.
+    def roomy(x, y):
+        return all(m.at(x + dx, y + dy) in '.PVRE' for dx, dy in D8)
+    chosen = None
+    pool = []
+    # (os degraus: a distância do início e da saída cai um de cada vez e, só na última, o lugar deixa de precisar de folga total (Fase 3, de 25 × 18, tem tantas caixas e poças que quase não sobra chão aberto))
+    for mind, exd, need_room in ((max(12, sp['alert'] + 6), 11, True), (max(10, sp['alert'] + 5), 9, True), (max(9, sp['alert'] + 4), 7, True), (max(8, sp['alert'] + 2), 5, True), (max(8, sp['alert'] + 2), 5, False)):
+        pool = [(x, y) for y in range(1, H - 1) for x in range(1, W - 1)
+                if calm(x, y) and (roomy(x, y) or not need_room) and math.hypot(x - P[0], y - P[1]) >= mind
+                and math.hypot(x - ex[0], y - (ex[1] + 1)) >= exd and min(max(abs(x - ex[0]), abs(y - ey)) for ey in (ex[1], ex[1] + 1, ex[1] + 2)) >= 5]
+        chosen = spread_points(pool, [s for s in m.slots if s in set(pool)], need, sp['n'])
+        if chosen is not None:
             break
-    if len(chosen) < need:
-        raise Invalid('não achei %d postos (só %d)' % (need, len(chosen)))
-    rng.shuffle(chosen)
-    for i, (x, y) in enumerate(chosen[:need]):
+    if chosen is None:
+        raise Invalid('não achei %d postos com folga e bem espalhados (só %d candidatos)' % (need, len(pool)))
+    for i, (x, y) in enumerate(chosen):
         m.g[y][x] = 'V' if i < sp['dogs'] else 'R'
     return P
 
