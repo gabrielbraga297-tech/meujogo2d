@@ -1779,6 +1779,7 @@
   let ballSolids = null;       // o que para as bolinhas (camundongos): `solids` e, nas fases do Gatinho, também os obstáculos baixos e os lugares altos
   let rand = Math.random;
   let freezeVets = false; // usado apenas em testes
+  let blind = false; // usado apenas em testes (0.26.0): inimigos cegos e surdos (canSee e o ouvido dos gatos devolvem falso): ninguém persegue, e a patrulha se mede sozinha, com o jogador parado em qualquer lugar
   let noCatch = false;    // usado apenas em testes
   const view = { k: 1, zoom: 1, camX: 0, camY: 0 };
 
@@ -1789,7 +1790,7 @@
 
   // (0.25.0) MAPA LIVRE: itens longe das paredes (placeItems), agentes que nascem espalhados (nos mapas) e patrulha pelo mapa todo (updateVet/updateCat). Liga por bichinho, UM por atualização:
   // 0.25.0 Cachorrinho; 0.26.0 Gatinho; 0.27.0 Passarinho (cada bichinho é um lote de 20 fases corrigidas e conferidas). Desligado, o bichinho joga como antes.
-  const FREE_MAP = { dog: true, cat: false, bird: false };
+  const FREE_MAP = { dog: true, cat: true, bird: false };
   const freeMap = () => !!FREE_MAP[gameAnimal];
 
   function shuffle(a) {
@@ -1805,10 +1806,21 @@
     const exitKeys = new Set([...exitTiles, ...avoid].map(([c, r]) => key(c, r)));
     const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     const ok = g.q.filter((t) => !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= 4));
-    // (0.25.0, mapa livre) primeiro só os tiles com folga em volta (nenhuma parede, caixa ou trilho de bloco nos 8 vizinhos); só se não bastarem, o resto
-    const pools = freeMap() ? [ok.filter(([c, r]) => roomyTile(c, r)), ok] : [ok];
-    for (const pool of pools) {
-      const cand = shuffle(pool.slice());
+    // `n` tiles de `cand` (já embaralhada) com a maior distância mínima entre si (6, 5, 4, 3, 2 e, por fim, 0), contando os `fixed` já escolhidos; se não couberem `n`, devolve todos os que couberem
+    const spread = (cand, n, fixed = []) => {
+      let best = [];
+      for (const gap of [6, 5, 4, 3, 2, 0]) {
+        const picked = [];
+        for (const t of cand) {
+          if (picked.length < n && fixed.every((p) => apart(p, t) >= gap) && picked.every((p) => apart(p, t) >= gap)) picked.push(t);
+        }
+        if (picked.length === n) return picked;
+        best = picked;
+      }
+      return best;
+    };
+    if (!freeMap()) { // (os bichinhos que ainda não ganharam o mapa livre sorteiam como sempre)
+      const cand = shuffle(ok.slice());
       for (const gap of [6, 5, 4, 3, 2, 0]) {
         const picked = [];
         for (const t of cand) {
@@ -1816,8 +1828,17 @@
           if (picked.length === count) return picked;
         }
       }
-      if (pool === pools[pools.length - 1]) return cand.slice(0, count);
+      return cand.slice(0, count);
     }
+    // (0.25.0, mapa livre) primeiro só os tiles com folga em volta (nenhuma parede, caixa ou trilho de bloco nos 8 vizinhos). (0.26.0) Se não houver tiles com folga suficientes (mapa apertado, como a Fase 6 do Gatinho,
+    // em que a única praça larga é onde ficam os postos), a faixa seguinte aceita os tiles com folga a 2 ou mais tiles dos postos; só então vêm os que encostam numa parede (antes, a 4 ou mais; depois, a 2 ou mais dos postos)
+    const taken = new Set(), out = [];
+    const tier = (minPost, roomyOnly) => g.q.filter((t) => !taken.has(key(...t)) && !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= minPost) && (!roomyOnly || roomyTile(t[0], t[1])));
+    for (const [minPost, roomyOnly] of [[4, true], [2, true], [4, false], [2, false]]) {
+      if (out.length >= count) break;
+      for (const t of spread(shuffle(tier(minPost, roomyOnly)), count - out.length, out)) { out.push(t); taken.add(key(...t)); }
+    }
+    return out;
   }
   // (0.25.0) O tile (c, r) tem folga em volta: nenhum dos 8 vizinhos é parede, caixa/van, muro ou trilho de bloco que se move (fora do mapa conta como parede). É o que mantém rações, ossos e bolinhas longe das paredes.
   function roomyTile(c, r) {
@@ -2066,6 +2087,7 @@
   }
 
   function canSee(v) {
+    if (blind) return false;
     const px = player.x + player.w / 2, py = player.y + player.h / 2;
     const dx = px - v.cx, dy = py - v.cy, dist = Math.hypot(dx, dy);
     if (dist > v.cfg.sight - up.stealth * TILE) return false; // (Patas de veludo: notam 1 quadrado mais tarde por nível)
@@ -2098,6 +2120,8 @@
   // O mapa é dividido em quadros de ROAM_CELL × ROAM_CELL tiles e CADA inimigo lembra a última vez que passou por cada quadro (f.roam). Ao escolher o destino da patrulha, o inimigo vai para um tile dos quadros
   // que ele há mais tempo não visita (os nunca visitados primeiro, de preferência os mais perto a pé), longe dos outros inimigos e dos destinos deles, e dois nunca escolhem o mesmo quadro: assim cada um percorre o mapa inteiro, e não uma faixa.
   // O vigia (watch) garante o resto: quem não sai do lugar por UNSTUCK_AFTER s (fora uma perseguição colada no cachorrinho) larga o que estava fazendo e anda para um destino novo.
+  // (0.26.0) As correções de impasse do lote do Gatinho (corredor estreito, perseguir atrás de outro, passeio depois da fuga) só valem no jogo do Gatinho: o Cachorrinho, entregue e auditado na 0.25.0, anda exatamente como antes.
+  const catFix = () => freeMap() && !!lv.catMode;
   const ROAM_CELL = 4, UNSTUCK_AFTER = 3.5, UNSTUCK_RADIUS = 1.5 * TILE, FLEE_WANDER = 10, FLEE_NEAR = 7; // tiles do lado de um quadro, s, px, passos do cachorrinho a partir dos quais o inimigo assustado passeia e abaixo dos quais volta a fugir
   let roamW = 0, roamN = 0;
   function roamInit() { roamW = Math.ceil(COLS / ROAM_CELL); roamN = roamW * Math.ceil(ROWS / ROAM_CELL); for (const f of vets.concat(cats)) f.roam = new Float32Array(roamN).fill(-1e4); } // -10000 = nunca visitado (cada inimigo tem a sua memória)
@@ -2139,11 +2163,18 @@
     if (!f.route.length) {
       const grid = cat ? lv.catWalk : walk, d = dg.get(key(...from)) ?? 99; // d = passos do cachorrinho até aqui
       const farOf = (gg) => gg.q.filter(([c, r]) => gg.dist.get(key(c, r)) >= 5 && (dg.get(key(c, r)) ?? 99) >= (d < FLEE_WANDER ? Math.max(FLEE_WANDER, d + 3) : FLEE_WANDER)); // o destino fica a FLEE_WANDER passos ou mais do cachorrinho (e, se o inimigo ainda está mais perto que isso, 3 passos mais longe do que ele está)
-      const closer = new Set(); // o passeio nunca se aproxima do cachorrinho: não pisa nos tiles que estão mais perto dele do que o inimigo (menos 1)
-      for (const [k, v] of dg) if (v < Math.min(d, FLEE_WANDER) - 1) closer.add(k);
-      let g = bfs(from, false, cat ? closer : new Set([...tilesNearOthers(f, from), ...closer]), grid); // (e, nos agentes, evita passar perto dos outros, como na patrulha)
-      let goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1])));
-      if (!goal) { g = bfs(from, false, closer, grid); goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1]))); }
+      // Duas tentativas. 1ª (a de sempre, 0.25.0): o passeio nunca se aproxima do cachorrinho: não pisa nos tiles mais perto dele do que o inimigo (menos 1) e nunca a menos de FLEE_WANDER - 1 passos.
+      // 2ª (0.26.0, só se a 1ª não achou destino: o inimigo está num trecho fechado entre o cachorrinho e uma parede): longe do cachorrinho (10 passos ou mais) o passeio só evita chegar a menos de FLEE_NEAR passos dele.
+      let g = null, goal = null;
+      const f1 = Math.min(d, FLEE_WANDER) - 1, f2 = d >= FLEE_WANDER ? FLEE_NEAR : d - 1;
+      for (const floor of f1 === f2 || !catFix() ? [f1] : [f1, f2]) {
+        const closer = new Set(); // tiles que o passeio não pisa (perto demais do cachorrinho)
+        for (const [k, v] of dg) if (v < floor) closer.add(k);
+        g = bfs(from, false, cat ? closer : new Set([...tilesNearOthers(f, from), ...closer]), grid); // (e, nos agentes, evita passar perto dos outros, como na patrulha)
+        goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1])));
+        if (!goal) { g = bfs(from, false, closer, grid); goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1]))); }
+        if (goal) break;
+      }
       if (!goal) return null;
       f.route = pathTo(g, goal); f.goal = centerOf(...goal);
     }
@@ -2284,9 +2315,9 @@
         } else {
           if (!v.route.length) {
             // escolhe um destino por um caminho que não passa perto dos outros agentes (para não andarem em fila); se só houver esse corredor, espera até 2 s que o outro saia da frente
-            const from = tileOf(v.cx, v.cy), near = v.force ? new Set() : tilesNearOthers(v, from); // (v.force: o vigia mandou andar já, sem esperar os outros saírem da frente)
+            const from = tileOf(v.cx, v.cy), near = v.force && !catFix() ? new Set() : tilesNearOthers(v, from); // (v.force: o vigia mandou andar já, sem esperar os outros saírem da frente; no Gatinho (0.26.0) o caminho continua evitando passar por cima dos outros)
             let g = bfs(from, false, near), goal = pickPatrolGoal(v, g);
-            if (!goal && near.size && v.crowd < 2) { v.crowd += dt; return; }
+            if (!goal && near.size && !(v.force && catFix()) && v.crowd < 2) { v.crowd += dt; return; }
             if (!goal) { g = bfs(from); goal = pickPatrolGoal(v, g); }
             v.crowd = 0; v.force = false;
             if (goal) { v.route = pathTo(g, goal); v.goal = centerOf(...goal); }
@@ -2311,6 +2342,8 @@
           v.hold += dt; if (!lower) v.wait += dt;
           if (still && v.wait > 0.5 && still.idle > 0.2) still.idle = 0.2; // o que está parado na frente descansa menos se há outro esperando atrás dele
           if (lower && v.hold > 0.5 && (v.mode === "patrol" || v.mode === "flee") && v.from) { v.leg = v.from; v.from = null; v.route = []; v.goal = null; v.hold = 0; }
+          else if (lower && v.hold > 0.5 && (v.mode === "patrol" || v.mode === "flee") && catFix()) { v.leg = null; v.route = []; v.goal = null; v.hold = 0; v.force = true; } // (0.26.0) sem `from` (já voltou uma vez) não havia como sair: o passo seguinte ficava a menos de VET_GAP do outro para sempre; agora escolhe outro caminho
+          else if (lower && v.hold > 1.5 && v.mode === "chase" && catFix()) { v.leg = null; v.route = []; v.hold = 0; } // (0.26.0) perseguindo atrás de um agente que não sai da frente: depois de 1,5 s refaz o caminho (que já tenta outro lado: `taken`), em vez de esperar até o vigia agir
           return;
         }
         if (still && v.mode === "patrol" && v.from && v.bounce < 2) { // esperou 1 s atrás de um parado: em vez de passar por cima dele, volta e escolhe outro caminho (no máximo 2 vezes seguidas)
@@ -2404,7 +2437,7 @@
     if (c.pounceCd > 0) c.pounceCd -= dt;
     const [ct, cr] = tileOf(c.cx, c.cy), px = player.x + player.w / 2, py = player.y + player.h / 2;
     if (!scaring()) { // (o voo alto do Passarinho não assusta: os gaviões seguem como sempre; o `safe` que eles veem é só o galho: veja update())
-      const sees = canSee(c), heard = (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear - up.stealth;
+      const sees = canSee(c), heard = !blind && (catDistances().dist.get(cr * COLS + ct) ?? 99) <= cfg.hear - up.stealth;
       if (sees) { c.seen = dogTileNow(); c.seenDir = player.moving ? headingOf() : [0, 0]; }
       if ((c.mode === "patrol" || c.mode === "search") && c.cool <= 0 && c.think <= 0) {
         c.think = cfg.thinkEvery;
@@ -2472,7 +2505,7 @@
         // um gato de número maior não anda colado num de número menor: espera um pouco e, se continuar travado, volta e escolhe outro caminho
         const lower = cats.find((o) => o !== c && o.idx < c.idx && Math.hypot(o.cx - mx, o.cy - my) < CAT_GAP && Math.hypot(o.cx - mx, o.cy - my) < Math.hypot(o.cx - c.cx, o.cy - c.cy));
         if (lower) {
-          if ((c.hold += dt) > 0.5) { c.hold = 0; if (c.from) { c.leg = c.from; c.from = null; } c.route = []; c.goal = null; }
+          if ((c.hold += dt) > 0.5) { c.hold = 0; if (c.from) { c.leg = c.from; c.from = null; } else if (catFix() && c.mode !== "chase") c.leg = null; /* (0.26.0) sem `from` o passo ficava bloqueado para sempre: escolhe outro caminho */ c.route = []; c.goal = null; }
           return;
         }
         c.hold = 0;
@@ -5280,7 +5313,7 @@ on("btn-reinforce-back", () => { if (state === "won") showScreen("win"); });
     get levels() { return levelSummary(LEVELS); },
     levelsOf(id) { return levelSummary(levelsOf(id)); }, // (0.18.0) o mesmo resumo das fases de qualquer bichinho
     get profile() { return P(); }, profileOf(id) { return profileOf(id); }, builtOf(id) { return builtOf(id); }, mapRev(id) { return mapRevOf(id); }, // (0.18.0) perfil de texto em uso, perfil de um bichinho, suas fases montadas e a revisão dos mapas dele
-    set freezeVets(v) { freezeVets = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
+    set freezeVets(v) { freezeVets = !!v; }, set blind(v) { blind = !!v; }, set noCatch(v) { noCatch = !!v; }, setRand(fn) { rand = fn || Math.random; }, tick: update,
     // (0.17.0) bichinhos: `animal` = o escolhido do jogador atual, `games` = o registro (id, nome, emoji, frase, pronto, quantas fases), `setAnimal(id)` = o mesmo que escolher na tela (false se não existe ou não está pronto).
     get animal() { return syncAnimal(); }, get gameAnimal() { return gameAnimal; }, setAnimal(id) { const ok = pickAnimal(id); if (ok && document.body.dataset.screen === "menu") renderMenu(); return ok; },
     // `levels` = quantas fases dá para JOGAR (0 enquanto o bichinho não está pronto); `total` = quantas fases estão cadastradas (o Gatinho tem as 20 de teste, `placeholder`, mesmo desligado); `rev` = revisão dos mapas

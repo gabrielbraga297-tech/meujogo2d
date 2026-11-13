@@ -9278,7 +9278,7 @@ const PAGE_HELPERS = () => {
     const near = (a, b, tol) => Math.abs(a - b) <= tol;
     // ---- camundongos ágeis = as bolinhas do motor: disparam a 3 tiles, rolam, quicam; +50 ----
     const m = await ev(cp, () => {
-      __game.start(1); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true;
+      __game.start(1); __game.items.forEach((it) => { it.life = false; it.x = -500; it.y = -500; }); __game.freezeVets = true; // (0.26.0: os itens saem do caminho: com o mapa livre um novelo pode cair justo onde o gatinho pisa e mudaria o aviso)
       __game.balls = [{ x: 14 * 32 + 16, y: 9 * 32 + 16, vx: 0, vy: 0, taken: false, hue: 0 }, { x: 20 * 32 + 16, y: 15 * 32 + 16, vx: 0, vy: 0, taken: false, hue: 1 }];
       __at(12, 9); __game.tick(0.01); // 2 tiles de distância (dentro dos 3)
       const kicked = [__game.balls[0].vx, __game.balls[0].vy]; // dispara para longe, no eixo do gatinho
@@ -9370,8 +9370,8 @@ const PAGE_HELPERS = () => {
     await catArena(cp, 1);
     const near = (a, b, tol) => Math.abs(a - b) <= tol;
     const snapOf = (animal) => ev(cp, (a) => Records.createStore(localStorage).game(a).loadGame("Totó").snap, animal);
-    await ev(cp, () => { __at(2, 2); __game.items[0].life = true; /* (a arena tem 1 vida extra escondida: o jogo salvo precisa dela) */ __game.stamina = 0.37; __game.wet = 3.2; __game.winded = 0.5; __game.save(); });
-    const s1 = await snapOf("cat");
+    // (0.26.0) o jogo salvo é lido na MESMA chamada em que é gravado: entre uma chamada e outra o laço real do jogo anda um quadro e o salvamento automático grava o fôlego já mudado (0,38 em vez de 0,37)
+    const s1 = await ev(cp, () => { __at(2, 2); __game.items[0].life = true; /* (a arena tem 1 vida extra escondida: o jogo salvo precisa dela) */ __game.stamina = 0.37; __game.wet = 3.2; __game.winded = 0.5; __game.save(); return Records.createStore(localStorage).game("cat").loadGame("Totó").snap; });
     ok(s1.sta === 0.37 && s1.wet === 3.2 && s1.wnd === 0.5 && s1.mz === 1 && s1.v === 4, `o jogo salvo do Gatinho guarda o fôlego, o molhado e o ofegante e a revisão própria dos mapas (sta ${s1.sta}, wet ${s1.wet}, wnd ${s1.wnd}, mz ${s1.mz})`);
     // continuar restaura
     await ev(cp, () => { __game.freezeVets = true; document.getElementById("btn-pause").click(); document.getElementById("btn-pause-menu").click(); });
@@ -9415,7 +9415,7 @@ const PAGE_HELPERS = () => {
     await ev(cp, () => {
       // o robô: vai ao item mais perto (caminho mais curto sobre tudo o que não é parede), um depois do outro, e por fim à saída; anda com as teclas do jogo
       window.__bot = (id) => {
-        __game.setAnimal("cat"); __game.freezeVets = true; __game.noCatch = false; __game.setRand(__mul(100 + id)); __game.start(id);
+        __game.setAnimal("cat"); __game.freezeVets = true; __game.noCatch = true; __game.setRand(__mul(100 + id)); __game.start(id); // (0.26.0: o robô guloso anda sobre tudo, e com os cães espalhados pelo mapa inteiro esbarra neles no caminho; aqui se confere que dá para pegar tudo e chegar à saída, e a ameaça é medida por tools/difficulty)
         const lv = __game.builtOf("cat")[id], C = lv.cols, R = lv.rows, free = (c, r) => c >= 0 && r >= 0 && c < C && r < R && !lv.bld[r][c];
         const path = (from, goal) => {
           const key = (c, r) => r * C + c, prev = new Map([[key(...from), null]]), q = [from];
@@ -9840,6 +9840,7 @@ const PAGE_HELPERS = () => {
     await ev(cp, () => { __game.start(2); __game.items.forEach((it) => { it.life = false; }); __game.freezeVets = true; __heard(); });
     const a5 = await ev(cp, () => {
       const out = {};
+      __game.balls = []; __game.items.forEach((it) => { if (!it.bone) { it.x = -900; it.y = -900; } }); // (0.26.0: com o mapa livre um camundongo ou um ratinho pode cair perto do novelo; o ímã o puxaria e o guincho entraria na conta: aqui só o som do novelo)
       for (const kind of ["gold", "ice", "magnet"]) { __heard(); __take(__game.items.find((i) => i.bone && i.kind === kind)); out[kind] = __heard().join(); }
       return out;
     });
@@ -11545,7 +11546,9 @@ const PAGE_HELPERS = () => {
   const SKC = require("./skins-cat-frame.js");
   // (0.24.0, auditoria) referências REGERADAS com o Chromium desta máquina: as de 22/10/2026 vinham de outro Chromium e a seção falhava desde a 0.21.0 (também numa cópia limpa dela). As Fases 1, 3, 11 e 20 saem do código da 0.18.0 final
   // (commit 1201d77, sem nenhuma skin) e foram conferidas IGUAIS ao código atual com todas as categorias no padrão; a Fase 18 vem do código atual porque a 0.22.0 mudou os cães dela (7 → 8), então já não pode ser igual à da 0.18.0.
-  const HASHES_0180_CAT = { 1: {"spawn": "f0e7f7bb", "T": null, "foes": null, "guard": "f6e5e9d7", "tracker": null, "mouse": "1e822543", "yarn-scare": null, "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": null}, 3: {"spawn": "15d8be14", "T": "8ffcadf3", "foes": "f5c000bd", "guard": "9d9acd0d", "tracker": null, "mouse": "bf2ad38a", "yarn-scare": "53c7b4ea", "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": "1faf9dbd"}, 11: {"spawn": "198ab2d2", "T": "e385f04c", "foes": "a7b8b050", "guard": "24419286", "tracker": "e6dae64c", "mouse": "199b4149", "yarn-scare": "43162c5e", "yarn-gold": "e44d1299", "yarn-ice": "99436a1c", "yarn-turbo": null, "yarn-magnet": null, "agile": "37bed88c"}, 18: {"spawn": "d085e908", "T": "f9d8a835", "foes": "8e286b0b", "guard": "3fe636ab", "tracker": "274ea504", "mouse": "5b4ca860", "yarn-scare": "35b70807", "yarn-gold": "f46ebf14", "yarn-ice": "b0a9811b", "yarn-turbo": "26e6d3fd", "yarn-magnet": "e204ad9d", "agile": "e22d8481"}, 20: {"spawn": "2d9c29cd", "T": "321b37f1", "foes": "90609ae8", "guard": "39164efd", "tracker": "cd450c75", "mouse": "effaec80", "yarn-scare": "8a73c33c", "yarn-gold": "e531e532", "yarn-ice": "b8a6cd39", "yarn-turbo": "53ea5eac", "yarn-magnet": "7077cc5a", "agile": "b9eaca46"}};
+  // (0.26.0) RENOVADAS DE PROPÓSITO, como as do Cachorrinho na 0.25.0: o mapa livre do Gatinho mudou onde ficam os itens e os cães, então os quadros já não podem ser os de antes. A conferência de que o DESENHO não mudou continua valendo daqui em diante
+  // (trocar de skin e voltar ao padrão devolve os mesmos pixels; o quadro com skins é diferente). Para renovar de novo: SKC_DUMP=1 node tests/e2e.js "0.19.0 · Skins do Gatinho: com TODAS" e copiar o JSON impresso.
+  const HASHES_0180_CAT = { 1: {"spawn": "c9d4d0dd", "T": null, "foes": null, "guard": "4f352f81", "tracker": null, "mouse": "69ab7d41", "yarn-scare": null, "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": null}, 3: {"spawn": "2a2b7d01", "T": "28154032", "foes": "bc44d908", "guard": "e082e9ec", "tracker": null, "mouse": "fd40fdc5", "yarn-scare": "aa24f691", "yarn-gold": null, "yarn-ice": null, "yarn-turbo": null, "yarn-magnet": null, "agile": "8815ef09"}, 11: {"spawn": "6065c9fe", "T": "59c37d87", "foes": "dae86c73", "guard": "69ba8e2f", "tracker": "4ad74ce5", "mouse": "64c901a2", "yarn-scare": "f3636f1e", "yarn-gold": "b281e9ca", "yarn-ice": "3b8aa0fd", "yarn-turbo": null, "yarn-magnet": null, "agile": "73589cb0"}, 18: {"spawn": "568fe533", "T": "48c6bec3", "foes": "7f64ef41", "guard": "b882bc72", "tracker": "f3b534be", "mouse": "a81ae615", "yarn-scare": "96e8897e", "yarn-gold": "1e364161", "yarn-ice": "c78ef1ae", "yarn-turbo": "bd177e80", "yarn-magnet": "7f3072de", "agile": "5a29c76b"}, 20: {"spawn": "a43515dd", "T": "e457e373", "foes": "a1a8ff59", "guard": "e47880bc", "tracker": "4dc3fc76", "mouse": "b888f184", "yarn-scare": "b7fd049c", "yarn-gold": "f68dcd1b", "yarn-ice": "74fd301a", "yarn-turbo": "5ec7b7e8", "yarn-magnet": "c1482edd", "agile": "f7ae3e15"} };
   const SKC_SLOTS = ["guard", "mouse", "yarn", "agile", "perch", "tracker"];
   const SKC_SCENE = { guard: "guard", tracker: "tracker", mouse: "mouse", agile: "agile", yarn: "yarn-scare", perch: "T" }; // a cena em que cada categoria aparece (nas Fases 18 e 20 há todos)
   const SKC_RAF = (pg) => pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
@@ -11576,6 +11579,7 @@ const PAGE_HELPERS = () => {
     const pg = await skcPage();
     const got = {};
     for (const id of [1, 3, 11, 18, 20]) got[id] = await skcFrame(pg, { id, scenes: SKC.SCENES_ALL });
+    if (process.env.SKC_DUMP) console.log("SKC_DUMP " + JSON.stringify(got)); // (para renovar HASHES_0180_CAT: SKC_DUMP=1 node tests/e2e.js "0.19.0 · Skins do Gatinho")
     let n = 0; const bad = [];
     for (const id of [1, 3, 11, 18, 20]) for (const sc of SKC.SCENES_ALL) { const want = HASHES_0180_CAT[id][sc], have = got[id][sc]; if (want !== null) n++; if (want !== have) bad.push(`F${id} ${sc}: ${have} (0.18.0: ${want})`); }
     ok(n === 44 && bad.length === 0, `${n} quadros (início, lugar alto, 4 cães em 4 modos, cão de guarda, rastreador, ratinho, os 5 novelos e o camundongo ágil, nas Fases 1, 3, 11, 18 e 20) saem IDÊNTICOS aos da 0.18.0${bad.length ? " — diferentes: " + bad.join("; ") : ""}`);
