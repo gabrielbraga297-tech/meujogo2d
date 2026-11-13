@@ -219,17 +219,17 @@
    },
    "16": {
     "enemies": {
-     "agents": 7,
+     "agents": 6,
      "cats": 5
     },
     "seeds": 24,
-    "wins": 21,
-    "hits": 149,
-    "R": 2.68,
-    "pooled": 2.82,
-    "meanHits": 6.21,
-    "medianHits": 5.5,
-    "meanSecs": 132
+    "wins": 23,
+    "hits": 97,
+    "R": 1.8,
+    "pooled": 1.95,
+    "meanHits": 4.04,
+    "medianHits": 2.5,
+    "meanSecs": 125
    },
    "17": {
     "enemies": {
