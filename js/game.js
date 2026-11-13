@@ -2135,11 +2135,13 @@
   function wanderStep(f, cat) {
     const from = tileOf(f.cx, f.cy), dg = (cat ? catDistances() : dogDistances()).dist, key = (c, r) => r * COLS + c;
     if (!f.route.length) {
-      const grid = cat ? lv.catWalk : walk;
-      const farOf = (gg) => gg.q.filter(([c, r]) => gg.dist.get(key(c, r)) >= 5 && (dg.get(key(c, r)) ?? 99) >= FLEE_WANDER);
-      let g = bfs(from, false, cat ? null : tilesNearOthers(f, from), grid); // (o caminho evita passar perto dos outros agentes, como na patrulha)
+      const grid = cat ? lv.catWalk : walk, d = dg.get(key(...from)) ?? 99; // d = passos do cachorrinho até aqui
+      const farOf = (gg) => gg.q.filter(([c, r]) => gg.dist.get(key(c, r)) >= 5 && (dg.get(key(c, r)) ?? 99) >= (d < FLEE_WANDER ? Math.max(FLEE_WANDER, d + 3) : FLEE_WANDER)); // o destino fica a FLEE_WANDER passos ou mais do cachorrinho (e, se o inimigo ainda está mais perto que isso, 3 passos mais longe do que ele está)
+      const closer = new Set(); // o passeio nunca se aproxima do cachorrinho: não pisa nos tiles que estão mais perto dele do que o inimigo (menos 1)
+      for (const [k, v] of dg) if (v < Math.min(d, FLEE_WANDER) - 1) closer.add(k);
+      let g = bfs(from, false, cat ? closer : new Set([...tilesNearOthers(f, from), ...closer]), grid); // (e, nos agentes, evita passar perto dos outros, como na patrulha)
       let goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1])));
-      if (!goal) { g = bfs(from, false, null, grid); goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1]))); }
+      if (!goal) { g = bfs(from, false, closer, grid); goal = pickRoamGoal(f, farOf(g), cat ? cats : vets, (t) => g.dist.get(key(t[0], t[1]))); }
       if (!goal) return null;
       f.route = pathTo(g, goal); f.goal = centerOf(...goal);
     }

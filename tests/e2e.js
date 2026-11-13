@@ -1391,7 +1391,7 @@ const PAGE_HELPERS = () => {
     ok(rec3.l3 && rec3.l3.p === wp && rec3.total === wp && rec3.done.includes(3), "a pontuação da Fase 3 é guardada à parte e entra na soma das fases");
     // com vidas perdidas e tentativas
     await ev(page, () => __game.start(3, { retries: 2 }));
-    await ev(page, () => { __game.freezeVets = true; for (const v of __game.vets) v.cool = 99; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); });
+    await ev(page, () => { __game.freezeVets = true; for (const v of __game.vets) v.cool = 99; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.noCatch = true; }); // (0.25.0: perde UMA vida de propósito; depois ninguém pega o cachorrinho: os itens ficam no meio das ruas e o caminho do teste pode passar por um agente parado)
     await finishNow(page, 10);
     ok(Number(await page.textContent("#win-points")) === 1200 - 50 - 200 && /vidas perdidas: 50/.test(await page.textContent("#win-breakdown")) && /tentativas extras: 200/.test(await page.textContent("#win-breakdown")), "−50 por vida perdida e −100 por nova tentativa também valem na Fase 3");
 
@@ -2279,7 +2279,7 @@ const PAGE_HELPERS = () => {
         const chk = (name, want, got) => { if (!new RegExp(`^${want}`).test(got || "")) d6.push(`Fase ${l.id} ${name}: "${got}" ≠ "${want}"`); };
         chk("mapa", `${l.C} × ${l.R}`, need("Mapa")[i]);
         chk("rações/ossos", `${l.rations} / ${l.bones}`, need("Rações / ossos")[i]);
-        chk("agentes da carrocinha", String(l.nv), need("Agentes da carrocinha (no centro do mapa)")[i]);
+        chk("agentes da carrocinha", String(l.nv), need("Agentes da carrocinha (nascem espalhados, 0.25.0)")[i]);
         chk("vidas escondidas", `${l.lives[0]} ou ${l.lives[1]}`, need("Vidas escondidas (sorteio por jogo)")[i]);
         chk("alcance", String(l.alert), need('Alcance do "!"')[i]);
         chk("peças", `${l.nd} / ${l.nw}`, need("Portas de bloco / paredes (definidas)")[i]);
@@ -5156,7 +5156,17 @@ const PAGE_HELPERS = () => {
     const walk = (slow) => ev(page, (slow) => {
       __game.autoStart = true; __game.start(11, { upgrades: { speed: 0, bone: 0, heart: 0, shield: 0, slow } });
       __game.freezeVets = true; __game.catsThaw = true; __game.noCatch = true; __game.setRand(((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11));
-      const c = __game.cats[0], p = __game.player; p.x = c.cx + 300 - 12; p.y = c.cy - 12; p.moving = false;
+      const c = __game.cats[0], p = __game.player; p.moving = false;
+      { // o cachorrinho espera a 20 passos do gato pelo chão dele (0.25.0: os gatos nascem espalhados; "300 px à direita" podia cair dentro de um prédio): o gato corre os 2 s inteiros nos dois casos
+        const lv = __game.builtOf("dog")[11], W = lv.cols, cw = lv.catWalk, d = new Map([[Math.floor(c.cy / 32) * W + Math.floor(c.cx / 32), 0]]), q = [[Math.floor(c.cx / 32), Math.floor(c.cy / 32)]];
+        let tgt = null;
+        for (let i = 0; i < q.length && !tgt; i++) {
+          const [x, y] = q[i], k = d.get(y * W + x);
+          if (k >= 20 && lv.walk[y][x]) { tgt = [x, y]; break; }
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= W || ny >= lv.rows || !cw[ny][nx] || d.has(ny * W + nx)) continue; d.set(ny * W + nx, k + 1); q.push([nx, ny]); }
+        }
+        p.x = tgt[0] * 32 + 4; p.y = tgt[1] * 32 + 4;
+      }
       Object.assign(c, { mode: "chase", modeT: 99, chaseAge: 0, cool: 0, idle: 0, pounceCd: 99 });
       let len = 0, px = c.cx, py = c.cy;
       for (let i = 0; i < 120; i++) { __game.tick(1 / 60); len += Math.hypot(c.cx - px, c.cy - py); px = c.cx; py = c.cy; }
@@ -9467,7 +9477,7 @@ const PAGE_HELPERS = () => {
   // o Cachorrinho desenha exatamente como antes (A/B de pixels com referências do código anterior). Estas seções abrem as páginas com os mapas de verdade (`realCat: true`).
   // =====================================================================
   const { DOG_START, DOG_HASH } = require("./ab-dog.js");
-  const HASHES_0170 = { 1: "a6329929", 4: "10cbf4dc", 11: "e5b1611", 20: "c113ca15" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700) do código de 40e8f96, ANTES do desenho do Gatinho
+  const HASHES_0170 = { 1: "5028add6", 4: "a01dea0e", 11: "9f984f28", 20: "b0a952fd" }; // hash do canvas do Cachorrinho (Fases 1, 4, 11 e 20, mesma semente e mesmos passos, viewport 1000×700). (0.25.0: RENOVADOS de propósito, porque o mundo do Cachorrinho mudou (itens e inimigos em outros lugares); antes eram a6329929, 10cbf4dc, e5b1611 e c113ca15, do código de 40e8f96, ANTES do desenho do Gatinho)
   // ajudantes que rodam dentro da página: espiões nas funções de CatArt e CatThemes (contam as chamadas) e leituras do canvas
   const CAT_DRAW_PAGE = () => {
     window.__mul = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; // gerador com semente (o mesmo de CAT_PAGE): os sorteios das seções de desenho também são sempre os mesmos
@@ -11189,7 +11199,8 @@ const PAGE_HELPERS = () => {
   // ----------------------------------------------------------------------------------------------------------------------------
   // ===== 0.19.0 · skins dos objetos do Cachorrinho (agent, ration, exit, catexit, postman, bone, ball, block, van, foecat) =====
   // Referências (hash do canvas, mapa inteiro na tela, viewport 1000×700, as 20 fases, 3 momentos: depois de andar, com o osso pego e 2 s depois) do código da 0.18.0 (ed7e2f7), ANTES das skins dos objetos, com o Chromium desta máquina
-  const SKD_FULL = {"1":"b4248f64 8230d40:p0 f7200178","2":"136ea517 7c604b5c:p1 ee9eefdb","3":"93cd238f 7a2bbbbd:p1 bc602600","4":"8939f69e 101c5a0f:p1 1232111b","5":"c77db851 69dafd49:p1 ad553083","6":"dbe26678 244fd781:p1 da5e87cd","7":"c3d6a48e e4314891:p1 aaa2fa5b","8":"a96d50f4 de8ed80c:p1 afd8f92f","9":"74e63f7e 36565a76:p1 36e8a785","10":"9871def5 211a21b0:p1 71834831","11":"36fc808e 579e9306:p1 cc40871f","12":"ce7870de eb120aa2:p1 aae83c41","13":"96d02c4f 80c4db5:p0 5002db8b","14":"1b97731a e7d29c84:p1 cbf8bb34","15":"2ff77fe8 d19a26ad:p1 dd8c8c4f","16":"42286a8b 61b910c3:p0 580515d5","17":"deb3f752 f24bcb50:p1 74f3d3b4","18":"7b98809c 79478669:p1 a54e5073","19":"8f7cf38c baac2938:p1 73b7754b","20":"fbfb15c9 280b26fa:p1 ed8f7f3c"};
+  const SKD_FULL = {"1":"e389b103 6db18e01:p0 23c0026d","2":"4cafd0de 947c9eca:p1 87461bb4","3":"53d8e010 fffeac31:p1 8679cbff","4":"5174949 850a53db:p1 4b1f1a05","5":"d3792f30 c9251540:p1 a673b810","6":"cff3c2ab 31114428:p1 a9559e38","7":"1647c239 8fc3afe2:p1 1c16b506","8":"26f92c22 30b2010e:p1 2c54b180","9":"9bf2ec39 ca200f53:p1 5ecc33aa","10":"2151917b c256a9a:p1 ec0b6414","11":"46e263f2 eee1ae49:p1 f8cbb013","12":"d8108170 7f67165f:p1 1d46d434","13":"5cfd35bf 9e4cb49d:p1 ea0e7011","14":"481af5af 7526f369:p0 5502216b","15":"ac0684eb 6bca82a7:p0 9cbce704","16":"70cb4d90 7316d48:p0 ee380bcf","17":"897677ae 2c5b71f2:p0 464d2d32","18":"29feff3 4377086:p1 71bb5f4c","19":"da175739 a16bb64a:p0 e1ef532c","20":"24fb2983 fe0786be:p0 92e93cc1"};
+  // (0.25.0) TODAS as 20 referências foram tiradas de novo, de propósito: o mundo do Cachorrinho mudou (itens e inimigos em outros lugares), com o Chromium desta máquina; daqui em diante elas voltam a proteger o desenho do Cachorrinho dos lotes seguintes (Gatinho 0.26.0, Passarinho 0.27.0)
   // (0.22.0) as referências das Fases 13, 14, 15, 18, 19 e 20 foram tiradas de novo porque os inimigos delas mudaram; a da Fase 16 também (ela não mudou, mas já diferia numa cópia limpa da 0.21.0 neste ambiente)
   const SKD_SLOTS = ["agent", "postman", "ration", "bone", "ball", "block", "van", "foecat", "exit"]; // as categorias que valem no Cachorrinho (a catexit vale só no Gatinho: tem a seção dela)
   const SKD_ALL = [...SKD_SLOTS, "catexit"];
