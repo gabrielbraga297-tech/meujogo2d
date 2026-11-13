@@ -52,7 +52,7 @@ module.exports = async function (T) {
     const T20 = designTable();
     ok(Object.keys(T20).length === 20, `a tabela do docs/PASSARINHO-DESENHO.md tem as 20 fases (${Object.keys(T20).length})`);
     const g = await ev(pg, () => __game.games.find((x) => x.id === "bird"));
-    ok(g.ready && g.levels === 20 && g.total === 20 && !g.placeholder && g.rev === 1, `o Passarinho está pronto com as 20 fases de verdade (${JSON.stringify(g)})`);
+    ok(g.ready && g.levels === 20 && g.total === 20 && !g.placeholder && g.rev === 2, `o Passarinho está pronto com as 20 fases de verdade (${JSON.stringify(g)})`);
     ok(await ev(pg, () => typeof BirdArt === "object" && typeof BirdThemes === "object" && typeof BirdLevels === "object" && BirdLevels.length === 20), "BirdArt, BirdThemes e BirdLevels (os arquivos de verdade) estão carregados");
     ok(await ev(pg, () => __game.birdFailed.length === 0), "nenhuma função de BirdArt falhou ao carregar");
     // montagem, contagens e grafos de cada fase
