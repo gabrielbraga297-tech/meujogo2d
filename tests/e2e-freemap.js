@@ -1,14 +1,14 @@
-// Seção do MAPA LIVRE do Cachorrinho (0.25.0) e do Gatinho (0.26.0), no navegador (Chromium, Firefox e WebKit). Carregado por tests/e2e.js, que passa as ferramentas (T).
+// Seção do MAPA LIVRE do Cachorrinho (0.25.0), do Gatinho (0.26.0) e do Passarinho (0.27.0), no navegador (Chromium, Firefox e WebKit). Carregado por tests/e2e.js, que passa as ferramentas (T).
 // Rodar só esta: node tests/e2e.js "0.25.0 · mapa livre"
 // Pedido do dono (13/11/2026): nada perto de paredes e muros; os bonecos andam o mapa todo, sem ficar presos, e só nascem em lugares diferentes.
 // A prova completa (20 fases × muitos sorteios, 5 minutos de patrulha por fase) está em tests/free-map.test.js, no Node; aqui se confere, no motor de cada navegador, o essencial.
-const DELIVERED = ["dog", "cat"]; // bichinhos com o mapa livre entregue (0.27.0 Passarinho entra aqui)
-const LIM = { dog: { pair: 10, startPlus: 5, startMin: 11, exit: 9, roomyFrom: 1 }, cat: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 4 } }; // os mesmos de tests/free-map.test.js
+const DELIVERED = ["dog", "cat", "bird"]; // bichinhos com o mapa livre entregue (os três)
+const LIM = { dog: { pair: 10, startPlus: 5, startMin: 11, exit: 9, roomyFrom: 1 }, cat: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 4 }, bird: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 1 } }; // os mesmos de tests/free-map.test.js
 
 module.exports = async function (T) {
   const { newPage, fresh, ev, ok, section } = T;
 
-  await section("0.25.0 · mapa livre do Cachorrinho e do Gatinho: itens longe das paredes, inimigos que nascem espalhados e andam o mapa todo, quem foge também anda", async () => {
+  await section("0.25.0 · mapa livre do Cachorrinho, do Gatinho e do Passarinho: itens longe das paredes, inimigos que nascem espalhados e andam o mapa todo, quem foge também anda", async () => {
     const pg = await newPage({ realCat: true, realBird: "real" });
     await fresh(pg, { name: "Totó" });
     const r = await ev(pg, ([animals, LIM]) => {
@@ -77,6 +77,7 @@ module.exports = async function (T) {
       ok(o.spawnBad.length === 0, `${name}: nas 20 fases cada inimigo nasce num tile diferente, com folga (a partir da Fase ${LIM[animal].roomyFrom}), a ${LIM[animal].pair}+ tiles dos outros, longe do início do bichinho e da saída${o.spawnBad.length ? " — " + o.spawnBad.slice(0, 4).join("; ") : ""}`);
       ok(o.roam.every(([, far]) => far >= 12), `${name}: em 90 s de patrulha nas Fases 2, 8, 14 e 20 todo inimigo se afasta 12+ tiles do posto (o que menos se afastou, por fase: ${o.roam.map(([id, f]) => `F${id} ${f.toFixed(0)}`).join(", ")})`);
       ok(o.still.every(([, s]) => s <= 4.5), `${name}: e ninguém fica parado mais de 4,5 s seguidos (a maior parada, por fase: ${o.still.map(([id, s]) => `F${id} ${s.toFixed(1)} s`).join(", ")})`);
+      if (animal === "bird") continue; // (o fruto do Passarinho dá o voo alto, que não assusta ninguém: aqui não há quem fuja; a patrulha acima vale para ele)
       ok(o.flee.every(([, powered, movers, total]) => powered && total >= 3 && movers === total), `${name}: com o poder do osso, os assustados que estão longe do cachorrinho continuam andando em vez de parar (${o.flee.map(([id, p, m, t]) => `F${id}: ${m} de ${t}${p ? "" : " (sem poder!)"}`).join(", ")})`);
     }
     await pg.context().close();

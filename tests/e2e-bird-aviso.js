@@ -1,6 +1,6 @@
 // Seção do Passarinho (0.20.0): o AVISO DE ABERTURA da fase ("... O tempo só começa quando você se mexer.") não cobre o passarinho antes do primeiro passo. Carregado por tests/e2e.js, que passa as ferramentas (T).
 // Rodar só esta: node tests/e2e.js "Passarinho (aviso)"
-// O aviso (#toast) fica embaixo do campo até o primeiro passo. Nas Fases 7, 12, 15 e 19, em telas de computador e de tablet, o início do passarinho fica na parte de baixo do campo visível e o aviso o cobria
+// O aviso (#toast) fica embaixo do campo até o primeiro passo. Nas Fases 7 (até a 0.26.0), 12, 15 e 19, em telas de computador e de tablet, o início do passarinho fica na parte de baixo do campo visível e o aviso o cobria
 // (de 50% a 100% dele); no celular e no Cachorrinho e no Gatinho nunca cobriu. A correção (js/game.js, positionStartToast) só vale para o Passarinho: se o aviso cobre o passarinho, sobe para o alto do campo,
 // abaixo das faixas da missão e dos efeitos. Aqui se mede, nos tamanhos de tela do relatório e nos de celular, a área do passarinho que fica sob o aviso: tem de ser 0.
 const path = require("path");
@@ -47,7 +47,7 @@ module.exports = async function (T) {
     console.log("   (aviso)", notes.join(" · "));
     ok(total === SIZES.length * PHASES.length && bad.length === 0, `em ${SIZES.length} tamanhos de tela × ${PHASES.length} fases (${total} medidas) o aviso de abertura fica à vista, dentro do campo, com o mesmo texto e role="status", sem cobrir nada do passarinho nem a faixa da missão${bad.length ? " — problemas: " + bad.slice(0, 6).join("; ") : ""}`);
     // a correção é o que tira o aviso de cima do passarinho: nas telas e nas fases do relatório ele sobe (se nunca subisse, o teste passaria à toa)
-    ok((moved["1280×720"] || []).includes(7) && (moved["1280×720"] || []).includes(19) && (moved["1000×700"] || []).includes(7) && (moved["768×1024"] || []).includes(19), `(sanidade) em 1280×720 nas Fases 7 e 19, em 1000×700 na 7 e em 768×1024 na 19 o aviso de verdade subiu (${JSON.stringify(moved)})`);
+    ok((moved["1280×720"] || []).includes(12) && (moved["1280×720"] || []).includes(19) && (moved["1000×700"] || []).includes(12) && (moved["768×1024"] || []).includes(19), `(sanidade) em 1280×720 nas Fases 12 e 19, em 1000×700 na 12 e em 768×1024 na 19 o aviso de verdade subiu (${JSON.stringify(moved)})`);
   });
 
   await section("0.20.0 · Passarinho (aviso): o aviso do Cachorrinho e do Gatinho não muda de lugar (fica embaixo, sem a classe do alto) e o do Passarinho volta para baixo no aviso seguinte", async () => {
@@ -60,9 +60,9 @@ module.exports = async function (T) {
     const style = await ev(pg, () => { const t = document.getElementById("toast"), cs = getComputedStyle(t); return { top: t.style.top, bottom: cs.bottom, pos: cs.position }; });
     ok(style.top === "" && style.pos === "absolute", `e o estilo do aviso do Cachorrinho/Gatinho não tem o \`top\` do alto (${JSON.stringify(style)})`);
     // no Passarinho, depois do aviso de abertura (no alto) vir um aviso novo (aqui, o começo da mesma fase já andando), ele nasce embaixo de novo
-    const r7 = await measure(pg, "bird", 7);
-    const after = await ev(pg, () => { __game.autoStart = true; const t = document.getElementById("toast"), before = t.classList.contains("top"); __game.start(7); return { before, top: t.classList.contains("top"), inline: t.style.top, shown: t.classList.contains("show") }; });
-    ok(r7.top && after.before && !after.top && after.inline === "" && after.shown, `no Passarinho (Fase 7, 1280×720) o aviso de abertura estava no alto (${r7.top}) e o aviso seguinte nasce embaixo de novo (${JSON.stringify(after)})`);
+    const r7 = await measure(pg, "bird", 12); // (0.27.0: a Fase 7 ganhou corredores de 3 tiles e o início dela já não fica coberto pelo aviso; a 12 continua sendo um caso real)
+    const after = await ev(pg, () => { __game.autoStart = true; const t = document.getElementById("toast"), before = t.classList.contains("top"); __game.start(12); return { before, top: t.classList.contains("top"), inline: t.style.top, shown: t.classList.contains("show") }; });
+    ok(r7.top && after.before && !after.top && after.inline === "" && after.shown, `no Passarinho (Fase 12, 1280×720) o aviso de abertura estava no alto (${r7.top}) e o aviso seguinte nasce embaixo de novo (${JSON.stringify(after)})`);
     ok(errs.length === e0, `nenhum erro de JavaScript (${errs.slice(e0).join(" | ")})`);
     await pg.context().close();
   });

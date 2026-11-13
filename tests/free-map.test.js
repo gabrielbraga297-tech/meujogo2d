@@ -1,6 +1,6 @@
 // Testes do MAPA LIVRE (0.25.0 em diante), sem navegador. Uso: node tests/free-map.test.js
 // Pedido do dono (13/11/2026): (1) nada fica perto de paredes e muros (confunde e fica feio); (2) os bonecos andam o mapa todo em cada fase, sem ficar presos ou quase parados, e só NASCEM em lugares diferentes.
-// Cada bichinho é uma atualização (20 fases corrigidas e conferidas): DELIVERED lista os que já foram entregues. O Passarinho (0.27.0) entra aqui quando for entregue.
+// Cada bichinho é uma atualização (20 fases corrigidas e conferidas): DELIVERED lista os que já foram entregues..
 // Roda o js/game.js de verdade no Node (tests/engine-rig.js). O que o teste NÃO prova: que uma pessoa acha o resultado bonito ou justo (isso é do dono).
 const assert = require("assert");
 const fs = require("fs");
@@ -9,7 +9,7 @@ const { spawnSync } = require("child_process");
 const rig = require("./engine-rig.js");
 
 const ROOT = path.join(__dirname, "..");
-const DELIVERED = ["dog", "cat", "bird"]; // bichinhos com o mapa livre entregue: 0.25.0 Cachorrinho; 0.26.0 Gatinho; (0.27.0 Passarinho)
+const DELIVERED = ["dog", "cat", "bird"]; // bichinhos com o mapa livre entregue: 0.25.0 Cachorrinho; 0.26.0 Gatinho; 0.27.0 Passarinho
 // Limites por bichinho. Cachorrinho: posições escolhidas por tools/spawns/spread.js. Gatinho: pelo gerador dos mapas (tools/catmaze/cat_core.py, place_posts), que desce a distância do início e da saída em degraus nos mapas pequenos e densos.
 const LIM = { dog: { pair: 10, startPlus: 5, startMin: 11, exit: 9, roomyFrom: 1 }, cat: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 4 }, bird: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 1 } }; // (roomyFrom: a partir de qual fase os postos precisam de folga em volta; a Fase 3 do Gatinho, de 25 × 18, tem tantas caixas e poças que não sobra lugar aberto)
 const GAME = fs.readFileSync(path.join(ROOT, "js/game.js"), "utf8");
