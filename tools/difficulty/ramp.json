@@ -296,14 +296,28 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 3,
-    "R": 0.25,
-    "pooled": 1.13,
-    "meanHits": 0.25,
+    "hits": 0,
+    "R": 0,
+    "pooled": 0,
+    "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 13
+    "meanSecs": 8
    },
    "2": {
+    "enemies": {
+     "dogs": 2,
+     "trackers": 0
+    },
+    "seeds": 12,
+    "wins": 12,
+    "hits": 1,
+    "R": 0.08,
+    "pooled": 0.71,
+    "meanHits": 0.08,
+    "medianHits": 0,
+    "meanSecs": 7
+   },
+   "3": {
     "enemies": {
      "dogs": 2,
      "trackers": 0
@@ -315,21 +329,7 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 13
-   },
-   "3": {
-    "enemies": {
-     "dogs": 2,
-     "trackers": 0
-    },
-    "seeds": 12,
-    "wins": 12,
-    "hits": 1,
-    "R": 0.08,
-    "pooled": 0.36,
-    "meanHits": 0.08,
-    "medianHits": 0,
-    "meanSecs": 14
+    "meanSecs": 8
    },
    "4": {
     "enemies": {
@@ -343,7 +343,7 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 26
+    "meanSecs": 23
    },
    "5": {
     "enemies": {
@@ -357,7 +357,7 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 25
+    "meanSecs": 20
    },
    "6": {
     "enemies": {
@@ -371,7 +371,7 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 37
+    "meanSecs": 20
    },
    "7": {
     "enemies": {
@@ -385,7 +385,7 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 39
+    "meanSecs": 34
    },
    "8": {
     "enemies": {
@@ -394,16 +394,30 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 2,
-    "R": 0.17,
-    "pooled": 0.18,
-    "meanHits": 0.17,
+    "hits": 1,
+    "R": 0.08,
+    "pooled": 0.1,
+    "meanHits": 0.08,
     "medianHits": 0,
-    "meanSecs": 54
+    "meanSecs": 48
    },
    "9": {
     "enemies": {
      "dogs": 5,
+     "trackers": 0
+    },
+    "seeds": 12,
+    "wins": 12,
+    "hits": 4,
+    "R": 0.31,
+    "pooled": 0.38,
+    "meanHits": 0.33,
+    "medianHits": 0,
+    "meanSecs": 53
+   },
+   "10": {
+    "enemies": {
+     "dogs": 6,
      "trackers": 0
     },
     "seeds": 12,
@@ -413,161 +427,147 @@
     "pooled": 0,
     "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 55
-   },
-   "10": {
-    "enemies": {
-     "dogs": 6,
-     "trackers": 0
-    },
-    "seeds": 12,
-    "wins": 12,
-    "hits": 1,
-    "R": 0.07,
-    "pooled": 0.1,
-    "meanHits": 0.08,
-    "medianHits": 0,
-    "meanSecs": 51
+    "meanSecs": 42
    },
    "11": {
     "enemies": {
      "dogs": 5,
      "trackers": 2
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 14,
-    "R": 0.41,
-    "pooled": 0.48,
-    "meanHits": 0.58,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 39,
+    "R": 0.51,
+    "pooled": 0.56,
+    "meanHits": 0.65,
     "medianHits": 0,
-    "meanSecs": 74
+    "meanSecs": 69
    },
    "12": {
     "enemies": {
      "dogs": 5,
      "trackers": 3
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 5,
-    "R": 0.19,
-    "pooled": 0.21,
-    "meanHits": 0.21,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 22,
+    "R": 0.36,
+    "pooled": 0.49,
+    "meanHits": 0.37,
     "medianHits": 0,
-    "meanSecs": 60
+    "meanSecs": 45
    },
    "13": {
     "enemies": {
      "dogs": 5,
      "trackers": 3
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 13,
-    "R": 0.42,
-    "pooled": 0.46,
-    "meanHits": 0.54,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 32,
+    "R": 0.52,
+    "pooled": 0.7,
+    "meanHits": 0.53,
     "medianHits": 0,
-    "meanSecs": 71
+    "meanSecs": 46
    },
    "14": {
     "enemies": {
      "dogs": 5,
      "trackers": 4
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 15,
-    "R": 0.55,
-    "pooled": 0.6,
-    "meanHits": 0.63,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 35,
+    "R": 0.47,
+    "pooled": 0.61,
+    "meanHits": 0.58,
     "medianHits": 0,
-    "meanSecs": 63
+    "meanSecs": 57
    },
    "15": {
     "enemies": {
      "dogs": 6,
      "trackers": 4
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 12,
-    "R": 0.46,
-    "pooled": 0.56,
-    "meanHits": 0.5,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 27,
+    "R": 0.41,
+    "pooled": 0.58,
+    "meanHits": 0.45,
     "medianHits": 0,
-    "meanSecs": 54
+    "meanSecs": 46
    },
    "16": {
     "enemies": {
      "dogs": 7,
      "trackers": 5
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 10,
-    "R": 0.41,
-    "pooled": 0.48,
-    "meanHits": 0.42,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 28,
+    "R": 0.44,
+    "pooled": 0.57,
+    "meanHits": 0.47,
     "medianHits": 0,
-    "meanSecs": 52
+    "meanSecs": 49
    },
    "17": {
     "enemies": {
      "dogs": 7,
      "trackers": 5
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 13,
-    "R": 0.53,
-    "pooled": 0.63,
-    "meanHits": 0.54,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 23,
+    "R": 0.38,
+    "pooled": 0.56,
+    "meanHits": 0.38,
     "medianHits": 0,
-    "meanSecs": 51
+    "meanSecs": 41
    },
    "18": {
     "enemies": {
      "dogs": 8,
      "trackers": 6
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 5,
-    "R": 0.19,
-    "pooled": 0.28,
-    "meanHits": 0.21,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 4,
+    "R": 0.07,
+    "pooled": 0.17,
+    "meanHits": 0.07,
     "medianHits": 0,
-    "meanSecs": 45
+    "meanSecs": 23
    },
    "19": {
     "enemies": {
      "dogs": 9,
      "trackers": 6
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 21,
-    "R": 0.74,
-    "pooled": 0.85,
-    "meanHits": 0.88,
-    "medianHits": 0,
-    "meanSecs": 62
+    "seeds": 60,
+    "wins": 60,
+    "hits": 62,
+    "R": 0.89,
+    "pooled": 1.06,
+    "meanHits": 1.03,
+    "medianHits": 1,
+    "meanSecs": 58
    },
    "20": {
     "enemies": {
      "dogs": 8,
      "trackers": 7
     },
-    "seeds": 24,
-    "wins": 24,
-    "hits": 42,
-    "R": 1.12,
-    "pooled": 1.23,
-    "meanHits": 1.75,
+    "seeds": 60,
+    "wins": 60,
+    "hits": 75,
+    "R": 1.01,
+    "pooled": 1.19,
+    "meanHits": 1.25,
     "medianHits": 1,
-    "meanSecs": 85
+    "meanSecs": 63
    }
   },
   "bird": {

@@ -19,10 +19,10 @@ module.exports = async function (T) {
         for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const x = c + dc, y = r + dr; if (x < 0 || y < 0 || x >= lv.cols || y >= lv.rows || !lv.floorFree[y][x] || tr.has(y * lv.cols + x) || (lv.catMode && !lv.walk[y][x])) return false; }
         return true;
       };
-      const roomyAvailable = (lv) => { // quantos tiles com folga o sorteio tem à disposição (a regra de placeItems)
+      const roomyAvailable = (lv) => { // quantos tiles com folga o sorteio tem à disposição (a regra de placeItems: alcançáveis, a 4+ passos do início, fora da saída e a 2+ tiles dos postos)
         const W = lv.cols, dist = new Map([[lv.spawnTile[1] * W + lv.spawnTile[0], 0]]), q = [lv.spawnTile], no = new Set([...lv.exitTiles, ...lv.avoidTiles].map(([c, r]) => r * W + c));
         for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = dist.get(r * W + c); for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nc = c + dc, nr = r + dr; if (nc < 0 || nr < 0 || nc >= W || nr >= lv.rows || !lv.walk[nr][nc] || dist.has(nr * W + nc)) continue; dist.set(nr * W + nc, d + 1); q.push([nc, nr]); } }
-        return q.filter(([c, r]) => !no.has(r * W + c) && dist.get(r * W + c) >= 4 && lv.postTiles.every((v) => Math.hypot(c - v[0], r - v[1]) >= 4) && roomy(lv, c, r)).length;
+        return q.filter(([c, r]) => !no.has(r * W + c) && dist.get(r * W + c) >= 4 && lv.postTiles.every((v) => Math.hypot(c - v[0], r - v[1]) >= 2) && roomy(lv, c, r)).length;
       };
       for (const animal of animals) {
         g.setAnimal(animal); g.autoStart = true; g.noCatch = true;

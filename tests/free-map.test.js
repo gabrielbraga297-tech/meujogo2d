@@ -47,11 +47,11 @@ const stepsFromDog = (lv, f) => { // passos a pé do cachorrinho até o inimigo 
   for (let i = 0; i < q.length; i++) { const [c, r] = q[i], k = d.get(r * W + c); if (c === goal[0] && r === goal[1]) return k; for (const [dc, dr] of DIRS) { const nc = c + dc, nr = r + dr; if (nc < 0 || nr < 0 || nc >= W || nr >= lv.rows || !grid[nr][nc] || d.has(nr * W + nc)) continue; d.set(nr * W + nc, k + 1); q.push([nc, nr]); } }
   return 99;
 };
-const roomyAvailable = (lv) => { // quantos tiles com folga o sorteio tem à disposição: alcançáveis do início (sem contar os blocos) a 4+ passos dele, fora da saída e dos tiles proibidos, e a 4+ tiles dos postos
+const roomyAvailable = (lv) => { // quantos tiles com folga o sorteio tem à disposição: alcançáveis do início (sem contar os blocos) a 4+ passos dele, fora da saída e dos tiles proibidos, e a 2+ tiles dos postos (a segunda faixa do sorteio; a primeira pede 4+)
   if (lv.__ra !== undefined) return lv.__ra;
   const W = lv.cols, dist = new Map([[lv.spawnTile[1] * W + lv.spawnTile[0], 0]]), q = [lv.spawnTile], no = new Set([...lv.exitTiles, ...lv.avoidTiles].map(([c, r]) => r * W + c));
   for (let i = 0; i < q.length; i++) { const [c, r] = q[i], d = dist.get(r * W + c); for (const [dc, dr] of DIRS) { const nc = c + dc, nr = r + dr; if (nc < 0 || nr < 0 || nc >= W || nr >= lv.rows || !lv.walk[nr][nc] || dist.has(nr * W + nc)) continue; dist.set(nr * W + nc, d + 1); q.push([nc, nr]); } }
-  return (lv.__ra = q.filter(([c, r]) => !no.has(r * W + c) && dist.get(r * W + c) >= 4 && lv.postTiles.every((v) => Math.hypot(c - v[0], r - v[1]) >= 4) && roomy(lv, c, r)).length);
+  return (lv.__ra = q.filter(([c, r]) => !no.has(r * W + c) && dist.get(r * W + c) >= 4 && lv.postTiles.every((v) => Math.hypot(c - v[0], r - v[1]) >= 2) && roomy(lv, c, r)).length);
 };
 const each = (animal, fn) => { const bad = []; for (const lv of levelsOf(animal)) { try { fn(lv); } catch (e) { bad.push(`${animal} Fase ${lv.id}: ${e.message}`); } } if (bad.length) throw new Error(bad.slice(0, 8).join("\n")); };
 

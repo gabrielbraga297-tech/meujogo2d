@@ -1828,13 +1828,15 @@
       }
       return cand.slice(0, count);
     }
-    // (0.25.0, mapa livre) primeiro só os tiles com folga em volta (nenhuma parede, caixa ou trilho de bloco nos 8 vizinhos). (0.26.0) Se não houver tiles com folga suficientes (mapa apertado, como a Fase 6 do Gatinho),
-    // ficam com folga todos os que couberem e só o resto vem dos outros tiles
-    const roomyList = ok.filter(([c, r]) => roomyTile(c, r));
-    const first = spread(shuffle(roomyList), count);
-    if (first.length >= count) return first;
-    const taken = new Set(first.map(([c, r]) => key(c, r)));
-    return first.concat(spread(shuffle(ok.filter(([c, r]) => !taken.has(key(c, r)))), count - first.length, first));
+    // (0.25.0, mapa livre) primeiro só os tiles com folga em volta (nenhuma parede, caixa ou trilho de bloco nos 8 vizinhos). (0.26.0) Se não houver tiles com folga suficientes (mapa apertado, como a Fase 6 do Gatinho,
+    // em que a única praça larga é onde ficam os postos), a faixa seguinte aceita os tiles com folga a 2 ou mais tiles dos postos; só então vêm os que encostam numa parede (antes, a 4 ou mais; depois, a 2 ou mais dos postos)
+    const taken = new Set(), out = [];
+    const tier = (minPost, roomyOnly) => g.q.filter((t) => !taken.has(key(...t)) && !exitKeys.has(key(...t)) && g.dist.get(key(...t)) >= 4 && vetTiles.every((v) => apart(t, v) >= minPost) && (!roomyOnly || roomyTile(t[0], t[1])));
+    for (const [minPost, roomyOnly] of [[4, true], [2, true], [4, false], [2, false]]) {
+      if (out.length >= count) break;
+      for (const t of spread(shuffle(tier(minPost, roomyOnly)), count - out.length, out)) { out.push(t); taken.add(key(...t)); }
+    }
+    return out;
   }
   // (0.25.0) O tile (c, r) tem folga em volta: nenhum dos 8 vizinhos é parede, caixa/van, muro ou trilho de bloco que se move (fora do mapa conta como parede). É o que mantém rações, ossos e bolinhas longe das paredes.
   function roomyTile(c, r) {
