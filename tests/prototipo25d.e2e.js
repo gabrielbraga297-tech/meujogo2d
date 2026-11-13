@@ -119,6 +119,22 @@ const server = http.createServer((q, s) => {
     if (near.found && open.found && near.scale === 1 && near.k === open.k && near.k > 60) itemsOk++; else lines.push(`${name} ${low ? "baixo" : "alto"}: junto da parede ${near.k} px, em chão aberto ${open.k} px (tempo achado ${near.found}/${open.found}, escala ${near.scale})`);
   }
   ok(itemsOk === itemsTried, `ração, osso comum e osso dourado aparecem inteiros colados ao sul de uma parede, no ponto mais baixo e no mais alto do balanço: ${itemsOk} de ${itemsTried} casos têm exatamente os mesmos pixels que em chão aberto${lines.length ? " — " + lines.join("; ") : ""}`);
+  // (0.25.0, mapa livre) além de o desenho aguentar um item ao lado de uma parede, o jogo agora NÃO põe ração, osso nem bolinha ao lado de parede (pedido do dono de 13/11/2026: confunde e fica feio)
+  const nearWall = await t.evaluate(() => {
+    const lv = __game.builtOf("dog")[1];
+    let n = 0, bad = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      __reseed(seed); __game.start(1);
+      for (const [c, r] of [...__game.items.map((it) => [(it.x - 8) / 32, (it.y - 8) / 32]), ...__game.balls.map((b) => [Math.floor(b.x / 32), Math.floor(b.y / 32)])]) {
+        n++;
+        let touching = false;
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= lv.cols || rr >= lv.rows || !lv.walk[rr][cc]) touching = true; }
+        if (touching) bad++;
+      }
+    }
+    return { n, bad };
+  });
+  ok(nearWall.n >= 200 && nearWall.bad === 0, `em 40 partidas sorteadas da Fase 1 nenhuma ração ou bolinha fica ao lado de uma parede (${nearWall.n} itens conferidos, ${nearWall.bad} encostados)`);
   // quem encosta numa parede pelo norte fica ATRÁS do topo dela: o cachorrinho e o agente, com os pés na linha da parede (y = 4 × 32), não pintam nada por cima do topo
   await startOrig(t); await startClock(t);
   for (const who of ["o cachorrinho", "o agente"]) {

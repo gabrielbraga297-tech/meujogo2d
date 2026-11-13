@@ -85,6 +85,7 @@ const { MAP, free, find, bfs, distances } = G1; // as seções antigas usam a Fa
 
 let failed = 0;
 const ok = (cond, msg) => { console.log((cond ? "OK   " : "FAIL ") + msg); if (!cond) failed++; };
+const spawnSpread = (V, gap = 5) => V.every((t, i) => V.every((u, j) => i >= j || Math.hypot(t[0] - u[0], t[1] - u[1]) >= gap)); // (0.25.0, mapa livre) os agentes nascem espalhados: a pelo menos `gap` tiles uns dos outros
 const only = process.argv[2]; // opcional: roda só as seções cujo título contém este texto (com SECTION_EXACT=1, só a seção cujo título é exatamente este: serve a tools/run-sections.js)
 let sectionsRun = 0;
 async function section(title, fn) {
@@ -400,7 +401,7 @@ const PAGE_HELPERS = () => {
   // =====================================================================
   await section("coleta, saída, vitória e recorde por tempo", async () => {
     await play(page, { runs: [{ name: "Rex", timeMs: 999999 }] });
-    await ev(page, () => { __game.freezeVets = true; });
+    await ev(page, () => { __game.freezeVets = true; __game.noCatch = true; }); // (0.25.0: os itens ficam no meio das ruas, longe das paredes: o caminho do teste pode passar por um agente parado, e aqui só se conta ração)
     const cur = () => tileOfPlayer(page);
     await ev(page, (p) => __t.walk(p), bfs(await cur(), exit));
     ok(await ev(page, () => __game.state) === "playing", "saída sem as 5 rações não vence");
@@ -1518,7 +1519,7 @@ const PAGE_HELPERS = () => {
     const v4 = G4.find("V"), p4 = G4.find("P")[0], e4 = G4.find("E");
     // ---- mapa ----
     ok(G4.MAP.length === 29 && G4.MAP.every((row) => row.length === 41) && [...G4.MAP[0], ...G4.MAP[28], ...G4.MAP.map((r) => r[0]), ...G4.MAP.map((r) => r[40])].every((ch) => ch === "#"), "Fase 4: mapa de 41 × 29 tiles (maior que a tela), cercado por paredes");
-    ok(v4.length === 3 && v4.every(([c, r]) => Math.abs(c - 20) <= 2 && Math.abs(r - 14) <= 2), `Fase 4: 3 agentes da carrocinha, no centro do mapa (${v4.join(" e ")})`);
+    ok(v4.length === 3 && spawnSpread(v4, 8), `Fase 4: 3 agentes da carrocinha, nascendo espalhados pelo mapa, a pelo menos 8 tiles uns dos outros (${v4.join(" e ")})`);
     ok(e4.length === 6 && G4.find("P").length === 1, "Fase 4: saída de 3 × 2 tiles e um só início");
     let corridors = 0, floors = 0;
     for (let r = 1; r < 28; r++) for (let c = 1; c < 40; c++) if (G4.free(c, r)) { floors++; const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => G4.free(c + dc, r + dr)).length; if (n <= 2) corridors++; }
@@ -1871,7 +1872,7 @@ const PAGE_HELPERS = () => {
     ok(G5.MAP.length === 29 && G5.MAP.every((row) => row.length === 43) && [...G5.MAP[0], ...G5.MAP[28], ...G5.MAP.map((r) => r[0]), ...G5.MAP.map((r) => r[42])].every((ch) => ch === "#"), "Fase 5: cidade de 43 × 29 tiles, cercada por paredes");
     ok(G5.routes(p5, e5) >= 3, `Fase 5: do início à saída há pelo menos 3 caminhos que não dividem nenhum tile (${G5.routes(p5, e5)})`);
     ok(G5.MAP.join("\n") !== G4.MAP.join("\n"), "o mapa da Fase 5 é outro");
-    ok(v5.length === 3 && v5.every(([c, r]) => Math.abs(c - 21) <= 3 && Math.abs(r - 14) <= 2) && e5.length === 6 && G5.find("P").length === 1, `Fase 5: 3 agentes da carrocinha no centro (${v5.join(" e ")}), saída 3 × 2 e um só início`);
+    ok(v5.length === 3 && spawnSpread(v5) && e5.length === 6 && G5.find("P").length === 1, `Fase 5: 3 agentes da carrocinha nascendo espalhados (${v5.join(" e ")}), saída 3 × 2 e um só início`);
     const d5 = G5.distances(p5);
     ok([...e5, ...v5].every((t) => d5.has(t + "")) && d5.get(e5[0] + "") >= Math.round(G5.MAP[0].length * 1.1), `Fase 5: saída e agentes da carrocinha alcançáveis (caminho de ${d5.get(e5[0] + "")} passos, pelo menos 1,1 vez a largura do mapa, ${G5.MAP[0].length} tiles: ${Math.round(G5.MAP[0].length * 1.1)})`);
     const walls = L.blocks.filter((b) => b.wall), doors = L.blocks.filter((b) => !b.wall);
@@ -2193,6 +2194,7 @@ const PAGE_HELPERS = () => {
       const run = (dt) => {
         __game.start(4); __game.noCatch = true; __game.freezeVets = false; __game.setRand(() => 0.99);
         for (const v of __game.vets) { v.cool = 999; v.idle = 99; v.leg = null; v.route = []; }
+        __game.vets.slice(1).forEach((o, i) => { o.cx = (30 + 2 * i) * 32 + 16; o.cy = 2 * 32 + 16; }); // (0.25.0: os outros agentes nascem espalhados, e um podia estar ao lado da pista; eles ficam longe, na rua de cima)
         const v = __game.vets[0]; v.cx = 1 * 32 + 16; v.cy = 27 * 32 + 16; v.idle = 0; v.route = Array.from({ length: 14 }, (_, k) => [2 + k, 27]); // 14 tiles = 448 px
         let t = 0; while (v.cx < 15 * 32 + 16 - 0.001 && t < 20) { __game.tick(dt); t += dt; }
         return { t, px: 14 * 32 };
@@ -3248,7 +3250,7 @@ const PAGE_HELPERS = () => {
     for (const id of [6, 7, 8, 9, 10]) {
       const I = info[id], S = SPEC[id];
       ok(I.C === S.cols && I.R === S.rows && I.border && I.nP === 1 && I.V.length === S.nv && I.E === 6, `Fase ${id}: mapa de ${I.C} × ${I.R} tiles cercado por paredes, 1 início, ${S.nv} agentes da carrocinha e saída 3 × 2`);
-      ok(I.vReach && I.exitD >= Math.round(I.C * 1.1) && I.V.every(([c, r]) => Math.abs(c - (I.C >> 1)) <= 4 && Math.abs(r - (I.R >> 1)) <= 3), `Fase ${id}: saída (a ${I.exitD} passos, pelo menos 1,1 vez a largura do mapa, ${I.C}) e agentes da carrocinha alcançáveis, e eles começam no centro`);
+      ok(I.vReach && I.exitD >= Math.round(I.C * 1.1) && I.V.every((t, i) => I.V.every((u, j) => i >= j || Math.hypot(t[0] - u[0], t[1] - u[1]) >= 5)), `Fase ${id}: saída (a ${I.exitD} passos, pelo menos 1,1 vez a largura do mapa, ${I.C}) e agentes da carrocinha alcançáveis, e eles nascem espalhados (a pelo menos 5 tiles uns dos outros)`);
       ok(I.doors === S.doors[2] && I.walls === S.walls[2] && I.wallShape && I.doorShape && I.trackFree && I.blocksN === S.doors[2] + S.walls[2], `Fase ${id}: ${I.doors} portas de bloco (1 × 1) e ${I.walls} paredes de ${[...new Set(I.wallLens)].sort().join(", ")} tiles (de uma parede fixa à outra da rua, com 1 tile livre), com os trilhos em chão livre`);
       ok(I.combos === 1 << I.blocksN && I.okAll === I.combos, `Fase ${id}: com as ${I.blocksN} peças em qualquer posição (${I.combos} combinações) todo o chão fora dos trilhos continua alcançável (${I.okAll})`);
       const c = I.cfg;
@@ -4163,10 +4165,10 @@ const PAGE_HELPERS = () => {
       ok(c.routes >= ROUTES[n], `Fase ${n}: do início à saída há ${c.routes} caminhos que não passam pela mesma célula (pelo menos ${ROUTES[n]})`);
       ok(c.blocks.filter((b) => !b.wall).length === DOORS[n] && c.blocks.filter((b) => b.wall).length === WALLS[n] && c.viela >= DOORS[n], `Fase ${n}: ${DOORS[n]} portas de bloco e ${WALLS[n]} paredes que se movem`);
     }
-    // pátio da praça (Fases 4 a 10): célula central 7 × 5 com os postos dos agentes e as 4 vans nos cantos
+    // pátio da praça (Fases 4 a 20): célula central 7 × 5 com as 4 vans nos cantos (0.25.0: os agentes NÃO nascem mais todos na praça: no máximo um)
     for (let n = 4; n <= 20; n++) {
       const c = info[n], cx0 = c.C >> 1, cy0 = c.R >> 1, mi = c.nx >> 1, mj = c.ny >> 1;
-      ok(c.cx[mi][1] === 7 && c.cy[mj][1] === 5 && c.V.every(([x, y]) => Math.abs(x - cx0) <= 2 && Math.abs(y - cy0) <= 1) && [[-3, -2], [3, -2], [-3, 2], [3, 2]].every(([dc, dr]) => c.ch(cx0 + dc, cy0 + dr) === "X"), `Fase ${n}: a praça da carrocinha (7 × 5) fica no centro, com os postos dos agentes e as 4 vans nos cantos`);
+      ok(c.cx[mi][1] === 7 && c.cy[mj][1] === 5 && c.V.filter(([x, y]) => Math.abs(x - cx0) <= 3 && Math.abs(y - cy0) <= 2).length <= 1 && [[-3, -2], [3, -2], [-3, 2], [3, 2]].every(([dc, dr]) => c.ch(cx0 + dc, cy0 + dr) === "X"), `Fase ${n}: a praça da carrocinha (7 × 5) fica no centro, com as 4 vans nos cantos, e os agentes não nascem todos nela`);
     }
     // quão confuso é: poucos becos sem saída nas Fases 1 a 5, muitos nas 9 e 10, e cada fase de 4 a 10 tem mais becos, quarteirões e caminho que a anterior
     const upTo = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -11008,7 +11010,7 @@ const PAGE_HELPERS = () => {
     }
     ok(missing.length === 0, `o README (Estrutura e Testes) e docs/LOJINHA.md listam tests/skins-dog.test.js, tests/skins-cat.test.js, tests/skins-cat-frame.js, tests/wiring.test.js, tools/skin-preview/shoot.js e cat-skins.js, como rodar cada um e os filtros do e2e${missing.length ? " — faltam: " + missing.join("; ") : ""}`);
     // todo filtro do e2e escrito no README ou em docs/LOJINHA.md corresponde a pelo menos uma seção (nada documentado aponta para o vazio)
-    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy|update)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
+    const titles = [...[fs.readFileSync(path.join(root, "tests/e2e.js"), "utf8"), ...fs.readdirSync(path.join(root, "tests")).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy|update|freemap)\.js$/.test(n)).map((n) => fs.readFileSync(path.join(root, "tests", n), "utf8"))].join("\n").matchAll(/await section\(\s*(?:"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`)/g)].map((m) => (m[1] || m[2]).replace(/\\(.)/g, "$1"));
     const filters = [...new Set([...(readme + "\n" + loja).matchAll(/node tests\/e2e\.js "([^"]+)"/g)].map((m) => m[1]))], dead = filters.filter((f) => !titles.some((t) => t.includes(f)));
     ok(titles.length > 100 && filters.length >= 5 && dead.length === 0, `todos os ${filters.length} filtros do e2e citados no README e em docs/LOJINHA.md acham alguma seção${dead.length ? " — sem seção: " + dead.map((f) => `"${f}"`).join(", ") : ""}`);
     // ---- a trava do armazenamento: o que ela protege e o que não protege (a conta local não é segurança de verdade) ----
@@ -11741,8 +11743,8 @@ const PAGE_HELPERS = () => {
   // ----------------------------------------------------------------------------------------------------------------------------
   // (0.20.0) as seções do Passarinho ficam em arquivos à parte, um por assunto (tests/e2e-bird-<assunto>.js, p. ex. e2e-bird-motor.js): cada um exporta `async (T) => { await T.section(...) }` e recebe as ferramentas deste arquivo
   // (0.21.0) as seções da música tema ficam em tests/e2e-music.js (títulos "música: ..."), carregado do mesmo jeito
-  // (0.22.0) a seção da dificuldade escalonada fica em tests/e2e-ramp.js
-  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy|update)\.js$/.test(n)).sort()) {
+  // (0.22.0) a seção da dificuldade escalonada fica em tests/e2e-ramp.js; (0.25.0) a do mapa livre, em tests/e2e-freemap.js
+  for (const f of fs.readdirSync(__dirname).filter((n) => /^e2e-(?:bird-.+|music|ramp|economy|update|freemap)\.js$/.test(n)).sort()) {
     await require(path.join(__dirname, f))({ browser, newPage, fresh, play, playLevel, ev, ok, section, errs, URL, root, PAGE_HELPERS, watch, hudIs, tileOfPlayer, find, grid });
   }
   console.log("erros JS:", errs);

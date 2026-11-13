@@ -20,7 +20,7 @@ module.exports = function PROBE(o) {
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const mid = (p) => [p.x + p.w / 2, p.y + p.h / 2];
   const tileOf = (x, y) => [Math.floor(x / 32), Math.floor(y / 32)];
-  const solid = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows || !!lv.bld[r][c];
+  const solid = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows || !!lv.bld[r][c] || (animal === "dog" && !lv.walk[r][c]); // (0.25.0) no Cachorrinho as caixas X (muretas que só o gato pula) são parede para o robô também: antes ele as atravessava no plano e ficava empurrando a caixa
   const exitSet = new Set(lv.exitTiles.map(([c, r]) => idx(c, r)));
   const sprintOk = () => animal === "cat" && typeof g.stamina === "number";
 

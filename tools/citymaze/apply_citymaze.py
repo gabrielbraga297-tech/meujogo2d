@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Aplica os labirintos de cidade (citymaze/out/mapN.json, N = 1..10) em <repo>/js/game.js: MAP_N, comentário, peças móveis (blocks), `maze` (grade das células, para os testes) e `note`.
-Uso: apply_citymaze.py <repo> <pasta com os mapN.json>"""
+Uso: apply_citymaze.py <repo> <pasta com os mapN.json>
+ATENÇÃO (0.25.0): este script põe os agentes (`V`) na praça do centro, como o gerador desenha. Depois de rodá-lo, rode `node tools/spawns/spread.js --write`, que espalha os agentes e os gatos pelo mapa inteiro (o teste tests/free-map.test.js falha se isso não for feito)."""
 import json, re, sys
 
 repo, src_dir = sys.argv[1], sys.argv[2]

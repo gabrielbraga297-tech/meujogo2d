@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Acrescenta as Fases 11 a 20 em <repo>/js/game.js a partir de <pasta>/mapN.json (N = 11..20): MAP_N, entradas de LEVELS, ajuda vetsOf e nota da Fase 10.
+ATENÇÃO (0.25.0): depois de rodar, rode `node tools/spawns/spread.js --write` (espalha os agentes e os gatos; o teste tests/free-map.test.js falha sem isso).
 Uso: apply_levels11_20.py <repo> <pasta> [--hops] [--cats]   (--hops mantém as muretas de caixas X que só o gato pula; --cats põe os gatos nas fases)"""
 import json, re, sys
 
