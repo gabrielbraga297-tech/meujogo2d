@@ -9,9 +9,9 @@ const { spawnSync } = require("child_process");
 const rig = require("./engine-rig.js");
 
 const ROOT = path.join(__dirname, "..");
-const DELIVERED = ["dog", "cat"]; // bichinhos com o mapa livre entregue: 0.25.0 Cachorrinho; 0.26.0 Gatinho; (0.27.0 Passarinho)
+const DELIVERED = ["dog", "cat", "bird"]; // bichinhos com o mapa livre entregue: 0.25.0 Cachorrinho; 0.26.0 Gatinho; (0.27.0 Passarinho)
 // Limites por bichinho. Cachorrinho: posições escolhidas por tools/spawns/spread.js. Gatinho: pelo gerador dos mapas (tools/catmaze/cat_core.py, place_posts), que desce a distância do início e da saída em degraus nos mapas pequenos e densos.
-const LIM = { dog: { pair: 10, startPlus: 5, startMin: 11, exit: 9, roomyFrom: 1 }, cat: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 4 } }; // (roomyFrom: a partir de qual fase os postos precisam de folga em volta; a Fase 3 do Gatinho, de 25 × 18, tem tantas caixas e poças que não sobra lugar aberto)
+const LIM = { dog: { pair: 10, startPlus: 5, startMin: 11, exit: 9, roomyFrom: 1 }, cat: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 4 }, bird: { pair: 6, startPlus: 2, startMin: 8, exit: 5, roomyFrom: 1 } }; // (roomyFrom: a partir de qual fase os postos precisam de folga em volta; a Fase 3 do Gatinho, de 25 × 18, tem tantas caixas e poças que não sobra lugar aberto)
 const GAME = fs.readFileSync(path.join(ROOT, "js/game.js"), "utf8");
 
 let failed = 0, total = 0;

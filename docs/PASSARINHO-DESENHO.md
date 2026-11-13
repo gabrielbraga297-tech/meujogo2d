@@ -32,7 +32,7 @@ Velocidade do passarinho: 252 px/s × `birdSpeed` (0,8 na F1, 0,9 na F3, depois 
 | 4 | Telhados e chaminés | 41×29 | 3 | — | 15 | 2 | 2 | 2 | 3 | 800 | sim | primeira fase grande; mínimo de pontos |
 | 5 | Praça da vila | 41×29 | 3 | — | 20 | 2 | 2 | 4 | — | 1000 | sim | muitos galhos (as árvores da praça) |
 | 6 | Parque e coreto | 49×33 | 3 | — | 24 | 3 | 3 | 2 | 2 | 1250 | sim | alamedas, canteiros e sebes baixas |
-| 7 | Milharal | 49×37 | 4 | — | 28 | 3 | 3 | 2 | 3 | 1400 | sim | corredores estreitos de milho (muros M) |
+| 7 | Milharal | 49×37 | 4 | — | 28 | 3 | 3 | 2 | 3 | 1400 | sim | corredores de milho de 3 tiles (muros M) |
 | 8 | Campo de trigo e espantalhos | 55×39 | 5 | — | 32 | 4 | 3 | 3 | 5 | 1650 | sim | ventos fortes no campo aberto |
 | 9 | Lago e juncos | 55×39 | 5 | — | 36 | 4 | 3 | 5 | 6 | 1800 | sim | juncos (galhos) e margem ventosa |
 | 10 | Mata de pinheiros | 55×41 | 6 | — | 40 | 5 | 3 | 4 | 2 | 2050 | sim | troncos e sub-bosque (muros M), muitos galhos |
@@ -74,7 +74,7 @@ Mínimos que o teste exige nas Fases 4 a 20: economia média ≥ 1,5 tile (Fase 
 | 4 | 228 | 12 | 95% | 34 | 22 | 12 | 5.83 | 49.7% | 169 | 207 |
 | 5 | 151 | 73 | 67% | 47 | 47 | 0 | 2.08 | 18.8% | 102 | 131 |
 | 6 | 205 | 43 | 83% | 59 | 59 | 0 | 2.22 | 28.6% | 134 | 184 |
-| 7 | 463 | 8 | 98% | 43 | 39 | 4 | 6.29 | 55.9% | 271 | 370 |
+| 7 | 332 | 8 | 98% | 43 | 35 | 8 | 6.00 | 44.2% | 259 | 321 |
 | 8 | 205 | 37 | 85% | 68 | 50 | 18 | 2.62 | 30.7% | 145 | 203 |
 | 9 | 216 | 280 | 44% | 40 | 40 | 0 | 5.40 | 46.9% | 130 | 174 |
 | 10 | 351 | 175 | 67% | 63 | 49 | 14 | 13.17 | 70.1% | 223 | 213 |

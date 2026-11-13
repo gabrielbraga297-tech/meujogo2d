@@ -1788,7 +1788,7 @@
 
   // (0.25.0) MAPA LIVRE: itens longe das paredes (placeItems), agentes que nascem espalhados (nos mapas) e patrulha pelo mapa todo (updateVet/updateCat). Liga por bichinho, UM por atualização:
   // 0.25.0 Cachorrinho; 0.26.0 Gatinho; 0.27.0 Passarinho (cada bichinho é um lote de 20 fases corrigidas e conferidas). Desligado, o bichinho joga como antes.
-  const FREE_MAP = { dog: true, cat: true, bird: false };
+  const FREE_MAP = { dog: true, cat: true, bird: true };
   const freeMap = () => !!FREE_MAP[gameAnimal];
 
   function shuffle(a) {

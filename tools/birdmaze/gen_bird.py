@@ -56,7 +56,7 @@ SPEC = {
     6:  _s(W=49, H=33, cats=3, hawks=0, seeds=24, fruits=3, worms=3, G=2, wind=2, eside='L', alert=11,
            place="Parque e coreto", note="alamedas e canteiros com sebes baixas para voar por cima"),
     7:  _s(W=49, H=37, cats=4, hawks=0, seeds=28, fruits=3, worms=3, G=2, wind=3, eside='T', alert=12,
-           place="Milharal", note="corredores estreitos de milho: o voo alto corta caminho"),
+           place="Milharal", note="corredores de milho de 3 tiles: o voo alto corta caminho"),
     8:  _s(W=55, H=39, cats=5, hawks=0, seeds=32, fruits=4, worms=3, G=3, wind=5, eside='R', alert=13,
            place="Campo de trigo e espantalhos", note="campo aberto com ventos fortes e espantalhos"),
     9:  _s(W=55, H=39, cats=5, hawks=0, seeds=36, fruits=4, worms=3, G=5, wind=6, eside='B', alert=14,
@@ -318,7 +318,7 @@ def write_js(levels, path=JS_OUT):
 COND = {1: 'pegar tudo', 2: 'pegar tudo', 3: 'pegar tudo', 4: '800', 5: '1000', 6: '1250', 7: '1400', 8: '1650', 9: '1800', 10: '2050', 11: '2300 + missão',
         12: '2450 + missão', 13: '2650 + missão', 14: '2800 + missão', 15: '3000 + missão', 16: '3200 + missão', 17: '3400 + missão', 18: '3600 + missão', 19: '3800 + missão', 20: '4000 + missão'}
 NEWS = {1: 'andar, pegar sementes, fugir do gato (filhote)', 2: 'fruto (voo alto por cima dos muros) e bater asas', 3: 'X (cerca baixa), galho (a salvo), vento',
-        4: 'primeira fase grande; mínimo de pontos', 5: 'muitos galhos (as árvores da praça)', 6: 'alamedas, canteiros e sebes baixas', 7: 'corredores estreitos de milho (muros M)',
+        4: 'primeira fase grande; mínimo de pontos', 5: 'muitos galhos (as árvores da praça)', 6: 'alamedas, canteiros e sebes baixas', 7: 'corredores de milho de 3 tiles (muros M)',
         8: 'ventos fortes no campo aberto', 9: 'juncos (galhos) e margem ventosa', 10: 'troncos e sub-bosque (muros M), muitos galhos', 11: 'gaviões; missão: todos os frutos',
         12: 'missão: 34 sementes', 13: 'muitos galhos (vitórias-régias), gaviões', 14: 'ventos de duna', 15: 'rochas (paredes), muros de pedra, correntes de ar',
         16: 'redes (X), mastros (galhos), varais (M)', 17: 'campo aberto, muros de pedra, poucos abrigos', 18: 'luz laranja que escurece (visão reduzida)',

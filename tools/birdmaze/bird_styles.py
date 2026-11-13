@@ -423,12 +423,12 @@ def style6(m, rng, sp):
 
 
 # --------------------------------------------------------------------------------------------
-# Fase 7: Milharal (corredores estreitos de milho: quase tudo é M)
+# Fase 7: Milharal (corredores de milho de 3 tiles, entre muros M; até a 0.26.0 eram de 2 tiles e nenhum tile tinha folga em volta)
 # --------------------------------------------------------------------------------------------
 @style(7)
 def style7(m, rng, sp):
     W, H = m.W, m.H
-    box = maze_cells(m, rng, 1, 1, W - 2, H - 2, 2, 1, 'M', 0.32, 4)
+    box = maze_cells(m, rng, 1, 1, W - 2, H - 2, 3, 1, 'M', 0.32, 4)   # (0.27.0, mapa livre: corredores de 3 tiles em vez de 2; assim há um tile com folga no meio de cada um)
     cx, cy = W // 2 + rng.randint(-6, 6), H // 2 + rng.randint(-4, 4)
     m.rect(cx - 5, cy - 3, 11, 7, '.', force=True)                 # a clareira com o sítio e o espantalho
     m.rect(cx - 3, cy - 2, 4, 2, 'B')
