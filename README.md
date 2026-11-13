@@ -38,7 +38,7 @@ Esta tabela é conferida por um teste automático com os dados do jogo (`node te
 | 13 | chegar a 2650 pontos na fase **e cumprir a missão** (pegar 36 das 48 rações); só então a saída abre — e sair | 5 | 48 | 6 | 92,24 / 184,48 px/s | 252 px/s |
 | 14 | chegar a 2800 pontos na fase **e cumprir a missão** (pegar todos os 6 ossos); só então a saída abre — e sair | 7 | 50 | 6 | 93,71 / 187,4 px/s | 252 px/s |
 | 15 | chegar a 3000 pontos na fase **e cumprir a missão** (pegar 40 das 52 rações); só então a saída abre — e sair | 8 | 52 | 6 | 95,17 / 190,33 px/s | 252 px/s |
-| 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 7 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
+| 16 | chegar a 3200 pontos na fase **e cumprir a missão** (pegar 44 das 54 rações); só então a saída abre — e sair | 6 | 54 | 7 | 96,64 / 193,26 px/s | 252 px/s |
 | 17 | chegar a 3400 pontos na fase **e cumprir a missão** (pegar todos os 7 ossos e pegar 40 das 56 rações); só então a saída abre — e sair | 7 | 56 | 7 | 98,1 / 196,19 px/s | 252 px/s |
 | 18 | chegar a 3600 pontos na fase **e cumprir a missão** (pegar 46 das 58 rações); só então a saída abre — e sair | 7 | 58 | 7 | 99,57 / 199,12 px/s | 252 px/s |
 | 19 | chegar a 3800 pontos na fase **e cumprir a missão** (pegar todos os 8 ossos e pegar 48 das 60 rações); só então a saída abre — e sair | 7 | 60 | 8 | 101,03 / 202,05 px/s | 252 px/s |
@@ -92,7 +92,7 @@ Dez labirintos de cidade ainda maiores (de 65 × 41 até 83 × 53 tiles, de 77 a
 | Mapa | 65 × 41 | 67 × 41 | 71 × 43 | 73 × 43 | 75 × 45 | 75 × 49 | 77 × 49 | 79 × 51 | 81 × 51 | 83 × 53 |
 | Rações / ossos | 44 / 5 | 46 / 5 | 48 / 6 | 50 / 6 | 52 / 6 | 54 / 7 | 56 / 7 | 58 / 7 | 60 / 8 | 62 / 8 |
 | Bolinhas (+50 cada) | 4 | 4 | 4 | 4 | 4 | 5 | 5 | 5 | 5 | 5 |
-| Agentes da carrocinha (nascem espalhados, 0.25.0) | 5 | 5 | 5 | 7 | 8 | 7 | 7 | 7 | 7 | 9 |
+| Agentes da carrocinha (nascem espalhados, 0.25.0) | 5 | 5 | 5 | 7 | 8 | 6 | 7 | 7 | 7 | 9 |
 | Ossos de tipo novo (além de 3 comuns) | ouro, gelo | gelo, turbo | ouro, gelo, ímã | ouro, turbo, ímã | gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | ouro, gelo, turbo, ímã | 2 ouros, gelo, turbo, ímã | ouro, 2 gelos, turbo, ímã |
 | Gatos (a partir da Fase 11) | 2 | 3 | 3 | 5 | 6 | 5 | 5 | 6 | 6 | 7 |
 | Velocidade dos gatos (patrulha / perseguição px/s; ouvido em passos) | 130 / 200; 7 | 132 / 203; 7 | 134 / 205; 7 | 135 / 208; 7 | 137 / 211; 8 | 139 / 214; 8 | 141 / 216; 8 | 143 / 219; 8 | 144 / 222; 9 | 146 / 224; 9 |

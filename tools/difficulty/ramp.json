@@ -84,12 +84,12 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 1,
-    "R": 0.08,
-    "pooled": 0.1,
-    "meanHits": 0.08,
+    "hits": 0,
+    "R": 0,
+    "pooled": 0,
+    "meanHits": 0,
     "medianHits": 0,
-    "meanSecs": 52
+    "meanSecs": 55
    },
    "7": {
     "enemies": {
@@ -112,10 +112,10 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 5,
-    "R": 0.38,
-    "pooled": 0.42,
-    "meanHits": 0.42,
+    "hits": 4,
+    "R": 0.3,
+    "pooled": 0.33,
+    "meanHits": 0.33,
     "medianHits": 0,
     "meanSecs": 60
    },
@@ -126,12 +126,12 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 7,
-    "R": 0.45,
-    "pooled": 0.48,
-    "meanHits": 0.58,
+    "hits": 8,
+    "R": 0.48,
+    "pooled": 0.56,
+    "meanHits": 0.67,
     "medianHits": 0.5,
-    "meanSecs": 73
+    "meanSecs": 72
    },
    "10": {
     "enemies": {
@@ -140,12 +140,12 @@
     },
     "seeds": 12,
     "wins": 12,
-    "hits": 5,
-    "R": 0.28,
-    "pooled": 0.3,
-    "meanHits": 0.42,
-    "medianHits": 0,
-    "meanSecs": 84
+    "hits": 6,
+    "R": 0.36,
+    "pooled": 0.36,
+    "meanHits": 0.5,
+    "medianHits": 0.5,
+    "meanSecs": 83
    },
    "11": {
     "enemies": {
@@ -154,10 +154,10 @@
     },
     "seeds": 24,
     "wins": 24,
-    "hits": 14,
-    "R": 0.38,
-    "pooled": 0.41,
-    "meanHits": 0.58,
+    "hits": 18,
+    "R": 0.49,
+    "pooled": 0.53,
+    "meanHits": 0.75,
     "medianHits": 0,
     "meanSecs": 85
    },
@@ -168,10 +168,10 @@
     },
     "seeds": 24,
     "wins": 24,
-    "hits": 48,
-    "R": 1.22,
-    "pooled": 1.29,
-    "meanHits": 2,
+    "hits": 43,
+    "R": 1.13,
+    "pooled": 1.16,
+    "meanHits": 1.79,
     "medianHits": 2,
     "meanSecs": 93
    },
@@ -182,12 +182,12 @@
     },
     "seeds": 24,
     "wins": 24,
-    "hits": 43,
-    "R": 1.04,
-    "pooled": 1.14,
-    "meanHits": 1.79,
+    "hits": 40,
+    "R": 0.99,
+    "pooled": 1.05,
+    "meanHits": 1.67,
     "medianHits": 1,
-    "meanSecs": 94
+    "meanSecs": 95
    },
    "14": {
     "enemies": {
@@ -196,12 +196,12 @@
     },
     "seeds": 24,
     "wins": 23,
-    "hits": 64,
-    "R": 1.55,
-    "pooled": 1.64,
-    "meanHits": 2.67,
-    "medianHits": 2,
-    "meanSecs": 98
+    "hits": 68,
+    "R": 1.59,
+    "pooled": 1.71,
+    "meanHits": 2.83,
+    "medianHits": 3,
+    "meanSecs": 100
    },
    "15": {
     "enemies": {
@@ -209,13 +209,13 @@
      "cats": 6
     },
     "seeds": 24,
-    "wins": 24,
-    "hits": 97,
-    "R": 2.13,
-    "pooled": 2.29,
-    "meanHits": 4.04,
-    "medianHits": 4,
-    "meanSecs": 106
+    "wins": 23,
+    "hits": 88,
+    "R": 1.99,
+    "pooled": 2.13,
+    "meanHits": 3.67,
+    "medianHits": 3,
+    "meanSecs": 103
    },
    "16": {
     "enemies": {
@@ -223,13 +223,13 @@
      "cats": 5
     },
     "seeds": 24,
-    "wins": 23,
-    "hits": 125,
-    "R": 2.38,
-    "pooled": 2.5,
-    "meanHits": 5.21,
-    "medianHits": 4,
-    "meanSecs": 125
+    "wins": 21,
+    "hits": 149,
+    "R": 2.68,
+    "pooled": 2.82,
+    "meanHits": 6.21,
+    "medianHits": 5.5,
+    "meanSecs": 132
    },
    "17": {
     "enemies": {
@@ -237,11 +237,11 @@
      "cats": 5
     },
     "seeds": 24,
-    "wins": 24,
-    "hits": 94,
-    "R": 1.81,
-    "pooled": 1.96,
-    "meanHits": 3.92,
+    "wins": 23,
+    "hits": 99,
+    "R": 1.92,
+    "pooled": 2.06,
+    "meanHits": 4.13,
     "medianHits": 4,
     "meanSecs": 120
    },
@@ -252,12 +252,12 @@
     },
     "seeds": 24,
     "wins": 24,
-    "hits": 113,
-    "R": 2.27,
-    "pooled": 2.34,
-    "meanHits": 4.71,
+    "hits": 108,
+    "R": 2.07,
+    "pooled": 2.16,
+    "meanHits": 4.5,
     "medianHits": 4.5,
-    "meanSecs": 121
+    "meanSecs": 125
    },
    "19": {
     "enemies": {
@@ -266,12 +266,12 @@
     },
     "seeds": 24,
     "wins": 24,
-    "hits": 98,
-    "R": 1.86,
-    "pooled": 1.93,
-    "meanHits": 4.08,
+    "hits": 93,
+    "R": 1.66,
+    "pooled": 1.77,
+    "meanHits": 3.88,
     "medianHits": 4,
-    "meanSecs": 127
+    "meanSecs": 131
    },
    "20": {
     "enemies": {
@@ -279,13 +279,13 @@
      "cats": 7
     },
     "seeds": 24,
-    "wins": 22,
-    "hits": 125,
-    "R": 2.38,
-    "pooled": 2.4,
-    "meanHits": 5.21,
-    "medianHits": 4.5,
-    "meanSecs": 130
+    "wins": 24,
+    "hits": 124,
+    "R": 2.43,
+    "pooled": 2.44,
+    "meanHits": 5.17,
+    "medianHits": 6,
+    "meanSecs": 127
    }
   },
   "cat": {
