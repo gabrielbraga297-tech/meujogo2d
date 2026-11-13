@@ -1382,6 +1382,7 @@ const PAGE_HELPERS = () => {
 
     // ---- vitória na Fase 3 ----
     await playLevel(page, 3, { done: [1, 2] });
+    await ev(page, () => { __game.balls = []; }); // (0.25.0: as bolinhas agora também caem no meio das ruas, e uma pode ficar encostada na saída ou num item: o teste confere pontos exatos de ração e osso, então tira as bolinhas)
     await finishNow(page, 10);
     const wb = await page.textContent("#win-breakdown"), wp = Number(await page.textContent("#win-points"));
     ok(await ev(page, () => __game.state) === "won" && /Fase 3 concluída/.test(await page.textContent("#win-title")), "a Fase 3 termina com todos os itens");
@@ -1391,6 +1392,7 @@ const PAGE_HELPERS = () => {
     ok(rec3.l3 && rec3.l3.p === wp && rec3.total === wp && rec3.done.includes(3), "a pontuação da Fase 3 é guardada à parte e entra na soma das fases");
     // com vidas perdidas e tentativas
     await ev(page, () => __game.start(3, { retries: 2 }));
+    await ev(page, () => { __game.balls = []; }); // (0.25.0: as bolinhas agora também caem no meio das ruas, e uma pode ficar encostada na saída ou num item: o teste confere pontos exatos de ração e osso, então tira as bolinhas)
     await ev(page, () => { __game.freezeVets = true; for (const v of __game.vets) v.cool = 99; const v = __game.vets[0], p = __game.player; v.cx = p.x + 12; v.cy = p.y + 12; __game.tick(0.01); __game.noCatch = true; }); // (0.25.0: perde UMA vida de propósito; depois ninguém pega o cachorrinho: os itens ficam no meio das ruas e o caminho do teste pode passar por um agente parado)
     await finishNow(page, 10);
     ok(Number(await page.textContent("#win-points")) === 1200 - 50 - 200 && /vidas perdidas: 50/.test(await page.textContent("#win-breakdown")) && /tentativas extras: 200/.test(await page.textContent("#win-breakdown")), "−50 por vida perdida e −100 por nova tentativa também valem na Fase 3");
@@ -1974,11 +1976,12 @@ const PAGE_HELPERS = () => {
 
     // ---- pontos: a saída abre com 1000 pontos na fase (a regra está testada na seção da Fase 4) ----
     await playLevel(page, 5, { done: [1, 2, 3, 4] });
+    await ev(page, () => { __game.balls = []; }); // (0.25.0: as bolinhas agora também caem no meio das ruas, e uma pode ficar encostada na saída ou num item: o teste confere pontos exatos de ração e osso, então tira as bolinhas)
     await finishNow(page, 10);
     ok(await ev(page, () => __game.state) === "won" && Number(await page.textContent("#win-points")) === 2500 && /Fase 5 concluída/.test(await page.textContent("#win-title")), "Fase 5 pegando tudo sem perder vida: 2000 (rações) + 300 (ossos) + 200 (bônus) = 2500 pontos");
     ok(await page.isVisible("#btn-next") && /Fase 6/.test(await page.textContent("#btn-next")), "depois da Fase 5 vem a Fase 6: o botão Próxima fase aparece");
-    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await catchOnce(page); await ev(page, () => { __game.noCatch = true; }); await finishNow(page, 10); // (0.25.0: perde UMA vida de propósito; depois ninguém pega o cachorrinho: os itens ficam no meio das ruas e o caminho pode passar por um agente parado)
-    ok(Number(await page.textContent("#win-points")) === 2300 && /vidas perdidas: 200/.test(await page.textContent("#win-breakdown")), "com 1 vida perdida (−200 na Fase 5): 2300 pontos");
+    await playLevel(page, 5, { done: [1, 2, 3, 4] }); await ev(page, () => { __game.balls = []; }); await catchOnce(page); await ev(page, () => { __game.noCatch = true; }); await finishNow(page, 10); // (0.25.0: perde UMA vida de propósito; depois ninguém pega o cachorrinho: os itens ficam no meio das ruas e o caminho pode passar por um agente parado)
+    ok(Number(await page.textContent("#win-points")) === 2300 && /vidas perdidas: 200/.test(await page.textContent("#win-breakdown")), `com 1 vida perdida (−200 na Fase 5): 2300 pontos (${await page.textContent("#win-points")}: ${await page.textContent("#win-breakdown")})`);
 
     // ---- escolha de fase ----
     await fresh(page, { done: [1, 2, 3] }); await page.click("#btn-start");
@@ -7653,7 +7656,7 @@ const PAGE_HELPERS = () => {
     // ---- perseguição: 20 s simulados correndo atrás das bolinhas; nunca atravessam parede, caixa nem a borda, nem saltam ou passam do chute ----
     await ev(page, () => {
       __bk.chase = (id, sec, herd) => { // herd: o cachorrinho não chega perto demais (para não pegar logo) e fica empurrando as bolinhas pelo mapa
-        const K = __bk, DT = 1 / 60, L = K.setup(id), rows = L.map.length, cols = L.map[0].length, kick = 180 + 8 * id;
+        const K = __bk, DT = 1 / 60, L = (() => { const rr = Math.random; Math.random = ((q) => () => ((q = (q * 1664525 + 1013904223) >>> 0) / 4294967296))(id * 131 + 7); try { return K.setup(id); } finally { Math.random = rr; } })() /* (0.25.0: as bolinhas são sorteadas com o Math.random da página; com a semente fixa a posição delas é a mesma em toda rodada e em todo navegador) */, rows = L.map.length, cols = L.map[0].length, kick = 180 + 8 * id;
         const b0 = __game.balls[0], spot = K.near([b0.x, b0.y], 130, 220); K.dog(...spot);
         const st = { id, frames: 0, wall: 0, border: 0, jump: 0, fast: 0, inBlock: 0, kicks: 0, moved: 0, taken: 0, total: __game.balls.length, bounces: 0 };
         const start = __game.balls.map((b) => [b.x, b.y]); let last = __game.balls.map((b) => [b.x, b.y, 0, 0]), path = [], pi = 0;
