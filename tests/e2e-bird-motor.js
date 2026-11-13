@@ -63,7 +63,7 @@ module.exports = async function (T) {
   await section("0.20.0 · Passarinho (motor): esqueleto (as fixtures carregam, o Passarinho fica pronto, o cartão aparece e o jogo salvo é dele)", async () => {
     const pg = await open();
     const g = await ev(pg, () => __game.games.find((x) => x.id === "bird"));
-    ok(g.ready && g.levels === 5 && g.rev === 1 && !g.placeholder, `o Passarinho está pronto com as 5 fases das fixtures (${JSON.stringify(g)})`);
+    ok(g.ready && g.levels === 5 && g.rev === 2 && !g.placeholder, `o Passarinho está pronto com as 5 fases das fixtures (${JSON.stringify(g)})`);
     ok(await ev(pg, () => __game.games.find((x) => x.id === "dog").ready && __game.games.find((x) => x.id === "cat").ready === false), "o Cachorrinho continua pronto e o Gatinho (sem js/cat-levels.js nesta página) continua Em breve: os bichinhos são independentes");
     // o cartão da tela "Escolha seu bichinho"
     await pg.click("#btn-animal");
@@ -680,7 +680,7 @@ module.exports = async function (T) {
       const ok1 = __game.save(), snap = __snap();
       return { ok: ok1, keys: Object.keys(snap).join(","), pw: snap.pw, mz: snap.mz, l: snap.l, cats: snap.cats.length, parse: __game.parseSave(snap, "bird"), size: JSON.stringify(snap).length, p: snap.p };
     }, SNAP.toString());
-    ok(a.ok && a.parse && a.mz === 1 && a.l === 4 && a.cats === 2 && near(a.pw, 7.97, 0.05), `salvou o jogo da Fase 4 com o voo alto ligado (${a.pw} s) sobre um muro e o jogo salvo vale (revisão ${a.mz}, ${a.cats} gaviões, ${a.size} bytes)`);
+    ok(a.ok && a.parse && a.mz === 2 && a.l === 4 && a.cats === 2 && near(a.pw, 7.97, 0.05), `salvou o jogo da Fase 4 com o voo alto ligado (${a.pw} s) sobre um muro e o jogo salvo vale (revisão ${a.mz}, ${a.cats} gaviões, ${a.size} bytes)`);
     ok(/,sta,wet,wnd/.test(a.keys) && /,cats,cd/.test(a.keys) && !/bird|flight|perch|wind/i.test(a.keys), `os campos do salvo do Passarinho são os do Gatinho (fôlego, gaviões): ${a.keys}`);
     // pausa, menu, continuar
     await pg.click("#btn-pause"); await pg.click("#btn-pause-menu");

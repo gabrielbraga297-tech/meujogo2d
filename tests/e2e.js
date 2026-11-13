@@ -8619,7 +8619,7 @@ const PAGE_HELPERS = () => {
     await fresh(page, { done: [1] });
     // ---- o registro: o Gatinho tem fases próprias (de teste), mas continua desligado em produção ----
     const g0 = await ev(page, () => __game.games);
-    ok(JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total, g.rev, g.placeholder])) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", false, 0, 20, 2, true], ["bird", false, 0, 0, 1, false]]), `o registro: Cachorrinho pronto (20 fases), Gatinho desligado mas com as 20 fases de teste (placeholder) e Passarinho sem fases (${JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total]))})`);
+    ok(JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total, g.rev, g.placeholder])) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", false, 0, 20, 2, true], ["bird", false, 0, 0, 2, false]]), `o registro: Cachorrinho pronto (20 fases), Gatinho desligado mas com as 20 fases de teste (placeholder) e Passarinho sem fases (${JSON.stringify(g0.map((g) => [g.id, g.ready, g.levels, g.total]))})`);
     ok(await ev(page, () => __game.setAnimal("cat")) === false && await page.isDisabled("#animal-cat").catch(() => true), "em produção o Gatinho continua desligado (não dá para escolher)");
     const fx = await ev(page, () => {
       const dogB = __game.builtOf("dog"), catB = __game.builtOf("cat");
@@ -8633,7 +8633,7 @@ const PAGE_HELPERS = () => {
       };
     });
     ok(fx.dog === 20 && fx.cat === 20 && fx.bird === 0 && fx.unk && fx.sep && fx.catPh && !fx.dogPh, `builtOf: 20 fases montadas do Cachorrinho e 20 do Gatinho (objetos separados, as do gato marcadas placeholder), 0 do Passarinho e um bichinho que não existe usa as do Cachorrinho (${JSON.stringify(fx)})`);
-    ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,1,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
+    ok(fx.hooks && fx.sameMaps && fx.cached && fx.rev.join() === "2,2,2,2", "os ganchos sprint, water e refuge existem e estão desligados (null) em todas as fases; as fases de teste do Gatinho são cópia das do Cachorrinho; builtOf guarda o que montou; cada bichinho tem a sua revisão de mapas");
     // ---- o perfil de cada bichinho (a tabela completa está em tests/profiles.test.js) ----
     // (0.20.0) Os ambientes do Passarinho: com js/bird-themes*.js (a página de sempre) `Themes.of(id, "bird")` é o de BirdThemes; sem esses arquivos (aqui, escondendo window.BirdThemes depois de carregar, como o jogo sem o arquivo) cai no do Cachorrinho da mesma fase
     const pr = await ev(page, () => {
@@ -8889,7 +8889,7 @@ const PAGE_HELPERS = () => {
     await fresh(cp, { name: "Totó" });
     const raw = await ev(cp, () => window.CatLevels.map((c) => ({ id: c.id, like: c.like, map: c.map, rations: c.rations, bones: c.bones, boneMix: c.boneMix, balls: c.balls, extraLives: c.extraLives, catSpeed: c.catSpeed, note: c.note, place: c.place, special: c.special })));
     const g = await ev(cp, () => __game.games.map((x) => [x.id, x.ready, x.levels, x.total, x.rev, x.placeholder]));
-    ok(JSON.stringify(g) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", true, 20, 20, 1, false], ["bird", false, 0, 0, 1, false]]), `com js/cat-levels.js o Gatinho está pronto com as 20 fases dele (placeholder: não), revisão própria 1; o Cachorrinho segue na 2 (${JSON.stringify(g)})`);
+    ok(JSON.stringify(g) === JSON.stringify([["dog", true, 20, 20, 2, false], ["cat", true, 20, 20, 1, false], ["bird", false, 0, 0, 2, false]]), `com js/cat-levels.js o Gatinho está pronto com as 20 fases dele (placeholder: não), revisão própria 1; o Cachorrinho segue na 2 (${JSON.stringify(g)})`);
     ok(raw.length === 20 && raw.every((c, i) => c.id === i + 1 && c.like === i + 1), "js/cat-levels.js traz as 20 fases em ordem, cada uma imitando a fase de mesmo número do Cachorrinho");
     const cmp = await ev(cp, () => {
       const dog = __game.levels, cat = __game.levelsOf("cat"), raw = window.CatLevels, out = [];

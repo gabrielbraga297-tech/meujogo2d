@@ -157,7 +157,7 @@ test("jogo salvo: recusa o passarinho sobre muro sem voo, sobre parede, voo acim
   check("jogador sobre # com voo é recusado", !mk((s) => { s.p.x = wc * TILE + 4; s.p.y = wr * TILE + 4; s.pw = 5; }));
   check("pw acima do máximo (10) é recusado", !mk((s) => { s.pw = 10.5; }));
   check("pw = 10 é aceito", mk((s) => { s.pw = 10; }));
-  check("mz errado é recusado", !mk((s) => { s.mz = 2; }) && !mk((s) => { s.mz = 0; }));
+  check("mz errado é recusado", !mk((s) => { s.mz = 1; }) && !mk((s) => { s.mz = 0; }));
   check("gato assustado é recusado no Passarinho", !mk((s) => { s.pw = 5; s.vd = s.vd.map(() => 1); }));
   const [vc, vr] = tiles(mapOf(3), (ch) => ">^<v".includes(ch))[0];
   check("um item numa corrente de vento é recusado (as sementes, os frutos e as minhocas nunca nascem nela)", !mk((s) => { s.items[0][0] = vc; s.items[0][1] = vr; }));

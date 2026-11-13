@@ -160,7 +160,7 @@
   // ===== PASSARINHO: motor =====
   // Passarinho (0.20.0): mecânicas das fases do passarinho (`birdMode`). ESCOLHAS DE DESIGN, sem fonte científica verificada. Só valem nas fases do Passarinho; nenhuma fase do Cachorrinho nem do Gatinho liga nenhuma.
   // VOO ALTO = o poder do fruto comum (`power`, `lv.flight`): ignora os muros `M` (não as paredes `#`), os gatos de quintal não o alcançam (`safe`), os gaviões sim (só o galho `G` os segura). VENTO = empurrão de WIND_SPEED px/s só no voo baixo.
-  const BIRD_REV = 1;                                    // revisão dos mapas do Passarinho (js/bird-levels.js): jogos salvos de outra revisão são descartados com aviso
+  const BIRD_REV = 2;                                    // revisão dos mapas do Passarinho (js/bird-levels.js): jogos salvos de outra revisão são descartados com aviso (2: a Fase 7 da 0.27.0 tem outro desenho)
   const BIRD_FLIGHT = 10, BIRD_FLIGHT_STEP = 2, BIRD_FLIGHT_WARN = 2; // s do voo alto do fruto comum, s a mais por nível do reforço Fruto poderoso e s finais em que o passarinho pisca (aviso)
   const WIND_SPEED = 90;                                 // px/s do empurrão de uma corrente de vento (só no voo baixo)
   const BIRD_LIVE_MIN = 1;                               // s de jogo que um estado do passarinho precisa durar para o leitor de tela dizê-lo (a região #hud-state-live)
@@ -2118,7 +2118,7 @@
   // O mapa é dividido em quadros de ROAM_CELL × ROAM_CELL tiles e CADA inimigo lembra a última vez que passou por cada quadro (f.roam). Ao escolher o destino da patrulha, o inimigo vai para um tile dos quadros
   // que ele há mais tempo não visita (os nunca visitados primeiro, de preferência os mais perto a pé), longe dos outros inimigos e dos destinos deles, e dois nunca escolhem o mesmo quadro: assim cada um percorre o mapa inteiro, e não uma faixa.
   // O vigia (watch) garante o resto: quem não sai do lugar por UNSTUCK_AFTER s (fora uma perseguição colada no cachorrinho) larga o que estava fazendo e anda para um destino novo.
-  // (0.26.0) As correções de impasse do lote do Gatinho (corredor estreito, perseguir atrás de outro, passeio depois da fuga) só valem no jogo do Gatinho: o Cachorrinho, entregue e auditado na 0.25.0, anda exatamente como antes.
+  // (0.26.0) As correções de impasse do lote do Gatinho (corredor estreito, perseguir atrás de outro, passeio depois da fuga) só valem nos jogos de `lv.catMode` (o Gatinho e, desde a 0.27.0, o Passarinho): o Cachorrinho, entregue e auditado na 0.25.0, anda exatamente como antes.
   const catFix = () => freeMap() && !!lv.catMode;
   const ROAM_CELL = 4, UNSTUCK_AFTER = 3.5, UNSTUCK_RADIUS = 1.5 * TILE, FLEE_WANDER = 10, FLEE_NEAR = 7; // tiles do lado de um quadro, s, px, passos do cachorrinho a partir dos quais o inimigo assustado passeia e abaixo dos quais volta a fugir
   let roamW = 0, roamN = 0;

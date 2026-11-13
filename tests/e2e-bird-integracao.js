@@ -402,7 +402,7 @@ module.exports = async function (T) {
       __game.power = 8; __s.tp(t[0], t[1]); __s.spin(3); const ok1 = __game.save(); const snap = Records.createStore(localStorage).game("bird").loadGame("Totó").snap;
       return { ok: ok1, parse: __game.parseSave(JSON.parse(JSON.stringify(snap)), "bird"), pw: snap.pw, mz: snap.mz, l: snap.l, size: JSON.stringify(snap).length, t, tm: __game.time };
     });
-    ok(a.ok && a.parse && a.mz === 1 && a.l === 7 && near(a.pw, 7.95, 0.1), `salvou a Fase 7 com o voo alto (${a.pw} s) sobre o muro ${a.t}: o jogo salvo é aceito (${a.size} bytes)`);
+    ok(a.ok && a.parse && a.mz === 2 && a.l === 7 && near(a.pw, 7.95, 0.1), `salvou a Fase 7 com o voo alto (${a.pw} s) sobre o muro ${a.t}: o jogo salvo é aceito (${a.size} bytes)`);
     await cont();
     const c = await ev(pg, () => {
       const lv = __game.builtOf("bird")[7], p = __game.player, over = () => lv.solids.some((s) => s.high && s.x < p.x + 24 && s.x + s.w > p.x && s.y < p.y + 24 && s.y + s.h > p.y);
