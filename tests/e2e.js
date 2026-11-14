@@ -164,7 +164,7 @@ const PAGE_HELPERS = () => {
   async function fresh(page, { name = "Totó", keepSave = false, runs = [], query = "", done = [] } = {}) {
     await page.goto(URL + query + (keepSave ? (query ? "&" : "?") + "keepsave=1" : ""));
     await page.evaluate(([name, keep, runs, done]) => {
-      sessionStorage.setItem("keepSave", keep ? "1" : "");
+      if (keep) sessionStorage.setItem("keepSave", "1"); else sessionStorage.removeItem("keepSave"); // (0.27.0: antes gravava "" quando não era para manter; se a gravação do "1" de uma chamada seguinte se perdia no recarregamento, sobrava esse "" velho e o script de inicialização apagava o jogo salvo, mesmo com keepsave=1 na URL: era a causa das seções que oscilavam em toda auditoria. Sem a marca, vale a URL.)
       localStorage.clear();
       const st = Records.createStore(localStorage);
       for (const r of runs) { st.setPlayer(r.name); st.addRun({ level: r.level || 1, timeMs: r.timeMs, points: r.points ?? 500 + Records.timeBonus(r.timeMs) }); }
