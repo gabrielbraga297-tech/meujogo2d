@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia dos ambientes do Gatinho (Fases 1 a 10)</title>
+<style>
+  body { margin: 0; padding: 12px; background: #1d1f24; color: #e8e8e8; font: 13px system-ui, sans-serif; }
+  #sheet { display: grid; grid-template-columns: repeat(2, max-content); gap: 14px 18px; }
+  figure { margin: 0; }
+  figcaption { margin: 0 0 4px; font-weight: 600; }
+  canvas { display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="sheet"></div>
+<script src="../../js/cat-themes.js"></script>
+<script src="../../js/cat-themes-1.js"></script>
+<script>
+// Recorte de 12 x 8 tiles de um mapa do Gatinho: o anel de fora é a borda do mapa (g.border), no meio há um bloco de parede de 3 x 3 tiles,
+// e X, T e ~ aparecem lado a lado. Os quadrados são só para escala: verde = 24 px (o gatinho), e quatro "peles" (preto, branco, laranja, cinza).
+const MAP = [
+  "############",
+  "#....###...#",
+  "#.X..###.~.#",
+  "#....###~~.#",
+  "#~...T.....#",
+  "#..X...T.X.#",
+  "#.T...~....#",
+  "############",
+];
+const COLS = 12, ROWS = 8, TILE = 32;
+const SKINS = ["#26262b", "#f4f1ea", "#e0903a", "#8d929c"];
+// deslocamento das coordenadas (muda o sorteio do desenho); a Fase 9 usa um que mostra o lago e os arbustos
+const OFFSET = { 9: [10, 4] };
+
+function render(id, opts) {
+  opts = Object.assign({ scale: 1, skins: false, time: 0, offset: null }, opts);
+  const sc = opts.scale, th = CatThemes.of(id), off = opts.offset || OFFSET[id] || [10, 7];
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(COLS * TILE * sc); cv.height = Math.round(ROWS * TILE * sc);
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(sc, 0, 0, sc, 0, 0);
+  const snap = (v) => Math.round(v * sc) / sc;
+  const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
+  const at = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS ? "#" : MAP[r][c]);
+  const g = {
+    ctx, rect, x: 0, y: 0, c: 0, r: 0, border: false, time: opts.time,
+    solid: (c, r) => at(c - off[0], r - off[1]) === "#",
+    kind: (c, r) => at(c - off[0], r - off[1]),
+    h: (k) => CatThemes.hash(g.c, g.r, k),
+  };
+  const place = (c, r) => { g.c = c + off[0]; g.r = r + off[1]; g.x = c * TILE; g.y = r * TILE; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1; };
+  // mesma ordem do jogo: chão em todos os tiles, depois parede, X, T e ~
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { place(c, r); th.floor(g); }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const k = MAP[r][c]; place(c, r);
+    if (k === "#") th.wall(g); else if (k === "X") th.crate(g); else if (k === "T") th.high(g); else if (k === "~") th.water(g);
+  }
+  const sq = (c, r, col, label) => { ctx.fillStyle = col; ctx.fillRect(c * TILE + 4, r * TILE + 4, 24, 24); ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 1; ctx.strokeRect(c * TILE + 4.5, r * TILE + 4.5, 23, 23); };
+  sq(4, 6, "#2ecc40");
+  if (opts.skins) SKINS.forEach((col, i) => sq(1 + i, 3, col));
+  return cv;
+}
+
+function sheet(opts) {
+  const root = document.getElementById("sheet"); root.innerHTML = "";
+  for (let id = 1; id <= 10; id++) {
+    const fig = document.createElement("figure"), cap = document.createElement("figcaption");
+    cap.textContent = id + ". " + CatThemes.of(id).place;
+    fig.append(cap, render(id, opts)); root.append(fig);
+  }
+}
+function single(id, opts) {
+  const root = document.getElementById("sheet"); root.innerHTML = "";
+  root.style.gridTemplateColumns = "max-content";
+  const fig = document.createElement("figure"); fig.id = "stage"; fig.append(render(id, opts)); root.append(fig);
+}
+window.sheet = sheet; window.single = single; window.render = render;
+const q = new URLSearchParams(location.search);
+if (!q.has("manual")) {
+  const scale = +q.get("scale") || 1, time = +q.get("time") || 0;
+  if (q.get("fase")) single(+q.get("fase"), { scale, time, skins: true }); else sheet({ scale, time });
+}
+</script>
+</body>
+</html>

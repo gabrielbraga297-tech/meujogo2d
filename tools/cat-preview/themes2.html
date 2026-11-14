@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Prévia dos ambientes do Gatinho (Fases 11 a 20)</title>
+<style>
+  body { margin: 0; padding: 12px; background: #20242c; color: #e8ecf3; font: 13px system-ui, sans-serif; }
+  .sheet { display: grid; grid-template-columns: repeat(2, max-content); gap: 14px; }
+  figure { margin: 0; }
+  figcaption { padding: 3px 0 5px; font-weight: 600; }
+  canvas { display: block; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="../../js/cat-themes.js"></script>
+<script src="../../js/cat-themes-2.js"></script>
+<script>
+// Prévia dos ambientes das Fases 11 a 20 (js/cat-themes-2.js): para cada fase, um recorte de 12 x 8 tiles com paredes, chão, X, T e ~ lado a lado.
+// O quadrado verde de 24 px é só a escala do gatinho; os 4 círculos ao lado são as peles pretas, branca, laranja e cinza (para conferir o contraste com o chão).
+// Parâmetros: ?catalog=1 (fileiras de X, T e ~); ?id=11 (uma fase) ou ?sheet=1 (as 10); &scale=2 (zoom); &t=1.3 (relógio da água; 0 = "reduzir movimento"); &night=1 (simula o escurecimento em volta do gatinho).
+const MAP = [
+  "############",
+  "##..X....~~#",
+  "#...T.##.~~#",
+  "#....###..T#",
+  "#.X..###...#",
+  "#..~~.....X#",
+  "#.T..X.....#",
+  "############",
+];
+// catálogo (?catalog=1): só X, T e ~ em fileiras para ver todas as variantes de cada fase (no recorte normal, o mesmo g.h(k) cai igual nos mesmos tiles)
+const CATALOG = [
+  "############",
+  "#XXXXXXXXXX#",
+  "#TTTTTTTTTT#",
+  "#~~~~~~~~~~#",
+  "#TTTTTTTTTT#",
+  "#XXXXXXXXXX#",
+  "#..........#",
+  "############",
+];
+const SKINS = ["#1b1b1b", "#f5f5f5", "#e8923a", "#8b8f99"];
+const TILE = 32;
+const q = new URLSearchParams(location.search);
+const MAPA = q.get("catalog") === "1" ? CATALOG : MAP;
+const scale = +(q.get("scale") || 1), time = q.has("t") ? +q.get("t") : 1.3;
+
+function drawPatch(id, withNight) {
+  const th = CatThemes.of(id), COLS = MAPA[0].length, ROWS = MAPA.length;
+  const cv = document.createElement("canvas");
+  cv.width = COLS * TILE * scale; cv.height = ROWS * TILE * scale;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  const kind = (c, r) => (c < 0 || r < 0 || c >= COLS || r >= ROWS ? "#" : MAPA[r][c]);
+  const snap = (v) => Math.round(v * scale) / scale;
+  const rect = (x, y, w, h) => { const x0 = snap(x), y0 = snap(y); ctx.fillRect(x0, y0, snap(x + w) - x0, snap(y + h) - y0); };
+  const g = { ctx, rect, solid: (c, r) => kind(c, r) === "#", kind, time, x: 0, y: 0, c: 0, r: 0, border: false, free: true };
+  g.h = (k) => CatThemes.hash(g.c, g.r, k);
+  const at = (c, r) => { g.c = c; g.r = r; g.x = c * TILE; g.y = r * TILE; g.border = c === 0 || r === 0 || c === COLS - 1 || r === ROWS - 1; g.free = kind(c, r) !== "#"; };
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { at(c, r); th.floor(g); }
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const k = kind(c, r); at(c, r);
+    if (k === "#") th.wall(g); else if (k === "X") th.crate(g); else if (k === "T") th.high(g); else if (k === "~") th.water(g);
+  }
+  // escala do gatinho (24 px) e as quatro peles sobre o chão
+  ctx.fillStyle = "#19d24a"; ctx.fillRect(6 * TILE + 4, 6 * TILE + 4, 24, 24);
+  SKINS.forEach((col, i) => { ctx.fillStyle = col; ctx.beginPath(); ctx.arc((7 + i) * TILE + 16, 6 * TILE + 16, 11, 0, Math.PI * 2); ctx.fill(); });
+  if (withNight) { // o escurecimento do jogo: halo em volta do gatinho (aqui, o quadrado verde)
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const cx = (6 * TILE + 16) * scale, cy = (6 * TILE + 16) * scale, gr = ctx.createRadialGradient(cx, cy, 60 * scale, cx, cy, 190 * scale);
+    gr.addColorStop(0, "rgba(3,6,18,0)"); gr.addColorStop(1, "rgba(3,6,18,.86)");
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
+  return cv;
+}
+function figure(id, withNight) {
+  const f = document.createElement("figure"), cap = document.createElement("figcaption");
+  cap.textContent = `Fase ${id} · ${CatThemes.of(id).place}${withNight ? " (com o escurecimento da noite)" : ""}`;
+  f.append(drawPatch(id, withNight), cap); return f;
+}
+const stage = document.getElementById("stage");
+if (q.get("sheet")) {
+  stage.className = "sheet";
+  for (let id = 11; id <= 20; id++) stage.append(figure(id, false));
+} else {
+  const id = +q.get("id"); stage.append(figure(id, q.get("night") === "1"));
+}
+document.title = "pronto";
+</script>
+</body>
+</html>

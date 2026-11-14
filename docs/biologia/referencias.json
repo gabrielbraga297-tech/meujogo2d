@@ -1,0 +1,547 @@
+{
+ "about": "Referências abertas e conferidas (resumo) para a «Biologia por trás» dos bichinhos. Veja tools/biology/build_refs.py e o README.",
+ "refs": [
+  {
+   "id": "herbst2023",
+   "authors": [
+    "Herbst CT",
+    "Prigge T",
+    "Garcia M",
+    "Hampala V",
+    "Hofer R",
+    "Weissengruber GE",
+    "Svec JG",
+    "Fitch WT"
+   ],
+   "year": 2023,
+   "title": "Domestic cat larynges can produce purring frequencies without neural input",
+   "journal": "Current Biology",
+   "volume": "33",
+   "issue": "21",
+   "pages": "4727-4732.e4",
+   "doi": "10.1016/j.cub.2023.09.014",
+   "pmid": "37794583",
+   "pmcid": "",
+   "open_access": false,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Sons"
+   ],
+   "supports": "Laringes excisadas de oito gatos domésticos produziram oscilações autossustentadas nas frequências fundamentais do ronronar, de 25 a 30 Hz, sem estímulo neural: o ronronar é um som de frequência muito baixa (o ronronar do jogo usa pulsos de cerca de 26 Hz).",
+   "limits": "Não diz nada sobre o miado, sobre filhotes nem sobre o que o gato sente. O jogo só imita a frequência do ronronar; a duração, o volume e a mistura com outros sons são escolha de design. Acesso fechado: só o resumo foi lido."
+  },
+  {
+   "id": "russo2025",
+   "authors": [
+    "Russo D",
+    "Schild AB",
+    "Knörnschild M"
+   ],
+   "year": 2025,
+   "title": "Meows encode less individual information than purrs and show greater variability in domestic than in wild cats",
+   "journal": "Scientific Reports",
+   "volume": "15",
+   "issue": "1",
+   "pages": "43490",
+   "doi": "10.1038/s41598-025-31536-7",
+   "pmid": "41366409",
+   "pmcid": "PMC12695941",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Sons"
+   ],
+   "supports": "Em gatos domésticos o miado e o ronronar têm papéis de comunicação diferentes: o miado é variável e depende do contexto, e o ronronar é estereotipado e de baixa frequência (276 miados de 14 gatos e 557 ronronares de 21 gatos).",
+   "limits": "Não mede filhote x adulto nem o som que o jogo sintetiza. Que o miado do jogo mude com a fase da vida é escolha de design."
+  },
+  {
+   "id": "lepczyk2023",
+   "authors": [
+    "Lepczyk CA",
+    "Fantle-Lepczyk JE",
+    "Dunham KD",
+    "Bonnaud E",
+    "Lindner J",
+    "Doherty TS",
+    "Woinarski JCZ"
+   ],
+   "year": 2023,
+   "title": "A global synthesis and assessment of free-ranging domestic cat diet",
+   "journal": "Nature Communications",
+   "volume": "14",
+   "issue": "1",
+   "pages": "7809",
+   "doi": "10.1038/s41467-023-42766-6",
+   "pmid": "38086838",
+   "pmcid": "PMC10716121",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat",
+    "bird"
+   ],
+   "traits": [
+    "Presas (Gatinho)",
+    "Gatos de quintal (Passarinho)"
+   ],
+   "supports": "Síntese global da dieta de gatos de vida livre: 2.084 espécies comidas; aves, répteis e mamíferos somam cerca de 90% delas; cerca de 9% das aves conhecidas aparecem na dieta; 97% das espécies comidas pesam menos de 5 kg. Gatos são predadores generalistas de presas pequenas.",
+   "limits": "É sobre gatos de vida livre (inclusive em ilhas), não sobre gatos de quintal em geral nem sobre ratinhos e novelos de jogo. As quantidades do jogo não vêm daqui."
+  },
+  {
+   "id": "castaneda2023",
+   "authors": [
+    "Castañeda I",
+    "Forin-Wiart MA",
+    "Pisanu B",
+    "de Bouillane de Lacoste N"
+   ],
+   "year": 2023,
+   "title": "Spatiotemporal and Individual Patterns of Domestic Cat (Felis catus) Hunting Behaviour in France",
+   "journal": "Animals",
+   "volume": "13",
+   "issue": "22",
+   "pages": "3507",
+   "doi": "10.3390/ani13223507",
+   "pmid": "",
+   "pmcid": "PMC10668736",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat",
+    "bird"
+   ],
+   "traits": [
+    "Presas (Gatinho)",
+    "Gatos de quintal (Passarinho)"
+   ],
+   "supports": "Em 5.048 gatos acompanhados na França (projeto de ciência cidadã, 2015 a 2022), as presas trazidas para casa (36.568) foram 68% mamíferos, 21% aves e 8% répteis escamados; gatos mais jovens traziam mais musaranhos, aves e répteis.",
+   "limits": "Conta só as presas trazidas para casa, num país; não diz como um gato caça nem a que velocidade. Os números do jogo são escolha de design."
+  },
+  {
+   "id": "hirsch2025",
+   "authors": [
+    "Hirsch EN",
+    "Navarro Rivero B",
+    "Andersson M"
+   ],
+   "year": 2025,
+   "title": "Cats in a Cat Café: Individual Cat Behavior and Interactions with Humans",
+   "journal": "Animals",
+   "volume": "15",
+   "issue": "22",
+   "pages": "3233",
+   "doi": "10.3390/ani15223233",
+   "pmid": "41301942",
+   "pmcid": "PMC12649627",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Lugar alto (T)"
+   ],
+   "supports": "Num café de gatos sueco (27 gatos castrados, 227 h de observação) as estruturas elevadas foram importantes, principalmente quando havia muitos clientes: os gatos preferiam os níveis verticais ou salas só deles; os autores recomendam ambientes verticais complexos e esconderijos.",
+   "limits": "É um café de gatos, não a rua nem um quintal; não mostra que um gato em cima de algo fique a salvo de um cão (o jogo faz os cães esperarem 4 s e desistirem: escolha de design)."
+  },
+  {
+   "id": "gollnick2023",
+   "authors": [
+    "Gollnick HR",
+    "Schmiedt CW",
+    "Wallace ML",
+    "Sutherland BJ",
+    "Grimes JA"
+   ],
+   "year": 2023,
+   "title": "Retrospective evaluation of surgical treatment of linear and discrete gastrointestinal foreign bodies in cats: 2009–2021",
+   "journal": "Journal of Feline Medicine and Surgery",
+   "volume": "25",
+   "issue": "6",
+   "pages": "1098612X231178140",
+   "doi": "10.1177/1098612x231178140",
+   "pmid": "37350262",
+   "pmcid": "PMC10811983",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Novelo (precaução)"
+   ],
+   "supports": "Corpos estranhos gastrointestinais (lineares e outros) são uma causa importante de cirurgia de emergência em gatos; no estudo de 56 gatos operados na Universidade da Geórgia, os com corpo estranho linear tiveram mais infecção do local da cirurgia que os com corpo estranho único.",
+   "limits": "Não diz que novelo ou fio foi o objeto em cada caso. O aviso do README («fio e novelo soltos podem ser perigosos») é uma precaução coerente com o estudo, não uma conclusão dele."
+  },
+  {
+   "id": "pongracz2024",
+   "authors": [
+    "Pongrácz P"
+   ],
+   "year": 2024,
+   "title": "Cats are (almost) liquid!—Cats selectively rely on body size awareness when negotiating short openings",
+   "journal": "iScience",
+   "volume": "27",
+   "issue": "10",
+   "pages": "110799",
+   "doi": "10.1016/j.isci.2024.110799",
+   "pmid": "39474081",
+   "pmcid": "PMC11519432",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Obstáculo baixo (X)"
+   ],
+   "supports": "Em 30 gatos de companhia, aberturas cada vez mais baixas ou estreitas foram atravessadas mesmo as mais estreitas, mas os gatos diminuíam a velocidade antes e durante a passagem pelas aberturas mais baixas; os autores falam em tentativa e erro e em noção do tamanho do corpo.",
+   "limits": "O gato passa SOB e por aberturas; o jogo faz o gatinho PULAR as caixas «X». Só o tema (gatos e passagens baixas) tem ligação; a regra do jogo é escolha de design."
+  },
+  {
+   "id": "jensen2022",
+   "authors": [
+    "Jensen HA",
+    "Meilby H",
+    "Nielsen SS",
+    "Sandøe P"
+   ],
+   "year": 2022,
+   "title": "Movement Patterns of Roaming Companion Cats in Denmark—A Study Based on GPS Tracking",
+   "journal": "Animals",
+   "volume": "12",
+   "issue": "14",
+   "pages": "1748",
+   "doi": "10.3390/ani12141748",
+   "pmid": "35883297",
+   "pmcid": "PMC9311815",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Ambientes das 20 fases (uso do espaço)"
+   ],
+   "supports": "97 gatos de companhia com acesso à rua foram seguidos por GPS por cerca de 7 dias na Dinamarca: ficavam fora de casa 5 h por dia (mediana), andavam 2,4 km por dia e tinham área de uso de 5 ha; gatos com acesso a áreas de natureza se afastavam mais e a chuva forte reduzia a distância andada (de 3,6 para 2,4 km por dia).",
+   "limits": "É sobre gatos de companhia dinamarqueses. Não diz nada sobre pelo molhado nem sobre poças; a lentidão ao pisar numa poça é escolha de design."
+  },
+  {
+   "id": "kowalczyk2026",
+   "authors": [
+    "Kowalczyk-Jabłońska I",
+    "Jundziłł-Bogusiewicz P",
+    "Kaleta T"
+   ],
+   "year": 2026,
+   "title": "The Role of Olfaction in Dogs: Evolution, Biology, and Human-Oriented Work",
+   "journal": "Animals",
+   "volume": "16",
+   "issue": "3",
+   "pages": "427",
+   "doi": "10.3390/ani16030427",
+   "pmid": "41681409",
+   "pmcid": "PMC12897092",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "traits": [
+    "Cães rastreadores"
+   ],
+   "supports": "Revisão: cães têm sensibilidade olfativa excepcional e são usados em trabalhos de busca e rastreamento (médicos, resgate, militares, forenses); o desempenho depende da anatomia nasal e também de motivação e persistência.",
+   "limits": "É uma revisão sobre olfato e trabalho de cães. O «ouvido» dos rastreadores do jogo e a velocidade deles são escolhas de design."
+  },
+  {
+   "id": "cymerman2026",
+   "authors": [
+    "Cymerman K",
+    "Remisiewicz M"
+   ],
+   "year": 2026,
+   "title": "Predator–Prey Dynamics Between Eurasian Sparrowhawk and Its Bird Prey During Spring Migration in the Forests at Hel Peninsula (N Poland) over 1982–2024",
+   "journal": "Animals",
+   "volume": "16",
+   "issue": "4",
+   "pages": "627",
+   "doi": "10.3390/ani16040627",
+   "pmid": "41751088",
+   "pmcid": "PMC12937290",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "traits": [
+    "Gaviões"
+   ],
+   "supports": "O gavião-europeu (Eurasian Sparrowhawk), predador generalista, tem como principais presas aves pequenas e médias de floresta (tordo-músico, melro, tentilhão, chapim-real, pisco-de-peito-ruivo); em 2024 as presas foram identificadas por restos de penas, e a migração do gavião acompanha a das presas.",
+   "limits": "É sobre migração de primavera numa península da Polônia, não sobre caça em quintal; a IA dos gaviões do jogo (ouvir, antecipar, procurar) e as velocidades são escolhas de design."
+  },
+  {
+   "id": "macias2026",
+   "authors": [
+    "Macías-Torres P",
+    "Friman SI",
+    "Johansson LC",
+    "Hedenström A"
+   ],
+   "year": 2026,
+   "title": "Flight energetics of barn swallows across speeds: high aerodynamic efficiency, but low energy conversion efficiency",
+   "journal": "Journal of Experimental Biology",
+   "volume": "229",
+   "issue": "18",
+   "pages": "jeb252390",
+   "doi": "10.1242/jeb.252390",
+   "pmid": "42751952",
+   "pmcid": "PMC13615695",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "traits": [
+    "Bater asas com fôlego"
+   ],
+   "supports": "Andorinhas voando em túnel de vento entre 7,8 e 13,6 m/s gastaram energia metabólica numa curva em U em função da velocidade: voar tem custo de energia que depende de como se voa, e a eficiência de converter energia em trabalho de voo é baixa (pico de 7%).",
+   "limits": "Não fala em «fôlego», em arrancada nem em tempo de recuperação. A barra de fôlego do passarinho (×1,35 por 2,5 s) é escolha de design; daqui só vem a ideia de que voar custa energia."
+  },
+  {
+   "id": "andries2025",
+   "authors": [
+    "Andries T",
+    "Müller W",
+    "Van Wassenbergh S"
+   ],
+   "year": 2025,
+   "title": "Feeding performance, kinematics and skills change with age in a granivorous songbird",
+   "journal": "Proceedings of the Royal Society B: Biological Sciences",
+   "volume": "292",
+   "issue": "2057",
+   "pages": "20251839",
+   "doi": "10.1098/rspb.2025.1839",
+   "pmid": "41119998",
+   "pmcid": "PMC12539955",
+   "open_access": false,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "traits": [
+    "Crescimento (filhote → jovem → adulto)"
+   ],
+   "supports": "Canários domésticos jovens e adultos filmados por dois anos: a habilidade de manejar sementes melhora com a idade e o desempenho de alimentação muda com a maturação; ou seja, ao crescer a ave fica mais hábil.",
+   "limits": "No jogo o crescimento só muda o desenho, o tamanho e o piu, e não a habilidade; o paralelo é só de tema. Acesso fechado: só o resumo foi lido."
+  },
+  {
+   "id": "he2026",
+   "authors": [
+    "He M",
+    "Li B",
+    "Du W",
+    "Du C"
+   ],
+   "year": 2026,
+   "title": "The Role of Campus as an Urban Multiuse Protected Area in Bird Nocturnal Roosting Habitat Function",
+   "journal": "Ecology and Evolution",
+   "volume": "16",
+   "issue": "1",
+   "pages": "e72554",
+   "doi": "10.1002/ece3.72554",
+   "pmid": "41589085",
+   "pmcid": "PMC12832193",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "traits": [
+    "Galhos (abrigo)",
+    "Entardecer e noite"
+   ],
+   "supports": "Num campus universitário chinês, aves dormiam à noite em árvores de copa densa e muita ocultação, nas pontas dos galhos longe do tronco; no verão ficavam mais dispersas e no outono e inverno se concentravam na vertical.",
+   "limits": "É sobre onde aves dormem numa cidade, não sobre ficar a salvo de gatos de dia. Que os inimigos esperem 4 s e desistam, e a escuridão com halo nas Fases 18 e 19, são escolhas de design."
+  }
+ ],
+ "sem_apoio": [
+  {
+   "id": "rutovskaya2024",
+   "authors": [
+    "Rutovskaya MV",
+    "Volodin IA",
+    "Naidenko SV",
+    "Erofeeva MN",
+    "Alekseeva GS",
+    "Zhuravleva PS",
+    "Volobueva KA",
+    "Kim MD",
+    "Volodina EV"
+   ],
+   "year": 2024,
+   "title": "Relationship between acoustic traits of protesting cries of domestic kittens (Felis catus) and their individual chances for survival",
+   "journal": "Behavioural Processes",
+   "volume": "216",
+   "issue": "",
+   "pages": "105009",
+   "doi": "10.1016/j.beproc.2024.105009",
+   "pmid": "38395238",
+   "pmcid": "",
+   "open_access": false,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "why": "Gritos de protesto de gatinhos de 2 semanas variam com o peso do corpo (a frequência fundamental sobe com o peso) e não previram a sobrevivência. Não compara filhote com adulto, então não sustenta que o miado do filhote do jogo seja diferente do do adulto."
+  },
+  {
+   "id": "veenstra2026",
+   "authors": [
+    "Veenstra R",
+    "Halfwerk W",
+    "Henriques M",
+    "van Hal J",
+    "Berg MP",
+    "Piersma T"
+   ],
+   "year": 2026,
+   "title": "Soil moisture enhances the vibrations induced by moving earthworms, especially of detritivores",
+   "journal": "Royal Society Open Science",
+   "volume": "13",
+   "issue": "10",
+   "pages": "260667",
+   "doi": "10.1098/rsos.260667",
+   "pmid": "42904283",
+   "pmcid": "PMC13682886",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "why": "As vibrações de minhocas se movendo são detectadas melhor em solo mais úmido (medidas com geofone). Não diz nada sobre fuga de minhoca nem sobre aves caçando; não sustenta a regra das minhocas do jogo."
+  },
+  {
+   "id": "kasprzykowski2026",
+   "authors": [
+    "Kasprzykowski Z",
+    "Goławski A",
+    "Mitrus C",
+    "Xayyasith S",
+    "Obłoza P"
+   ],
+   "year": 2026,
+   "title": "Escape response and perch-site choice in shrikes: effects of human disturbance in Europe and Southeast Asia",
+   "journal": "PeerJ",
+   "volume": "14",
+   "issue": "",
+   "pages": "e21506",
+   "doi": "10.7717/peerj.21506",
+   "pmid": "42405251",
+   "pmcid": "PMC13330747",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "bird"
+   ],
+   "why": "Em picanços, a distância de fuga e a escolha do poleiro dependem da proximidade de estradas e construções (perturbação humana). Não é sobre abrigo contra gatos nem sobre galhos como refúgio."
+  },
+  {
+   "id": "massenet2025",
+   "authors": [
+    "Massenet M",
+    "Pisanski K",
+    "Reynaud K",
+    "Mathevon N",
+    "Reby D",
+    "Anikin A"
+   ],
+   "year": 2025,
+   "title": "Acoustic context and dynamics of nonlinear phenomena in mammalian calls: the case of puppy whines",
+   "journal": "Philosophical Transactions of the Royal Society B: Biological Sciences",
+   "volume": "380",
+   "issue": "1923",
+   "pages": "20240022",
+   "doi": "10.1098/rstb.2024.0022",
+   "pmid": "40176516",
+   "pmcid": "PMC11966151",
+   "open_access": false,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "dog"
+   ],
+   "why": "Em 12.011 gritos de filhotes de Beagle separados da mãe, fenômenos acústicos não lineares aparecem mais com o tempo de separação, o que os autores ligam a excitação maior. Não compara filhote com adulto, então não sustenta o latido agudo de filhote e grave de adulto do jogo. Acesso fechado: só o resumo foi lido."
+  },
+  {
+   "id": "dunford2024",
+   "authors": [
+    "Dunford CE",
+    "Marks NJ",
+    "Wilson RP",
+    "Scantlebury DM"
+   ],
+   "year": 2024,
+   "title": "Identifying animal behaviours from accelerometers: Improving predictive accuracy of machine learning by refining the variables selected, data frequency, and sample duration",
+   "journal": "Ecology and Evolution",
+   "volume": "14",
+   "issue": "5",
+   "pages": "e11380",
+   "doi": "10.1002/ece3.11380",
+   "pmid": "38756684",
+   "pmcid": "PMC11097004",
+   "open_access": true,
+   "peer_reviewed": true,
+   "level": "resumo",
+   "checked_on": "2026-11-07",
+   "games": [
+    "cat"
+   ],
+   "why": "Sobre acurácia de aprendizado de máquina com acelerômetros. Não consegui confirmar a pista antiga «Dunford et al. 2024, Animal Biotelemetry 12» (GPS, chuva e cobertura); o artigo de 2024 de mesmo primeiro autor que achei é este, e nada dele sustenta o jogo."
+  }
+ ],
+ "nao_encontradas": [
+  "Schötz, van de Weijer & Eklund (2023/24), Applied Animal Behaviour Science 270 (contexto e miados): não encontrado com esses dados",
+  "Chijiiwa et al. (2025), Scientific Reports 15 (convivência cão-gato): não encontrado com esses dados",
+  "Higurashi et al. (2026), Anatomical Record (corpo e frestas): não encontrado com esses dados",
+  "Huels et al. (2026), Integrative Zoology (ratos em galpões): não encontrado com esses dados"
+ ]
+}
